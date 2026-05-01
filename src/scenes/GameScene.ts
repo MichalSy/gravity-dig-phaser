@@ -72,8 +72,6 @@ export class GameScene extends Phaser.Scene {
     this.load.image('tiles', '/assets/tilesets/atlas/tiles_atlas.png');
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
     this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('ladder', '/assets/tilesets/icons/icon_ladder.png');
-    this.load.image('ship-door', '/assets/tilesets/interior/ship_door.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
     for (let i = 1; i <= 4; i += 1) {
@@ -155,7 +153,6 @@ export class GameScene extends Phaser.Scene {
     this.addBackground();
     this.drawTiles();
     this.addShip();
-    this.addStartLadder();
     this.addCoreMarker();
     this.addPlayer();
     this.laser = this.add.graphics().setDepth(30);
@@ -199,48 +196,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addShip(): void {
-    const shipBottomY = TILE_SIZE * 2.25;
+    const shipBottomY = TILE_SIZE * 3;
     const shipCenterX = -3 * TILE_SIZE;
-    const floorTopY = TILE_SIZE * 3;
-    const gearTopY = shipBottomY - TILE_SIZE * 0.55;
-    const gearXs = [-5.3, -3.2, -1.15].map((x) => x * TILE_SIZE);
 
     const ship = this.add
       .image(shipCenterX, shipBottomY, 'ship')
       .setOrigin(0.5, 1)
       .setDepth(8)
-      .setDisplaySize(TILE_SIZE * 7, TILE_SIZE * 3.5)
-      .setAlpha(0.95);
+      .setDisplaySize(TILE_SIZE * 7.35, TILE_SIZE * 4.65)
+      .setAlpha(0.96);
 
-    const gear = this.add.graphics().setDepth(7);
-    gear.lineStyle(7, 0x1f2937, 1);
-    gear.fillStyle(0x334155, 1);
-    for (const x of gearXs) {
-      gear.lineBetween(x, gearTopY, x - TILE_SIZE * 0.22, floorTopY);
-      gear.lineBetween(x, gearTopY, x + TILE_SIZE * 0.22, floorTopY);
-      gear.fillRoundedRect(x - TILE_SIZE * 0.42, floorTopY - 7, TILE_SIZE * 0.84, 10, 3);
-    }
-
-    this.startDecor.push(ship, gear);
-  }
-
-  private addStartLadder(): void {
-    const hatchX = -2 * TILE_SIZE;
-    const floorTopY = TILE_SIZE * 3;
-    const doorY = TILE_SIZE * 1.65;
-
-    const door = this.add
-      .image(hatchX, doorY, 'ship-door')
-      .setOrigin(0.5)
-      .setDepth(10)
-      .setDisplaySize(TILE_SIZE * 0.7, TILE_SIZE * 0.92);
-    const ladder = this.add
-      .image(hatchX, floorTopY - TILE_SIZE * 0.5, 'ladder')
-      .setOrigin(0.5)
-      .setDepth(9)
-      .setDisplaySize(TILE_SIZE * 0.5, TILE_SIZE);
-
-    this.startDecor.push(door, ladder);
+    this.startDecor.push(ship);
   }
 
   private addCoreMarker(): void {
