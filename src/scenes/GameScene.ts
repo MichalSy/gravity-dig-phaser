@@ -27,7 +27,10 @@ type Facing = 'east' | 'west' | 'south';
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
   private level!: LevelData;
-  private tileSprites = new Map<string, Phaser.GameObjects.Image>();
+  private tilemap?: Phaser.Tilemaps.Tilemap;
+  private tileLayer?: Phaser.Tilemaps.TilemapLayer;
+  private mapOffsetX = 0;
+  private mapOffsetY = 0;
   private player!: Phaser.GameObjects.Image;
   private cursors!: CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -55,10 +58,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.spritesheet('tiles', '/assets/tilesets/atlas/tiles_atlas.png', {
-      frameWidth: TILE_SIZE,
-      frameHeight: TILE_SIZE,
-    });
+    this.load.image('tiles', '/assets/tilesets/atlas/tiles_atlas.png');
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
     this.load.image('ship', '/assets/tilesets/ships/ship_exterior.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
@@ -101,8 +101,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createLevel(seed = 'gravity-dig-phaser'): void {
-    for (const sprite of this.tileSprites.values()) sprite.destroy();
-    this.tileSprites.clear();
+    this.tileLayer?.destroy();
+    this.tilemap?.destroy();
+    this.tileLayer = undefined;
+    this.tilemap = undefined;
 
     const config = this.cache.json.get('dev-planet') as PlanetConfig;
     this.level = this.generator.generate(config, 1, seed);
@@ -127,15 +129,28 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawTiles(): void {
+    const minX = Math.min(...[...this.level.tiles.values()].map((cell) => cell.x));
+    const maxX = Math.max(...[...this.level.tiles.values()].map((cell) => cell.x));
+    const minY = Math.min(...[...this.level.tiles.values()].map((cell) => cell.y));
+    const maxY = Math.max(...[...this.level.tiles.values()].map((cell) => cell.y));
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const data = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
+
+    this.mapOffsetX = minX;
+    this.mapOffsetY = minY;
+
     for (const cell of this.level.tiles.values()) {
-      if (cell.type === 'air') continue;
-      const sprite = this.add
-        .image(cell.x * TILE_SIZE, cell.y * TILE_SIZE, 'tiles', atlasFrame(cell.type))
-        .setOrigin(0, 0)
-        .setDepth(cell.boundary ? 4 : 2);
-      if (isResourceTile(cell.type)) sprite.setDepth(3).setTint(0xffffff);
-      this.tileSprites.set(tileKey(cell.x, cell.y), sprite);
+      data[cell.y - minY][cell.x - minX] = cell.type === 'air' ? -1 : atlasFrame(cell.type);
     }
+
+    this.tilemap = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
+    if (!tileset) throw new Error('Failed to create tileset');
+
+    const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
+    if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
+    this.tileLayer = layer.setDepth(2);
   }
 
   private addShip(): void {
@@ -166,7 +181,8 @@ export class GameScene extends Phaser.Scene {
     const worldWidth = (this.level.width + 12) * TILE_SIZE;
     const worldHeight = (this.level.heightUp + this.level.heightDown + 2) * TILE_SIZE;
     this.cameras.main.setBounds(worldLeft, worldTop, worldWidth, worldHeight);
-    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    this.cameras.main.setRoundPixels(true);
+    this.cameras.main.startFollow(this.player, true, 0.18, 0.18);
     this.updateCameraZoom();
   }
 
@@ -180,9 +196,12 @@ export class GameScene extends Phaser.Scene {
     if (!this.cameras?.main) return;
     const viewportWidth = Math.max(1, this.scale.width);
     const viewportHeight = Math.max(1, this.scale.height);
-    const landscapeZoom = Phaser.Math.Clamp(viewportWidth / 980, 0.82, 1.35);
-    const heightZoom = Phaser.Math.Clamp(viewportHeight / 620, 0.72, 1.25);
-    this.cameras.main.setZoom(Math.min(landscapeZoom, heightZoom));
+    const targetTilesHigh = viewportHeight <= 430 ? 11 : 15;
+    const targetTilesWide = viewportWidth <= 900 ? 24 : 30;
+    const zoomByHeight = viewportHeight / (targetTilesHigh * TILE_SIZE);
+    const zoomByWidth = viewportWidth / (targetTilesWide * TILE_SIZE);
+    const zoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.05, 1.8);
+    this.cameras.main.setZoom(zoom);
   }
 
   private handleInput(delta: number): void {
@@ -318,8 +337,8 @@ export class GameScene extends Phaser.Scene {
 
     this.energy = Math.max(0, this.energy - ENERGY_COST_PER_SEC * delta);
     target.health -= MINING_DAMAGE_PER_SEC * delta;
-    const sprite = this.tileSprites.get(tileKey(target.x, target.y));
-    if (sprite) sprite.setAlpha(Math.max(0.25, target.health / target.maxHealth));
+    const tile = this.getLayerTile(target.x, target.y);
+    if (tile) tile.setAlpha(Math.max(0.25, target.health / target.maxHealth));
 
     if (target.health <= 0) {
       this.mineTile(target);
@@ -385,11 +404,7 @@ export class GameScene extends Phaser.Scene {
 
   private mineTile(cell: TileCell): void {
     const key = tileKey(cell.x, cell.y);
-    const sprite = this.tileSprites.get(key);
-    if (sprite) {
-      sprite.destroy();
-      this.tileSprites.delete(key);
-    }
+    this.tilemap?.putTileAt(-1, cell.x - this.mapOffsetX, cell.y - this.mapOffsetY, false, this.tileLayer);
 
     if (isResourceTile(cell.type)) {
       this.inventory.set(cell.type, (this.inventory.get(cell.type) ?? 0) + 1);
@@ -398,6 +413,10 @@ export class GameScene extends Phaser.Scene {
     cell.type = 'air';
     cell.health = 0;
     this.level.resources.delete(key);
+  }
+
+  private getLayerTile(worldTileX: number, worldTileY: number): Phaser.Tilemaps.Tile | null {
+    return this.tilemap?.getTileAt(worldTileX - this.mapOffsetX, worldTileY - this.mapOffsetY, false, this.tileLayer) ?? null;
   }
 
   private updateAnimation(deltaMs: number): void {
