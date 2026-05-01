@@ -56,3 +56,20 @@ jobs:
             ${{ steps.version.outputs.latest_image }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Update gitops-config
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+        run: |
+          if [ -z "$GITOPS_TOKEN" ]; then
+            echo "GITOPS_TOKEN not set, skipping gitops-config update"
+            exit 0
+          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git clone --depth 1 https://x-access-token:${GITOPS_TOKEN}@github.com/MichalSy/gitops-config.git /tmp/gitops-config
+          cd /tmp/gitops-config
+          sed -i 's|newTag: ".*"|newTag: "${{ steps.version.outputs.version }}"|g' apps/gravity-dig-phaser/kustomization.yaml
+          git add apps/gravity-dig-phaser/kustomization.yaml
+          git commit -m "chore: update gravity-dig-phaser to ${{ steps.version.outputs.version }}" || echo "No changes"
+          git push
