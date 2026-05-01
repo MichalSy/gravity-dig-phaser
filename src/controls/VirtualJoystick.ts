@@ -57,6 +57,20 @@ export class VirtualJoystick {
     this.label.destroy();
   }
 
+  setVisible(visible: boolean): void {
+    this.base.setVisible(visible);
+    this.knob.setVisible(visible);
+    this.label.setVisible(visible);
+    if (!visible) this.reset();
+  }
+
+  reset(): void {
+    this.activePointerId = undefined;
+    this.vector.set(0, 0);
+    this.knob.setPosition(this.center.x, this.center.y);
+    this.base.setAlpha(1);
+  }
+
   layout(): void {
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
@@ -91,10 +105,7 @@ export class VirtualJoystick {
 
   handlePointerUp(pointer: Phaser.Input.Pointer): void {
     if (pointer.id !== this.activePointerId) return;
-    this.activePointerId = undefined;
-    this.vector.set(0, 0);
-    this.knob.setPosition(this.center.x, this.center.y);
-    this.base.setAlpha(1);
+    this.reset();
   }
 
   contains(pointer: Phaser.Input.Pointer): boolean {

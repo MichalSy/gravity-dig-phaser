@@ -10,7 +10,10 @@ new Phaser.Game({
   width: window.innerWidth || GAME_WIDTH,
   height: window.innerHeight || GAME_HEIGHT,
   backgroundColor: '#050816',
-  pixelArt: true,
+  pixelArt: false,
+  smoothPixelArt: true,
+  antialias: true,
+  antialiasGL: true,
   input: {
     activePointers: 4,
   },
@@ -20,7 +23,8 @@ new Phaser.Game({
     height: '100%',
   },
   render: {
-    antialias: false,
+    antialias: true,
+    antialiasGL: true,
   },
   scene: [GameScene, UIScene],
 });

@@ -10,7 +10,7 @@ import {
   PLAYER_SPEED,
   TILE_SIZE,
 } from '../config/gameConfig';
-import { UIScene, type HudState } from './UIScene';
+import { UIScene, type HudState, type InputMode } from './UIScene';
 import {
   GravityDigLevelGenerator,
   type LevelData,
@@ -48,6 +48,7 @@ export class GameScene extends Phaser.Scene {
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
+  private gamepadAim = new Phaser.Math.Vector2(1, 0);
 
   constructor() {
     super('game');
@@ -185,24 +186,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleInput(delta: number): void {
+    const mode = this.uiScene.getInputMode();
     const joy = this.uiScene.getMoveVector();
-    const left = this.cursors.left?.isDown || this.keys.A.isDown || joy.x < -0.22;
-    const right = this.cursors.right?.isDown || this.keys.D.isDown || joy.x > 0.22;
-    const joyUp = joy.y < -0.56;
-    const joyDown = joy.y > 0.56;
-    const up = this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown || joyUp;
-    const down = this.cursors.down?.isDown || this.keys.S.isDown || joyDown;
+    const gamepad = mode === 'gamepad' ? this.getGamepad() : undefined;
+    const gamepadX = gamepad ? this.axis(gamepad, 0) : 0;
+    const gamepadY = gamepad ? this.axis(gamepad, 1) : 0;
+    const desktop = mode === 'desktop';
+    const touch = mode === 'touch';
+    const gamepadMode = mode === 'gamepad';
+
+    const left = (desktop && (this.cursors.left?.isDown || this.keys.A.isDown)) || (touch && joy.x < -0.22) || (gamepadMode && gamepadX < -0.22);
+    const right = (desktop && (this.cursors.right?.isDown || this.keys.D.isDown)) || (touch && joy.x > 0.22) || (gamepadMode && gamepadX > 0.22);
+    const joyUp = touch && joy.y < -0.56;
+    const joyDown = touch && joy.y > 0.56;
+    const gamepadUp = gamepadMode && (gamepadY < -0.56 || this.button(gamepad, 0));
+    const gamepadDown = gamepadMode && gamepadY > 0.56;
+    const up = (desktop && (this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown)) || joyUp || gamepadUp;
+    const down = (desktop && (this.cursors.down?.isDown || this.keys.S.isDown)) || joyDown || gamepadDown;
 
     this.velocity.x = 0;
-    if (left) this.velocity.x -= PLAYER_SPEED * (joy.x < -0.22 ? Math.max(0.45, Math.abs(joy.x)) : 1);
-    if (right) this.velocity.x += PLAYER_SPEED * (joy.x > 0.22 ? Math.max(0.45, Math.abs(joy.x)) : 1);
+    if (left) this.velocity.x -= PLAYER_SPEED * this.inputStrength(mode, joy.x, gamepadX, -1);
+    if (right) this.velocity.x += PLAYER_SPEED * this.inputStrength(mode, joy.x, gamepadX, 1);
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.G)) {
+    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.G)) {
       this.gravityEnabled = !this.gravityEnabled;
       this.velocity.y = 0;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.R)) {
+    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
       this.createLevel(`gravity-dig-phaser-${Date.now()}`);
       return;
     }
@@ -211,11 +222,12 @@ export class GameScene extends Phaser.Scene {
     if (down && !this.gravityEnabled) this.velocity.y = PLAYER_SPEED;
     if (!up && !down && !this.gravityEnabled) this.velocity.y = 0;
 
-    const keyboardJump = Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W);
+    const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W));
     const touchJump = joyUp && !this.touchJumpHeld;
-    this.touchJumpHeld = joyUp;
+    const gamepadJump = gamepadMode && this.button(gamepad, 0) && !this.touchJumpHeld;
+    this.touchJumpHeld = joyUp || (gamepadMode && this.button(gamepad, 0));
 
-    if (keyboardJump || touchJump) {
+    if (keyboardJump || touchJump || gamepadJump) {
       if (this.grounded || this.coyoteTimer > 0) {
         this.velocity.y = JUMP_VELOCITY;
         this.grounded = false;
@@ -315,6 +327,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getAimWorldPoint(): Phaser.Math.Vector2 {
+    if (this.uiScene.getInputMode() === 'gamepad') {
+      const gamepad = this.getGamepad();
+      const aimX = gamepad ? this.axis(gamepad, 2) : 0;
+      const aimY = gamepad ? this.axis(gamepad, 3) : 0;
+      if (Math.hypot(aimX, aimY) > 0.22) this.gamepadAim.set(aimX, aimY).normalize();
+      this.currentAimWorld.set(
+        this.player.x + this.gamepadAim.x * MINING_RANGE,
+        this.player.y + this.gamepadAim.y * MINING_RANGE,
+      );
+      return this.currentAimWorld;
+    }
+
     if (this.uiScene.isAiming()) {
       const aim = this.uiScene.getAimVector();
       this.currentAimWorld.set(
@@ -324,15 +348,22 @@ export class GameScene extends Phaser.Scene {
       return this.currentAimWorld;
     }
 
-    const pointer = this.input.activePointer;
-    this.currentAimWorld.copy(pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2);
+    if (this.uiScene.getInputMode() === 'desktop') {
+      const pointer = this.input.activePointer;
+      this.currentAimWorld.copy(pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2);
+    }
     return this.currentAimWorld;
   }
 
   private isMiningPressed(): boolean {
-    if (this.uiScene.isAiming()) return true;
+    const mode = this.uiScene.getInputMode();
+    if (mode === 'touch') return this.uiScene.isAiming();
+    if (mode === 'gamepad') {
+      const gamepad = this.getGamepad();
+      return this.button(gamepad, 7) || this.button(gamepad, 5);
+    }
     const pointer = this.input.activePointer;
-    return pointer.isDown && !this.uiScene.containsControlPointer(pointer);
+    return pointer.isDown;
   }
 
   private findFirstMineableTile(aimWorld: Phaser.Math.Vector2): TileCell | undefined {
@@ -386,17 +417,44 @@ export class GameScene extends Phaser.Scene {
     this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
   }
 
+  private getGamepad(): Gamepad | undefined {
+    return navigator.getGamepads?.().find((pad): pad is Gamepad => Boolean(pad)) ?? undefined;
+  }
+
+  private axis(gamepad: Gamepad | undefined, index: number): number {
+    const value = gamepad?.axes[index] ?? 0;
+    return Math.abs(value) < 0.18 ? 0 : value;
+  }
+
+  private button(gamepad: Gamepad | undefined, index: number): boolean {
+    const button = gamepad?.buttons[index];
+    return Boolean(button?.pressed || (button?.value ?? 0) > 0.35);
+  }
+
+  private inputStrength(mode: InputMode, touchAxis: number, gamepadAxis: number, direction: -1 | 1): number {
+    if (mode === 'touch') return Math.max(0.45, Math.abs(touchAxis));
+    if (mode === 'gamepad') return Math.max(0.45, Math.abs(gamepadAxis));
+    return direction ? 1 : 0;
+  }
+
   private updateHud(): void {
     if (!this.isMiningPressed()) this.energy = Math.min(100, this.energy + ENERGY_REGEN_PER_SEC / 60);
     const tile = this.miningTarget;
     const inv = [...this.inventory.entries()].map(([k, v]) => `${k}:${v}`).join('  ') || 'leer';
+    const inputMode = this.uiScene.getInputMode();
+    const controls = inputMode === 'touch'
+      ? 'Touch: linker Stick laufen/springen · rechter Stick zielen & minen'
+      : inputMode === 'gamepad'
+        ? 'Gamepad: Left Stick laufen · A springen · Right Stick zielen · RT/RB minen'
+        : 'Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed';
     const hudState: HudState = {
       title: 'GRAVITY DIG — Mobile Phaser-Port',
       planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
       stats: `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
       inventory: `Inventar: ${inv}`,
-      debug: 'Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed',
+      debug: controls,
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
+      inputMode,
     };
     this.game.events.emit('hud:update', hudState);
   }
