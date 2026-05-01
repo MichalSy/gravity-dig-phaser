@@ -1,0 +1,71 @@
+{
+  "planet": {
+    "id": "dev_planet",
+    "name": "Dev World (100x100)",
+    "description": "Small world for development and testing",
+    
+    "base_config": {
+      "level_width": 100,
+      "level_height_up": 50,
+      "level_height_down": 50,
+      "block_size": 48
+    },
+    
+    "core": {
+      "distance": {
+        "min": 40,
+        "max": 80
+      },
+      "y_range": [-20, 20],
+      "radius": 5
+    },
+    
+    "spaceship": {
+      "x_range": [-4, -1],
+      "y_range": [-4, -1],
+      "facing": "left",
+      "clearance_width": 3
+    },
+    
+    "difficulty_scaling": {
+      "core_distance": {
+        "mode": "decrease",
+        "min": 40,
+        "max": 80,
+        "formula": "linear"
+      },
+      "resource_richness": {
+        "mode": "decrease",
+        "min": 0.8,
+        "max": 1.2,
+        "formula": "linear"
+      }
+    },
+    
+    "resources": {
+      "zone_5": {
+        "dirt": { "chance": 0.50, "hardness": 1 },
+        "stone": { "chance": 0.30, "hardness": 3 },
+        "copper": { "chance": 0.15, "hardness": 4 },
+        "iron": { "chance": 0.05, "hardness": 5 }
+      },
+      "zone_4": {
+        "stone": { "chance": 0.40, "hardness": 3 },
+        "iron": { "chance": 0.30, "hardness": 5 },
+        "copper": { "chance": 0.20, "hardness": 4 },
+        "gold": { "chance": 0.10, "hardness": 6 }
+      }
+    },
+    
+    "excluded_blocks": [],
+    
+    "special_features": {
+      "gravity_type": "normal",
+      "cave_density": "0.1",
+      "crystal_formations": false,
+      "lava_pockets": false,
+      "ice_caves": false,
+      "ancient_ruins": false
+    }
+  }
+}

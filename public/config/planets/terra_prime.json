@@ -1,0 +1,126 @@
+{
+  "planet": {
+    "id": "terra_prime",
+    "name": "Terra-Prime",
+    "description": "Der perfekte Startpunkt für neue Prospektoren. Ausgewogene Gravitation und reichhaltige Ressourcen.",
+    
+    "base_config": {
+      "level_width": 600,
+      "level_height_up": 300,
+      "level_height_down": 300,
+      "block_size": 48
+    },
+    
+    "core": {
+      "distance": {
+        "min": 500,
+        "max": 580
+      },
+      "y_range": [-100, 100],
+      "radius": 15
+    },
+    
+    "spaceship": {
+      "x_range": [-4, -1],
+      "y_range": [-4, -1],
+      "facing": "left",
+      "clearance_width": 3
+    },
+    
+    "difficulty_scaling": {
+      "core_distance": {
+        "mode": "decrease",
+        "min": 150,
+        "max": 580,
+        "formula": "linear"
+      },
+      "resource_richness": {
+        "mode": "decrease",
+        "min": 0.5,
+        "max": 1.5,
+        "formula": "linear"
+      },
+      "hazard_multiplier": {
+        "mode": "increase",
+        "min": 0.3,
+        "max": 3.0,
+        "formula": "exponential"
+      },
+      "loot_multiplier": {
+        "mode": "increase",
+        "min": 0.5,
+        "max": 2.0,
+        "formula": "linear"
+      },
+      "cave_density": {
+        "mode": "increase",
+        "min": 0.1,
+        "max": 0.5,
+        "formula": "linear"
+      }
+    },
+    
+    "resources": {
+      "zone_5": {
+        "dirt": { "chance": 0.40, "hardness": 1 },
+        "sand": { "chance": 0.15, "hardness": 1 },
+        "gravel": { "chance": 0.10, "hardness": 2 },
+        "clay": { "chance": 0.05, "hardness": 2 },
+        "stone": { "chance": 0.20, "hardness": 3 },
+        "iron": { "chance": 0.08, "hardness": 5 },
+        "copper": { "chance": 0.06, "hardness": 4 },
+        "moonstone": { "chance": 0.03, "hardness": 3 }
+      },
+      "zone_4": {
+        "stone": { "chance": 0.30, "hardness": 3 },
+        "granite": { "chance": 0.10, "hardness": 5 },
+        "iron": { "chance": 0.10, "hardness": 5 },
+        "copper": { "chance": 0.08, "hardness": 4 },
+        "silver": { "chance": 0.03, "hardness": 6 },
+        "ruby": { "chance": 0.01, "hardness": 4 },
+        "sapphire": { "chance": 0.01, "hardness": 4 }
+      },
+      "zone_3": {
+        "stone": { "chance": 0.20, "hardness": 3 },
+        "granite": { "chance": 0.15, "hardness": 5 },
+        "basalt": { "chance": 0.10, "hardness": 6 },
+        "gold": { "chance": 0.05, "hardness": 5 },
+        "silver": { "chance": 0.06, "hardness": 6 },
+        "emerald": { "chance": 0.02, "hardness": 4 },
+        "sunstone": { "chance": 0.03, "hardness": 4 },
+        "soulstone": { "chance": 0.02, "hardness": 5 }
+      },
+      "zone_2": {
+        "basalt": { "chance": 0.20, "hardness": 6 },
+        "obsidian": { "chance": 0.15, "hardness": 15 },
+        "platinum": { "chance": 0.05, "hardness": 8 },
+        "diamond": { "chance": 0.02, "hardness": 6 },
+        "meteorite": { "chance": 0.01, "hardness": 12 }
+      },
+      "zone_1": {
+        "void_fragment": { "chance": 0.005, "hardness": 20 },
+        "quantum_stone": { "chance": 0.02, "hardness": 12 },
+        "stardust": { "chance": 0.01, "hardness": 6 },
+        "antimatter": { "chance": 0.008, "hardness": 10 }
+      }
+    },
+    
+    "excluded_blocks": ["void_fragment", "quantum_stone", "antimatter"],
+    
+    "special_features": {
+      "gravity_type": "normal",
+      "cave_density": "0.2-0.4",
+      "crystal_formations": false,
+      "lava_pockets": false,
+      "ice_caves": false,
+      "ancient_ruins": false
+    },
+    
+    "atmosphere": {
+      "background_tint": "#1a1a2e",
+      "fog_density": 0.0,
+      "lighting_ambient": 0.8,
+      "particle_effects": []
+    }
+  }
+}

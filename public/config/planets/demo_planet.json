@@ -1,0 +1,45 @@
+{
+  "planet": {
+    "id": "demo_planet",
+    "name": "Demo Planet",
+    "description": "A small 100x100 planet for testing",
+    
+    "base_config": {
+      "level_width": 100,
+      "level_height_up": 50,
+      "level_height_down": 50,
+      "core": {
+        "y_range": [-20, 20],
+        "radius": 10
+      }
+    },
+    
+    "difficulty_scaling": {
+      "core_distance": {
+        "base": 80,
+        "min": 60,
+        "max": 120,
+        "mode": "increase",
+        "formula": "linear"
+      },
+      "resource_richness": {
+        "base": 1.0,
+        "min": 0.5,
+        "max": 2.0,
+        "mode": "increase",
+        "formula": "linear"
+      }
+    },
+    
+    "resources": {
+      "zone_1": {
+        "copper": {"chance": 0.15},
+        "iron": {"chance": 0.10}
+      },
+      "zone_2": {
+        "gold": {"chance": 0.08},
+        "diamond": {"chance": 0.05}
+      }
+    }
+  }
+}

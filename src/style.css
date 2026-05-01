@@ -5,13 +5,16 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #050816;
+  background: radial-gradient(circle at 50% 20%, #111827 0%, #050816 55%, #020617 100%);
 }
 
 body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  touch-action: none;
+  user-select: none;
 }
 
 canvas {
   display: block;
+  image-rendering: pixelated;
 }
