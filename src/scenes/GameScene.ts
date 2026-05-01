@@ -19,12 +19,12 @@ import {
   type TileType,
   isResourceTile,
 } from '../game/level';
-import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
+import { atlasFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'ship-shorter-legs-20260501-2037';
+const GENERATED_ASSET_VERSION = 'bedrock-seamless-20260501-2047';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -185,7 +185,7 @@ export class GameScene extends Phaser.Scene {
     this.mapOffsetY = minY;
 
     for (const cell of this.level.tiles.values()) {
-      data[cell.y - minY][cell.x - minX] = cell.type === 'air' ? -1 : atlasFrame(cell.type);
+      data[cell.y - minY][cell.x - minX] = cell.type === 'air' ? -1 : atlasFrameForTile(cell.type, cell.x, cell.y);
     }
 
     this.tilemap = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
