@@ -19,18 +19,20 @@ import {
   type TileType,
   isResourceTile,
 } from '../game/level';
-import { atlasFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
+import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'bedrock-seamless-20260501-2047';
+const GENERATED_ASSET_VERSION = 'coarse-bedrock-backwall-20260501-2102';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
   private level!: LevelData;
   private tilemap?: Phaser.Tilemaps.Tilemap;
   private tileLayer?: Phaser.Tilemaps.TilemapLayer;
+  private backwallTilemap?: Phaser.Tilemaps.Tilemap;
+  private backwallLayer?: Phaser.Tilemaps.TilemapLayer;
   private crackOverlays = new Map<string, Phaser.GameObjects.Image>();
   private mapOffsetX = 0;
   private mapOffsetY = 0;
@@ -69,7 +71,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image('tiles', '/assets/tilesets/atlas/tiles_atlas.png');
+    this.load.image('tiles', `/assets/tilesets/atlas/tiles_atlas.png?v=${GENERATED_ASSET_VERSION}`);
+    this.load.image('backwall-tiles', `/assets/tilesets/atlas/backwall_atlas.png?v=${GENERATED_ASSET_VERSION}`);
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
     this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
     this.load.image('drill-tunnel-bg', `/assets/ships/drill_tunnel_bg.png?v=${GENERATED_ASSET_VERSION}`);
@@ -141,12 +144,16 @@ export class GameScene extends Phaser.Scene {
     for (const object of this.startDecor) object.destroy();
     this.startDecor = [];
     this.tileLayer?.destroy();
+    this.backwallLayer?.destroy();
     this.tilemap?.destroy();
+    this.backwallTilemap?.destroy();
     this.laser?.destroy();
     this.collisionDebug?.destroy();
     this.targetMarker?.destroy();
     this.tileLayer = undefined;
+    this.backwallLayer = undefined;
     this.tilemap = undefined;
+    this.backwallTilemap = undefined;
 
     const config = this.cache.json.get('dev-planet') as PlanetConfig;
     this.level = this.generator.generate(config, 1, seed);
@@ -180,13 +187,23 @@ export class GameScene extends Phaser.Scene {
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
     const data = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
+    const backwallData = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
 
     this.mapOffsetX = minX;
     this.mapOffsetY = minY;
 
     for (const cell of this.level.tiles.values()) {
-      data[cell.y - minY][cell.x - minX] = cell.type === 'air' ? -1 : atlasFrameForTile(cell.type, cell.x, cell.y);
+      if (cell.type === 'air') continue;
+      data[cell.y - minY][cell.x - minX] = atlasFrameForTile(cell.type, cell.x, cell.y);
+      if (!cell.boundary) backwallData[cell.y - minY][cell.x - minX] = backwallFrameForTile(cell.x, cell.y);
     }
+
+    this.backwallTilemap = this.make.tilemap({ data: backwallData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-tiles', 'backwall-tiles', TILE_SIZE, TILE_SIZE, 0, 0);
+    if (!backwallTileset) throw new Error('Failed to create backwall tileset');
+    const backwallLayer = this.backwallTilemap.createLayer(0, backwallTileset, minX * TILE_SIZE, minY * TILE_SIZE);
+    if (!backwallLayer || backwallLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
+    this.backwallLayer = backwallLayer.setDepth(0.6).setAlpha(0.88);
 
     this.tilemap = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
     const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
