@@ -24,7 +24,7 @@ import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '.
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'exact-atlas-12x6-tunnel-20260501-2218';
+const GENERATED_ASSET_VERSION = 'single-backwall-tile-20260501-2224';
 const START_TUNNEL_LEFT_TILE = -10;
 const START_TUNNEL_TOP_TILE = -2;
 const START_TUNNEL_WIDTH_TILES = 12;
