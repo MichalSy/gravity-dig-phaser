@@ -57,7 +57,6 @@ export class GameScene extends Phaser.Scene {
   private laserOrigin = new Phaser.Math.Vector2(0, 0);
   private gamepadAim = new Phaser.Math.Vector2(1, 0);
   private laserSound?: Phaser.Sound.BaseSound;
-  private laserBreakSound?: Phaser.Sound.BaseSound;
   private walkSoundIndex = 0;
   private lastFootstepFrame = -1;
 
@@ -73,7 +72,8 @@ export class GameScene extends Phaser.Scene {
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
     for (let i = 1; i <= 4; i += 1) this.load.image(`crack-${i}`, `/assets/effects/cracks/crack-${i}.png`);
     this.load.audio('laser-loop', '/assets/sfx/laser-loop.wav');
-    this.load.audio('laser-break', '/assets/sfx/laser-break.wav');
+    this.load.audio('block-break-dirt', '/assets/sfx/block-break-dirt.wav');
+    this.load.audio('block-break-gem', '/assets/sfx/block-break-gem.wav');
     this.load.audio('jump', '/assets/sfx/jump.wav');
     for (let i = 1; i <= 3; i += 1) this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav`);
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
@@ -98,7 +98,6 @@ export class GameScene extends Phaser.Scene {
     this.uiScene = this.scene.get('ui') as UIScene;
     this.createControls();
     this.laserSound = this.sound.add('laser-loop', { loop: true, volume: 0.28 });
-    this.laserBreakSound = this.sound.add('laser-break', { volume: 0.38 });
     this.game.events.on('debug:collision', this.setCollisionDebug, this);
     this.updateCameraZoom();
 
@@ -417,8 +416,9 @@ export class GameScene extends Phaser.Scene {
     this.updateCrackOverlay(target);
 
     if (target.health <= 0) {
+      const destroyedType = target.type;
       this.mineTile(target);
-      this.laserBreakSound?.play();
+      this.playBlockBreakSound(destroyedType);
     }
   }
 
@@ -525,6 +525,14 @@ export class GameScene extends Phaser.Scene {
     cell.type = 'air';
     cell.health = 0;
     this.level.resources.delete(key);
+  }
+
+  private playBlockBreakSound(type: TileType): void {
+    const isGemBreak = isResourceTile(type);
+    this.sound.play(isGemBreak ? 'block-break-gem' : 'block-break-dirt', {
+      volume: isGemBreak ? 0.52 : 0.42,
+      detune: Phaser.Math.Between(-45, 45),
+    });
   }
 
   private updateAnimation(deltaMs: number): void {
