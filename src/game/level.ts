@@ -133,16 +133,21 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-function atlasWeightedPick<T extends string>(entries: Record<T, { chance: number }>, roll: number): T | undefined {
-  const weighted = Object.entries(entries) as Array<[T, { chance: number }]>;
-  const total = weighted.reduce((sum, [, item]) => sum + item.chance, 0);
-  let cursor = roll * total;
-  for (const [key, item] of weighted) {
-    cursor -= item.chance;
-    if (cursor <= 0) return key;
-  }
-  return weighted.at(-1)?.[0];
+interface ResourceProfile {
+  type: Extract<TileType, 'copper' | 'iron' | 'gold' | 'diamond'>;
+  minDepth: number;
+  maxDepth: number;
+  baseChance: number;
+  veinMin: number;
+  veinMax: number;
 }
+
+const RESOURCE_PROFILES: ResourceProfile[] = [
+  { type: 'copper', minDepth: -8, maxDepth: 50, baseChance: 0.028, veinMin: 2, veinMax: 5 },
+  { type: 'iron', minDepth: -28, maxDepth: 42, baseChance: 0.022, veinMin: 2, veinMax: 5 },
+  { type: 'gold', minDepth: -50, maxDepth: 12, baseChance: 0.014, veinMin: 1, veinMax: 4 },
+  { type: 'diamond', minDepth: -50, maxDepth: -12, baseChance: 0.007, veinMin: 1, veinMax: 3 },
+];
 
 export class GravityDigLevelGenerator {
   private random: () => number = Math.random;
@@ -234,41 +239,71 @@ export class GravityDigLevelGenerator {
   }
 
   private spawnResources(
-    config: PlanetConfig,
+    _config: PlanetConfig,
     richness: number,
     core: { x: number; y: number },
     tiles: Map<string, TileCell>,
     resources: Map<string, TileType>,
   ): void {
-    const zones = config.planet.resources ?? {};
     for (const cell of tiles.values()) {
-      if (cell.type !== 'dirt' && cell.type !== 'stone') continue;
+      if (!this.canReplaceWithResource(cell)) continue;
 
-      const distance = Math.hypot(cell.x - core.x, cell.y - core.y);
-      const zoneName = this.zoneForDistance(distance);
-      const zone = zones[zoneName];
-      if (!zone) continue;
+      const profile = this.pickResourceForCell(cell, core, richness);
+      if (!profile) continue;
 
-      // Godot chance values are very high for full-map iteration. Scale them down for web playability.
-      const spawnChance = Math.min(0.16, 0.035 * richness);
-      if (this.random() > spawnChance) continue;
-
-      const picked = atlasWeightedPick(zone, this.random()) as TileType | undefined;
-      if (!picked || picked === 'dirt' || picked === 'stone' || picked === 'air') continue;
-
-      cell.type = picked;
-      cell.health = TILE_HEALTH[picked];
-      cell.maxHealth = TILE_HEALTH[picked];
-      resources.set(tileKey(cell.x, cell.y), picked);
+      const veinSize = this.randomInt(profile.veinMin, profile.veinMax);
+      this.spawnVein(cell.x, cell.y, profile.type, veinSize, tiles, resources);
     }
   }
 
-  private zoneForDistance(distance: number): string {
-    if (distance < 100) return 'zone_1';
-    if (distance < 200) return 'zone_2';
-    if (distance < 300) return 'zone_3';
-    if (distance < 400) return 'zone_4';
-    return 'zone_5';
+  private pickResourceForCell(cell: TileCell, core: { x: number; y: number }, richness: number): ResourceProfile | undefined {
+    const possible = RESOURCE_PROFILES.filter((profile) => cell.y >= profile.minDepth && cell.y <= profile.maxDepth);
+    if (possible.length === 0) return undefined;
+
+    const depthFactor = Math.min(1.8, 0.75 + Math.abs(cell.y) / 45);
+    const coreDistance = Math.hypot(cell.x - core.x, cell.y - core.y);
+    const distanceFactor = clamp(coreDistance / 85, 0.65, 1.45);
+
+    for (const profile of possible) {
+      const rarityFactor = profile.type === 'diamond' ? 0.72 : profile.type === 'gold' ? 0.86 : 1;
+      const chance = profile.baseChance * richness * depthFactor * distanceFactor * rarityFactor;
+      if (this.random() < chance) return profile;
+    }
+
+    return undefined;
+  }
+
+  private spawnVein(
+    startX: number,
+    startY: number,
+    type: ResourceProfile['type'],
+    size: number,
+    tiles: Map<string, TileCell>,
+    resources: Map<string, TileType>,
+  ): void {
+    let x = startX;
+    let y = startY;
+
+    for (let i = 0; i < size; i += 1) {
+      const cell = tiles.get(tileKey(x, y));
+      if (cell && this.canReplaceWithResource(cell)) {
+        cell.type = type;
+        cell.health = TILE_HEALTH[type];
+        cell.maxHealth = TILE_HEALTH[type];
+        resources.set(tileKey(cell.x, cell.y), type);
+      }
+
+      x += this.randomInt(-1, 1);
+      y += this.randomInt(-1, 1);
+    }
+  }
+
+  private canReplaceWithResource(cell: TileCell): boolean {
+    return (cell.type === 'dirt' || cell.type === 'stone' || cell.type === 'basalt') && !cell.boundary;
+  }
+
+  private randomInt(min: number, max: number): number {
+    return Math.floor(this.random() * (max - min + 1)) + min;
   }
 
   private clearSpawnAreas(tiles: Map<string, TileCell>): void {
