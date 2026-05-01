@@ -24,7 +24,7 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'imagegen2-elevenlabs-20260501-1422';
+const GENERATED_ASSET_VERSION = 'imagegen2-elevenlabs-20260501-1432';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -83,11 +83,13 @@ export class GameScene extends Phaser.Scene {
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
 
     for (const dir of ['east', 'west'] as const) {
-      for (let i = 0; i < 6; i += 1) {
+      for (let i = 0; i < 5; i += 1) {
         this.load.image(
           `player-walk-${dir}-${i}`,
           `/assets/character/generated/walk/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
         );
+      }
+      for (let i = 0; i < 6; i += 1) {
         this.load.image(
           `player-jump-${dir}-${i}`,
           `/assets/character/generated/jump/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
@@ -565,11 +567,11 @@ export class GameScene extends Phaser.Scene {
     const airborne = this.gravityEnabled && !this.grounded;
     const moving = Math.abs(this.velocity.x) > 1 || (!this.gravityEnabled && Math.abs(this.velocity.y) > 1);
     const prefix = airborne ? 'player-jump' : moving ? 'player-walk' : 'player-idle';
-    const frameCount = 6;
+    const frameCount = airborne ? 6 : moving ? 5 : 6;
     const frame = this.walkFrame % frameCount;
     this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
 
-    if (!airborne && moving && this.grounded && (frame === 0 || frame === 3) && frame !== this.lastFootstepFrame) {
+    if (!airborne && moving && this.grounded && (frame === 0 || frame === 2) && frame !== this.lastFootstepFrame) {
       this.playFootstep();
       this.lastFootstepFrame = frame;
     } else if (!moving || !this.grounded) {
