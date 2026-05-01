@@ -55,6 +55,8 @@ export class GameScene extends Phaser.Scene {
   private gamepadAim = new Phaser.Math.Vector2(1, 0);
   private laserSound?: Phaser.Sound.BaseSound;
   private laserBreakSound?: Phaser.Sound.BaseSound;
+  private walkSoundIndex = 0;
+  private lastFootstepFrame = -1;
 
   constructor() {
     super('game');
@@ -68,6 +70,8 @@ export class GameScene extends Phaser.Scene {
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
     this.load.audio('laser-loop', '/assets/sfx/laser-loop.wav');
     this.load.audio('laser-break', '/assets/sfx/laser-break.wav');
+    this.load.audio('jump', '/assets/sfx/jump.wav');
+    for (let i = 1; i <= 3; i += 1) this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav`);
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
 
     for (const dir of ['east', 'west', 'south'] as const) {
@@ -255,9 +259,7 @@ export class GameScene extends Phaser.Scene {
 
     if (keyboardJump || touchJump || gamepadJump) {
       if (this.grounded || this.coyoteTimer > 0) {
-        this.velocity.y = JUMP_VELOCITY;
-        this.grounded = false;
-        this.coyoteTimer = 0;
+        this.jump();
       } else {
         this.jumpBufferTimer = 0.1;
       }
@@ -278,10 +280,16 @@ export class GameScene extends Phaser.Scene {
     if (this.coyoteTimer > 0) this.coyoteTimer -= delta;
 
     if (this.jumpBufferTimer > 0 && (this.grounded || this.coyoteTimer > 0)) {
-      this.velocity.y = JUMP_VELOCITY;
+      this.jump();
       this.jumpBufferTimer = 0;
-      this.grounded = false;
     }
+  }
+
+  private jump(): void {
+    this.velocity.y = JUMP_VELOCITY;
+    this.grounded = false;
+    this.coyoteTimer = 0;
+    this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) });
   }
 
   private moveAxis(dx: number, dy: number): void {
@@ -465,6 +473,21 @@ export class GameScene extends Phaser.Scene {
     const frameCount = moving ? 6 : 4;
     const frame = this.walkFrame % frameCount;
     this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
+
+    if (moving && this.grounded && (frame === 0 || frame === 3) && frame !== this.lastFootstepFrame) {
+      this.playFootstep();
+      this.lastFootstepFrame = frame;
+    } else if (!moving || !this.grounded) {
+      this.lastFootstepFrame = -1;
+    }
+  }
+
+  private playFootstep(): void {
+    this.walkSoundIndex = (this.walkSoundIndex % 3) + 1;
+    this.sound.play(`walk-${this.walkSoundIndex}`, {
+      volume: 0.28,
+      detune: Phaser.Math.Between(-55, 55),
+    });
   }
 
   private getGamepad(): Gamepad | undefined {
