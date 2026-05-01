@@ -52,6 +52,8 @@ export class GameScene extends Phaser.Scene {
   private miningTarget?: TileCell;
   private laser!: Phaser.GameObjects.Graphics;
   private collisionDebug!: Phaser.GameObjects.Graphics;
+  private startDecor: Phaser.GameObjects.GameObject[] = [];
+  private debugZoomOffset = 0;
   private collisionDebugEnabled = false;
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private uiScene!: UIScene;
@@ -71,6 +73,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
     this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
     this.load.image('ladder', '/assets/tilesets/icons/icon_ladder.png');
+    this.load.image('ship-door', '/assets/tilesets/interior/ship_door.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
     for (let i = 1; i <= 4; i += 1) {
@@ -120,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.updateCameraZoom();
 
     this.scale.on('resize', this.updateCameraZoom, this);
+    this.input.on('wheel', this.handleDebugZoomWheel, this);
   }
 
   update(_time: number, deltaMs: number): void {
@@ -135,6 +139,8 @@ export class GameScene extends Phaser.Scene {
   private createLevel(seed = 'gravity-dig-phaser'): void {
     for (const overlay of this.crackOverlays.values()) overlay.destroy();
     this.crackOverlays.clear();
+    for (const object of this.startDecor) object.destroy();
+    this.startDecor = [];
     this.tileLayer?.destroy();
     this.tilemap?.destroy();
     this.laser?.destroy();
@@ -193,25 +199,48 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addShip(): void {
-    const shipBottomY = TILE_SIZE;
+    const shipBottomY = TILE_SIZE * 2.25;
     const shipCenterX = -3 * TILE_SIZE;
+    const floorTopY = TILE_SIZE * 3;
+    const gearTopY = shipBottomY - TILE_SIZE * 0.55;
+    const gearXs = [-5.3, -3.2, -1.15].map((x) => x * TILE_SIZE);
 
-    this.add
+    const ship = this.add
       .image(shipCenterX, shipBottomY, 'ship')
       .setOrigin(0.5, 1)
       .setDepth(8)
       .setDisplaySize(TILE_SIZE * 7, TILE_SIZE * 3.5)
       .setAlpha(0.95);
+
+    const gear = this.add.graphics().setDepth(7);
+    gear.lineStyle(7, 0x1f2937, 1);
+    gear.fillStyle(0x334155, 1);
+    for (const x of gearXs) {
+      gear.lineBetween(x, gearTopY, x - TILE_SIZE * 0.22, floorTopY);
+      gear.lineBetween(x, gearTopY, x + TILE_SIZE * 0.22, floorTopY);
+      gear.fillRoundedRect(x - TILE_SIZE * 0.42, floorTopY - 7, TILE_SIZE * 0.84, 10, 3);
+    }
+
+    this.startDecor.push(ship, gear);
   }
 
   private addStartLadder(): void {
-    for (let y = 1; y <= 2; y += 1) {
-      this.add
-        .image(-2 * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'ladder')
-        .setOrigin(0.5)
-        .setDepth(9)
-        .setDisplaySize(TILE_SIZE * 0.56, TILE_SIZE);
-    }
+    const hatchX = -2 * TILE_SIZE;
+    const floorTopY = TILE_SIZE * 3;
+    const doorY = TILE_SIZE * 1.65;
+
+    const door = this.add
+      .image(hatchX, doorY, 'ship-door')
+      .setOrigin(0.5)
+      .setDepth(10)
+      .setDisplaySize(TILE_SIZE * 0.7, TILE_SIZE * 0.92);
+    const ladder = this.add
+      .image(hatchX, floorTopY - TILE_SIZE * 0.5, 'ladder')
+      .setOrigin(0.5)
+      .setDepth(9)
+      .setDisplaySize(TILE_SIZE * 0.5, TILE_SIZE);
+
+    this.startDecor.push(door, ladder);
   }
 
   private addCoreMarker(): void {
@@ -252,8 +281,13 @@ export class GameScene extends Phaser.Scene {
     const targetTilesWide = viewportWidth <= 900 ? 15 : 20;
     const zoomByHeight = viewportHeight / (targetTilesHigh * TILE_SIZE);
     const zoomByWidth = viewportWidth / (targetTilesWide * TILE_SIZE);
-    const zoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.45, 3);
-    this.cameras.main.setZoom(zoom);
+    const baseZoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.45, 3);
+    this.cameras.main.setZoom(Phaser.Math.Clamp(baseZoom + this.debugZoomOffset, 0.65, 5));
+  }
+
+  private handleDebugZoomWheel(_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number): void {
+    this.debugZoomOffset = Phaser.Math.Clamp(this.debugZoomOffset + (deltaY > 0 ? -0.15 : 0.15), -1.2, 2.5);
+    this.updateCameraZoom();
   }
 
   private handleInput(delta: number): void {
