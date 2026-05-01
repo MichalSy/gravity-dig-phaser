@@ -191,9 +191,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addShip(): void {
+    const shipPlatformTopY = 2 * TILE_SIZE;
+    const shipCenterX = -2 * TILE_SIZE;
+
     this.add
-      .image(-3.5 * TILE_SIZE, -3.5 * TILE_SIZE, 'ship')
-      .setOrigin(0.5)
+      .image(shipCenterX, shipPlatformTopY, 'ship')
+      .setOrigin(0.5, 1)
       .setDepth(8)
       .setScale(1.2)
       .setAlpha(0.92);
