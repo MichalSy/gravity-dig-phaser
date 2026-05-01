@@ -24,6 +24,8 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
+const GENERATED_ASSET_VERSION = 'imagegen2-20260501-1403';
+
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
   private level!: LevelData;
@@ -70,21 +72,32 @@ export class GameScene extends Phaser.Scene {
     this.load.image('ship', '/assets/tilesets/ships/ship_exterior.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
-    for (let i = 1; i <= 4; i += 1) this.load.image(`crack-${i}`, `/assets/effects/cracks/crack-${i}.png`);
+    for (let i = 1; i <= 4; i += 1) {
+      this.load.image(`crack-${i}`, `/assets/effects/cracks/crack-${i}.png?v=${GENERATED_ASSET_VERSION}`);
+    }
     this.load.audio('laser-loop', '/assets/sfx/laser-loop.wav');
-    this.load.audio('block-break-dirt', '/assets/sfx/block-break-dirt.wav');
-    this.load.audio('block-break-gem', '/assets/sfx/block-break-gem.wav');
+    this.load.audio('block-break-dirt', `/assets/sfx/block-break-dirt.wav?v=${GENERATED_ASSET_VERSION}`);
+    this.load.audio('block-break-gem', `/assets/sfx/block-break-gem.wav?v=${GENERATED_ASSET_VERSION}`);
     this.load.audio('jump', '/assets/sfx/jump.wav');
     for (let i = 1; i <= 3; i += 1) this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav`);
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
 
     for (const dir of ['east', 'west'] as const) {
       for (let i = 0; i < 6; i += 1) {
-        this.load.image(`player-walk-${dir}-${i}`, `/assets/character/generated/walk/${dir}/frame_${String(i).padStart(3, '0')}.png`);
-        this.load.image(`player-jump-${dir}-${i}`, `/assets/character/generated/jump/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+        this.load.image(
+          `player-walk-${dir}-${i}`,
+          `/assets/character/generated/walk/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
+        );
+        this.load.image(
+          `player-jump-${dir}-${i}`,
+          `/assets/character/generated/jump/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
+        );
       }
       for (let i = 0; i < 6; i += 1) {
-        this.load.image(`player-idle-${dir}-${i}`, `/assets/character/generated/idle/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+        this.load.image(
+          `player-idle-${dir}-${i}`,
+          `/assets/character/generated/idle/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
+        );
       }
     }
   }
