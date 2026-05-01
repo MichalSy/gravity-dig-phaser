@@ -24,7 +24,7 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'telegram-approved-20260501-1544';
+const GENERATED_ASSET_VERSION = 'clean-cracks-footsteps-20260501-1706';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -79,7 +79,9 @@ export class GameScene extends Phaser.Scene {
     this.load.audio('block-break-dirt', `/assets/sfx/block-break-dirt.wav?v=${GENERATED_ASSET_VERSION}`);
     this.load.audio('block-break-gem', `/assets/sfx/block-break-gem.wav?v=${GENERATED_ASSET_VERSION}`);
     this.load.audio('jump', '/assets/sfx/jump.wav');
-    for (let i = 1; i <= 3; i += 1) this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav`);
+    for (let i = 1; i <= 3; i += 1) {
+      this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav?v=${GENERATED_ASSET_VERSION}`);
+    }
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
 
     for (const dir of ['east', 'west'] as const) {
@@ -571,7 +573,7 @@ export class GameScene extends Phaser.Scene {
     const frame = this.walkFrame % frameCount;
     this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
 
-    if (!airborne && moving && this.grounded && (frame === 0 || frame === 2) && frame !== this.lastFootstepFrame) {
+    if (!airborne && moving && this.grounded && (frame === 1 || frame === 2) && frame !== this.lastFootstepFrame) {
       this.playFootstep();
       this.lastFootstepFrame = frame;
     } else if (!moving || !this.grounded) {
@@ -582,8 +584,8 @@ export class GameScene extends Phaser.Scene {
   private playFootstep(): void {
     this.walkSoundIndex = (this.walkSoundIndex % 3) + 1;
     this.sound.play(`walk-${this.walkSoundIndex}`, {
-      volume: 0.28,
-      detune: Phaser.Math.Between(-55, 55),
+      volume: 0.16,
+      detune: Phaser.Math.Between(-30, 30),
     });
   }
 
