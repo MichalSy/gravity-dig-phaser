@@ -24,7 +24,7 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'four-tile-tunnel-20260501-2029';
+const GENERATED_ASSET_VERSION = 'tunnel-bg-crop-20260501-2033';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
