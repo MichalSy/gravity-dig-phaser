@@ -107,9 +107,9 @@ const WORLD_MIN_X = -10;
 const LEFT_BOUNDARY_THICKNESS = 2;
 const SHIP_TUNNEL_LEFT_X = WORLD_MIN_X;
 const SHIP_TUNNEL_TIP_X = 0;
-const SHIP_TUNNEL_TOP_Y = -2;
+const SHIP_TUNNEL_TOP_Y = -1;
 const SHIP_TUNNEL_BOTTOM_Y = 2;
-const SHIP_CEILING_Y = -3;
+const SHIP_CEILING_Y = -2;
 const SHIP_FLOOR_Y = 3;
 
 function tileKey(x: number, y: number): string {
