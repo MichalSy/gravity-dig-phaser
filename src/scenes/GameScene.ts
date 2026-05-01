@@ -24,7 +24,12 @@ import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '.
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'no-bedrock-lip-tunnel-20260501-2154';
+const GENERATED_ASSET_VERSION = 'framed-12x6-tunnel-20260501-2207';
+const START_TUNNEL_LEFT_TILE = -10;
+const START_TUNNEL_TOP_TILE = -2;
+const START_TUNNEL_WIDTH_TILES = 12;
+const START_TUNNEL_HEIGHT_TILES = 6;
+const START_TUNNEL_RIGHT_EARTH_TILE = START_TUNNEL_LEFT_TILE + START_TUNNEL_WIDTH_TILES - 1;
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -194,8 +199,12 @@ export class GameScene extends Phaser.Scene {
 
     for (const cell of this.level.tiles.values()) {
       if (cell.type === 'air') continue;
-      data[cell.y - minY][cell.x - minX] = atlasFrameForTile(cell.type, cell.x, cell.y);
-      if (!cell.boundary) backwallData[cell.y - minY][cell.x - minX] = backwallFrameForTile(cell.x, cell.y);
+      if (!this.isStartTunnelBackwallCoveredByImage(cell.x, cell.y) && !cell.boundary) {
+        backwallData[cell.y - minY][cell.x - minX] = backwallFrameForTile(cell.x, cell.y);
+      }
+      if (!this.isStartTunnelForegroundCoveredByImage(cell.x, cell.y)) {
+        data[cell.y - minY][cell.x - minX] = atlasFrameForTile(cell.type, cell.x, cell.y);
+      }
     }
 
     this.backwallTilemap = this.make.tilemap({ data: backwallData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
@@ -215,19 +224,34 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addStartTunnelBackground(): void {
-    const tunnelLeftX = -10 * TILE_SIZE;
-    const tunnelTopY = -1 * TILE_SIZE;
-    const tunnelWidth = 11 * TILE_SIZE;
-    const tunnelHeight = 4 * TILE_SIZE;
+    const tunnelLeftX = START_TUNNEL_LEFT_TILE * TILE_SIZE;
+    const tunnelTopY = START_TUNNEL_TOP_TILE * TILE_SIZE;
+    const tunnelWidth = START_TUNNEL_WIDTH_TILES * TILE_SIZE;
+    const tunnelHeight = START_TUNNEL_HEIGHT_TILES * TILE_SIZE;
 
     const background = this.add
       .image(tunnelLeftX + tunnelWidth / 2, tunnelTopY + tunnelHeight / 2, 'drill-tunnel-bg')
       .setOrigin(0.5)
       .setDepth(1.5)
       .setDisplaySize(tunnelWidth, tunnelHeight)
-      .setAlpha(0.92);
+      .setAlpha(0.96);
 
     this.startDecor.push(background);
+  }
+
+  private isStartTunnelForegroundCoveredByImage(x: number, y: number): boolean {
+    const withinX = x >= START_TUNNEL_LEFT_TILE && x < START_TUNNEL_LEFT_TILE + START_TUNNEL_WIDTH_TILES;
+    const withinY = y >= START_TUNNEL_TOP_TILE && y < START_TUNNEL_TOP_TILE + START_TUNNEL_HEIGHT_TILES;
+    if (!withinX || !withinY) return false;
+
+    const isBedrockRow = y === START_TUNNEL_TOP_TILE || y === START_TUNNEL_TOP_TILE + START_TUNNEL_HEIGHT_TILES - 1;
+    const isRightEarthColumn = x === START_TUNNEL_RIGHT_EARTH_TILE;
+    return isBedrockRow || isRightEarthColumn;
+  }
+
+  private isStartTunnelBackwallCoveredByImage(x: number, y: number): boolean {
+    const withinY = y >= START_TUNNEL_TOP_TILE && y < START_TUNNEL_TOP_TILE + START_TUNNEL_HEIGHT_TILES;
+    return withinY && x === START_TUNNEL_RIGHT_EARTH_TILE;
   }
 
   private addShip(): void {
