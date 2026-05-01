@@ -24,7 +24,7 @@ import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '.
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'framed-11x4-tunnel-20260501-2148';
+const GENERATED_ASSET_VERSION = 'no-bedrock-lip-tunnel-20260501-2154';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
