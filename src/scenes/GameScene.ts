@@ -10,7 +10,7 @@ import {
   PLAYER_SPEED,
   TILE_SIZE,
 } from '../config/gameConfig';
-import { TouchControls } from '../controls/TouchControls';
+import { UIScene, type HudState } from './UIScene';
 import {
   GravityDigLevelGenerator,
   type LevelData,
@@ -46,7 +46,7 @@ export class GameScene extends Phaser.Scene {
   private miningTarget?: TileCell;
   private laser!: Phaser.GameObjects.Graphics;
   private targetMarker!: Phaser.GameObjects.Rectangle;
-  private touchControls!: TouchControls;
+  private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
 
   constructor() {
@@ -81,6 +81,9 @@ export class GameScene extends Phaser.Scene {
     this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
     this.createLevel();
+    this.scene.launch('ui');
+    this.scene.bringToTop('ui');
+    this.uiScene = this.scene.get('ui') as UIScene;
     this.createControls();
     this.updateCameraZoom();
 
@@ -170,8 +173,6 @@ export class GameScene extends Phaser.Scene {
     if (!this.input.keyboard) throw new Error('Keyboard input unavailable');
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G') as Record<string, Phaser.Input.Keyboard.Key>;
-
-    this.touchControls = new TouchControls();
   }
 
   private updateCameraZoom(): void {
@@ -184,7 +185,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleInput(delta: number): void {
-    const joy = this.touchControls.left.vector;
+    const joy = this.uiScene.getMoveVector();
     const left = this.cursors.left?.isDown || this.keys.A.isDown || joy.x < -0.22;
     const right = this.cursors.right?.isDown || this.keys.D.isDown || joy.x > 0.22;
     const joyUp = joy.y < -0.56;
@@ -314,10 +315,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getAimWorldPoint(): Phaser.Math.Vector2 {
-    if (this.touchControls.right.active) {
+    if (this.uiScene.isAiming()) {
+      const aim = this.uiScene.getAimVector();
       this.currentAimWorld.set(
-        this.player.x + this.touchControls.right.aim.x * MINING_RANGE,
-        this.player.y + this.touchControls.right.aim.y * MINING_RANGE,
+        this.player.x + aim.x * MINING_RANGE,
+        this.player.y + aim.y * MINING_RANGE,
       );
       return this.currentAimWorld;
     }
@@ -328,8 +330,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isMiningPressed(): boolean {
-    if (this.touchControls.right.active) return true;
-    return this.input.activePointer.isDown;
+    if (this.uiScene.isAiming()) return true;
+    const pointer = this.input.activePointer;
+    return pointer.isDown && !this.uiScene.containsControlPointer(pointer);
   }
 
   private findFirstMineableTile(aimWorld: Phaser.Math.Vector2): TileCell | undefined {
@@ -387,13 +390,14 @@ export class GameScene extends Phaser.Scene {
     if (!this.isMiningPressed()) this.energy = Math.min(100, this.energy + ENERGY_REGEN_PER_SEC / 60);
     const tile = this.miningTarget;
     const inv = [...this.inventory.entries()].map(([k, v]) => `${k}:${v}`).join('  ') || 'leer';
-    this.touchControls.update({
+    const hudState: HudState = {
       title: 'GRAVITY DIG — Mobile Phaser-Port',
       planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
       stats: `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
       inventory: `Inventar: ${inv}`,
       debug: 'Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed',
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
-    });
+    };
+    this.game.events.emit('hud:update', hudState);
   }
 }

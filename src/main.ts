@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import './style.css';
 import { GAME_HEIGHT, GAME_WIDTH } from './config/gameConfig';
 import { GameScene } from './scenes/GameScene';
+import { UIScene } from './scenes/UIScene';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -21,5 +22,5 @@ new Phaser.Game({
   render: {
     antialias: false,
   },
-  scene: GameScene,
+  scene: [GameScene, UIScene],
 });
