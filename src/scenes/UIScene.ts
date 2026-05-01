@@ -19,6 +19,9 @@ export class UIScene extends Phaser.Scene {
   private hudText!: Phaser.GameObjects.Text;
   private debugText!: Phaser.GameObjects.Text;
   private controlsHint!: Phaser.GameObjects.Text;
+  private debugPanel!: Phaser.GameObjects.Container;
+  private collisionButton!: Phaser.GameObjects.Text;
+  private collisionDebugEnabled = false;
   private inputMode: InputMode = 'desktop';
 
   constructor() {
@@ -28,6 +31,7 @@ export class UIScene extends Phaser.Scene {
   create(): void {
     this.input.addPointer(3);
     this.createHud();
+    this.createDebugMenu();
     this.leftJoystick = new VirtualJoystick(this, 'left', 'MOVE');
     this.rightJoystick = new VirtualJoystick(this, 'right', 'LASER');
     this.layout();
@@ -107,6 +111,45 @@ export class UIScene extends Phaser.Scene {
       .setResolution(resolution);
   }
 
+  private createDebugMenu(): void {
+    const bg = this.add
+      .rectangle(0, 0, 156, 52, 0x020617, 0.72)
+      .setStrokeStyle(1, 0x38bdf8, 0.65)
+      .setOrigin(1, 0)
+      .setScrollFactor(0);
+
+    const title = this.add
+      .text(-144, 7, 'DEBUG', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '11px',
+        fontStyle: '700',
+        color: '#93c5fd',
+      })
+      .setScrollFactor(0)
+      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+
+    this.collisionButton = this.add
+      .text(-144, 24, 'Collision: OFF', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '13px',
+        fontStyle: '700',
+        color: '#f8fafc',
+        backgroundColor: 'rgba(15,23,42,0.88)',
+        padding: { x: 8, y: 4 },
+      })
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true })
+      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+
+    this.collisionButton.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.preventDefault();
+      pointer.event.stopPropagation();
+      this.toggleCollisionDebug();
+    });
+
+    this.debugPanel = this.add.container(0, 0, [bg, title, this.collisionButton]).setDepth(40).setScrollFactor(0);
+  }
+
   private layout(): void {
     const width = this.scale.width;
     const height = this.scale.height;
@@ -125,6 +168,7 @@ export class UIScene extends Phaser.Scene {
     this.debugText?.setWordWrapWidth(Math.max(320, width - 28));
     this.controlsHint?.setPosition(width / 2, Math.max(24, height - 26)).setVisible(!compact && touchMode);
     this.controlsHint?.setWordWrapWidth(Math.max(320, width - 48));
+    this.debugPanel?.setPosition(width - 12, 12);
   }
 
   private updateHud(state: HudState): void {
@@ -139,6 +183,19 @@ export class UIScene extends Phaser.Scene {
       state.debug,
       state.target,
     ]);
+  }
+
+  private toggleCollisionDebug(): void {
+    this.collisionDebugEnabled = !this.collisionDebugEnabled;
+    this.collisionButton.setText(`Collision: ${this.collisionDebugEnabled ? 'ON' : 'OFF'}`);
+    this.collisionButton.setColor(this.collisionDebugEnabled ? '#86efac' : '#f8fafc');
+    this.game.events.emit('debug:collision', this.collisionDebugEnabled);
+  }
+
+  private isDebugMenuPointer(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.debugPanel) return false;
+    const panelLeft = this.scale.width - 168;
+    return pointer.x >= panelLeft && pointer.x <= this.scale.width - 12 && pointer.y >= 12 && pointer.y <= 64;
   }
 
   private updateInputMode(): void {
@@ -161,6 +218,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (this.isDebugMenuPointer(pointer)) return;
     if (this.inputMode !== 'touch') return;
     const handled = pointer.x < this.scale.width / 2
       ? this.leftJoystick.handlePointerDown(pointer)

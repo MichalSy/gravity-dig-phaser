@@ -48,6 +48,8 @@ export class GameScene extends Phaser.Scene {
   private inventory = new Map<TileType, number>();
   private miningTarget?: TileCell;
   private laser!: Phaser.GameObjects.Graphics;
+  private collisionDebug!: Phaser.GameObjects.Graphics;
+  private collisionDebugEnabled = false;
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
@@ -97,6 +99,7 @@ export class GameScene extends Phaser.Scene {
     this.createControls();
     this.laserSound = this.sound.add('laser-loop', { loop: true, volume: 0.28 });
     this.laserBreakSound = this.sound.add('laser-break', { volume: 0.38 });
+    this.game.events.on('debug:collision', this.setCollisionDebug, this);
     this.updateCameraZoom();
 
     this.scale.on('resize', this.updateCameraZoom, this);
@@ -108,12 +111,16 @@ export class GameScene extends Phaser.Scene {
     this.applyPhysics(delta);
     this.updateMining(delta);
     this.updateAnimation(deltaMs);
+    this.updateCollisionDebug();
     this.updateHud();
   }
 
   private createLevel(seed = 'gravity-dig-phaser'): void {
     this.tileLayer?.destroy();
     this.tilemap?.destroy();
+    this.laser?.destroy();
+    this.collisionDebug?.destroy();
+    this.targetMarker?.destroy();
     this.tileLayer = undefined;
     this.tilemap = undefined;
 
@@ -126,6 +133,7 @@ export class GameScene extends Phaser.Scene {
     this.addCoreMarker();
     this.addPlayer();
     this.laser = this.add.graphics().setDepth(30);
+    this.collisionDebug = this.add.graphics().setDepth(45);
     this.targetMarker = this.add.rectangle(0, 0, TILE_SIZE, TILE_SIZE).setStrokeStyle(3, 0xf97316, 0.95).setVisible(false).setDepth(25);
   }
 
@@ -315,15 +323,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collides(cx: number, cy: number): boolean {
+    return this.getCollisionProbePoints(cx, cy).some(([x, y]) => this.isSolidAtWorld(x, y));
+  }
+
+  private getCollisionProbePoints(cx: number, cy: number): [number, number][] {
     const halfW = PLAYER_SIZE.w / 2;
     const halfH = PLAYER_SIZE.h / 2;
-    const points = [
+    return [
       [cx - halfW, cy - halfH],
       [cx + halfW, cy - halfH],
       [cx - halfW, cy + halfH],
       [cx + halfW, cy + halfH],
     ];
-    return points.some(([x, y]) => this.isSolidAtWorld(x, y));
   }
 
   private isSolidAtWorld(x: number, y: number): boolean {
@@ -331,6 +342,47 @@ export class GameScene extends Phaser.Scene {
     const ty = worldToTile(y);
     const cell = this.level.tiles.get(tileKey(tx, ty));
     return !!cell && cell.type !== 'air';
+  }
+
+  private setCollisionDebug(enabled: boolean): void {
+    this.collisionDebugEnabled = enabled;
+    if (!enabled) this.collisionDebug?.clear();
+  }
+
+  private updateCollisionDebug(): void {
+    if (!this.collisionDebug) return;
+    this.collisionDebug.clear();
+    if (!this.collisionDebugEnabled) return;
+
+    const halfW = PLAYER_SIZE.w / 2;
+    const halfH = PLAYER_SIZE.h / 2;
+    const left = this.player.x - halfW;
+    const top = this.player.y - halfH;
+    const probes = this.getCollisionProbePoints(this.player.x, this.player.y);
+
+    this.collisionDebug.lineStyle(2, 0x22c55e, 1);
+    this.collisionDebug.strokeRect(left, top, PLAYER_SIZE.w, PLAYER_SIZE.h);
+    this.collisionDebug.fillStyle(0x22c55e, 0.35);
+    this.collisionDebug.fillRect(left, top, PLAYER_SIZE.w, PLAYER_SIZE.h);
+
+    for (const [x, y] of probes) {
+      const hit = this.isSolidAtWorld(x, y);
+      this.collisionDebug.fillStyle(hit ? 0xef4444 : 0xfacc15, 1);
+      this.collisionDebug.fillCircle(x, y, 4);
+    }
+
+    const minTx = worldToTile(this.player.x - TILE_SIZE * 2);
+    const maxTx = worldToTile(this.player.x + TILE_SIZE * 2);
+    const minTy = worldToTile(this.player.y - TILE_SIZE * 2);
+    const maxTy = worldToTile(this.player.y + TILE_SIZE * 2);
+    this.collisionDebug.lineStyle(1, 0xef4444, 0.5);
+    for (let ty = minTy; ty <= maxTy; ty += 1) {
+      for (let tx = minTx; tx <= maxTx; tx += 1) {
+        const cell = this.level.tiles.get(tileKey(tx, ty));
+        if (!cell || cell.type === 'air') continue;
+        this.collisionDebug.strokeRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      }
+    }
   }
 
   private updateMining(delta: number): void {
