@@ -10,7 +10,7 @@ import {
   PLAYER_SPEED,
   TILE_SIZE,
 } from '../config/gameConfig';
-import { VirtualJoystick } from '../controls/VirtualJoystick';
+import { TouchControls } from '../controls/TouchControls';
 import {
   GravityDigLevelGenerator,
   type LevelData,
@@ -19,7 +19,6 @@ import {
   type TileType,
   isResourceTile,
 } from '../game/level';
-import { requestImmersiveLandscape } from '../utils/screen';
 import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -46,12 +45,8 @@ export class GameScene extends Phaser.Scene {
   private inventory = new Map<TileType, number>();
   private miningTarget?: TileCell;
   private laser!: Phaser.GameObjects.Graphics;
-  private hudText!: Phaser.GameObjects.Text;
-  private debugText!: Phaser.GameObjects.Text;
-  private controlsHint!: Phaser.GameObjects.Text;
   private targetMarker!: Phaser.GameObjects.Rectangle;
-  private leftJoystick!: VirtualJoystick;
-  private rightJoystick!: VirtualJoystick;
+  private touchControls!: TouchControls;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
 
   constructor() {
@@ -87,10 +82,9 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
     this.createLevel();
     this.createControls();
-    this.createHud();
-    this.layoutScreenUi();
+    this.updateCameraZoom();
 
-    this.scale.on('resize', this.layoutScreenUi, this);
+    this.scale.on('resize', this.updateCameraZoom, this);
   }
 
   update(_time: number, deltaMs: number): void {
@@ -177,79 +171,7 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G') as Record<string, Phaser.Input.Keyboard.Key>;
 
-    this.leftJoystick = new VirtualJoystick(this, 'left', 'MOVE');
-    this.rightJoystick = new VirtualJoystick(this, 'right', 'LASER');
-
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      requestImmersiveLandscape();
-      const handledLeft = this.leftJoystick.handlePointerDown(pointer);
-      const handledRight = this.rightJoystick.handlePointerDown(pointer);
-      if (handledLeft || handledRight) pointer.event.preventDefault();
-    });
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      this.leftJoystick.handlePointerMove(pointer);
-      this.rightJoystick.handlePointerMove(pointer);
-    });
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      this.leftJoystick.handlePointerUp(pointer);
-      this.rightJoystick.handlePointerUp(pointer);
-    });
-    this.input.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => {
-      this.leftJoystick.handlePointerUp(pointer);
-      this.rightJoystick.handlePointerUp(pointer);
-    });
-  }
-
-  private createHud(): void {
-    this.hudText = this.add
-      .text(18, 16, '', {
-        fontFamily: 'monospace',
-        fontSize: '15px',
-        color: '#e2e8f0',
-        backgroundColor: 'rgba(2,6,23,0.68)',
-        padding: { x: 12, y: 10 },
-      })
-      .setScrollFactor(0)
-      .setDepth(100);
-
-    this.debugText = this.add
-      .text(18, 0, '', {
-        fontFamily: 'monospace',
-        fontSize: '13px',
-        color: '#93c5fd',
-        backgroundColor: 'rgba(2,6,23,0.58)',
-        padding: { x: 10, y: 8 },
-      })
-      .setScrollFactor(0)
-      .setDepth(100);
-
-    this.controlsHint = this.add
-      .text(0, 0, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
-        fontFamily: 'monospace',
-        fontSize: '14px',
-        color: '#cbd5e1',
-        backgroundColor: 'rgba(2,6,23,0.45)',
-        padding: { x: 10, y: 6 },
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(100);
-  }
-
-  private layoutScreenUi(): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-
-    this.leftJoystick?.layout();
-    this.rightJoystick?.layout();
-    this.updateCameraZoom();
-
-    this.hudText?.setPosition(14, 12);
-    this.hudText?.setWordWrapWidth(Math.max(320, width - 28));
-    this.debugText?.setPosition(14, Math.max(140, height - 76));
-    this.debugText?.setWordWrapWidth(Math.max(320, width - 28));
-    this.controlsHint?.setPosition(width / 2, Math.max(24, height - 26));
-    this.controlsHint?.setWordWrapWidth(Math.max(320, width - 48));
+    this.touchControls = new TouchControls();
   }
 
   private updateCameraZoom(): void {
@@ -262,7 +184,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleInput(delta: number): void {
-    const joy = this.leftJoystick.vector;
+    const joy = this.touchControls.left.vector;
     const left = this.cursors.left?.isDown || this.keys.A.isDown || joy.x < -0.22;
     const right = this.cursors.right?.isDown || this.keys.D.isDown || joy.x > 0.22;
     const joyUp = joy.y < -0.56;
@@ -392,10 +314,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getAimWorldPoint(): Phaser.Math.Vector2 {
-    if (this.rightJoystick.active) {
+    if (this.touchControls.right.active) {
       this.currentAimWorld.set(
-        this.player.x + this.rightJoystick.aim.x * MINING_RANGE,
-        this.player.y + this.rightJoystick.aim.y * MINING_RANGE,
+        this.player.x + this.touchControls.right.aim.x * MINING_RANGE,
+        this.player.y + this.touchControls.right.aim.y * MINING_RANGE,
       );
       return this.currentAimWorld;
     }
@@ -406,9 +328,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isMiningPressed(): boolean {
-    if (this.rightJoystick.active) return true;
-    const pointer = this.input.activePointer;
-    return pointer.isDown && !this.leftJoystick.contains(pointer) && !this.rightJoystick.contains(pointer);
+    if (this.touchControls.right.active) return true;
+    return this.input.activePointer.isDown;
   }
 
   private findFirstMineableTile(aimWorld: Phaser.Math.Vector2): TileCell | undefined {
@@ -466,16 +387,13 @@ export class GameScene extends Phaser.Scene {
     if (!this.isMiningPressed()) this.energy = Math.min(100, this.energy + ENERGY_REGEN_PER_SEC / 60);
     const tile = this.miningTarget;
     const inv = [...this.inventory.entries()].map(([k, v]) => `${k}:${v}`).join('  ') || 'leer';
-    this.hudText.setText([
-      `GRAVITY DIG — Mobile Phaser-Port`,
-      `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
-      `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
-      `Inventar: ${inv}`,
-    ]);
-
-    this.debugText.setText([
-      `Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed`,
-      tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
-    ]);
+    this.touchControls.update({
+      title: 'GRAVITY DIG — Mobile Phaser-Port',
+      planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
+      stats: `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
+      inventory: `Inventar: ${inv}`,
+      debug: 'Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed',
+      target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
+    });
   }
 }
