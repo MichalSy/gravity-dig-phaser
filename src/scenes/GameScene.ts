@@ -2,8 +2,6 @@ import Phaser from 'phaser';
 import {
   ENERGY_COST_PER_SEC,
   ENERGY_REGEN_PER_SEC,
-  GAME_HEIGHT,
-  GAME_WIDTH,
   GRAVITY,
   JUMP_VELOCITY,
   MINING_DAMAGE_PER_SEC,
@@ -21,7 +19,7 @@ import {
   type TileType,
   isResourceTile,
 } from '../game/level';
-import { requestLandscapeLock } from '../utils/screen';
+import { requestImmersiveLandscape } from '../utils/screen';
 import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -50,6 +48,7 @@ export class GameScene extends Phaser.Scene {
   private laser!: Phaser.GameObjects.Graphics;
   private hudText!: Phaser.GameObjects.Text;
   private debugText!: Phaser.GameObjects.Text;
+  private controlsHint!: Phaser.GameObjects.Text;
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
@@ -89,6 +88,9 @@ export class GameScene extends Phaser.Scene {
     this.createLevel();
     this.createControls();
     this.createHud();
+    this.layoutScreenUi();
+
+    this.scale.on('resize', this.layoutScreenUi, this);
   }
 
   update(_time: number, deltaMs: number): void {
@@ -167,7 +169,7 @@ export class GameScene extends Phaser.Scene {
     const worldHeight = (this.level.heightUp + this.level.heightDown + 2) * TILE_SIZE;
     this.cameras.main.setBounds(worldLeft, worldTop, worldWidth, worldHeight);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-    this.cameras.main.setZoom(1.35);
+    this.updateCameraZoom();
   }
 
   private createControls(): void {
@@ -179,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     this.rightJoystick = new VirtualJoystick(this, 'right', 'LASER');
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      requestLandscapeLock();
+      requestImmersiveLandscape();
       const handledLeft = this.leftJoystick.handlePointerDown(pointer);
       const handledRight = this.rightJoystick.handlePointerDown(pointer);
       if (handledLeft || handledRight) pointer.event.preventDefault();
@@ -211,7 +213,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(100);
 
     this.debugText = this.add
-      .text(18, GAME_HEIGHT - 90, '', {
+      .text(18, 0, '', {
         fontFamily: 'monospace',
         fontSize: '13px',
         color: '#93c5fd',
@@ -221,8 +223,8 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(100);
 
-    this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 32, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
+    this.controlsHint = this.add
+      .text(0, 0, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
         fontFamily: 'monospace',
         fontSize: '14px',
         color: '#cbd5e1',
@@ -232,6 +234,31 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(100);
+  }
+
+  private layoutScreenUi(): void {
+    const width = this.scale.width;
+    const height = this.scale.height;
+
+    this.leftJoystick?.layout();
+    this.rightJoystick?.layout();
+    this.updateCameraZoom();
+
+    this.hudText?.setPosition(14, 12);
+    this.hudText?.setWordWrapWidth(Math.max(320, width - 28));
+    this.debugText?.setPosition(14, Math.max(140, height - 76));
+    this.debugText?.setWordWrapWidth(Math.max(320, width - 28));
+    this.controlsHint?.setPosition(width / 2, Math.max(24, height - 26));
+    this.controlsHint?.setWordWrapWidth(Math.max(320, width - 48));
+  }
+
+  private updateCameraZoom(): void {
+    if (!this.cameras?.main) return;
+    const viewportWidth = Math.max(1, this.scale.width);
+    const viewportHeight = Math.max(1, this.scale.height);
+    const landscapeZoom = Phaser.Math.Clamp(viewportWidth / 980, 0.82, 1.35);
+    const heightZoom = Phaser.Math.Clamp(viewportHeight / 620, 0.72, 1.25);
+    this.cameras.main.setZoom(Math.min(landscapeZoom, heightZoom));
   }
 
   private handleInput(delta: number): void {

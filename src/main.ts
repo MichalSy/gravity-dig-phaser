@@ -6,16 +6,17 @@ import { GameScene } from './scenes/GameScene';
 new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
+  width: window.innerWidth || GAME_WIDTH,
+  height: window.innerHeight || GAME_HEIGHT,
   backgroundColor: '#050816',
   pixelArt: true,
   input: {
     activePointers: 4,
   },
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Phaser.Scale.RESIZE,
+    width: '100%',
+    height: '100%',
   },
   render: {
     antialias: false,

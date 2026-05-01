@@ -1,15 +1,20 @@
 html,
 body,
 #game {
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  min-width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   overflow: hidden;
   background: radial-gradient(circle at 50% 20%, #111827 0%, #050816 55%, #020617 100%);
 }
 
 html,
-body {
+body,
+#game {
   position: fixed;
   inset: 0;
 }
@@ -25,6 +30,9 @@ body {
 
 canvas {
   display: block;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   image-rendering: pixelated;
 }
 
