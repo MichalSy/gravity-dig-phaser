@@ -83,7 +83,7 @@ export class GameScene extends Phaser.Scene {
         this.load.image(`player-walk-${dir}-${i}`, `/assets/character/generated/walk/${dir}/frame_${String(i).padStart(3, '0')}.png`);
         this.load.image(`player-jump-${dir}-${i}`, `/assets/character/generated/jump/${dir}/frame_${String(i).padStart(3, '0')}.png`);
       }
-      for (let i = 0; i < 4; i += 1) {
+      for (let i = 0; i < 6; i += 1) {
         this.load.image(`player-idle-${dir}-${i}`, `/assets/character/generated/idle/${dir}/frame_${String(i).padStart(3, '0')}.png`);
       }
     }
@@ -544,7 +544,7 @@ export class GameScene extends Phaser.Scene {
     const airborne = this.gravityEnabled && !this.grounded;
     const moving = Math.abs(this.velocity.x) > 1 || (!this.gravityEnabled && Math.abs(this.velocity.y) > 1);
     const prefix = airborne ? 'player-jump' : moving ? 'player-walk' : 'player-idle';
-    const frameCount = airborne || moving ? 6 : 4;
+    const frameCount = 6;
     const frame = this.walkFrame % frameCount;
     this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
 
