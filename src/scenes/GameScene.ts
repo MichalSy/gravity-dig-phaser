@@ -24,7 +24,7 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'drilled-tunnel-20260501-2017';
+const GENERATED_ASSET_VERSION = 'tunnel-align-wall-20260501-2025';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -199,9 +199,9 @@ export class GameScene extends Phaser.Scene {
 
   private addStartTunnelBackground(): void {
     const tunnelLeftX = -10 * TILE_SIZE;
-    const tunnelTopY = -2 * TILE_SIZE;
-    const tunnelWidth = 12 * TILE_SIZE;
-    const tunnelHeight = 5 * TILE_SIZE;
+    const tunnelTopY = -3 * TILE_SIZE;
+    const tunnelWidth = 11 * TILE_SIZE;
+    const tunnelHeight = 6 * TILE_SIZE;
 
     const background = this.add
       .image(tunnelLeftX + tunnelWidth / 2, tunnelTopY + tunnelHeight / 2, 'drill-tunnel-bg')
@@ -389,10 +389,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isSolidAtWorld(x: number, y: number): boolean {
+    if (this.isBehindShipNozzleWall(x, y)) return true;
+
     const tx = worldToTile(x);
     const ty = worldToTile(y);
     const cell = this.level.tiles.get(tileKey(tx, ty));
     return !!cell && cell.type !== 'air';
+  }
+
+  private isBehindShipNozzleWall(x: number, y: number): boolean {
+    return x < -8.65 * TILE_SIZE && y >= -2.4 * TILE_SIZE && y <= 2.95 * TILE_SIZE;
   }
 
   private setCollisionDebug(enabled: boolean): void {

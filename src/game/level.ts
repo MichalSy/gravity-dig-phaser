@@ -106,7 +106,7 @@ const RESOURCE_TYPES = new Set<TileType>(['copper', 'iron', 'gold', 'diamond']);
 const WORLD_MIN_X = -10;
 const LEFT_BOUNDARY_THICKNESS = 2;
 const SHIP_TUNNEL_LEFT_X = WORLD_MIN_X;
-const SHIP_TUNNEL_TIP_X = 1;
+const SHIP_TUNNEL_TIP_X = 0;
 const SHIP_TUNNEL_TOP_Y = -2;
 const SHIP_TUNNEL_BOTTOM_Y = 2;
 const SHIP_CEILING_Y = -3;
@@ -232,7 +232,7 @@ export class GravityDigLevelGenerator {
       heightDown: planet.base_config.level_height_down,
       tileSize: planet.base_config.block_size,
       core: { ...this.calculateCore(config, scaled), radius },
-      spawn: { x: 1, y: 2 },
+      spawn: { x: -2, y: 2 },
       // World-space tile rect for the drilled-in ship visual plus clearance.
       spaceshipRect: { x: SHIP_TUNNEL_LEFT_X, y: SHIP_CEILING_Y, w: SHIP_TUNNEL_TIP_X - SHIP_TUNNEL_LEFT_X + 1, h: SHIP_FLOOR_Y - SHIP_CEILING_Y + 1 },
     };
