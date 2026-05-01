@@ -511,8 +511,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateAnimation(deltaMs: number): void {
-    const aim = this.getAimWorldPoint();
-    if (Math.abs(aim.x - this.player.x) > 10) this.facing = aim.x >= this.player.x ? 'east' : 'west';
+    if (this.isMiningPressed()) {
+      const aim = this.getAimWorldPoint();
+      if (Math.abs(aim.x - this.player.x) > 10) this.facing = aim.x >= this.player.x ? 'east' : 'west';
+    } else if (Math.abs(this.velocity.x) > 1) {
+      this.facing = this.velocity.x > 0 ? 'east' : 'west';
+    }
 
     this.walkTimer += deltaMs;
     if (this.walkTimer > 120) {
