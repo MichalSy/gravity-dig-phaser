@@ -51,7 +51,10 @@ export class GameScene extends Phaser.Scene {
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
+  private laserOrigin = new Phaser.Math.Vector2(0, 0);
   private gamepadAim = new Phaser.Math.Vector2(1, 0);
+  private laserSound?: Phaser.Sound.BaseSound;
+  private laserBreakSound?: Phaser.Sound.BaseSound;
 
   constructor() {
     super('game');
@@ -63,6 +66,8 @@ export class GameScene extends Phaser.Scene {
     this.load.image('ship', '/assets/tilesets/ships/ship_exterior.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
+    this.load.audio('laser-loop', '/assets/sfx/laser-loop.wav');
+    this.load.audio('laser-break', '/assets/sfx/laser-break.wav');
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
 
     for (const dir of ['east', 'west', 'south'] as const) {
@@ -86,6 +91,8 @@ export class GameScene extends Phaser.Scene {
     this.scene.bringToTop('ui');
     this.uiScene = this.scene.get('ui') as UIScene;
     this.createControls();
+    this.laserSound = this.sound.add('laser-loop', { loop: true, volume: 0.28 });
+    this.laserBreakSound = this.sound.add('laser-break', { volume: 0.38 });
     this.updateCameraZoom();
 
     this.scale.on('resize', this.updateCameraZoom, this);
@@ -196,11 +203,11 @@ export class GameScene extends Phaser.Scene {
     if (!this.cameras?.main) return;
     const viewportWidth = Math.max(1, this.scale.width);
     const viewportHeight = Math.max(1, this.scale.height);
-    const targetTilesHigh = viewportHeight <= 430 ? 8 : 12;
-    const targetTilesWide = viewportWidth <= 900 ? 18 : 24;
+    const targetTilesHigh = viewportHeight <= 430 ? 7 : 10;
+    const targetTilesWide = viewportWidth <= 900 ? 15 : 20;
     const zoomByHeight = viewportHeight / (targetTilesHigh * TILE_SIZE);
     const zoomByWidth = viewportWidth / (targetTilesWide * TILE_SIZE);
-    const zoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.25, 2.4);
+    const zoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.45, 3);
     this.cameras.main.setZoom(zoom);
   }
 
@@ -327,14 +334,22 @@ export class GameScene extends Phaser.Scene {
     this.targetMarker.setVisible(false);
     this.miningTarget = target;
 
-    if (!target) return;
+    if (!target) {
+      this.setLaserSound(false);
+      return;
+    }
 
+    const origin = this.getLaserOrigin();
     this.targetMarker.setPosition(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2).setVisible(true);
     this.laser.lineStyle(firing ? 4 : 2, firing ? 0xf43f5e : 0xfb7185, firing ? 0.95 : 0.5);
-    this.laser.lineBetween(this.player.x, this.player.y - 8, target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2);
+    this.laser.lineBetween(origin.x, origin.y, target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2);
 
-    if (!firing || this.energy <= 0) return;
+    if (!firing || this.energy <= 0) {
+      this.setLaserSound(false);
+      return;
+    }
 
+    this.setLaserSound(true);
     this.energy = Math.max(0, this.energy - ENERGY_COST_PER_SEC * delta);
     target.health -= MINING_DAMAGE_PER_SEC * delta;
     const tile = this.getLayerTile(target.x, target.y);
@@ -342,18 +357,21 @@ export class GameScene extends Phaser.Scene {
 
     if (target.health <= 0) {
       this.mineTile(target);
+      this.laserBreakSound?.play();
     }
   }
 
   private getAimWorldPoint(): Phaser.Math.Vector2 {
+    const origin = this.getLaserOrigin();
+
     if (this.uiScene.getInputMode() === 'gamepad') {
       const gamepad = this.getGamepad();
       const aimX = gamepad ? this.axis(gamepad, 2) : 0;
       const aimY = gamepad ? this.axis(gamepad, 3) : 0;
       if (Math.hypot(aimX, aimY) > 0.22) this.gamepadAim.set(aimX, aimY).normalize();
       this.currentAimWorld.set(
-        this.player.x + this.gamepadAim.x * MINING_RANGE,
-        this.player.y + this.gamepadAim.y * MINING_RANGE,
+        origin.x + this.gamepadAim.x * MINING_RANGE,
+        origin.y + this.gamepadAim.y * MINING_RANGE,
       );
       return this.currentAimWorld;
     }
@@ -361,8 +379,8 @@ export class GameScene extends Phaser.Scene {
     if (this.uiScene.isAiming()) {
       const aim = this.uiScene.getAimVector();
       this.currentAimWorld.set(
-        this.player.x + aim.x * MINING_RANGE,
-        this.player.y + aim.y * MINING_RANGE,
+        origin.x + aim.x * MINING_RANGE,
+        origin.y + aim.y * MINING_RANGE,
       );
       return this.currentAimWorld;
     }
@@ -386,7 +404,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private findFirstMineableTile(aimWorld: Phaser.Math.Vector2): TileCell | undefined {
-    const origin = new Phaser.Math.Vector2(this.player.x, this.player.y - 8);
+    const origin = this.getLaserOrigin();
     const dir = aimWorld.clone().subtract(origin);
     if (dir.lengthSq() <= 1) return undefined;
     dir.normalize();
@@ -400,6 +418,19 @@ export class GameScene extends Phaser.Scene {
       }
     }
     return undefined;
+  }
+
+  private getLaserOrigin(): Phaser.Math.Vector2 {
+    return this.laserOrigin.set(this.player.x, this.player.y + PLAYER_SIZE.h * 0.18);
+  }
+
+  private setLaserSound(active: boolean): void {
+    if (!this.laserSound) return;
+    if (active) {
+      if (!this.laserSound.isPlaying) this.laserSound.play();
+      return;
+    }
+    if (this.laserSound.isPlaying) this.laserSound.stop();
   }
 
   private mineTile(cell: TileCell): void {
