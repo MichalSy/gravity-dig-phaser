@@ -24,7 +24,7 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'clean-cracks-footsteps-20260501-1706';
+const GENERATED_ASSET_VERSION = 'integrated-ship-20260501-2000';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
