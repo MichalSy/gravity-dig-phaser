@@ -105,8 +105,11 @@ export const TILE_ATLAS_COORDS: Record<Exclude<TileType, 'air'>, [number, number
 const RESOURCE_TYPES = new Set<TileType>(['copper', 'iron', 'gold', 'diamond']);
 const WORLD_MIN_X = -10;
 const LEFT_BOUNDARY_THICKNESS = 2;
-const SHIP_TUNNEL_TOP_Y = -3;
+const SHIP_TUNNEL_LEFT_X = WORLD_MIN_X;
+const SHIP_TUNNEL_TIP_X = 1;
+const SHIP_TUNNEL_TOP_Y = -2;
 const SHIP_TUNNEL_BOTTOM_Y = 2;
+const SHIP_CEILING_Y = -3;
 const SHIP_FLOOR_Y = 3;
 
 function tileKey(x: number, y: number): string {
@@ -231,7 +234,7 @@ export class GravityDigLevelGenerator {
       core: { ...this.calculateCore(config, scaled), radius },
       spawn: { x: 1, y: 2 },
       // World-space tile rect for the drilled-in ship visual plus clearance.
-      spaceshipRect: { x: -8, y: -3, w: 10, h: 6 },
+      spaceshipRect: { x: SHIP_TUNNEL_LEFT_X, y: SHIP_CEILING_Y, w: SHIP_TUNNEL_TIP_X - SHIP_TUNNEL_LEFT_X + 1, h: SHIP_FLOOR_Y - SHIP_CEILING_Y + 1 },
     };
   }
 
@@ -380,17 +383,15 @@ export class GravityDigLevelGenerator {
   }
 
   private applyStartAndShipChamber(_context: WorldContext, tiles: Map<string, TileCell>): void {
-    // The Bucket drilled in from the left: carve a horizontal tunnel through the left bedrock wall.
-    // This intentionally runs after terrain/resources, replacing whatever was generated.
-    for (let x = WORLD_MIN_X; x <= 4; x += 1) {
+    // The Bucket drilled in from the left: carve only the hot bore tunnel up to the drill tip.
+    // The ceiling and floor remain fused bedrock, so the ship reads as embedded in the planet.
+    for (let x = SHIP_TUNNEL_LEFT_X; x <= SHIP_TUNNEL_TIP_X; x += 1) {
+      this.setTile(tiles, x, SHIP_CEILING_Y, 'bedrock', true);
+      this.setTile(tiles, x, SHIP_FLOOR_Y, 'bedrock', true);
+
       for (let y = SHIP_TUNNEL_TOP_Y; y <= SHIP_TUNNEL_BOTTOM_Y; y += 1) {
         this.setTile(tiles, x, y, 'air', false);
       }
-    }
-
-    // Solid floor below the ship/ladder so the entry reads as a bored-in landing chamber.
-    for (let x = -8; x <= 4; x += 1) {
-      this.setTile(tiles, x, SHIP_FLOOR_Y, 'bedrock', true);
     }
   }
 

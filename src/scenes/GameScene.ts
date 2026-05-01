@@ -24,7 +24,7 @@ import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'ship-feet-lowest-20260501-2008';
+const GENERATED_ASSET_VERSION = 'drilled-tunnel-20260501-2017';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -72,6 +72,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('tiles', '/assets/tilesets/atlas/tiles_atlas.png');
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
     this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
+    this.load.image('drill-tunnel-bg', `/assets/ships/drill_tunnel_bg.png?v=${GENERATED_ASSET_VERSION}`);
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
     for (let i = 1; i <= 4; i += 1) {
@@ -152,6 +153,7 @@ export class GameScene extends Phaser.Scene {
 
     this.addBackground();
     this.drawTiles();
+    this.addStartTunnelBackground();
     this.addShip();
     this.addCoreMarker();
     this.addPlayer();
@@ -193,6 +195,22 @@ export class GameScene extends Phaser.Scene {
     const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
     this.tileLayer = layer.setDepth(2);
+  }
+
+  private addStartTunnelBackground(): void {
+    const tunnelLeftX = -10 * TILE_SIZE;
+    const tunnelTopY = -2 * TILE_SIZE;
+    const tunnelWidth = 12 * TILE_SIZE;
+    const tunnelHeight = 5 * TILE_SIZE;
+
+    const background = this.add
+      .image(tunnelLeftX + tunnelWidth / 2, tunnelTopY + tunnelHeight / 2, 'drill-tunnel-bg')
+      .setOrigin(0.5)
+      .setDepth(1.5)
+      .setDisplaySize(tunnelWidth, tunnelHeight)
+      .setAlpha(0.92);
+
+    this.startDecor.push(background);
   }
 
   private addShip(): void {
