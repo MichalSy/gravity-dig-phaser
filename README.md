@@ -56,6 +56,26 @@ Unity did contain useful extra work versus the Godot repo:
 
 The C# gameplay code is treated as reference only; Phaser/TypeScript is the canonical implementation path from here.
 
+## Architecture
+
+```text
+src/
+├── main.ts                 # Phaser bootstrap only
+├── config/gameConfig.ts    # Tunables and dimensions
+├── controls/               # Mobile/desktop input helpers
+├── game/level.ts           # Deterministic world generation + level types
+├── scenes/GameScene.ts     # Phaser scene orchestration
+└── utils/                  # Small pure helpers
+```
+
+Rules:
+
+- `main.ts` stays thin.
+- New gameplay belongs in systems/modules, not in bootstrap.
+- Engine-facing orchestration stays in `scenes/`.
+- Pure logic stays independent from Phaser where practical.
+- Assets/configs stay in `public/` so they are deployable as static files.
+
 ## Development
 
 ```bash
