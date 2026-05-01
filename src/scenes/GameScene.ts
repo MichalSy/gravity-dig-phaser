@@ -69,7 +69,8 @@ export class GameScene extends Phaser.Scene {
   preload(): void {
     this.load.image('tiles', '/assets/tilesets/atlas/tiles_atlas.png');
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
-    this.load.image('ship', '/assets/tilesets/ships/ship_exterior.png');
+    this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
+    this.load.image('ladder', '/assets/tilesets/icons/icon_ladder.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
     for (let i = 1; i <= 4; i += 1) {
@@ -148,6 +149,7 @@ export class GameScene extends Phaser.Scene {
     this.addBackground();
     this.drawTiles();
     this.addShip();
+    this.addStartLadder();
     this.addCoreMarker();
     this.addPlayer();
     this.laser = this.add.graphics().setDepth(30);
@@ -191,15 +193,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addShip(): void {
-    const shipPlatformTopY = 2 * TILE_SIZE;
-    const shipCenterX = -2 * TILE_SIZE;
+    const shipBottomY = TILE_SIZE;
+    const shipCenterX = -3 * TILE_SIZE;
 
     this.add
-      .image(shipCenterX, shipPlatformTopY, 'ship')
+      .image(shipCenterX, shipBottomY, 'ship')
       .setOrigin(0.5, 1)
       .setDepth(8)
-      .setScale(1.2)
-      .setAlpha(0.92);
+      .setDisplaySize(TILE_SIZE * 7, TILE_SIZE * 3.5)
+      .setAlpha(0.95);
+  }
+
+  private addStartLadder(): void {
+    for (let y = 1; y <= 2; y += 1) {
+      this.add
+        .image(-2 * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'ladder')
+        .setOrigin(0.5)
+        .setDepth(9)
+        .setDisplaySize(TILE_SIZE * 0.56, TILE_SIZE);
+    }
   }
 
   private addCoreMarker(): void {
