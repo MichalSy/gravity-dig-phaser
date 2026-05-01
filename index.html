@@ -2,12 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#050816" />
+    <meta name="screen-orientation" content="landscape" />
+    <meta name="orientation" content="landscape" />
     <title>Gravity Dig Phaser</title>
   </head>
   <body>
     <div id="game"></div>
+    <div id="orientation-lock" aria-hidden="true">
+      <div class="orientation-card">
+        <div class="orientation-icon">↻</div>
+        <strong>Bitte ins Querformat drehen</strong>
+        <span>Gravity Dig ist für Landscape-Steuerung gebaut.</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

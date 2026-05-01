@@ -21,8 +21,11 @@ const MINING_RANGE = 165;
 const MINING_DAMAGE_PER_SEC = 120;
 const ENERGY_REGEN_PER_SEC = 18;
 const ENERGY_COST_PER_SEC = 12;
+const JOYSTICK_RADIUS = 72;
+const JOYSTICK_DEADZONE = 0.18;
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
+type Facing = 'east' | 'west' | 'south';
 
 function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -37,6 +40,117 @@ function worldToTile(value: number): number {
   return Math.floor(value / TILE_SIZE);
 }
 
+function isTouchPointer(pointer: Phaser.Input.Pointer): boolean {
+  return (pointer as unknown as { pointerType?: string }).pointerType === 'touch' || pointer.event?.type?.startsWith('touch') === true;
+}
+
+function requestLandscapeLock(): void {
+  const orientation = screen.orientation as ScreenOrientation & { lock?: (orientation: OrientationLockType) => Promise<void> };
+  orientation.lock?.('landscape').catch(() => {
+    // Browser may require installed PWA/fullscreen/user settings. CSS overlay still blocks portrait play.
+  });
+}
+
+class VirtualJoystick {
+  readonly vector = new Phaser.Math.Vector2(0, 0);
+  readonly aim = new Phaser.Math.Vector2(1, 0);
+
+  private readonly side: 'left' | 'right';
+  private readonly base: Phaser.GameObjects.Arc;
+  private readonly knob: Phaser.GameObjects.Arc;
+  private readonly label: Phaser.GameObjects.Text;
+  private readonly center = new Phaser.Math.Vector2(0, 0);
+  private activePointerId?: number;
+
+  constructor(scene: Phaser.Scene, side: 'left' | 'right', label: string) {
+    this.side = side;
+    this.base = scene.add
+      .circle(0, 0, JOYSTICK_RADIUS, 0x0f172a, 0.42)
+      .setStrokeStyle(3, side === 'left' ? 0x38bdf8 : 0xfb7185, 0.65)
+      .setScrollFactor(0)
+      .setDepth(200);
+    this.knob = scene.add
+      .circle(0, 0, 28, side === 'left' ? 0x38bdf8 : 0xfb7185, 0.62)
+      .setStrokeStyle(2, 0xe0f2fe, 0.75)
+      .setScrollFactor(0)
+      .setDepth(201);
+    this.label = scene.add
+      .text(0, 0, label, {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#e2e8f0',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(202)
+      .setAlpha(0.85);
+
+    this.layout();
+  }
+
+  get active(): boolean {
+    return this.activePointerId !== undefined;
+  }
+
+  layout(): void {
+    this.center.set(this.side === 'left' ? 128 : GAME_WIDTH - 128, GAME_HEIGHT - 126);
+    this.base.setPosition(this.center.x, this.center.y);
+    this.knob.setPosition(this.center.x, this.center.y);
+    this.label.setPosition(this.center.x, this.center.y + JOYSTICK_RADIUS + 22);
+  }
+
+  handlePointerDown(pointer: Phaser.Input.Pointer): boolean {
+    if (!isTouchPointer(pointer)) return false;
+    const isCorrectSide = this.side === 'left' ? pointer.x < GAME_WIDTH * 0.5 : pointer.x >= GAME_WIDTH * 0.5;
+    const isControlZone = pointer.y > GAME_HEIGHT * 0.36;
+    if (!isCorrectSide || !isControlZone || this.activePointerId !== undefined) return false;
+
+    this.activePointerId = pointer.id;
+    this.update(pointer);
+    return true;
+  }
+
+  handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (pointer.id !== this.activePointerId) return;
+    this.update(pointer);
+  }
+
+  handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    if (pointer.id !== this.activePointerId) return;
+    this.activePointerId = undefined;
+    this.vector.set(0, 0);
+    this.knob.setPosition(this.center.x, this.center.y);
+    this.base.setAlpha(1);
+  }
+
+  contains(pointer: Phaser.Input.Pointer): boolean {
+    const correctSide = this.side === 'left' ? pointer.x < GAME_WIDTH * 0.5 : pointer.x >= GAME_WIDTH * 0.5;
+    return isTouchPointer(pointer) && correctSide && pointer.y > GAME_HEIGHT * 0.36;
+  }
+
+  private update(pointer: Phaser.Input.Pointer): void {
+    const dx = pointer.x - this.center.x;
+    const dy = pointer.y - this.center.y;
+    const length = Math.min(JOYSTICK_RADIUS, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const knobX = this.center.x + Math.cos(angle) * length;
+    const knobY = this.center.y + Math.sin(angle) * length;
+
+    this.knob.setPosition(knobX, knobY);
+    this.base.setAlpha(0.78);
+    this.vector.set((Math.cos(angle) * length) / JOYSTICK_RADIUS, (Math.sin(angle) * length) / JOYSTICK_RADIUS);
+
+    if (this.vector.length() < JOYSTICK_DEADZONE) {
+      this.vector.set(0, 0);
+      return;
+    }
+
+    if (this.side === 'right') {
+      this.aim.copy(this.vector).normalize();
+    }
+  }
+}
+
 class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
   private level!: LevelData;
@@ -48,8 +162,9 @@ class GameScene extends Phaser.Scene {
   private grounded = false;
   private coyoteTimer = 0;
   private jumpBufferTimer = 0;
+  private touchJumpHeld = false;
   private gravityEnabled = true;
-  private facing: 'east' | 'west' | 'south' = 'east';
+  private facing: Facing = 'east';
   private walkTimer = 0;
   private walkFrame = 0;
   private health = 100;
@@ -60,6 +175,9 @@ class GameScene extends Phaser.Scene {
   private hudText!: Phaser.GameObjects.Text;
   private debugText!: Phaser.GameObjects.Text;
   private targetMarker!: Phaser.GameObjects.Rectangle;
+  private leftJoystick!: VirtualJoystick;
+  private rightJoystick!: VirtualJoystick;
+  private currentAimWorld = new Phaser.Math.Vector2(1, 0);
 
   constructor() {
     super('game');
@@ -90,6 +208,7 @@ class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
     this.createLevel();
     this.createControls();
@@ -179,6 +298,28 @@ class GameScene extends Phaser.Scene {
     if (!this.input.keyboard) throw new Error('Keyboard input unavailable');
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G') as Record<string, Phaser.Input.Keyboard.Key>;
+
+    this.leftJoystick = new VirtualJoystick(this, 'left', 'MOVE');
+    this.rightJoystick = new VirtualJoystick(this, 'right', 'LASER');
+
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      requestLandscapeLock();
+      const handledLeft = this.leftJoystick.handlePointerDown(pointer);
+      const handledRight = this.rightJoystick.handlePointerDown(pointer);
+      if (handledLeft || handledRight) pointer.event.preventDefault();
+    });
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      this.leftJoystick.handlePointerMove(pointer);
+      this.rightJoystick.handlePointerMove(pointer);
+    });
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      this.leftJoystick.handlePointerUp(pointer);
+      this.rightJoystick.handlePointerUp(pointer);
+    });
+    this.input.on('pointerupoutside', (pointer: Phaser.Input.Pointer) => {
+      this.leftJoystick.handlePointerUp(pointer);
+      this.rightJoystick.handlePointerUp(pointer);
+    });
   }
 
   private createHud(): void {
@@ -194,7 +335,7 @@ class GameScene extends Phaser.Scene {
       .setDepth(100);
 
     this.debugText = this.add
-      .text(18, GAME_HEIGHT - 88, '', {
+      .text(18, GAME_HEIGHT - 90, '', {
         fontFamily: 'monospace',
         fontSize: '13px',
         color: '#93c5fd',
@@ -203,17 +344,32 @@ class GameScene extends Phaser.Scene {
       })
       .setScrollFactor(0)
       .setDepth(100);
+
+    this.add
+      .text(GAME_WIDTH / 2, GAME_HEIGHT - 32, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        color: '#cbd5e1',
+        backgroundColor: 'rgba(2,6,23,0.45)',
+        padding: { x: 10, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(100);
   }
 
   private handleInput(delta: number): void {
-    const left = this.cursors.left?.isDown || this.keys.A.isDown;
-    const right = this.cursors.right?.isDown || this.keys.D.isDown;
-    const up = this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown;
-    const down = this.cursors.down?.isDown || this.keys.S.isDown;
+    const joy = this.leftJoystick.vector;
+    const left = this.cursors.left?.isDown || this.keys.A.isDown || joy.x < -0.22;
+    const right = this.cursors.right?.isDown || this.keys.D.isDown || joy.x > 0.22;
+    const joyUp = joy.y < -0.56;
+    const joyDown = joy.y > 0.56;
+    const up = this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown || joyUp;
+    const down = this.cursors.down?.isDown || this.keys.S.isDown || joyDown;
 
     this.velocity.x = 0;
-    if (left) this.velocity.x -= PLAYER_SPEED;
-    if (right) this.velocity.x += PLAYER_SPEED;
+    if (left) this.velocity.x -= PLAYER_SPEED * (joy.x < -0.22 ? Math.max(0.45, Math.abs(joy.x)) : 1);
+    if (right) this.velocity.x += PLAYER_SPEED * (joy.x > 0.22 ? Math.max(0.45, Math.abs(joy.x)) : 1);
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.G)) {
       this.gravityEnabled = !this.gravityEnabled;
@@ -229,7 +385,11 @@ class GameScene extends Phaser.Scene {
     if (down && !this.gravityEnabled) this.velocity.y = PLAYER_SPEED;
     if (!up && !down && !this.gravityEnabled) this.velocity.y = 0;
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W)) {
+    const keyboardJump = Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W);
+    const touchJump = joyUp && !this.touchJumpHeld;
+    this.touchJumpHeld = joyUp;
+
+    if (keyboardJump || touchJump) {
       if (this.grounded || this.coyoteTimer > 0) {
         this.velocity.y = JUMP_VELOCITY;
         this.grounded = false;
@@ -302,25 +462,21 @@ class GameScene extends Phaser.Scene {
   }
 
   private updateMining(delta: number): void {
-    const pointer = this.input.activePointer;
-    const worldPoint = pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, worldPoint.x, worldPoint.y);
-    const targetX = worldToTile(worldPoint.x);
-    const targetY = worldToTile(worldPoint.y);
-    const target = this.level.tiles.get(tileKey(targetX, targetY));
-    const canMine = !!target && target.type !== 'air' && target.type !== 'bedrock' && distance <= MINING_RANGE;
+    const aimWorld = this.getAimWorldPoint();
+    const target = this.findFirstMineableTile(aimWorld);
+    const firing = this.isMiningPressed();
 
     this.laser.clear();
     this.targetMarker.setVisible(false);
-    this.miningTarget = canMine ? target : undefined;
+    this.miningTarget = target;
 
-    if (!canMine) return;
+    if (!target) return;
 
-    this.targetMarker.setPosition(targetX * TILE_SIZE + TILE_SIZE / 2, targetY * TILE_SIZE + TILE_SIZE / 2).setVisible(true);
-    this.laser.lineStyle(pointer.isDown ? 4 : 2, pointer.isDown ? 0xf43f5e : 0xfb7185, pointer.isDown ? 0.95 : 0.5);
-    this.laser.lineBetween(this.player.x, this.player.y - 8, targetX * TILE_SIZE + TILE_SIZE / 2, targetY * TILE_SIZE + TILE_SIZE / 2);
+    this.targetMarker.setPosition(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2).setVisible(true);
+    this.laser.lineStyle(firing ? 4 : 2, firing ? 0xf43f5e : 0xfb7185, firing ? 0.95 : 0.5);
+    this.laser.lineBetween(this.player.x, this.player.y - 8, target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2);
 
-    if (!pointer.isDown || this.energy <= 0) return;
+    if (!firing || this.energy <= 0) return;
 
     this.energy = Math.max(0, this.energy - ENERGY_COST_PER_SEC * delta);
     target.health -= MINING_DAMAGE_PER_SEC * delta;
@@ -330,6 +486,43 @@ class GameScene extends Phaser.Scene {
     if (target.health <= 0) {
       this.mineTile(target);
     }
+  }
+
+  private getAimWorldPoint(): Phaser.Math.Vector2 {
+    if (this.rightJoystick.active) {
+      this.currentAimWorld.set(
+        this.player.x + this.rightJoystick.aim.x * MINING_RANGE,
+        this.player.y + this.rightJoystick.aim.y * MINING_RANGE,
+      );
+      return this.currentAimWorld;
+    }
+
+    const pointer = this.input.activePointer;
+    this.currentAimWorld.copy(pointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2);
+    return this.currentAimWorld;
+  }
+
+  private isMiningPressed(): boolean {
+    if (this.rightJoystick.active) return true;
+    const pointer = this.input.activePointer;
+    return pointer.isDown && !this.leftJoystick.contains(pointer) && !this.rightJoystick.contains(pointer);
+  }
+
+  private findFirstMineableTile(aimWorld: Phaser.Math.Vector2): TileCell | undefined {
+    const origin = new Phaser.Math.Vector2(this.player.x, this.player.y - 8);
+    const dir = aimWorld.clone().subtract(origin);
+    if (dir.lengthSq() <= 1) return undefined;
+    dir.normalize();
+
+    for (let distance = 8; distance <= MINING_RANGE; distance += 8) {
+      const x = origin.x + dir.x * distance;
+      const y = origin.y + dir.y * distance;
+      const cell = this.level.tiles.get(tileKey(worldToTile(x), worldToTile(y)));
+      if (cell?.type && cell.type !== 'air') {
+        return cell.type === 'bedrock' ? undefined : cell;
+      }
+    }
+    return undefined;
   }
 
   private mineTile(cell: TileCell): void {
@@ -350,8 +543,8 @@ class GameScene extends Phaser.Scene {
   }
 
   private updateAnimation(deltaMs: number): void {
-    const pointer = this.input.activePointer.positionToCamera(this.cameras.main) as Phaser.Math.Vector2;
-    if (Math.abs(pointer.x - this.player.x) > 10) this.facing = pointer.x >= this.player.x ? 'east' : 'west';
+    const aim = this.getAimWorldPoint();
+    if (Math.abs(aim.x - this.player.x) > 10) this.facing = aim.x >= this.player.x ? 'east' : 'west';
 
     this.walkTimer += deltaMs;
     if (this.walkTimer > 120) {
@@ -367,18 +560,18 @@ class GameScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    if (!this.input.activePointer.isDown) this.energy = Math.min(100, this.energy + ENERGY_REGEN_PER_SEC / 60);
+    if (!this.isMiningPressed()) this.energy = Math.min(100, this.energy + ENERGY_REGEN_PER_SEC / 60);
     const tile = this.miningTarget;
     const inv = [...this.inventory.entries()].map(([k, v]) => `${k}:${v}`).join('  ') || 'leer';
     this.hudText.setText([
-      `GRAVITY DIG — Phaser-Port`,
+      `GRAVITY DIG — Mobile Phaser-Port`,
       `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
       `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
       `Inventar: ${inv}`,
     ]);
 
     this.debugText.setText([
-      `A/D/←/→ laufen · W/Space springen · Linksklick Laser-Mining · G Gravity · R neuer Seed`,
+      `Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed`,
       tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
     ]);
   }
@@ -391,6 +584,9 @@ new Phaser.Game({
   height: GAME_HEIGHT,
   backgroundColor: '#050816',
   pixelArt: true,
+  input: {
+    activePointers: 4,
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
