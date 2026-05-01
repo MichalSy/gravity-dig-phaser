@@ -22,7 +22,7 @@ import {
 import { atlasFrame, tileKey, worldToTile } from '../utils/tileMath';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
-type Facing = 'east' | 'west' | 'south';
+type Facing = 'east' | 'west';
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -78,15 +78,13 @@ export class GameScene extends Phaser.Scene {
     for (let i = 1; i <= 3; i += 1) this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav`);
     this.load.json('dev-planet', '/config/planets/dev_planet.json');
 
-    for (const dir of ['east', 'west', 'south'] as const) {
+    for (const dir of ['east', 'west'] as const) {
       for (let i = 0; i < 6; i += 1) {
-        this.load.image(`player-walk-${dir}-${i}`, `/assets/character/animations/walk/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+        this.load.image(`player-walk-${dir}-${i}`, `/assets/character/generated/walk/${dir}/frame_${String(i).padStart(3, '0')}.png`);
+        this.load.image(`player-jump-${dir}-${i}`, `/assets/character/generated/jump/${dir}/frame_${String(i).padStart(3, '0')}.png`);
       }
       for (let i = 0; i < 4; i += 1) {
-        this.load.image(
-          `player-idle-${dir}-${i}`,
-          `/assets/character/animations/breathing-idle/${dir}/frame_${String(i).padStart(3, '0')}.png`,
-        );
+        this.load.image(`player-idle-${dir}-${i}`, `/assets/character/generated/idle/${dir}/frame_${String(i).padStart(3, '0')}.png`);
       }
     }
   }
@@ -543,13 +541,14 @@ export class GameScene extends Phaser.Scene {
       this.walkTimer = 0;
     }
 
+    const airborne = this.gravityEnabled && !this.grounded;
     const moving = Math.abs(this.velocity.x) > 1 || (!this.gravityEnabled && Math.abs(this.velocity.y) > 1);
-    const prefix = moving ? 'player-walk' : 'player-idle';
-    const frameCount = moving ? 6 : 4;
+    const prefix = airborne ? 'player-jump' : moving ? 'player-walk' : 'player-idle';
+    const frameCount = airborne || moving ? 6 : 4;
     const frame = this.walkFrame % frameCount;
     this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
 
-    if (moving && this.grounded && (frame === 0 || frame === 3) && frame !== this.lastFootstepFrame) {
+    if (!airborne && moving && this.grounded && (frame === 0 || frame === 3) && frame !== this.lastFootstepFrame) {
       this.playFootstep();
       this.lastFootstepFrame = frame;
     } else if (!moving || !this.grounded) {
