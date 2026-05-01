@@ -103,6 +103,9 @@ export const TILE_ATLAS_COORDS: Record<Exclude<TileType, 'air'>, [number, number
 };
 
 const RESOURCE_TYPES = new Set<TileType>(['copper', 'iron', 'gold', 'diamond']);
+const WORLD_MIN_X = -10;
+const LEFT_BOUNDARY_THICKNESS = 2;
+const SHIP_PLATFORM_Y = 2;
 
 function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -133,65 +136,68 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+interface WorldContext {
+  config: PlanetConfig;
+  difficulty: number;
+  seed: number;
+  scaled: Record<string, number>;
+  width: number;
+  heightUp: number;
+  heightDown: number;
+  tileSize: number;
+  core: { x: number; y: number; radius: number };
+  spawn: { x: number; y: number };
+  spaceshipRect: { x: number; y: number; w: number; h: number };
+}
+
 interface ResourceProfile {
   type: Extract<TileType, 'copper' | 'iron' | 'gold' | 'diamond'>;
-  minDepth: number;
-  maxDepth: number;
+  minCoreRatio: number;
+  maxCoreRatio: number;
+  minAbsY: number;
   baseChance: number;
   veinMin: number;
   veinMax: number;
 }
 
 const RESOURCE_PROFILES: ResourceProfile[] = [
-  { type: 'copper', minDepth: -8, maxDepth: 50, baseChance: 0.028, veinMin: 2, veinMax: 5 },
-  { type: 'iron', minDepth: -28, maxDepth: 42, baseChance: 0.022, veinMin: 2, veinMax: 5 },
-  { type: 'gold', minDepth: -50, maxDepth: 12, baseChance: 0.014, veinMin: 1, veinMax: 4 },
-  { type: 'diamond', minDepth: -50, maxDepth: -12, baseChance: 0.007, veinMin: 1, veinMax: 3 },
+  { type: 'copper', minCoreRatio: 0.52, maxCoreRatio: Infinity, minAbsY: 0, baseChance: 0.018, veinMin: 2, veinMax: 5 },
+  { type: 'iron', minCoreRatio: 0.38, maxCoreRatio: Infinity, minAbsY: 8, baseChance: 0.016, veinMin: 2, veinMax: 5 },
+  { type: 'gold', minCoreRatio: 0.18, maxCoreRatio: 0.65, minAbsY: 16, baseChance: 0.011, veinMin: 1, veinMax: 4 },
+  { type: 'diamond', minCoreRatio: 0.05, maxCoreRatio: 0.38, minAbsY: 26, baseChance: 0.006, veinMin: 1, veinMax: 3 },
 ];
+
+type LevelReplacer = (context: WorldContext, tiles: Map<string, TileCell>) => void;
 
 export class GravityDigLevelGenerator {
   private random: () => number = Math.random;
 
   generate(config: PlanetConfig, difficultyLevel = 1, customSeed: number | string = 'gravity-dig-phaser'): LevelData {
     const start = performance.now();
-    const planet = config.planet;
-    const difficulty = clamp(Math.round(difficultyLevel), 1, 10);
-    const seed = hashSeed(customSeed);
-    this.random = mulberry32(seed);
+    const context = this.createWorldContext(config, difficultyLevel, customSeed);
+    const tiles = this.generateBaseTerrain(context);
 
-    const scaled = this.applyDifficultyScaling(config, difficulty);
-    const width = planet.base_config.level_width;
-    const heightUp = planet.base_config.level_height_up;
-    const heightDown = planet.base_config.level_height_down;
-    const tileSize = planet.base_config.block_size;
-    const core = this.calculateCore(config, scaled);
-    const tiles = new Map<string, TileCell>();
-    const resources = new Map<string, TileType>();
+    this.spawnResources(context, tiles);
+    this.applyReplacers(context, tiles, [
+      this.applyStartAndShipChamber,
+      this.applyCore,
+      this.applyWorldBoundaries,
+    ]);
 
-    for (let x = -10; x <= width; x += 1) {
-      for (let y = -heightDown; y <= heightUp; y += 1) {
-        const type = this.blockForDepth(y);
-        this.setTile(tiles, x, y, type, false);
-      }
-    }
-
-    this.spawnResources(config, scaled.resource_richness ?? 1, core, tiles, resources);
-    this.clearSpawnAreas(tiles);
-    this.createBoundaries(width, heightUp, heightDown, tiles);
-    this.clearStartArea(tiles);
+    const resources = this.rebuildResources(tiles);
 
     return {
-      planetId: planet.id,
-      planetName: planet.name,
-      difficulty,
-      seed,
-      tileSize,
-      width,
-      heightUp,
-      heightDown,
-      core: { ...core, radius: scaled.core_radius ?? planet.core.radius },
-      spawn: { x: 1, y: -2 },
-      spaceshipRect: { x: -5, y: -5, w: 6, h: 8 },
+      planetId: config.planet.id,
+      planetName: config.planet.name,
+      difficulty: context.difficulty,
+      seed: context.seed,
+      tileSize: context.tileSize,
+      width: context.width,
+      heightUp: context.heightUp,
+      heightDown: context.heightDown,
+      core: context.core,
+      spawn: context.spawn,
+      spaceshipRect: context.spaceshipRect,
       tiles,
       resources,
       generationTimeMs: Math.round(performance.now() - start),
@@ -200,6 +206,31 @@ export class GravityDigLevelGenerator {
 
   key(x: number, y: number): string {
     return tileKey(x, y);
+  }
+
+  private createWorldContext(config: PlanetConfig, difficultyLevel: number, customSeed: number | string): WorldContext {
+    const planet = config.planet;
+    const difficulty = clamp(Math.round(difficultyLevel), 1, 10);
+    const seed = hashSeed(customSeed);
+    this.random = mulberry32(seed);
+
+    const scaled = this.applyDifficultyScaling(config, difficulty);
+    const radius = Math.round(scaled.core_radius ?? planet.core.radius);
+
+    return {
+      config,
+      difficulty,
+      seed,
+      scaled,
+      width: planet.base_config.level_width,
+      heightUp: planet.base_config.level_height_up,
+      heightDown: planet.base_config.level_height_down,
+      tileSize: planet.base_config.block_size,
+      core: { ...this.calculateCore(config, scaled), radius },
+      spawn: { x: 1, y: -2 },
+      // World-space tile rect for the ship visual plus clearance. The ship sprite is anchored on y=2.
+      spaceshipRect: { x: -5, y: -4, w: 7, h: 7 },
+    };
   }
 
   private applyDifficultyScaling(config: PlanetConfig, difficulty: number): Record<string, number> {
@@ -230,43 +261,86 @@ export class GravityDigLevelGenerator {
     };
   }
 
-  private blockForDepth(y: number): TileType {
-    if (y > 35) return 'stone';
-    if (y > 18) return 'dirt';
-    if (y > -18) return 'dirt';
-    if (y > -35) return 'stone';
-    return 'basalt';
+  private generateBaseTerrain(context: WorldContext): Map<string, TileCell> {
+    const tiles = new Map<string, TileCell>();
+
+    for (let x = WORLD_MIN_X; x <= context.width; x += 1) {
+      for (let y = -context.heightDown; y <= context.heightUp; y += 1) {
+        const type = this.calculateBaseTile(context, x, y);
+        this.setTile(tiles, x, y, type, false);
+      }
+    }
+
+    return tiles;
   }
 
-  private spawnResources(
-    _config: PlanetConfig,
-    richness: number,
-    core: { x: number; y: number },
-    tiles: Map<string, TileCell>,
-    resources: Map<string, TileType>,
-  ): void {
+  private calculateBaseTile(context: WorldContext, x: number, y: number): TileType {
+    const distanceRatio = this.distanceToCore(context, x, y) / this.referenceCoreDistance(context);
+    const absY = Math.abs(y);
+    const roll = this.random();
+
+    if (distanceRatio < 0.2) {
+      if (roll < 0.62) return 'basalt';
+      if (roll < 0.93) return 'stone';
+      return absY < 24 ? 'gravel' : 'basalt';
+    }
+
+    if (distanceRatio < 0.4) {
+      if (roll < 0.46) return 'stone';
+      if (roll < 0.76) return 'basalt';
+      if (roll < 0.88) return 'gravel';
+      return 'dirt';
+    }
+
+    if (distanceRatio < 0.7) {
+      if (roll < 0.45) return 'stone';
+      if (roll < 0.65) return 'dirt';
+      if (roll < 0.78) return 'gravel';
+      if (roll < 0.9) return absY < 22 ? 'clay' : 'stone';
+      return 'sand';
+    }
+
+    if (roll < 0.52) return 'dirt';
+    if (roll < 0.68) return 'sand';
+    if (roll < 0.8) return 'clay';
+    if (roll < 0.9) return 'gravel';
+    return 'stone';
+  }
+
+  private spawnResources(context: WorldContext, tiles: Map<string, TileCell>): void {
+    const richness = context.scaled.resource_richness ?? 1;
+
     for (const cell of tiles.values()) {
       if (!this.canReplaceWithResource(cell)) continue;
+      if (this.distanceToStart(context, cell.x, cell.y) < 16) continue;
 
-      const profile = this.pickResourceForCell(cell, core, richness);
+      const profile = this.pickResourceForCell(context, cell, richness);
       if (!profile) continue;
 
       const veinSize = this.randomInt(profile.veinMin, profile.veinMax);
-      this.spawnVein(cell.x, cell.y, profile.type, veinSize, tiles, resources);
+      this.spawnVein(cell.x, cell.y, profile.type, veinSize, context, tiles);
     }
   }
 
-  private pickResourceForCell(cell: TileCell, core: { x: number; y: number }, richness: number): ResourceProfile | undefined {
-    const possible = RESOURCE_PROFILES.filter((profile) => cell.y >= profile.minDepth && cell.y <= profile.maxDepth);
+  private pickResourceForCell(context: WorldContext, cell: TileCell, richness: number): ResourceProfile | undefined {
+    const coreDistance = this.distanceToCore(context, cell.x, cell.y);
+    const coreRatio = coreDistance / this.referenceCoreDistance(context);
+    const absY = Math.abs(cell.y);
+    const possible = RESOURCE_PROFILES.filter(
+      (profile) =>
+        coreRatio >= profile.minCoreRatio &&
+        coreRatio <= profile.maxCoreRatio &&
+        absY >= profile.minAbsY,
+    );
+
     if (possible.length === 0) return undefined;
 
-    const depthFactor = Math.min(1.8, 0.75 + Math.abs(cell.y) / 45);
-    const coreDistance = Math.hypot(cell.x - core.x, cell.y - core.y);
-    const distanceFactor = clamp(coreDistance / 85, 0.65, 1.45);
+    const zonePressure = clamp(1.55 - coreRatio, 0.55, 1.45);
+    const depthPressure = clamp(0.75 + absY / 160, 0.75, 1.6);
 
     for (const profile of possible) {
-      const rarityFactor = profile.type === 'diamond' ? 0.72 : profile.type === 'gold' ? 0.86 : 1;
-      const chance = profile.baseChance * richness * depthFactor * distanceFactor * rarityFactor;
+      const rarityFactor = profile.type === 'diamond' ? 0.68 : profile.type === 'gold' ? 0.84 : 1;
+      const chance = profile.baseChance * richness * zonePressure * depthPressure * rarityFactor;
       if (this.random() < chance) return profile;
     }
 
@@ -278,19 +352,16 @@ export class GravityDigLevelGenerator {
     startY: number,
     type: ResourceProfile['type'],
     size: number,
+    context: WorldContext,
     tiles: Map<string, TileCell>,
-    resources: Map<string, TileType>,
   ): void {
     let x = startX;
     let y = startY;
 
     for (let i = 0; i < size; i += 1) {
       const cell = tiles.get(tileKey(x, y));
-      if (cell && this.canReplaceWithResource(cell)) {
-        cell.type = type;
-        cell.health = TILE_HEALTH[type];
-        cell.maxHealth = TILE_HEALTH[type];
-        resources.set(tileKey(cell.x, cell.y), type);
+      if (cell && this.canReplaceWithResource(cell) && this.distanceToStart(context, x, y) >= 16) {
+        this.setTile(tiles, x, y, type, false);
       }
 
       x += this.randomInt(-1, 1);
@@ -302,48 +373,82 @@ export class GravityDigLevelGenerator {
     return (cell.type === 'dirt' || cell.type === 'stone' || cell.type === 'basalt') && !cell.boundary;
   }
 
+  private applyReplacers(context: WorldContext, tiles: Map<string, TileCell>, replacers: LevelReplacer[]): void {
+    for (const replacer of replacers) replacer.call(this, context, tiles);
+  }
+
+  private applyStartAndShipChamber(_context: WorldContext, tiles: Map<string, TileCell>): void {
+    // Ship + player air pocket. This intentionally runs after terrain/resources, replacing whatever was generated.
+    for (let x = -6; x <= 4; x += 1) {
+      for (let y = -4; y <= 1; y += 1) {
+        this.setTile(tiles, x, y, 'air', false);
+      }
+    }
+
+    // Start chamber right of the ship, kept small and readable for tutorial movement.
+    for (let x = 0; x <= 3; x += 1) {
+      for (let y = -2; y <= 1; y += 1) {
+        this.setTile(tiles, x, y, 'air', false);
+      }
+    }
+
+    // The Bucket sits on this unmineable platform instead of floating.
+    for (let x = -5; x <= 1; x += 1) {
+      this.setTile(tiles, x, SHIP_PLATFORM_Y, 'bedrock', true);
+    }
+  }
+
+  private applyCore(context: WorldContext, tiles: Map<string, TileCell>): void {
+    const { x: cx, y: cy, radius } = context.core;
+    const radiusSq = radius ** 2;
+
+    for (let x = cx - radius; x <= cx + radius; x += 1) {
+      for (let y = cy - radius; y <= cy + radius; y += 1) {
+        if ((x - cx) ** 2 + (y - cy) ** 2 <= radiusSq) {
+          this.setTile(tiles, x, y, 'bedrock', true);
+        }
+      }
+    }
+  }
+
+  private applyWorldBoundaries(context: WorldContext, tiles: Map<string, TileCell>): void {
+    for (let x = WORLD_MIN_X; x <= context.width; x += 1) {
+      this.setTile(tiles, x, context.heightUp + 1, 'bedrock', true);
+      this.setTile(tiles, x, -context.heightDown - 1, 'bedrock', true);
+    }
+
+    for (let y = -context.heightDown; y <= context.heightUp; y += 1) {
+      for (let x = WORLD_MIN_X; x < WORLD_MIN_X + LEFT_BOUNDARY_THICKNESS; x += 1) {
+        this.setTile(tiles, x, y, 'bedrock', true);
+      }
+      this.setTile(tiles, context.width + 1, y, 'bedrock', true);
+    }
+  }
+
+  private rebuildResources(tiles: Map<string, TileCell>): Map<string, TileType> {
+    const resources = new Map<string, TileType>();
+
+    for (const cell of tiles.values()) {
+      if (isResourceTile(cell.type)) resources.set(tileKey(cell.x, cell.y), cell.type);
+    }
+
+    return resources;
+  }
+
+  private distanceToCore(context: WorldContext, x: number, y: number): number {
+    return Math.hypot(x - context.core.x, y - context.core.y);
+  }
+
+  private referenceCoreDistance(context: WorldContext): number {
+    return Math.max(1, Math.hypot(context.core.x - context.spawn.x, context.core.y - context.spawn.y));
+  }
+
+  private distanceToStart(context: WorldContext, x: number, y: number): number {
+    return Math.hypot(x - context.spawn.x, y - context.spawn.y);
+  }
+
   private randomInt(min: number, max: number): number {
     return Math.floor(this.random() * (max - min + 1)) + min;
-  }
-
-  private clearSpawnAreas(tiles: Map<string, TileCell>): void {
-    for (let x = -6; x < 2; x += 1) {
-      for (let y = -6; y < 4; y += 1) {
-        this.setTile(tiles, x, y, 'air', false);
-      }
-    }
-
-    for (let x = -1; x < 5; x += 1) {
-      for (let y = -3; y < 4; y += 1) {
-        this.setTile(tiles, x, y, 'air', false);
-      }
-    }
-  }
-
-  private clearStartArea(tiles: Map<string, TileCell>): void {
-    for (let x = 0; x < 3; x += 1) {
-      for (let y = -1; y < 2; y += 1) {
-        this.setTile(tiles, x, y, 'air', false);
-      }
-    }
-  }
-
-  private createBoundaries(width: number, heightUp: number, heightDown: number, tiles: Map<string, TileCell>): void {
-    for (let x = -10; x <= width; x += 1) {
-      this.setTile(tiles, x, heightUp + 1, 'bedrock', true);
-      this.setTile(tiles, x, -heightDown - 1, 'bedrock', true);
-    }
-
-    for (let y = -heightDown; y <= heightUp; y += 1) {
-      this.setTile(tiles, -10, y, 'bedrock', true);
-      this.setTile(tiles, -9, y, 'bedrock', true);
-      this.setTile(tiles, width + 1, y, 'bedrock', true);
-    }
-
-    for (let x = -4; x < 0; x += 1) {
-      this.setTile(tiles, x, 2, 'bedrock', true);
-      this.setTile(tiles, x, -5, 'bedrock', true);
-    }
   }
 
   private setTile(tiles: Map<string, TileCell>, x: number, y: number, type: TileType, boundary: boolean): void {
