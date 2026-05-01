@@ -115,8 +115,10 @@ export class UIScene extends Phaser.Scene {
 
     this.leftJoystick?.layout();
     this.rightJoystick?.layout();
-    this.leftJoystick?.setVisible(touchMode);
-    this.rightJoystick?.setVisible(touchMode);
+    if (!touchMode) {
+      this.leftJoystick?.setVisible(false);
+      this.rightJoystick?.setVisible(false);
+    }
     this.hudText?.setPosition(14, 12);
     this.hudText?.setWordWrapWidth(compact ? Math.max(260, width - 220) : Math.max(320, width - 28));
     this.debugText?.setPosition(14, Math.max(140, height - 76)).setVisible(!compact);
@@ -160,9 +162,10 @@ export class UIScene extends Phaser.Scene {
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.inputMode !== 'touch') return;
-    const handledLeft = this.leftJoystick.handlePointerDown(pointer);
-    const handledRight = this.rightJoystick.handlePointerDown(pointer);
-    if (handledLeft || handledRight) pointer.event.preventDefault();
+    const handled = pointer.x < this.scale.width / 2
+      ? this.leftJoystick.handlePointerDown(pointer)
+      : this.rightJoystick.handlePointerDown(pointer);
+    if (handled) pointer.event.preventDefault();
   }
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {

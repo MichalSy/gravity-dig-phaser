@@ -45,6 +45,7 @@ export class VirtualJoystick {
       .setResolution(Math.max(2, window.devicePixelRatio || 1));
 
     this.layout();
+    this.setVisible(false);
   }
 
   get active(): boolean {
@@ -74,26 +75,21 @@ export class VirtualJoystick {
   layout(): void {
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
-    this.radius = Phaser.Math.Clamp(Math.min(width, height) * 0.17, 58, 79);
-    const safeMargin = 18;
-    const bottomMargin = height <= 430 ? 72 : 88;
-    const centerX = this.side === 'left'
-      ? this.radius + safeMargin
-      : width - this.radius - safeMargin;
-    const centerY = height - bottomMargin;
-
-    this.center.set(centerX, centerY);
-    this.base.setRadius(this.radius).setPosition(centerX, centerY);
-    this.knob.setRadius(this.radius * 0.34).setPosition(centerX, centerY);
-    this.label.setPosition(centerX, centerY - this.radius - 16);
+    this.radius = Phaser.Math.Clamp(Math.min(width, height) * 0.18, 62, 84);
+    this.base.setRadius(this.radius);
+    this.knob.setRadius(this.radius * 0.34);
+    this.positionObjects();
   }
 
   handlePointerDown(pointer: Phaser.Input.Pointer): boolean {
     if (!isTouchPointer(pointer)) return false;
-    if (this.activePointerId !== undefined || !this.contains(pointer)) return false;
+    const correctSide = this.side === 'left' ? pointer.x < this.scene.scale.width / 2 : pointer.x >= this.scene.scale.width / 2;
+    if (this.activePointerId !== undefined || !correctSide) return false;
 
     requestImmersiveLandscape();
     this.activePointerId = pointer.id;
+    this.centerOnPointer(pointer);
+    this.setVisible(true);
     this.update(pointer);
     return true;
   }
@@ -106,10 +102,26 @@ export class VirtualJoystick {
   handlePointerUp(pointer: Phaser.Input.Pointer): void {
     if (pointer.id !== this.activePointerId) return;
     this.reset();
+    this.setVisible(false);
   }
 
   contains(pointer: Phaser.Input.Pointer): boolean {
+    if (!this.active) return false;
     return Phaser.Math.Distance.Between(pointer.x, pointer.y, this.center.x, this.center.y) <= this.radius;
+  }
+
+  private centerOnPointer(pointer: Phaser.Input.Pointer): void {
+    const safe = this.radius + 10;
+    const x = Phaser.Math.Clamp(pointer.x, safe, this.scene.scale.width - safe);
+    const y = Phaser.Math.Clamp(pointer.y, safe + 22, this.scene.scale.height - safe);
+    this.center.set(x, y);
+    this.positionObjects();
+  }
+
+  private positionObjects(): void {
+    this.base.setPosition(this.center.x, this.center.y);
+    this.knob.setPosition(this.center.x, this.center.y);
+    this.label.setPosition(this.center.x, this.center.y - this.radius - 16);
   }
 
   private update(pointer: Phaser.Input.Pointer): void {

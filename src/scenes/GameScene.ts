@@ -196,11 +196,11 @@ export class GameScene extends Phaser.Scene {
     if (!this.cameras?.main) return;
     const viewportWidth = Math.max(1, this.scale.width);
     const viewportHeight = Math.max(1, this.scale.height);
-    const targetTilesHigh = viewportHeight <= 430 ? 11 : 15;
-    const targetTilesWide = viewportWidth <= 900 ? 24 : 30;
+    const targetTilesHigh = viewportHeight <= 430 ? 8 : 12;
+    const targetTilesWide = viewportWidth <= 900 ? 18 : 24;
     const zoomByHeight = viewportHeight / (targetTilesHigh * TILE_SIZE);
     const zoomByWidth = viewportWidth / (targetTilesWide * TILE_SIZE);
-    const zoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.05, 1.8);
+    const zoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.25, 2.4);
     this.cameras.main.setZoom(zoom);
   }
 
