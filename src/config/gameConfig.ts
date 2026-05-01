@@ -2,7 +2,7 @@ export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 720;
 export const TILE_SIZE = 48;
 
-export const PLAYER_SIZE = { w: 30, h: 42 } as const;
+export const PLAYER_SIZE = { w: 20, h: 32 } as const;
 export const PLAYER_SPEED = 235;
 export const JUMP_VELOCITY = -520;
 export const GRAVITY = 1320;
