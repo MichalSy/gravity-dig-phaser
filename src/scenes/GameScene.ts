@@ -29,6 +29,7 @@ export class GameScene extends Phaser.Scene {
   private level!: LevelData;
   private tilemap?: Phaser.Tilemaps.Tilemap;
   private tileLayer?: Phaser.Tilemaps.TilemapLayer;
+  private crackOverlays = new Map<string, Phaser.GameObjects.Image>();
   private mapOffsetX = 0;
   private mapOffsetY = 0;
   private player!: Phaser.GameObjects.Image;
@@ -70,6 +71,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('ship', '/assets/tilesets/ships/ship_exterior.png');
     this.load.image('laser-dot', '/assets/effects/laser_beam.png');
     this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
+    for (let i = 1; i <= 4; i += 1) this.load.image(`crack-${i}`, `/assets/effects/cracks/crack-${i}.png`);
     this.load.audio('laser-loop', '/assets/sfx/laser-loop.wav');
     this.load.audio('laser-break', '/assets/sfx/laser-break.wav');
     this.load.audio('jump', '/assets/sfx/jump.wav');
@@ -116,6 +118,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createLevel(seed = 'gravity-dig-phaser'): void {
+    for (const overlay of this.crackOverlays.values()) overlay.destroy();
+    this.crackOverlays.clear();
     this.tileLayer?.destroy();
     this.tilemap?.destroy();
     this.laser?.destroy();
@@ -412,8 +416,7 @@ export class GameScene extends Phaser.Scene {
     this.setLaserSound(true);
     this.energy = Math.max(0, this.energy - ENERGY_COST_PER_SEC * delta);
     target.health -= MINING_DAMAGE_PER_SEC * delta;
-    const tile = this.getLayerTile(target.x, target.y);
-    if (tile) tile.setAlpha(Math.max(0.25, target.health / target.maxHealth));
+    this.updateCrackOverlay(target);
 
     if (target.health <= 0) {
       this.mineTile(target);
@@ -493,9 +496,29 @@ export class GameScene extends Phaser.Scene {
     if (this.laserSound.isPlaying) this.laserSound.stop();
   }
 
+  private updateCrackOverlay(cell: TileCell): void {
+    const key = tileKey(cell.x, cell.y);
+    const damage = Phaser.Math.Clamp(1 - cell.health / cell.maxHealth, 0, 1);
+    const stage = Math.min(4, Math.max(1, Math.ceil(damage * 4)));
+    let overlay = this.crackOverlays.get(key);
+
+    if (!overlay) {
+      overlay = this.add
+        .image(cell.x * TILE_SIZE + TILE_SIZE / 2, cell.y * TILE_SIZE + TILE_SIZE / 2, `crack-${stage}`)
+        .setOrigin(0.5)
+        .setDepth(6);
+      this.crackOverlays.set(key, overlay);
+      return;
+    }
+
+    overlay.setTexture(`crack-${stage}`);
+  }
+
   private mineTile(cell: TileCell): void {
     const key = tileKey(cell.x, cell.y);
     this.tilemap?.putTileAt(-1, cell.x - this.mapOffsetX, cell.y - this.mapOffsetY, false, this.tileLayer);
+    this.crackOverlays.get(key)?.destroy();
+    this.crackOverlays.delete(key);
 
     if (isResourceTile(cell.type)) {
       this.inventory.set(cell.type, (this.inventory.get(cell.type) ?? 0) + 1);
@@ -504,10 +527,6 @@ export class GameScene extends Phaser.Scene {
     cell.type = 'air';
     cell.health = 0;
     this.level.resources.delete(key);
-  }
-
-  private getLayerTile(worldTileX: number, worldTileY: number): Phaser.Tilemaps.Tile | null {
-    return this.tilemap?.getTileAt(worldTileX - this.mapOffsetX, worldTileY - this.mapOffsetY, false, this.tileLayer) ?? null;
   }
 
   private updateAnimation(deltaMs: number): void {
