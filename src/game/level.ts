@@ -91,7 +91,7 @@ export const TILE_HEALTH: Record<TileType, number> = {
 export const TILE_ATLAS_COORDS: Record<Exclude<TileType, 'air'>, [number, number]> = {
   basalt: [2, 0],
   bedrock: [3, 0],
-  clay: [5, 0],
+  clay: [4, 0],
   copper: [6, 0],
   diamond: [0, 1],
   dirt: [1, 1],
