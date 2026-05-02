@@ -52,7 +52,7 @@ export class UIScene extends Phaser.Scene {
   private energyFill!: Phaser.GameObjects.Image;
   private hpIcon!: Phaser.GameObjects.Image;
   private fuelIcon!: Phaser.GameObjects.Image;
-  private slotLocks: Phaser.GameObjects.Image[] = [];
+  private slotFrames: Phaser.GameObjects.Image[] = [];
   private slotItems: Phaser.GameObjects.Image[] = [];
   private hpLabel!: Phaser.GameObjects.Text;
   private hpValue!: Phaser.GameObjects.Text;
@@ -123,10 +123,10 @@ export class UIScene extends Phaser.Scene {
     this.actionGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
 
     this.statusFrame = this.add.image(0, 0, 'hud-status-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
-    this.actionFrame = this.add.image(0, 0, 'hud-action-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.actionFrame = this.add.image(0, 0, 'hud-v10-bottom-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
     this.hpFill = this.add.image(0, 0, 'hud-bar-red').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
     this.fuelFill = this.add.image(0, 0, 'hud-bar-orange').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.energyFill = this.add.image(0, 0, 'hud-bar-cyan').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.energyFill = this.add.image(0, 0, 'hud-v10-energy-fill').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
     this.hpIcon = this.add.image(0, 0, 'hud-icon-hp').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
     this.fuelIcon = this.add.image(0, 0, 'hud-icon-fuel').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
 
@@ -141,7 +141,7 @@ export class UIScene extends Phaser.Scene {
     this.brandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11).setResolution(resolution);
 
     for (let i = 0; i < 4; i += 1) {
-      this.slotLocks.push(this.add.image(0, 0, 'hud-lock-icon').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
+      this.slotFrames.push(this.add.image(0, 0, 'hud-v10-slot-empty').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11).setVisible(false));
       this.slotItems.push(this.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
       this.slotLabels.push(this.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
     }
@@ -274,54 +274,60 @@ export class UIScene extends Phaser.Scene {
     this.statusBrandLabel.setVisible(false);
   }
 
-  private drawActionPanel(centerX: number, y: number, scale: number, state: HudState): void {
+  private drawActionPanel(centerX: number, _y: number, scale: number, state: HudState): void {
     this.actionGraphics.clear();
-    const w = 760 * scale;
-    const h = 172 * scale;
-    const x = centerX - w / 2;
+    const frameW = 820 * scale;
+    const frameH = 143 * scale;
+    const x = centerX - frameW / 2;
+    const dockY = this.scale.height - frameH + 26 * scale;
     const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
-    const energyX = x + 54 * scale;
-    const cargoCenterX = x + 444 * scale;
-    const slotSize = 64 * scale;
-    const slotGap = 88 * scale;
 
-    this.actionFrame.setPosition(x, y).setDisplaySize(w, h).setVisible(true);
-    this.placeCroppedBar(this.energyFill, energyX, y + 59 * scale, 258 * scale, 50 * scale, pctEnergy);
+    this.actionFrame.setPosition(x, dockY).setDisplaySize(frameW, frameH).setVisible(true);
+    this.placeCroppedBar(this.energyFill, x + 112 * scale, dockY + 71 * scale, 240 * scale, 22 * scale, pctEnergy);
 
-    this.energyLabel.setPosition(x + 130 * scale, y + 38 * scale).setScale(scale * 1.02).setVisible(true);
-    this.cargoLabel.setPosition(x + 483 * scale, y + 12 * scale).setScale(scale * 1.02).setVisible(true);
+    this.energyLabel.setVisible(false);
+    this.cargoLabel.setVisible(false);
     this.brandLabel.setVisible(false);
 
     this.energyValue.setText(`${Math.round(state.energy.current)} / ${state.energy.max}`)
-      .setPosition(x + 140 * scale, y + 114 * scale)
-      .setScale(scale * 1.18)
+      .setPosition(x + 176 * scale, dockY + 101 * scale)
+      .setScale(scale * 0.9)
       .setVisible(true);
+
+    const slotSize = 66 * scale;
+    const slotGap = 86 * scale;
+    const firstSlotX = x + 507 * scale;
+    const slotY = dockY + 48 * scale;
 
     for (let i = 0; i < this.slotLabels.length; i += 1) {
       const label = this.slotLabels[i];
-      const lock = this.slotLocks[i];
+      const frame = this.slotFrames[i];
       const item = this.slotItems[i];
       const active = i < state.cargo.visibleSlots;
       const slot = state.cargo.slots[i];
-      const cx = cargoCenterX + i * slotGap;
-      const cy = y + 94 * scale;
+      const cx = firstSlotX + i * slotGap;
+      const cy = slotY + slotSize / 2;
       const sx = cx - slotSize / 2;
       const sy = cy - slotSize / 2;
+      const texture = active
+        ? (i === 0 ? 'hud-v10-slot-active-empty' : 'hud-v10-slot-empty')
+        : 'hud-v10-slot-locked';
 
-      lock
-        .setPosition(cx, cy + 2 * scale)
-        .setDisplaySize(30 * scale, 38 * scale)
-        .setVisible(!active);
+      frame
+        .setTexture(texture)
+        .setPosition(cx, cy)
+        .setDisplaySize(slotSize, slotSize)
+        .setVisible(i < 3);
 
       const hasItem = Boolean(active && slot?.itemId && slot.quantity > 0);
       item
         .setPosition(cx, cy)
-        .setDisplaySize(42 * scale, 42 * scale)
-        .setVisible(hasItem);
+        .setDisplaySize(38 * scale, 38 * scale)
+        .setVisible(hasItem && i < 3);
 
-      label.setVisible(hasItem);
+      label.setVisible(hasItem && i < 3);
       if (hasItem) {
-        label.setText(`x${slot?.quantity ?? 0}`).setPosition(sx + slotSize - 6 * scale, sy + slotSize - 5 * scale).setScale(scale * 0.82);
+        label.setText(`x${slot?.quantity ?? 0}`).setPosition(sx + slotSize - 6 * scale, sy + slotSize - 5 * scale).setScale(scale * 0.78);
       }
     }
   }

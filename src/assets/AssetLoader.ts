@@ -33,6 +33,11 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   load.image('hud-item-rock', versioned('/assets/ui/hud/hud_item_rock.png'));
   load.image('hud-icon-hp', versioned('/assets/ui/hud/hud_icon_hp.png'));
   load.image('hud-icon-fuel', versioned('/assets/ui/hud/hud_icon_fuel.png'));
+  load.image('hud-v10-bottom-frame', versioned('/assets/ui/hud/variant10/bottom_frame.png'));
+  load.image('hud-v10-energy-fill', versioned('/assets/ui/hud/variant10/energy_fill.png'));
+  load.image('hud-v10-slot-active-empty', versioned('/assets/ui/hud/variant10/slot_active_empty.png'));
+  load.image('hud-v10-slot-empty', versioned('/assets/ui/hud/variant10/slot_empty.png'));
+  load.image('hud-v10-slot-locked', versioned('/assets/ui/hud/variant10/slot_locked.png'));
 
   for (let i = 1; i <= 4; i += 1) {
     load.image(`crack-${i}`, versioned(`/assets/effects/cracks/crack-${i}.png`));
