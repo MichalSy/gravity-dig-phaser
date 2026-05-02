@@ -20,11 +20,11 @@ import {
   isResourceTile,
 } from '../game/level';
 import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
+import { loadGameAssets } from '../assets/AssetLoader';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
-const GENERATED_ASSET_VERSION = 'ship-orientation-ground-fix-20260502-1149';
 const START_TUNNEL_LEFT_TILE = -10;
 const START_TUNNEL_TOP_TILE = -2;
 const START_TUNNEL_WIDTH_TILES = 12;
@@ -75,45 +75,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image('tiles', `/assets/tilesets/atlas/tiles_atlas.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('backwall-tiles', `/assets/tilesets/atlas/backwall_atlas.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
-    this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('drill-tunnel-bg', `/assets/ships/drill_tunnel_bg.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('laser-dot', '/assets/effects/laser_beam.png');
-    this.load.image('title-logo', '/assets/tilesets/ui/title_logo.png');
-    for (let i = 1; i <= 4; i += 1) {
-      this.load.image(`crack-${i}`, `/assets/effects/cracks/crack-${i}.png?v=${GENERATED_ASSET_VERSION}`);
-    }
-    this.load.audio('laser-loop', '/assets/sfx/laser-loop.wav');
-    this.load.audio('block-break-dirt', `/assets/sfx/block-break-dirt.wav?v=${GENERATED_ASSET_VERSION}`);
-    this.load.audio('block-break-gem', `/assets/sfx/block-break-gem.wav?v=${GENERATED_ASSET_VERSION}`);
-    this.load.audio('jump', '/assets/sfx/jump.wav');
-    for (let i = 1; i <= 3; i += 1) {
-      this.load.audio(`walk-${i}`, `/assets/sfx/walk-${i}.wav?v=${GENERATED_ASSET_VERSION}`);
-    }
-    this.load.json('dev-planet', '/config/planets/dev_planet.json');
-
-    for (const dir of ['east', 'west'] as const) {
-      for (let i = 0; i < 4; i += 1) {
-        this.load.image(
-          `player-walk-${dir}-${i}`,
-          `/assets/character/generated/walk/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
-        );
-      }
-      for (let i = 0; i < 3; i += 1) {
-        this.load.image(
-          `player-jump-${dir}-${i}`,
-          `/assets/character/generated/jump/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
-        );
-      }
-      for (let i = 0; i < 6; i += 1) {
-        this.load.image(
-          `player-idle-${dir}-${i}`,
-          `/assets/character/generated/idle/${dir}/frame_${String(i).padStart(3, '0')}.png?v=${GENERATED_ASSET_VERSION}`,
-        );
-      }
-    }
+    loadGameAssets(this);
   }
 
   create(): void {
