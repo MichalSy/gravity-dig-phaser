@@ -8,7 +8,7 @@
       "level_width": 600,
       "level_height_up": 300,
       "level_height_down": 300,
-      "block_size": 48
+      "block_size": 96
     },
     
     "core": {

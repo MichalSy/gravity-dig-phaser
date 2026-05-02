@@ -9,7 +9,6 @@ import {
   PLAYER_SIZE,
   PLAYER_SPEED,
   TILE_SIZE,
-  TILE_TEXTURE_SIZE,
 } from '../config/gameConfig';
 import { UIScene, type HudState, type InputMode } from './UIScene';
 import {
@@ -237,34 +236,34 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    this.backwallTilemap = this.make.tilemap({ data: backwallData, tileWidth: TILE_TEXTURE_SIZE, tileHeight: TILE_TEXTURE_SIZE });
-    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-variants', 'backwall-variants', TILE_TEXTURE_SIZE, TILE_TEXTURE_SIZE, 0, 0);
+    this.backwallTilemap = this.make.tilemap({ data: backwallData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-variants', 'backwall-variants', TILE_SIZE, TILE_SIZE, 0, 0);
     if (!backwallTileset) throw new Error('Failed to create backwall tileset');
     const backwallLayer = this.backwallTilemap.createLayer(0, backwallTileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!backwallLayer || backwallLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
-    this.backwallLayer = backwallLayer.setDepth(0.6).setAlpha(0.88).setScale(TILE_SIZE / TILE_TEXTURE_SIZE);
+    this.backwallLayer = backwallLayer.setDepth(0.6).setAlpha(0.88);
 
-    this.bedrockTilemap = this.make.tilemap({ data: bedrockData, tileWidth: TILE_TEXTURE_SIZE, tileHeight: TILE_TEXTURE_SIZE });
-    const bedrockTileset = this.bedrockTilemap.addTilesetImage('bedrock-variants', 'bedrock-variants', TILE_TEXTURE_SIZE, TILE_TEXTURE_SIZE, 0, 0);
+    this.bedrockTilemap = this.make.tilemap({ data: bedrockData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const bedrockTileset = this.bedrockTilemap.addTilesetImage('bedrock-variants', 'bedrock-variants', TILE_SIZE, TILE_SIZE, 0, 0);
     if (!bedrockTileset) throw new Error('Failed to create bedrock tileset');
     const bedrockLayer = this.bedrockTilemap.createLayer(0, bedrockTileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!bedrockLayer || bedrockLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create bedrock tile layer');
-    this.bedrockLayer = bedrockLayer.setDepth(2).setScale(TILE_SIZE / TILE_TEXTURE_SIZE);
+    this.bedrockLayer = bedrockLayer.setDepth(2);
 
-    this.earthTilemap = this.make.tilemap({ data: earthData, tileWidth: TILE_TEXTURE_SIZE, tileHeight: TILE_TEXTURE_SIZE });
-    const earthTileset = this.earthTilemap.addTilesetImage('earth-variants', 'earth-variants', TILE_TEXTURE_SIZE, TILE_TEXTURE_SIZE, 0, 0);
+    this.earthTilemap = this.make.tilemap({ data: earthData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const earthTileset = this.earthTilemap.addTilesetImage('earth-variants', 'earth-variants', TILE_SIZE, TILE_SIZE, 0, 0);
     if (!earthTileset) throw new Error('Failed to create earth tileset');
     const earthLayer = this.earthTilemap.createLayer(0, earthTileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!earthLayer || earthLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create earth tile layer');
-    this.earthLayer = earthLayer.setDepth(2).setScale(TILE_SIZE / TILE_TEXTURE_SIZE);
+    this.earthLayer = earthLayer.setDepth(2);
 
-    this.tilemap = this.make.tilemap({ data, tileWidth: TILE_TEXTURE_SIZE, tileHeight: TILE_TEXTURE_SIZE });
-    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_TEXTURE_SIZE, TILE_TEXTURE_SIZE, 0, 0);
+    this.tilemap = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
     if (!tileset) throw new Error('Failed to create tileset');
 
     const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
-    this.tileLayer = layer.setDepth(2).setScale(TILE_SIZE / TILE_TEXTURE_SIZE);
+    this.tileLayer = layer.setDepth(2);
   }
 
   private addStartTunnelBackground(): void {
@@ -323,7 +322,7 @@ export class GameScene extends Phaser.Scene {
     const spawnY = this.level.spawn.y * TILE_SIZE + TILE_SIZE / 2;
 
     if (this.player) this.player.destroy();
-    this.player = this.add.image(spawnX, spawnY, 'player-idle-east-0').setDepth(20).setScale(0.82);
+    this.player = this.add.image(spawnX, spawnY, 'player-idle-east-0').setDepth(20).setScale(1.64);
     this.velocity.set(0, 0);
 
     const worldLeft = -10 * TILE_SIZE;
@@ -664,6 +663,7 @@ export class GameScene extends Phaser.Scene {
       overlay = this.add
         .image(cell.x * TILE_SIZE + TILE_SIZE / 2, cell.y * TILE_SIZE + TILE_SIZE / 2, `crack-${stage}`)
         .setOrigin(0.5)
+        .setDisplaySize(TILE_SIZE, TILE_SIZE)
         .setDepth(6);
       this.crackOverlays.set(key, overlay);
       return;
