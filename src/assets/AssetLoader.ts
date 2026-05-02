@@ -29,6 +29,7 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   load.image('hud-bar-cyan', versioned('/assets/ui/hud/hud_bar_cyan.png'));
   load.image('hud-slot-active-empty', versioned('/assets/ui/hud/hud_slot_active_empty.png'));
   load.image('hud-slot-locked', versioned('/assets/ui/hud/hud_slot_locked.png'));
+  load.image('hud-lock-icon', versioned('/assets/ui/hud/hud_lock_icon.png'));
   load.image('hud-item-rock', versioned('/assets/ui/hud/hud_item_rock.png'));
   load.image('hud-icon-hp', versioned('/assets/ui/hud/hud_icon_hp.png'));
   load.image('hud-icon-fuel', versioned('/assets/ui/hud/hud_icon_fuel.png'));
