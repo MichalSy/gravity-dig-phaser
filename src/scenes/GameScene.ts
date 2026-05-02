@@ -23,13 +23,8 @@ import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '.
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
-type VariantKind = 'bedrock' | 'earth' | 'backwall';
-type VariantState = Record<VariantKind, number>;
 
-const GENERATED_ASSET_VERSION = 'earth-redesign-zoom-debug-20260502-1040';
-const VARIANT_COUNT = 10;
-const DEFAULT_VARIANTS: VariantState = { bedrock: 0, earth: 0, backwall: 8 };
-const EARTH_TILE_TYPES = new Set<TileType>(['dirt', 'sand', 'clay', 'gravel']);
+const GENERATED_ASSET_VERSION = 'chosen-textures-zoom-100-20260502-1053';
 const START_TUNNEL_LEFT_TILE = -10;
 const START_TUNNEL_TOP_TILE = -2;
 const START_TUNNEL_WIDTH_TILES = 12;
@@ -41,10 +36,6 @@ export class GameScene extends Phaser.Scene {
   private level!: LevelData;
   private tilemap?: Phaser.Tilemaps.Tilemap;
   private tileLayer?: Phaser.Tilemaps.TilemapLayer;
-  private earthTilemap?: Phaser.Tilemaps.Tilemap;
-  private earthLayer?: Phaser.Tilemaps.TilemapLayer;
-  private bedrockTilemap?: Phaser.Tilemaps.Tilemap;
-  private bedrockLayer?: Phaser.Tilemaps.TilemapLayer;
   private backwallTilemap?: Phaser.Tilemaps.Tilemap;
   private backwallLayer?: Phaser.Tilemaps.TilemapLayer;
   private crackOverlays = new Map<string, Phaser.GameObjects.Image>();
@@ -72,7 +63,6 @@ export class GameScene extends Phaser.Scene {
   private debugZoomOffset = 0;
   private collisionDebugEnabled = false;
   private targetMarker!: Phaser.GameObjects.Rectangle;
-  private variantState: VariantState = { ...DEFAULT_VARIANTS };
   private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
   private laserOrigin = new Phaser.Math.Vector2(0, 0);
@@ -87,9 +77,7 @@ export class GameScene extends Phaser.Scene {
 
   preload(): void {
     this.load.image('tiles', `/assets/tilesets/atlas/tiles_atlas.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('bedrock-variants', `/assets/tilesets/atlas/bedrock_variants_atlas.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('earth-variants', `/assets/tilesets/atlas/earth_variants_atlas.png?v=${GENERATED_ASSET_VERSION}`);
-    this.load.image('backwall-variants', `/assets/tilesets/atlas/backwall_variants_atlas.png?v=${GENERATED_ASSET_VERSION}`);
+    this.load.image('backwall-tiles', `/assets/tilesets/atlas/backwall_atlas.png?v=${GENERATED_ASSET_VERSION}`);
     this.load.image('bg-game', '/assets/tilesets/bg/bg_game.png');
     this.load.image('ship', `/assets/ships/drill_ship.png?v=${GENERATED_ASSET_VERSION}`);
     this.load.image('drill-tunnel-bg', `/assets/ships/drill_tunnel_bg.png?v=${GENERATED_ASSET_VERSION}`);
@@ -161,23 +149,15 @@ export class GameScene extends Phaser.Scene {
     for (const object of this.startDecor) object.destroy();
     this.startDecor = [];
     this.tileLayer?.destroy();
-    this.earthLayer?.destroy();
-    this.bedrockLayer?.destroy();
     this.backwallLayer?.destroy();
     this.tilemap?.destroy();
-    this.earthTilemap?.destroy();
-    this.bedrockTilemap?.destroy();
     this.backwallTilemap?.destroy();
     this.laser?.destroy();
     this.collisionDebug?.destroy();
     this.targetMarker?.destroy();
     this.tileLayer = undefined;
-    this.earthLayer = undefined;
-    this.bedrockLayer = undefined;
     this.backwallLayer = undefined;
     this.tilemap = undefined;
-    this.earthTilemap = undefined;
-    this.bedrockTilemap = undefined;
     this.backwallTilemap = undefined;
 
     const config = this.cache.json.get('dev-planet') as PlanetConfig;
@@ -212,8 +192,6 @@ export class GameScene extends Phaser.Scene {
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
     const data = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
-    const earthData = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
-    const bedrockData = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
     const backwallData = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
 
     this.mapOffsetX = minX;
@@ -225,39 +203,19 @@ export class GameScene extends Phaser.Scene {
       const localY = cell.y - minY;
 
       if (!this.isStartTunnelBackwallCoveredByImage(cell.x, cell.y) && !cell.boundary) {
-        backwallData[localY][localX] = backwallFrameForTile(cell.x, cell.y, this.variantState.backwall);
+        backwallData[localY][localX] = backwallFrameForTile(cell.x, cell.y);
       }
-      if (this.isStartTunnelForegroundCoveredByImage(cell.x, cell.y)) continue;
-
-      if (cell.type === 'bedrock') {
-        bedrockData[localY][localX] = this.variantState.bedrock;
-      } else if (EARTH_TILE_TYPES.has(cell.type)) {
-        earthData[localY][localX] = this.variantState.earth;
-      } else {
+      if (!this.isStartTunnelForegroundCoveredByImage(cell.x, cell.y)) {
         data[localY][localX] = atlasFrameForTile(cell.type, cell.x, cell.y);
       }
     }
 
     this.backwallTilemap = this.make.tilemap({ data: backwallData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-variants', 'backwall-variants', TILE_SIZE, TILE_SIZE, 0, 0);
+    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-tiles', 'backwall-tiles', TILE_SIZE, TILE_SIZE, 0, 0);
     if (!backwallTileset) throw new Error('Failed to create backwall tileset');
     const backwallLayer = this.backwallTilemap.createLayer(0, backwallTileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!backwallLayer || backwallLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
     this.backwallLayer = backwallLayer.setDepth(0.6).setAlpha(0.88);
-
-    this.bedrockTilemap = this.make.tilemap({ data: bedrockData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const bedrockTileset = this.bedrockTilemap.addTilesetImage('bedrock-variants', 'bedrock-variants', TILE_SIZE, TILE_SIZE, 0, 0);
-    if (!bedrockTileset) throw new Error('Failed to create bedrock tileset');
-    const bedrockLayer = this.bedrockTilemap.createLayer(0, bedrockTileset, minX * TILE_SIZE, minY * TILE_SIZE);
-    if (!bedrockLayer || bedrockLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create bedrock tile layer');
-    this.bedrockLayer = bedrockLayer.setDepth(2);
-
-    this.earthTilemap = this.make.tilemap({ data: earthData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const earthTileset = this.earthTilemap.addTilesetImage('earth-variants', 'earth-variants', TILE_SIZE, TILE_SIZE, 0, 0);
-    if (!earthTileset) throw new Error('Failed to create earth tileset');
-    const earthLayer = this.earthTilemap.createLayer(0, earthTileset, minX * TILE_SIZE, minY * TILE_SIZE);
-    if (!earthLayer || earthLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create earth tile layer');
-    this.earthLayer = earthLayer.setDepth(2);
 
     this.tilemap = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
     const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
@@ -340,33 +298,12 @@ export class GameScene extends Phaser.Scene {
   private createControls(): void {
     if (!this.input.keyboard) throw new Error('Keyboard input unavailable');
     this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,ONE,TWO,THREE') as Record<string, Phaser.Input.Keyboard.Key>;
-  }
-
-  private cycleVariant(kind: VariantKind): void {
-    this.variantState[kind] = (this.variantState[kind] + 1) % VARIANT_COUNT;
-    this.applyVariantToLayer(kind);
-  }
-
-  private applyVariantToLayer(kind: VariantKind): void {
-    const layer = kind === 'bedrock' ? this.bedrockLayer : kind === 'earth' ? this.earthLayer : this.backwallLayer;
-    const tilemap = kind === 'bedrock' ? this.bedrockTilemap : kind === 'earth' ? this.earthTilemap : this.backwallTilemap;
-    if (!layer || !tilemap) return;
-
-    layer.forEachTile((tile) => {
-      if (tile.index >= 0) tile.index = this.variantState[kind];
-    });
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G') as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
   private updateCameraZoom(): void {
     if (!this.cameras?.main) return;
-    const viewportWidth = Math.max(1, this.scale.width);
-    const viewportHeight = Math.max(1, this.scale.height);
-    const targetTilesHigh = viewportHeight <= 430 ? 7 : 10;
-    const targetTilesWide = viewportWidth <= 900 ? 15 : 20;
-    const zoomByHeight = viewportHeight / (targetTilesHigh * TILE_SIZE);
-    const zoomByWidth = viewportWidth / (targetTilesWide * TILE_SIZE);
-    const baseZoom = Phaser.Math.Clamp(Math.min(zoomByHeight, zoomByWidth), 1.45, 3);
+    const baseZoom = 1;
     this.cameras.main.setZoom(Phaser.Math.Clamp(baseZoom + this.debugZoomOffset, 0.65, 5));
   }
 
@@ -407,10 +344,6 @@ export class GameScene extends Phaser.Scene {
       this.createLevel(`gravity-dig-phaser-${Date.now()}`);
       return;
     }
-
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.ONE)) this.cycleVariant('bedrock');
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.TWO)) this.cycleVariant('earth');
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.THREE)) this.cycleVariant('backwall');
 
     if (up && !this.gravityEnabled) this.velocity.y = -PLAYER_SPEED;
     if (down && !this.gravityEnabled) this.velocity.y = PLAYER_SPEED;
@@ -679,8 +612,6 @@ export class GameScene extends Phaser.Scene {
     const localX = cell.x - this.mapOffsetX;
     const localY = cell.y - this.mapOffsetY;
     this.tilemap?.putTileAt(-1, localX, localY, false, this.tileLayer);
-    this.earthTilemap?.putTileAt(-1, localX, localY, false, this.earthLayer);
-    this.bedrockTilemap?.putTileAt(-1, localX, localY, false, this.bedrockLayer);
     this.crackOverlays.get(key)?.destroy();
     this.crackOverlays.delete(key);
 
@@ -767,13 +698,12 @@ export class GameScene extends Phaser.Scene {
       ? 'Touch: linker Stick laufen/springen · rechter Stick zielen & minen'
       : inputMode === 'gamepad'
         ? 'Gamepad: Left Stick laufen · A springen · Right Stick zielen · RT/RB minen'
-        : 'Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed · 1/2/3 Varianten';
+        : 'Desktop: A/D laufen · W/Space springen · Maus Laser · G Gravity · R Seed';
     const hudState: HudState = {
       title: 'GRAVITY DIG — Mobile Phaser-Port',
       planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
       stats: `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
       inventory: `Inventar: ${inv}`,
-      variants: `Varianten: Bedrock ${this.variantState.bedrock + 1}/10 · Erde ${this.variantState.earth + 1}/10 · Background ${this.variantState.backwall + 1}/10`,
       debug: controls,
       zoom: `Zoom: ${this.cameras.main.zoom.toFixed(2)} (Offset: ${this.debugZoomOffset >= 0 ? '+' : ''}${this.debugZoomOffset.toFixed(2)})`,
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',

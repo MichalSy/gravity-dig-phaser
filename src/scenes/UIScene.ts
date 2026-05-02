@@ -10,7 +10,6 @@ export interface HudState {
   inventory: string;
   debug: string;
   target: string;
-  variants: string;
   zoom: string;
   inputMode: InputMode;
 }
@@ -179,7 +178,6 @@ export class UIScene extends Phaser.Scene {
       state.planet,
       state.stats,
       state.inventory,
-      state.variants,
       `Input: ${state.inputMode}`,
     ]);
     this.debugText.setText([
