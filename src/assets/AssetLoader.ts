@@ -12,6 +12,10 @@ function frameName(index: number): string {
   return String(index).padStart(3, '0');
 }
 
+export function loadMenuAssets(scene: Phaser.Scene): void {
+  scene.load.image('title-screen', versioned('/assets/ui/menu/title_screen.png'));
+}
+
 export function loadGameAssets(scene: Phaser.Scene): void {
   const { load } = scene;
 
