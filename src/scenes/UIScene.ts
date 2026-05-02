@@ -119,7 +119,7 @@ export class UIScene extends Phaser.Scene {
     this.energyLabel = this.add.text(0, 0, 'SUIT ENERGY', { ...TEXT.label, color: '#67e8f9' }).setScrollFactor(0).setDepth(11).setResolution(resolution);
     this.energyValue = this.add.text(0, 0, '', TEXT.value).setScrollFactor(0).setDepth(11).setResolution(resolution);
     this.cargoLabel = this.add.text(0, 0, 'CARGO', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.brandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setScrollFactor(0).setDepth(11).setResolution(resolution);
+    this.brandLabel = this.add.text(0, 0, '', TEXT.small).setScrollFactor(0).setDepth(11).setResolution(resolution);
 
     for (let i = 0; i < 4; i += 1) {
       this.slotLabels.push(this.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
@@ -223,7 +223,7 @@ export class UIScene extends Phaser.Scene {
     const height = this.scale.height;
     const scale = Phaser.Math.Clamp(width / 1280, 0.72, 1) * 0.68;
     this.drawStatusPanel(12, 12, scale, state);
-    this.drawActionPanel(width / 2, height - 110 * scale, scale, state);
+    this.drawActionPanel(width / 2, height - 154 * scale, scale, state);
   }
 
   private drawStatusPanel(x: number, y: number, scale: number, state: HudState): void {
@@ -270,7 +270,7 @@ export class UIScene extends Phaser.Scene {
 
     this.energyLabel.setPosition(x + 132 * scale, y + 16 * scale).setScale(scale);
     this.cargoLabel.setPosition(cargoX + 130 * scale, y + 16 * scale).setScale(scale);
-    this.brandLabel.setPosition(centerX - 34 * scale, y + h - 22 * scale).setScale(scale * 0.78);
+    this.brandLabel.setVisible(false);
 
     this.energyValue.setText(`${Math.round(state.energy.current)} / ${state.energy.max}`)
       .setPosition(energyX + 78 * scale, y + 88 * scale)
@@ -341,7 +341,8 @@ export class UIScene extends Phaser.Scene {
     }
 
     if (!slot?.itemId || slot.quantity <= 0) {
-      g.fillStyle(0x64748b, 0.18).fillCircle(x + size / 2, y + size / 2, size * 0.22);
+      g.fillStyle(0x020617, 0.45).fillRoundedRect(x + size * 0.22, y + size * 0.22, size * 0.56, size * 0.56, 5 * scale);
+      g.lineStyle(1 * scale, 0x334155, 0.38).strokeRoundedRect(x + size * 0.22, y + size * 0.22, size * 0.56, size * 0.56, 5 * scale);
       return;
     }
 
