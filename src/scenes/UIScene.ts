@@ -52,6 +52,7 @@ export class UIScene extends Phaser.Scene {
   private energyLabel!: Phaser.GameObjects.Text;
   private energyValue!: Phaser.GameObjects.Text;
   private cargoLabel!: Phaser.GameObjects.Text;
+  private statusBrandLabel!: Phaser.GameObjects.Text;
   private brandLabel!: Phaser.GameObjects.Text;
   private slotLabels: Phaser.GameObjects.Text[] = [];
   private debugText!: Phaser.GameObjects.Text;
@@ -119,7 +120,8 @@ export class UIScene extends Phaser.Scene {
     this.energyLabel = this.add.text(0, 0, 'SUIT ENERGY', { ...TEXT.label, color: '#67e8f9' }).setScrollFactor(0).setDepth(11).setResolution(resolution);
     this.energyValue = this.add.text(0, 0, '', TEXT.value).setScrollFactor(0).setDepth(11).setResolution(resolution);
     this.cargoLabel = this.add.text(0, 0, 'CARGO', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.brandLabel = this.add.text(0, 0, '', TEXT.small).setScrollFactor(0).setDepth(11).setResolution(resolution);
+    this.statusBrandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11).setResolution(resolution);
+    this.brandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11).setResolution(resolution);
 
     for (let i = 0; i < 4; i += 1) {
       this.slotLabels.push(this.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
@@ -248,6 +250,11 @@ export class UIScene extends Phaser.Scene {
     this.fuelValue.setText(`${Math.round(state.fuel.current)}/${state.fuel.max}`)
       .setPosition(x + 270 * scale, y + 90 * scale)
       .setScale(scale);
+    this.statusBrandLabel
+      .setText('GRAVITY DIG')
+      .setPosition(x + w / 2, y + h - 24 * scale)
+      .setScale(scale * 0.72)
+      .setVisible(true);
   }
 
   private drawActionPanel(centerX: number, y: number, scale: number, state: HudState): void {
@@ -270,7 +277,11 @@ export class UIScene extends Phaser.Scene {
 
     this.energyLabel.setPosition(x + 132 * scale, y + 16 * scale).setScale(scale);
     this.cargoLabel.setPosition(cargoX + 130 * scale, y + 16 * scale).setScale(scale);
-    this.brandLabel.setVisible(false);
+    this.brandLabel
+      .setText('GRAVITY DIG')
+      .setPosition(centerX, y + h - 24 * scale)
+      .setScale(scale * 0.72)
+      .setVisible(true);
 
     this.energyValue.setText(`${Math.round(state.energy.current)} / ${state.energy.max}`)
       .setPosition(energyX + 78 * scale, y + 88 * scale)
