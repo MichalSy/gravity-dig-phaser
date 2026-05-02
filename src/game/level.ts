@@ -166,10 +166,10 @@ interface ResourceProfile {
 }
 
 const RESOURCE_PROFILES: ResourceProfile[] = [
-  { type: 'copper', minCoreRatio: 0.52, maxCoreRatio: Infinity, minAbsY: 0, baseChance: 0.018, veinMin: 2, veinMax: 5 },
-  { type: 'iron', minCoreRatio: 0.38, maxCoreRatio: Infinity, minAbsY: 8, baseChance: 0.016, veinMin: 2, veinMax: 5 },
-  { type: 'gold', minCoreRatio: 0.18, maxCoreRatio: 0.65, minAbsY: 16, baseChance: 0.011, veinMin: 1, veinMax: 4 },
-  { type: 'diamond', minCoreRatio: 0.05, maxCoreRatio: 0.38, minAbsY: 26, baseChance: 0.006, veinMin: 1, veinMax: 3 },
+  { type: 'copper', minCoreRatio: 0.48, maxCoreRatio: Infinity, minAbsY: 0, baseChance: 0.032, veinMin: 3, veinMax: 7 },
+  { type: 'iron', minCoreRatio: 0.34, maxCoreRatio: Infinity, minAbsY: 6, baseChance: 0.027, veinMin: 3, veinMax: 7 },
+  { type: 'gold', minCoreRatio: 0.16, maxCoreRatio: 0.72, minAbsY: 12, baseChance: 0.019, veinMin: 2, veinMax: 6 },
+  { type: 'diamond', minCoreRatio: 0.05, maxCoreRatio: 0.45, minAbsY: 22, baseChance: 0.01, veinMin: 2, veinMax: 4 },
 ];
 
 type LevelReplacer = (context: WorldContext, tiles: Map<string, TileCell>) => void;
@@ -185,6 +185,7 @@ export class GravityDigLevelGenerator {
     this.spawnResources(context, tiles);
     this.applyReplacers(context, tiles, [
       this.applyStartAndShipChamber,
+      this.applyStarterResourceDeposits,
       this.applyCore,
       this.applyWorldBoundaries,
     ]);
@@ -317,7 +318,7 @@ export class GravityDigLevelGenerator {
 
     for (const cell of tiles.values()) {
       if (!this.canReplaceWithResource(cell)) continue;
-      if (this.distanceToStart(context, cell.x, cell.y) < 16) continue;
+      if (this.distanceToStart(context, cell.x, cell.y) < 10) continue;
 
       const profile = this.pickResourceForCell(context, cell, richness);
       if (!profile) continue;
@@ -365,7 +366,7 @@ export class GravityDigLevelGenerator {
 
     for (let i = 0; i < size; i += 1) {
       const cell = tiles.get(tileKey(x, y));
-      if (cell && this.canReplaceWithResource(cell) && this.distanceToStart(context, x, y) >= 16) {
+      if (cell && this.canReplaceWithResource(cell) && this.distanceToStart(context, x, y) >= 10) {
         this.setTile(tiles, x, y, type, false);
       }
 
@@ -391,6 +392,26 @@ export class GravityDigLevelGenerator {
 
       for (let y = SHIP_TUNNEL_TOP_Y; y <= SHIP_TUNNEL_BOTTOM_Y; y += 1) {
         this.setTile(tiles, x, y, 'air', false);
+      }
+    }
+  }
+
+  private applyStarterResourceDeposits(context: WorldContext, tiles: Map<string, TileCell>): void {
+    // Keep the landing tunnel clean, but make the new resource tiles visible early.
+    if (context.config.planet.id !== 'dev_planet') return;
+
+    const deposits: Array<{ type: ResourceProfile['type']; cells: Array<[number, number]> }> = [
+      { type: 'copper', cells: [[4, 1], [5, 1], [5, 2], [6, 1], [6, 2]] },
+      { type: 'iron', cells: [[8, -4], [9, -4], [9, -3], [10, -4], [10, -3]] },
+      { type: 'gold', cells: [[10, 5], [11, 5], [11, 6], [12, 5]] },
+      { type: 'diamond', cells: [[16, -8], [17, -8], [17, -7]] },
+    ];
+
+    for (const deposit of deposits) {
+      for (const [x, y] of deposit.cells) {
+        const cell = tiles.get(tileKey(x, y));
+        if (!cell || cell.type === 'air' || cell.type === 'bedrock' || cell.boundary) continue;
+        this.setTile(tiles, x, y, deposit.type, false);
       }
     }
   }
