@@ -276,30 +276,31 @@ export class UIScene extends Phaser.Scene {
 
   private drawActionPanel(centerX: number, _y: number, scale: number, state: HudState): void {
     this.actionGraphics.clear();
-    const frameScale = scale * 0.5;
-    const frameW = 820 * scale;
+    const frameScale = scale * 0.65;
+    const frameW = 820 * frameScale;
     const frameH = 143 * frameScale;
     const x = centerX - frameW / 2;
     const dockY = this.scale.height - frameH + 13 * frameScale;
-    const contentY = this.scale.height - 143 * scale + 26 * scale;
+    const contentScale = frameScale;
+    const contentY = dockY;
     const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
 
     this.actionFrame.setPosition(x, dockY).setDisplaySize(frameW, frameH).setVisible(true);
-    this.placeCroppedBar(this.energyFill, x + 112 * scale, contentY + 71 * scale, 240 * scale, 22 * scale, pctEnergy);
+    this.placeCroppedBar(this.energyFill, x + 112 * contentScale, contentY + 71 * contentScale, 240 * contentScale, 22 * contentScale, pctEnergy);
 
     this.energyLabel.setVisible(false);
     this.cargoLabel.setVisible(false);
     this.brandLabel.setVisible(false);
 
     this.energyValue.setText(`${Math.round(state.energy.current)} / ${state.energy.max}`)
-      .setPosition(x + 176 * scale, contentY + 101 * scale)
-      .setScale(scale * 0.9)
+      .setPosition(x + 176 * contentScale, contentY + 101 * contentScale)
+      .setScale(contentScale * 0.9)
       .setVisible(true);
 
-    const slotSize = 66 * scale;
-    const slotGap = 86 * scale;
-    const firstSlotX = x + 507 * scale;
-    const slotY = contentY + 48 * scale;
+    const slotSize = 66 * contentScale;
+    const slotGap = 86 * contentScale;
+    const firstSlotX = x + 507 * contentScale;
+    const slotY = contentY + 48 * contentScale;
 
     for (let i = 0; i < this.slotLabels.length; i += 1) {
       const label = this.slotLabels[i];
@@ -324,12 +325,12 @@ export class UIScene extends Phaser.Scene {
       const hasItem = Boolean(active && slot?.itemId && slot.quantity > 0);
       item
         .setPosition(cx, cy)
-        .setDisplaySize(38 * scale, 38 * scale)
+        .setDisplaySize(38 * contentScale, 38 * contentScale)
         .setVisible(hasItem && i < 3);
 
       label.setVisible(hasItem && i < 3);
       if (hasItem) {
-        label.setText(`x${slot?.quantity ?? 0}`).setPosition(sx + slotSize - 6 * scale, sy + slotSize - 5 * scale).setScale(scale * 0.78);
+        label.setText(`x${slot?.quantity ?? 0}`).setPosition(sx + slotSize - 6 * contentScale, sy + slotSize - 5 * contentScale).setScale(contentScale * 0.78);
       }
     }
   }
