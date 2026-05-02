@@ -2,7 +2,7 @@
 
 > Grafiken für das User Interface (HUD, Menüs, Buttons)
 
-**Implementierungsstand Phaser:** Das HUD liest Health/Energy/Cargo aus `RunState` und zeigt aktuell Cargo statt einer lokalen Scene-Inventar-Map. Künftige Menüs sollen `PlayerProfile`, `RunState` und `EffectivePlayerStats` aus [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md) verwenden.
+**Implementierungsstand Phaser:** Das HUD ist als robustes Mining-Console-Overlay umgesetzt: HP + Ship Fuel kompakt oben links, Suit Energy unten zentral, Cargo-Slot-Rail direkt rechts daneben. Cargo ist slot-basiert: Start mit 1 aktivem Slot, 3 sichtbaren Locked Slots und Stacklimit 3. Künftige Menüs sollen `PlayerProfile`, `RunState` und `EffectivePlayerStats` aus [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md) verwenden.
 
 ---
 
@@ -50,17 +50,19 @@ generated_assets/ui/
 
 ---
 
-## 📐 HUD-Layout-Vorschlag
+## 📐 HUD-Layout
 
 ```
-┌────────────────────────────────────────┐
-│  ❤️ [Health]   ⚡ [Energy]  ⛽ [Fuel]   │  ← Top-Left
-│                                        │
-│         [    SPIELWELT    ]           │
-│                                        │
-│  💰 1234 Cr              [Inv][Map]   │  ← Bottom
-└────────────────────────────────────────┘
+┌ HP ♥ ███ 100/100 ┐
+│ FUEL ⛽ ███ 100/100 │   ← oben links, kompakt
+
+
+        ┌──── SUIT ENERGY ────┬──── CARGO ─────────────┐
+        │ ███████████ 100/100 │ [Item x3] [🔒] [🔒] [🔒] │ ← unten zentral
+        └─────────────────────┴────────────────────────┘
 ```
+
+Start-Cargo: 1 aktiver Slot, Stacklimit 3. Weitere Slots werden über Cargo-Upgrades freigeschaltet.
 
 ---
 

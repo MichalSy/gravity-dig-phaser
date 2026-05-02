@@ -103,6 +103,7 @@ Du bist **"Rusty"**, ein Weltraum-Prospector mit einem rostigen Schiff **"The Bu
 - Dauerhafter Fortschritt: `PlayerProfile`
 - Aktueller Run: `RunState`
 - Cargo getrennt vom permanenten Lager
+- Start-Cargo bewusst eng: 1 Slot, Stacklimit 3
 - Upgrades/Perks berechnen `EffectivePlayerStats`
 - Savegame: `localStorage['gravity-dig-save-v1']`
 

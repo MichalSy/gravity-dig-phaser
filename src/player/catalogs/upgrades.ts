@@ -174,7 +174,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     label: 'Erweiterter Laderaum I',
     category: 'cargo',
     cost: { credits: 300 },
-    effects: [{ stat: 'cargoCapacity', op: 'set', value: 150 }],
+    effects: [{ stat: 'cargoSlots', op: 'set', value: 2 }],
   },
   cargo_mk2: {
     id: 'cargo_mk2',
@@ -182,7 +182,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     category: 'cargo',
     cost: { credits: 800 },
     prerequisites: ['cargo_mk1'],
-    effects: [{ stat: 'cargoCapacity', op: 'set', value: 200 }],
+    effects: [{ stat: 'cargoSlots', op: 'set', value: 3 }],
   },
   cargo_mk3: {
     id: 'cargo_mk3',
@@ -190,7 +190,22 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     category: 'cargo',
     cost: { credits: 2000 },
     prerequisites: ['cargo_mk2'],
-    effects: [{ stat: 'cargoCapacity', op: 'set', value: 300 }],
+    effects: [{ stat: 'cargoSlots', op: 'set', value: 4 }],
+  },
+  cargo_stack_mk1: {
+    id: 'cargo_stack_mk1',
+    label: 'Stack-Kompression I',
+    category: 'cargo',
+    cost: { credits: 600 },
+    effects: [{ stat: 'cargoStackLimit', op: 'set', value: 5 }],
+  },
+  cargo_stack_mk2: {
+    id: 'cargo_stack_mk2',
+    label: 'Stack-Kompression II',
+    category: 'cargo',
+    cost: { credits: 1500 },
+    prerequisites: ['cargo_stack_mk1'],
+    effects: [{ stat: 'cargoStackLimit', op: 'set', value: 10 }],
   },
   engine_mk1: {
     id: 'engine_mk1',

@@ -21,9 +21,11 @@
 
 | Upgrade | Effekt | Visuell | Kosten | Grafik |
 |---------|--------|---------|--------|--------|
-| Erweiterter Laderaum I | +50% Inventar | 1 Container | 300 Cr | ⏳ |
-| Erweiterter Laderaum II | +100% Inventar | 2 Container | 800 Cr | ⏳ |
-| Erweiterter Laderaum III | +200% Inventar | 4 Container | 2000 Cr | ⏳ |
+| Erweiterter Laderaum I | 2 aktive Cargo-Slots | 1 Container | 300 Cr | ⏳ |
+| Erweiterter Laderaum II | 3 aktive Cargo-Slots | 2 Container | 800 Cr | ⏳ |
+| Erweiterter Laderaum III | 4 aktive Cargo-Slots | 4 Container | 2000 Cr | ⏳ |
+| Stack-Kompression I | Stacklimit 3 → 5 | Kompressor | 600 Cr | ⏳ |
+| Stack-Kompression II | Stacklimit 5 → 10 | High-Tech Kompressor | 1500 Cr | ⏳ |
 
 ### Navigation
 

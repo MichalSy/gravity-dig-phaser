@@ -1,4 +1,5 @@
 import { createDefaultPlayerProfile } from './PlayerProfile';
+import { normalizeInventory } from './inventory';
 import type { SaveGame } from './types';
 
 const SAVE_KEY = 'gravity-dig-save-v1';
@@ -19,16 +20,17 @@ export function loadSaveGame(): SaveGame {
   try {
     const parsed = JSON.parse(raw) as Partial<SaveGame>;
     if (parsed.version !== 1 || !parsed.profile) return createDefaultSaveGame();
+    const defaults = createDefaultPlayerProfile();
     return {
       version: 1,
       profile: {
-        ...createDefaultPlayerProfile(),
+        ...defaults,
         ...parsed.profile,
-        inventory: parsed.profile.inventory ?? createDefaultPlayerProfile().inventory,
-        equipment: parsed.profile.equipment ?? createDefaultPlayerProfile().equipment,
-        upgrades: parsed.profile.upgrades ?? createDefaultPlayerProfile().upgrades,
-        perks: parsed.profile.perks ?? createDefaultPlayerProfile().perks,
-        stats: parsed.profile.stats ?? createDefaultPlayerProfile().stats,
+        inventory: normalizeInventory(parsed.profile.inventory, defaults.inventory.slots.length, defaults.inventory.stackLimit),
+        equipment: parsed.profile.equipment ?? defaults.equipment,
+        upgrades: parsed.profile.upgrades ?? defaults.upgrades,
+        perks: parsed.profile.perks ?? defaults.perks,
+        stats: parsed.profile.stats ?? defaults.stats,
       },
       activeRun: parsed.activeRun,
     };

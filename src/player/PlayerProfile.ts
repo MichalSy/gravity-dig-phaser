@@ -5,7 +5,7 @@ export function createDefaultPlayerProfile(): PlayerProfile {
   return {
     version: 1,
     credits: 0,
-    inventory: createInventory(500),
+    inventory: createInventory(8, 99),
     equipment: {
       laser: 'laser_mk1',
       visor: 'standard_visor',

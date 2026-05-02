@@ -102,9 +102,14 @@ type RunState = {
 Inventare sind generisch und werden für Lager, Cargo, Consumables und spätere Storage-Systeme genutzt.
 
 ```ts
+type InventorySlot = {
+  itemId?: ItemId;
+  quantity: number;
+};
+
 type InventoryState = {
-  capacity: number;
-  items: Partial<Record<ItemId, number>>;
+  slots: InventorySlot[];
+  stackLimit: number;
 };
 ```
 
@@ -161,6 +166,7 @@ Diese Werte ersetzen schrittweise direkte Konstanten im Gameplay.
 
 Aktuell angeschlossen:
 
+- Slot-basiertes Cargo: Start mit 1 aktivem Slot und Stacklimit 3
 - Mining-Reichweite
 - Mining-Schaden
 - Energieverbrauch
@@ -169,6 +175,7 @@ Aktuell angeschlossen:
 - Sprungstärke
 - Health/Energy-HUD
 - Run-Cargo statt lokaler Scene-Map
+- Mining-Console-HUD: HP/Fuel oben links, Suit Energy + Cargo-Rail unten zentral
 
 ---
 
@@ -196,7 +203,7 @@ Aktueller Stand:
 
 - Profil wird geladen/erstellt.
 - Aktiver Run wird gespeichert.
-- Cargo, Energy, Health und Lifetime-Mining-Stats werden persistent gehalten.
+- Cargo-Slots, Energy, Health, Fuel und Lifetime-Mining-Stats werden persistent gehalten.
 - Vollständige Weltmutation-Persistenz ist noch offen; aktuell kann ein geladener Run State-Werte behalten, aber Tile-Zerstörung wird aus dem Seed neu generiert.
 
 ---

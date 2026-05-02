@@ -1,4 +1,4 @@
-import { createInventory } from './inventory';
+import { createInventory, normalizeInventory } from './inventory';
 import type { EffectivePlayerStats, RunState } from './types';
 
 export function createRunState(planetId: string, seed: string, stats: EffectivePlayerStats): RunState {
@@ -8,7 +8,7 @@ export function createRunState(planetId: string, seed: string, stats: EffectiveP
     health: stats.maxHealth,
     energy: stats.maxEnergy,
     fuel: 100,
-    cargo: createInventory(stats.cargoCapacity),
+    cargo: createInventory(stats.cargoSlots, stats.cargoStackLimit),
     temporaryEffects: [],
     discoveredTiles: [],
   };
@@ -19,10 +19,7 @@ export function normalizeRunState(run: RunState, stats: EffectivePlayerStats): R
     ...run,
     health: Math.min(run.health, stats.maxHealth),
     energy: Math.min(run.energy, stats.maxEnergy),
-    cargo: {
-      capacity: stats.cargoCapacity,
-      items: run.cargo.items ?? {},
-    },
+    cargo: normalizeInventory(run.cargo, stats.cargoSlots, stats.cargoStackLimit),
     temporaryEffects: run.temporaryEffects ?? [],
     discoveredTiles: run.discoveredTiles ?? [],
   };

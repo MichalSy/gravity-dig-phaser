@@ -15,7 +15,7 @@ import {
 } from '../game/level';
 import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
 import { loadGameAssets } from '../assets/AssetLoader';
-import { addItem, inventorySummary } from '../player/inventory';
+import { addItem } from '../player/inventory';
 import { createRunState, normalizeRunState } from '../player/RunState';
 import { loadSaveGame, saveGame } from '../player/saveGame';
 import { computeEffectiveStats } from '../player/stats';
@@ -652,7 +652,6 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(): void {
     const tile = this.miningTarget;
-    const inv = inventorySummary(this.runState.cargo);
     const inputMode = this.uiScene.getInputMode();
     const controls = inputMode === 'touch'
       ? 'Touch: linker Stick laufen/springen · rechter Stick zielen & minen'
@@ -662,8 +661,10 @@ export class GameScene extends Phaser.Scene {
     const hudState: HudState = {
       title: 'GRAVITY DIG — Mobile Phaser-Port',
       planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
-      stats: `Health: ${Math.round(this.runState.health)}/${this.effectiveStats.maxHealth}  Energy: ${Math.round(this.runState.energy)}/${this.effectiveStats.maxEnergy}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
-      inventory: `Cargo: ${inv}`,
+      health: { current: this.runState.health, max: this.effectiveStats.maxHealth },
+      energy: { current: this.runState.energy, max: this.effectiveStats.maxEnergy },
+      fuel: { current: this.runState.fuel, max: 100 },
+      cargo: { slots: this.runState.cargo.slots, visibleSlots: 4, stackLimit: this.runState.cargo.stackLimit },
       debug: controls,
       zoom: `Zoom: ${this.cameras.main.zoom.toFixed(2)} (Offset: ${this.debugZoomOffset >= 0 ? '+' : ''}${this.debugZoomOffset.toFixed(2)})`,
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',

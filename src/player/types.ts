@@ -23,9 +23,14 @@ export interface ItemDefinition {
   stackSize: number;
 }
 
+export interface InventorySlot {
+  itemId?: ItemId;
+  quantity: number;
+}
+
 export interface InventoryState {
-  capacity: number;
-  items: Partial<Record<ItemId, number>>;
+  slots: InventorySlot[];
+  stackLimit: number;
 }
 
 export type EquipmentSlot = 'laser' | 'visor' | 'battery' | 'boots' | 'coreDetector';
@@ -54,7 +59,8 @@ export type PlayerStatKey =
   | 'miningRange'
   | 'moveSpeed'
   | 'jumpVelocity'
-  | 'cargoCapacity'
+  | 'cargoSlots'
+  | 'cargoStackLimit'
   | 'sightRadius'
   | 'fuelEfficiency';
 
@@ -90,6 +96,8 @@ export type UpgradeId =
   | 'cargo_mk1'
   | 'cargo_mk2'
   | 'cargo_mk3'
+  | 'cargo_stack_mk1'
+  | 'cargo_stack_mk2'
   | 'engine_mk1'
   | 'engine_mk2'
   | 'engine_mk3';
@@ -179,7 +187,8 @@ export interface EffectivePlayerStats {
   miningRange: number;
   moveSpeed: number;
   jumpVelocity: number;
-  cargoCapacity: number;
+  cargoSlots: number;
+  cargoStackLimit: number;
   sightRadius: number;
   fuelEfficiency: number;
 }
