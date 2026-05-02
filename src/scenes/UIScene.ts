@@ -337,12 +337,16 @@ export class UIScene extends Phaser.Scene {
 
   private placeCroppedBar(bar: Phaser.GameObjects.Image, x: number, y: number, width: number, height: number, pct: number): void {
     const source = bar.texture.getSourceImage() as HTMLImageElement;
-    const cropWidth = Math.max(1, Math.round(source.width * pct));
+    const safePct = Phaser.Math.Clamp(pct, 0, 1);
+    const cropWidth = Math.max(1, Math.round(source.width * safePct));
+    const scaleX = width / source.width;
+    const scaleY = height / source.height;
+
     bar
       .setPosition(x, y)
       .setCrop(0, 0, cropWidth, source.height)
-      .setDisplaySize(width * pct, height)
-      .setVisible(pct > 0);
+      .setScale(scaleX, scaleY)
+      .setVisible(safePct > 0);
   }
 
   private toggleCollisionDebug(): void {
