@@ -255,21 +255,21 @@ export class UIScene extends Phaser.Scene {
     const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
 
     this.statusFrame.setPosition(x, y).setDisplaySize(w, h).setVisible(true);
-    this.hpIcon.setPosition(x + 50 * scale, y + 52 * scale).setDisplaySize(32 * scale, 30 * scale).setVisible(true);
-    this.fuelIcon.setPosition(x + 50 * scale, y + 107 * scale).setDisplaySize(29 * scale, 36 * scale).setVisible(true);
+    this.hpIcon.setPosition(x + 61 * scale, y + 53 * scale).setDisplaySize(32 * scale, 30 * scale).setVisible(true);
+    this.fuelIcon.setPosition(x + 60 * scale, y + 107 * scale).setDisplaySize(26 * scale, 32 * scale).setVisible(true);
 
-    this.placeCroppedBar(this.hpFill, x + 102 * scale, y + 60 * scale, 212 * scale, 17 * scale, pctHp);
-    this.placeCroppedBar(this.fuelFill, x + 102 * scale, y + 115 * scale, 212 * scale, 17 * scale, pctFuel);
+    this.placeCroppedBar(this.hpFill, x + 98 * scale, y + 50 * scale, 228 * scale, 17 * scale, pctHp);
+    this.placeCroppedBar(this.fuelFill, x + 98 * scale, y + 103 * scale, 228 * scale, 17 * scale, pctFuel);
 
-    this.hpLabel.setPosition(x + 102 * scale, y + 32 * scale).setScale(scale * 1.05).setVisible(true);
+    this.hpLabel.setPosition(x + 102 * scale, y + 34 * scale).setScale(scale * 1.05).setVisible(true);
     this.hpValue.setText(`${Math.round(state.health.current)}/${state.health.max}`)
-      .setPosition(x + 274 * scale, y + 32 * scale)
-      .setScale(scale * 1.05)
+      .setPosition(x + 255 * scale, y + 33 * scale)
+      .setScale(scale * 1.0)
       .setVisible(true);
     this.fuelLabel.setPosition(x + 102 * scale, y + 87 * scale).setScale(scale * 1.05).setVisible(true);
     this.fuelValue.setText(`${Math.round(state.fuel.current)}/${state.fuel.max}`)
-      .setPosition(x + 274 * scale, y + 87 * scale)
-      .setScale(scale * 1.05)
+      .setPosition(x + 255 * scale, y + 87 * scale)
+      .setScale(scale * 1.0)
       .setVisible(true);
     this.statusBrandLabel.setVisible(false);
   }
@@ -280,20 +280,20 @@ export class UIScene extends Phaser.Scene {
     const h = 172 * scale;
     const x = centerX - w / 2;
     const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
-    const energyX = x + 62 * scale;
+    const energyX = x + 54 * scale;
     const cargoCenterX = x + 444 * scale;
     const slotSize = 64 * scale;
     const slotGap = 88 * scale;
 
     this.actionFrame.setPosition(x, y).setDisplaySize(w, h).setVisible(true);
-    this.placeCroppedBar(this.energyFill, energyX, y + 75 * scale, 270 * scale, 27 * scale, pctEnergy);
+    this.placeCroppedBar(this.energyFill, energyX, y + 59 * scale, 258 * scale, 50 * scale, pctEnergy);
 
-    this.energyLabel.setPosition(x + 154 * scale, y + 38 * scale).setScale(scale * 1.02).setVisible(true);
-    this.cargoLabel.setPosition(x + 572 * scale, y + 40 * scale).setScale(scale * 1.02).setVisible(true);
+    this.energyLabel.setPosition(x + 130 * scale, y + 38 * scale).setScale(scale * 1.02).setVisible(true);
+    this.cargoLabel.setPosition(x + 483 * scale, y + 12 * scale).setScale(scale * 1.02).setVisible(true);
     this.brandLabel.setVisible(false);
 
     this.energyValue.setText(`${Math.round(state.energy.current)} / ${state.energy.max}`)
-      .setPosition(x + 168 * scale, y + 116 * scale)
+      .setPosition(x + 140 * scale, y + 114 * scale)
       .setScale(scale * 1.18)
       .setVisible(true);
 
