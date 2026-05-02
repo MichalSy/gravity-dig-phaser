@@ -221,9 +221,9 @@ export class UIScene extends Phaser.Scene {
   private drawHud(state: HudState): void {
     const width = this.scale.width;
     const height = this.scale.height;
-    const scale = Phaser.Math.Clamp(width / 1280, 0.72, 1);
-    this.drawStatusPanel(14, 14, scale, state);
-    this.drawActionPanel(width / 2, height - 152 * scale, scale, state);
+    const scale = Phaser.Math.Clamp(width / 1280, 0.72, 1) * 0.68;
+    this.drawStatusPanel(12, 12, scale, state);
+    this.drawActionPanel(width / 2, height - 110 * scale, scale, state);
   }
 
   private drawStatusPanel(x: number, y: number, scale: number, state: HudState): void {
