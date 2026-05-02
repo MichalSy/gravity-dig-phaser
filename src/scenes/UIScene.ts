@@ -45,6 +45,15 @@ export class UIScene extends Phaser.Scene {
   private rightJoystick!: VirtualJoystick;
   private statusGraphics!: Phaser.GameObjects.Graphics;
   private actionGraphics!: Phaser.GameObjects.Graphics;
+  private statusFrame!: Phaser.GameObjects.Image;
+  private actionFrame!: Phaser.GameObjects.Image;
+  private hpFill!: Phaser.GameObjects.Image;
+  private fuelFill!: Phaser.GameObjects.Image;
+  private energyFill!: Phaser.GameObjects.Image;
+  private hpIcon!: Phaser.GameObjects.Image;
+  private fuelIcon!: Phaser.GameObjects.Image;
+  private slotFrames: Phaser.GameObjects.Image[] = [];
+  private slotItems: Phaser.GameObjects.Image[] = [];
   private hpLabel!: Phaser.GameObjects.Text;
   private hpValue!: Phaser.GameObjects.Text;
   private fuelLabel!: Phaser.GameObjects.Text;
@@ -113,6 +122,14 @@ export class UIScene extends Phaser.Scene {
     this.statusGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
     this.actionGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
 
+    this.statusFrame = this.add.image(0, 0, 'hud-status-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.actionFrame = this.add.image(0, 0, 'hud-action-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.hpFill = this.add.image(0, 0, 'hud-bar-red').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.fuelFill = this.add.image(0, 0, 'hud-bar-orange').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.energyFill = this.add.image(0, 0, 'hud-bar-cyan').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.hpIcon = this.add.image(0, 0, 'hud-icon-hp').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
+    this.fuelIcon = this.add.image(0, 0, 'hud-icon-fuel').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
+
     this.hpLabel = this.add.text(0, 0, 'HP', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
     this.hpValue = this.add.text(0, 0, '', TEXT.value).setScrollFactor(0).setDepth(11).setResolution(resolution);
     this.fuelLabel = this.add.text(0, 0, 'SHIP FUEL', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
@@ -124,6 +141,8 @@ export class UIScene extends Phaser.Scene {
     this.brandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11).setResolution(resolution);
 
     for (let i = 0; i < 4; i += 1) {
+      this.slotFrames.push(this.add.image(0, 0, 'hud-slot-locked').setOrigin(0, 0).setScrollFactor(0).setDepth(11));
+      this.slotItems.push(this.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
       this.slotLabels.push(this.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
     }
 
@@ -223,176 +242,97 @@ export class UIScene extends Phaser.Scene {
   private drawHud(state: HudState): void {
     const width = this.scale.width;
     const height = this.scale.height;
-    const scale = Phaser.Math.Clamp(width / 1280, 0.72, 1) * 0.68;
+    const scale = Phaser.Math.Clamp(width / 1280, 0.72, 1);
     this.drawStatusPanel(12, 12, scale, state);
-    this.drawActionPanel(width / 2, height - 154 * scale, scale, state);
+    this.drawActionPanel(width / 2, height - 192 * scale, scale, state);
   }
 
   private drawStatusPanel(x: number, y: number, scale: number, state: HudState): void {
-    const g = this.statusGraphics.clear();
-    const w = 350 * scale;
-    const h = 154 * scale;
-    const rowH = 56 * scale;
+    this.statusGraphics.clear();
+    const w = 360 * scale;
+    const h = 156 * scale;
+    const pctHp = Phaser.Math.Clamp(state.health.current / state.health.max, 0, 1);
+    const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
 
-    this.drawPanel(g, x, y, w, h, 0x0a0d10, 0.9, 0x5b6470);
-    this.drawCornerBolts(g, x, y, w, h, scale);
-    this.drawSmallMeter(g, x + 72 * scale, y + 30 * scale, 230 * scale, rowH, state.health, 0xef1f2d, 0x7f1119);
-    this.drawSmallMeter(g, x + 72 * scale, y + 88 * scale, 230 * scale, rowH, state.fuel, 0xf97316, 0x92400e);
+    this.statusFrame.setPosition(x, y).setDisplaySize(w, h).setVisible(true);
+    this.hpIcon.setPosition(x + 52 * scale, y + 54 * scale).setDisplaySize(38 * scale, 35 * scale).setVisible(true);
+    this.fuelIcon.setPosition(x + 52 * scale, y + 109 * scale).setDisplaySize(34 * scale, 42 * scale).setVisible(true);
 
-    this.drawIconBox(g, x + 22 * scale, y + 30 * scale, 44 * scale, 0xef1f2d, 'hp');
-    this.drawIconBox(g, x + 22 * scale, y + 88 * scale, 44 * scale, 0xf97316, 'fuel');
+    this.placeCroppedBar(this.hpFill, x + 102 * scale, y + 58 * scale, 218 * scale, 22 * scale, pctHp);
+    this.placeCroppedBar(this.fuelFill, x + 102 * scale, y + 113 * scale, 218 * scale, 22 * scale, pctFuel);
 
-    this.hpLabel.setPosition(x + 80 * scale, y + 36 * scale).setScale(scale);
+    this.hpLabel.setPosition(x + 102 * scale, y + 32 * scale).setScale(scale * 1.05).setVisible(true);
     this.hpValue.setText(`${Math.round(state.health.current)}/${state.health.max}`)
-      .setPosition(x + 270 * scale, y + 32 * scale)
-      .setScale(scale);
-    this.fuelLabel.setPosition(x + 80 * scale, y + 94 * scale).setScale(scale);
-    this.fuelValue.setText(`${Math.round(state.fuel.current)}/${state.fuel.max}`)
-      .setPosition(x + 270 * scale, y + 90 * scale)
-      .setScale(scale);
-    this.statusBrandLabel
-      .setText('GRAVITY DIG')
-      .setPosition(x + w / 2, y + h - 24 * scale)
-      .setScale(scale * 0.72)
+      .setPosition(x + 274 * scale, y + 32 * scale)
+      .setScale(scale * 1.05)
       .setVisible(true);
+    this.fuelLabel.setPosition(x + 102 * scale, y + 87 * scale).setScale(scale * 1.05).setVisible(true);
+    this.fuelValue.setText(`${Math.round(state.fuel.current)}/${state.fuel.max}`)
+      .setPosition(x + 274 * scale, y + 87 * scale)
+      .setScale(scale * 1.05)
+      .setVisible(true);
+    this.statusBrandLabel.setVisible(false);
   }
 
   private drawActionPanel(centerX: number, y: number, scale: number, state: HudState): void {
-    const g = this.actionGraphics.clear();
+    this.actionGraphics.clear();
     const w = 760 * scale;
-    const h = 128 * scale;
+    const h = 172 * scale;
     const x = centerX - w / 2;
-    const energyX = x + 58 * scale;
-    const energyY = y + 36 * scale;
-    const cargoX = x + 375 * scale;
-    const slotSize = 64 * scale;
-    const gap = 10 * scale;
+    const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
+    const energyX = x + 86 * scale;
+    const cargoX = x + 410 * scale;
+    const slotSize = 72 * scale;
+    const gap = 18 * scale;
 
-    this.drawPanel(g, x, y, w, h, 0x0a0d10, 0.92, 0x656b73);
-    this.drawCornerBolts(g, x, y, w, h, scale);
-    this.drawEnergyMeter(g, energyX, energyY, 260 * scale, 44 * scale, state.energy);
+    this.actionFrame.setPosition(x, y).setDisplaySize(w, h).setVisible(true);
+    this.placeCroppedBar(this.energyFill, energyX, y + 73 * scale, 270 * scale, 31 * scale, pctEnergy);
 
-    g.lineStyle(2 * scale, 0x606873, 0.8);
-    g.lineBetween(x + 345 * scale, y + 18 * scale, x + 345 * scale, y + h - 18 * scale);
-
-    this.energyLabel.setPosition(x + 132 * scale, y + 16 * scale).setScale(scale);
-    this.cargoLabel.setPosition(cargoX + 130 * scale, y + 16 * scale).setScale(scale);
-    this.brandLabel
-      .setText('GRAVITY DIG')
-      .setPosition(centerX, y + h - 24 * scale)
-      .setScale(scale * 0.72)
-      .setVisible(true);
+    this.energyLabel.setPosition(x + 154 * scale, y + 36 * scale).setScale(scale * 1.02).setVisible(true);
+    this.cargoLabel.setPosition(cargoX + 138 * scale, y + 30 * scale).setScale(scale * 1.02).setVisible(true);
+    this.brandLabel.setVisible(false);
 
     this.energyValue.setText(`${Math.round(state.energy.current)} / ${state.energy.max}`)
-      .setPosition(energyX + 78 * scale, y + 88 * scale)
-      .setScale(scale);
+      .setPosition(x + 168 * scale, y + 119 * scale)
+      .setScale(scale * 1.18)
+      .setVisible(true);
 
-    for (let i = 0; i < state.cargo.visibleSlots; i += 1) {
+    for (let i = 0; i < this.slotLabels.length; i += 1) {
+      const label = this.slotLabels[i];
+      const slotFrame = this.slotFrames[i];
+      const item = this.slotItems[i];
+      const active = i < state.cargo.visibleSlots;
       const slot = state.cargo.slots[i];
       const sx = cargoX + i * (slotSize + gap);
-      const sy = y + 44 * scale;
-      this.drawCargoSlot(g, sx, sy, slotSize, slot, Boolean(slot), state.cargo.stackLimit, scale);
-      const label = this.slotLabels[i];
-      label.setVisible(Boolean(slot?.itemId && slot.quantity > 0));
-      if (slot?.itemId && slot.quantity > 0) {
-        label.setText(`x${slot.quantity}`).setPosition(sx + slotSize - 6 * scale, sy + slotSize - 5 * scale).setScale(scale * 0.82);
+      const sy = y + 58 * scale;
+
+      slotFrame
+        .setTexture(active ? 'hud-slot-active-empty' : 'hud-slot-locked')
+        .setPosition(sx, sy)
+        .setDisplaySize(slotSize, slotSize)
+        .setVisible(true);
+
+      const hasItem = Boolean(active && slot?.itemId && slot.quantity > 0);
+      item
+        .setPosition(sx + slotSize / 2, sy + slotSize / 2)
+        .setDisplaySize(42 * scale, 42 * scale)
+        .setVisible(hasItem);
+
+      label.setVisible(hasItem);
+      if (hasItem) {
+        label.setText(`x${slot?.quantity ?? 0}`).setPosition(sx + slotSize - 6 * scale, sy + slotSize - 5 * scale).setScale(scale * 0.82);
       }
     }
   }
 
-  private drawPanel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, color: number, alpha: number, stroke: number): void {
-    g.fillStyle(0x020617, 0.35).fillRoundedRect(x + 6, y + 7, w, h, 8);
-    g.fillStyle(color, alpha).fillRoundedRect(x, y, w, h, 10);
-    g.lineStyle(3, stroke, 0.9).strokeRoundedRect(x, y, w, h, 10);
-    g.lineStyle(1, 0xd1d5db, 0.24).strokeRoundedRect(x + 7, y + 7, w - 14, h - 14, 6);
-  }
-
-  private drawCornerBolts(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, scale: number): void {
-    g.fillStyle(0x111827, 1);
-    for (const [bx, by] of [[x + 16 * scale, y + 16 * scale], [x + w - 16 * scale, y + 16 * scale], [x + 16 * scale, y + h - 16 * scale], [x + w - 16 * scale, y + h - 16 * scale]]) {
-      g.fillCircle(bx, by, 4 * scale);
-      g.lineStyle(1 * scale, 0x94a3b8, 0.75).strokeCircle(bx, by, 4 * scale);
-    }
-  }
-
-  private drawSmallMeter(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, meter: HudMeterState, fill: number, dark: number): void {
-    const pct = Phaser.Math.Clamp(meter.current / meter.max, 0, 1);
-    g.fillStyle(0x0f172a, 0.95).fillRoundedRect(x, y, w, h - 8, 5);
-    g.fillStyle(0x020617, 1).fillRoundedRect(x + 8, y + 28, w - 16, 16, 4);
-    this.drawSegments(g, x + 12, y + 31, w - 24, 10, 18, pct, fill, dark);
-  }
-
-  private drawEnergyMeter(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, meter: HudMeterState): void {
-    const pct = Phaser.Math.Clamp(meter.current / meter.max, 0, 1);
-    g.fillStyle(0x020617, 1).fillRoundedRect(x, y, w, h, 8);
-    g.lineStyle(3, 0x155e75, 0.9).strokeRoundedRect(x, y, w, h, 8);
-    g.fillStyle(0x22d3ee, 0.12).fillRoundedRect(x - 8, y - 4, w + 16, h + 8, 10);
-    this.drawSegments(g, x + 12, y + 10, w - 24, h - 20, 18, pct, 0x22d3ee, 0x164e63);
-    g.fillStyle(0x67e8f9, 0.7).fillCircle(x + w - 22, y + h / 2, 5);
-  }
-
-  private drawSegments(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, count: number, pct: number, fill: number, dark: number): void {
-    const gap = 2;
-    const segW = (w - gap * (count - 1)) / count;
-    const active = Math.round(count * pct);
-    for (let i = 0; i < count; i += 1) {
-      g.fillStyle(i < active ? fill : dark, i < active ? 0.95 : 0.5);
-      g.fillRoundedRect(x + i * (segW + gap), y, segW, h, 2);
-    }
-  }
-
-  private drawCargoSlot(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, slot: InventorySlot | undefined, active: boolean, _stackLimit: number, scale: number): void {
-    g.fillStyle(active ? 0x15120d : 0x05070a, 0.98).fillRoundedRect(x, y, size, size, 7 * scale);
-    g.lineStyle(3 * scale, active ? 0xc0843d : 0x334155, active ? 0.9 : 0.65).strokeRoundedRect(x, y, size, size, 7 * scale);
-    g.lineStyle(1 * scale, active ? 0xf8d08a : 0x64748b, active ? 0.4 : 0.2).strokeRoundedRect(x + 6 * scale, y + 6 * scale, size - 12 * scale, size - 12 * scale, 5 * scale);
-
-    if (!active) {
-      this.drawLock(g, x + size / 2, y + size / 2, scale);
-      return;
-    }
-
-    if (!slot?.itemId || slot.quantity <= 0) {
-      g.fillStyle(0x020617, 0.45).fillRoundedRect(x + size * 0.22, y + size * 0.22, size * 0.56, size * 0.56, 5 * scale);
-      g.lineStyle(1 * scale, 0x334155, 0.38).strokeRoundedRect(x + size * 0.22, y + size * 0.22, size * 0.56, size * 0.56, 5 * scale);
-      return;
-    }
-
-    const color = this.itemColor(slot.itemId);
-    g.fillStyle(color, 0.95).fillCircle(x + size / 2, y + size / 2, size * 0.25);
-    g.fillStyle(0xffffff, 0.22).fillCircle(x + size / 2 - size * 0.08, y + size / 2 - size * 0.08, size * 0.08);
-    g.fillStyle(0x020617, 0.82).fillRoundedRect(x + size - 26 * scale, y + size - 20 * scale, 24 * scale, 18 * scale, 5 * scale);
-  }
-
-  private drawIconBox(g: Phaser.GameObjects.Graphics, x: number, y: number, size: number, color: number, kind: 'hp' | 'fuel'): void {
-    g.fillStyle(0x111827, 0.95).fillRoundedRect(x, y, size, size, 7);
-    g.lineStyle(2, color, 0.8).strokeRoundedRect(x, y, size, size, 7);
-    if (kind === 'hp') {
-      g.fillStyle(color, 0.95).fillCircle(x + size * 0.38, y + size * 0.39, size * 0.13);
-      g.fillCircle(x + size * 0.62, y + size * 0.39, size * 0.13);
-      g.fillTriangle(x + size * 0.25, y + size * 0.47, x + size * 0.75, y + size * 0.47, x + size * 0.5, y + size * 0.76);
-      return;
-    }
-    g.lineStyle(4, color, 0.95).strokeRoundedRect(x + size * 0.32, y + size * 0.24, size * 0.32, size * 0.48, 3);
-    g.lineStyle(2, color, 0.95).lineBetween(x + size * 0.64, y + size * 0.34, x + size * 0.76, y + size * 0.46);
-  }
-
-  private drawLock(g: Phaser.GameObjects.Graphics, cx: number, cy: number, scale: number): void {
-    g.lineStyle(5 * scale, 0x64748b, 0.85).strokeRoundedRect(cx - 12 * scale, cy - 20 * scale, 24 * scale, 24 * scale, 10 * scale);
-    g.fillStyle(0x111827, 1).fillRoundedRect(cx - 17 * scale, cy - 2 * scale, 34 * scale, 28 * scale, 4 * scale);
-    g.lineStyle(2 * scale, 0x94a3b8, 0.7).strokeRoundedRect(cx - 17 * scale, cy - 2 * scale, 34 * scale, 28 * scale, 4 * scale);
-    g.fillStyle(0x94a3b8, 0.8).fillCircle(cx, cy + 10 * scale, 3 * scale);
-  }
-
-  private itemColor(itemId: string): number {
-    switch (itemId) {
-      case 'copper': return 0xb45309;
-      case 'iron': return 0x94a3b8;
-      case 'gold': return 0xfbbf24;
-      case 'diamond': return 0x67e8f9;
-      case 'basalt': return 0x475569;
-      case 'stone': return 0x78716c;
-      default: return 0x8b5e34;
-    }
+  private placeCroppedBar(bar: Phaser.GameObjects.Image, x: number, y: number, width: number, height: number, pct: number): void {
+    const source = bar.texture.getSourceImage() as HTMLImageElement;
+    const cropWidth = Math.max(1, Math.round(source.width * pct));
+    bar
+      .setPosition(x, y)
+      .setCrop(0, 0, cropWidth, source.height)
+      .setDisplaySize(width * pct, height)
+      .setVisible(pct > 0);
   }
 
   private toggleCollisionDebug(): void {

@@ -22,6 +22,16 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   load.image('drill-tunnel-bg', versioned('/assets/ships/drill_tunnel_bg.png'));
   load.image('laser-dot', versioned('/assets/effects/laser_beam.png'));
   load.image('title-logo', versioned('/assets/tilesets/ui/title_logo.png'));
+  load.image('hud-status-frame', versioned('/assets/ui/hud/hud_status_frame.png'));
+  load.image('hud-action-frame', versioned('/assets/ui/hud/hud_action_frame.png'));
+  load.image('hud-bar-red', versioned('/assets/ui/hud/hud_bar_red.png'));
+  load.image('hud-bar-orange', versioned('/assets/ui/hud/hud_bar_orange.png'));
+  load.image('hud-bar-cyan', versioned('/assets/ui/hud/hud_bar_cyan.png'));
+  load.image('hud-slot-active-empty', versioned('/assets/ui/hud/hud_slot_active_empty.png'));
+  load.image('hud-slot-locked', versioned('/assets/ui/hud/hud_slot_locked.png'));
+  load.image('hud-item-rock', versioned('/assets/ui/hud/hud_item_rock.png'));
+  load.image('hud-icon-hp', versioned('/assets/ui/hud/hud_icon_hp.png'));
+  load.image('hud-icon-fuel', versioned('/assets/ui/hud/hud_icon_fuel.png'));
 
   for (let i = 1; i <= 4; i += 1) {
     load.image(`crack-${i}`, versioned(`/assets/effects/cracks/crack-${i}.png`));
