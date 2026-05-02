@@ -1,6 +1,7 @@
 export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 720;
 export const TILE_SIZE = 48;
+export const TILE_TEXTURE_SIZE = 96;
 
 export const PLAYER_SIZE = { w: 20, h: 32 } as const;
 export const PLAYER_SPEED = 235;

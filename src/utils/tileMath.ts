@@ -14,8 +14,8 @@ export function atlasFrameForTile(type: Exclude<TileType, 'air'>, _tileX: number
   return atlasFrame(type);
 }
 
-export function backwallFrameForTile(_tileX: number, _tileY: number): number {
-  return 0;
+export function backwallFrameForTile(_tileX: number, _tileY: number, variant = 0): number {
+  return variant;
 }
 
 export function worldToTile(value: number): number {

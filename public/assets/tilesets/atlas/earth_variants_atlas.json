@@ -1,0 +1,117 @@
+{
+  "tile_size": 96,
+  "tiles_per_row": 5,
+  "total_tiles": 10,
+  "frames": [
+    {
+      "index": 0,
+      "atlas_coords": [
+        0,
+        0
+      ],
+      "px_coords": [
+        0,
+        0
+      ]
+    },
+    {
+      "index": 1,
+      "atlas_coords": [
+        1,
+        0
+      ],
+      "px_coords": [
+        96,
+        0
+      ]
+    },
+    {
+      "index": 2,
+      "atlas_coords": [
+        2,
+        0
+      ],
+      "px_coords": [
+        192,
+        0
+      ]
+    },
+    {
+      "index": 3,
+      "atlas_coords": [
+        3,
+        0
+      ],
+      "px_coords": [
+        288,
+        0
+      ]
+    },
+    {
+      "index": 4,
+      "atlas_coords": [
+        4,
+        0
+      ],
+      "px_coords": [
+        384,
+        0
+      ]
+    },
+    {
+      "index": 5,
+      "atlas_coords": [
+        0,
+        1
+      ],
+      "px_coords": [
+        0,
+        96
+      ]
+    },
+    {
+      "index": 6,
+      "atlas_coords": [
+        1,
+        1
+      ],
+      "px_coords": [
+        96,
+        96
+      ]
+    },
+    {
+      "index": 7,
+      "atlas_coords": [
+        2,
+        1
+      ],
+      "px_coords": [
+        192,
+        96
+      ]
+    },
+    {
+      "index": 8,
+      "atlas_coords": [
+        3,
+        1
+      ],
+      "px_coords": [
+        288,
+        96
+      ]
+    },
+    {
+      "index": 9,
+      "atlas_coords": [
+        4,
+        1
+      ],
+      "px_coords": [
+        384,
+        96
+      ]
+    }
+  ]
+}
