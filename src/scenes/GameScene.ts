@@ -24,9 +24,11 @@ import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '.
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 type VariantKind = 'bedrock' | 'earth' | 'backwall';
+type VariantState = Record<VariantKind, number>;
 
-const GENERATED_ASSET_VERSION = 'tile-variants-96-20260502-0804';
+const GENERATED_ASSET_VERSION = 'earth-redesign-zoom-debug-20260502-1040';
 const VARIANT_COUNT = 10;
+const DEFAULT_VARIANTS: VariantState = { bedrock: 0, earth: 0, backwall: 8 };
 const EARTH_TILE_TYPES = new Set<TileType>(['dirt', 'sand', 'clay', 'gravel']);
 const START_TUNNEL_LEFT_TILE = -10;
 const START_TUNNEL_TOP_TILE = -2;
@@ -70,7 +72,7 @@ export class GameScene extends Phaser.Scene {
   private debugZoomOffset = 0;
   private collisionDebugEnabled = false;
   private targetMarker!: Phaser.GameObjects.Rectangle;
-  private variantState = { bedrock: 0, earth: 0, backwall: 0 };
+  private variantState: VariantState = { ...DEFAULT_VARIANTS };
   private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
   private laserOrigin = new Phaser.Math.Vector2(0, 0);
@@ -773,6 +775,7 @@ export class GameScene extends Phaser.Scene {
       inventory: `Inventar: ${inv}`,
       variants: `Varianten: Bedrock ${this.variantState.bedrock + 1}/10 · Erde ${this.variantState.earth + 1}/10 · Background ${this.variantState.backwall + 1}/10`,
       debug: controls,
+      zoom: `Zoom: ${this.cameras.main.zoom.toFixed(2)} (Offset: ${this.debugZoomOffset >= 0 ? '+' : ''}${this.debugZoomOffset.toFixed(2)})`,
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
       inputMode,
     };

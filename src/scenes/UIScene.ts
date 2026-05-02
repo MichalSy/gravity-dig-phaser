@@ -11,6 +11,7 @@ export interface HudState {
   debug: string;
   target: string;
   variants: string;
+  zoom: string;
   inputMode: InputMode;
 }
 
@@ -183,6 +184,7 @@ export class UIScene extends Phaser.Scene {
     ]);
     this.debugText.setText([
       state.debug,
+      state.zoom,
       state.target,
     ]);
   }
