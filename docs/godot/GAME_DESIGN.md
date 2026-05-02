@@ -2,7 +2,7 @@
 
 > *One ship. Infinite planets. Get rich or die trying.*
 
-📋 **Dokumentation:** [Übersicht](OVERVIEW.md) | [Items](ITEMS.md) | [Blöcke](BLOCKS.md) | [Upgrades](UPGRADES.md) | [Planeten](PLANETS.md) | [Assets](ASSETS.md)
+📋 **Dokumentation:** [Übersicht](OVERVIEW.md) | [Items](ITEMS.md) | [Blöcke](BLOCKS.md) | [Upgrades](UPGRADES.md) | [Player Management](PLAYER_MANAGEMENT.md) | [Planeten](PLANETS.md) | [Assets](ASSETS.md)
 
 ---
 
@@ -47,6 +47,7 @@ Du bist **"Rusty"**, ein Weltraum-Prospector mit einem rostigen Schiff **"The Bu
 - Jede Aktion kostet Energie
 - Batterie leer = Tod!
 - Upgradeable bis 700 Energie
+- Technisch läuft Energie jetzt über `RunState.energy` und `EffectivePlayerStats.maxEnergy/energyCostPerSec/energyRegenPerSec`.
 
 ### 🥾 Magnet-Stiefel
 - Core zieht dich an
@@ -97,6 +98,15 @@ Du bist **"Rusty"**, ein Weltraum-Prospector mit einem rostigen Schiff **"The Bu
 - 4 Spezial (Spreng-Stein, Bedrock)
 
 **Details:** [BLOCKS.md](BLOCKS.md)
+
+### Player Management
+- Dauerhafter Fortschritt: `PlayerProfile`
+- Aktueller Run: `RunState`
+- Cargo getrennt vom permanenten Lager
+- Upgrades/Perks berechnen `EffectivePlayerStats`
+- Savegame: `localStorage['gravity-dig-save-v1']`
+
+**Details:** [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md)
 
 ### Items (40+)
 - 8 Laser-Varianten

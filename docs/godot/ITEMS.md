@@ -2,6 +2,8 @@
 
 > Vollständige Liste aller Items im Spiel mit Eigenschaften, Kosten und Fundorten.
 
+**Implementierungsstand Phaser:** Basis-Ressourcen und erste Consumables sind als `ItemDefinition` in `src/player/catalogs/items.ts` modelliert. Inventar/Cargo nutzt `InventoryState`; Details siehe [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md).
+
 ---
 
 ## 🔫 Werkzeuge (Laser)

@@ -2,6 +2,8 @@
 
 > Grafiken und Assets für das Raumschiff (Hub-Bereich)
 
+**Implementierungsstand Phaser:** Das Schiff wird künftig der Management-Hub für Cargo-Verkauf, Lager, Crafting und Upgrades. Die technische Grundlage dafür ist `PlayerProfile` + `RunState`; Details siehe [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md).
+
 ---
 
 ## 📁 Verzeichnisstruktur

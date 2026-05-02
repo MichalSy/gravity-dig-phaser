@@ -30,8 +30,9 @@ Implemented:
 - terrain, boundaries, spawn clearing and resource spawning
 - tile rendering from the original generated atlas
 - character animation frames from the Unity project copy
-- simple collision, camera follow, HUD and inventory
+- simple collision, camera follow, HUD and persistent run cargo
 - mineable blocks with health and laser feedback
+- centralized player management for profile, run state, inventory, upgrades, perks and local savegames
 
 ## Source migration notes
 
@@ -64,6 +65,7 @@ src/
 ├── config/gameConfig.ts    # Tunables and dimensions
 ├── controls/               # Mobile/desktop input helpers
 ├── game/level.ts           # Deterministic world generation + level types
+├── player/                 # Profile, run state, inventory, upgrades, perks, savegame
 ├── scenes/GameScene.ts     # Phaser scene orchestration
 └── utils/                  # Small pure helpers
 ```
@@ -72,6 +74,7 @@ Rules:
 
 - `main.ts` stays thin.
 - New gameplay belongs in systems/modules, not in bootstrap.
+- Player progress/state belongs in `src/player/`, not directly in `GameScene`.
 - Engine-facing orchestration stays in `scenes/`.
 - Pure logic stays independent from Phaser where practical.
 - Assets/configs stay in `public/` so they are deployable as static files.
@@ -93,3 +96,7 @@ GitHub Actions builds a Docker image to GHCR:
 GitOps/ArgoCD deploy target:
 
 `https://gravity-dig-phaser.sytko.de`
+
+## Player Management
+
+The current canonical player-state architecture is documented in `docs/godot/PLAYER_MANAGEMENT.md`. In short: permanent progression lives in `PlayerProfile`, active expedition state lives in `RunState`, and gameplay consumes `EffectivePlayerStats` computed from upgrades/perks. Savegames currently use versioned `localStorage` key `gravity-dig-save-v1`.

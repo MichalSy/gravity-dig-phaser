@@ -2,6 +2,8 @@
 
 > Grafiken für das User Interface (HUD, Menüs, Buttons)
 
+**Implementierungsstand Phaser:** Das HUD liest Health/Energy/Cargo aus `RunState` und zeigt aktuell Cargo statt einer lokalen Scene-Inventar-Map. Künftige Menüs sollen `PlayerProfile`, `RunState` und `EffectivePlayerStats` aus [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md) verwenden.
+
 ---
 
 ## 📁 Verzeichnisstruktur

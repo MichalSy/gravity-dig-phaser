@@ -2,6 +2,8 @@
 
 > Vollständige Liste aller Upgrades für Schiff, Anzug und Equipment.
 
+**Implementierungsstand Phaser:** Upgrades sind datengetrieben in `src/player/catalogs/upgrades.ts` angelegt und wirken über generische `StatModifier` auf `EffectivePlayerStats`. Details siehe [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md).
+
 ---
 
 ## 🚀 Schiff-Upgrades

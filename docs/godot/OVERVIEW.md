@@ -12,6 +12,7 @@
 | [ITEMS.md](ITEMS.md) | Alle Items (Werkzeuge, Verbrauchsgüter, Artefakte) | ✅ |
 | [BLOCKS.md](BLOCKS.md) | Alle Blocktypen (20+ mit Magie) | ✅ |
 | [UPGRADES.md](UPGRADES.md) | Alle Upgrades (Schiff, Anzug, Equipment) | ✅ |
+| [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md) | Profil, Run-State, Inventar, Perks, Savegame | ✅ |
 | [ASSETS.md](ASSETS.md) | Grafik-Checkliste für alle Sprites | 🔄 |
 | [PLANETS.md](PLANETS.md) | Alle Planeten mit Eigenschaften | 🔄 |
 
@@ -27,6 +28,7 @@
 | **Planeten** | 8 | [PLANETS.md](PLANETS.md) |
 | **Artefakte** | 5 | [ITEMS.md](ITEMS.md) |
 | **Schiff-Upgrades** | 7 | [UPGRADES.md](UPGRADES.md) |
+| **Player-State-System** | 1 | [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md) |
 
 ---
 
@@ -43,6 +45,10 @@ Schiff → Planet wählen → Graben → Ressourcen sammeln → Zurück zum Schi
 1. **Exploration** (Fog of War, neues entdecken)
 2. **Ressourcen-Management** (Energie, Treibstoff, Gier vs. Vernunft)
 3. **Progression** (Upgrades, bessere Ausrüstung, tiefer graben)
+
+### Technischer Progression-Stand
+
+Der Phaser-Port besitzt jetzt eine zentrale Player-State-Schicht: `PlayerProfile` für dauerhaften Fortschritt, `RunState` für den aktuellen Run und datengetriebene Kataloge für Items, Upgrades und Perks. Details: [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md).
 
 ---
 
@@ -100,4 +106,4 @@ Der Spieler muss entscheiden:
 
 ---
 
-*Letzte Aktualisierung: 2026-02-22*
+*Letzte Aktualisierung: 2026-05-02*

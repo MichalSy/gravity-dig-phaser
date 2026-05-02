@@ -1,13 +1,7 @@
 import Phaser from 'phaser';
 import {
-  ENERGY_COST_PER_SEC,
-  ENERGY_REGEN_PER_SEC,
   GRAVITY,
-  JUMP_VELOCITY,
-  MINING_DAMAGE_PER_SEC,
-  MINING_RANGE,
   PLAYER_SIZE,
-  PLAYER_SPEED,
   TILE_SIZE,
 } from '../config/gameConfig';
 import { UIScene, type HudState, type InputMode } from './UIScene';
@@ -21,6 +15,11 @@ import {
 } from '../game/level';
 import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
 import { loadGameAssets } from '../assets/AssetLoader';
+import { addItem, inventorySummary } from '../player/inventory';
+import { createRunState, normalizeRunState } from '../player/RunState';
+import { loadSaveGame, saveGame } from '../player/saveGame';
+import { computeEffectiveStats } from '../player/stats';
+import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from '../player/types';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
@@ -52,9 +51,10 @@ export class GameScene extends Phaser.Scene {
   private facing: Facing = 'east';
   private walkTimer = 0;
   private walkFrame = 0;
-  private health = 100;
-  private energy = 100;
-  private inventory = new Map<TileType, number>();
+  private save!: SaveGame;
+  private runState!: RunState;
+  private effectiveStats!: EffectivePlayerStats;
+  private saveTimer = 0;
   private miningTarget?: TileCell;
   private laser!: Phaser.GameObjects.Graphics;
   private collisionDebug!: Phaser.GameObjects.Graphics;
@@ -79,6 +79,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.save = loadSaveGame();
+    this.effectiveStats = computeEffectiveStats(this.save.profile);
     this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
     this.createLevel();
@@ -99,12 +101,14 @@ export class GameScene extends Phaser.Scene {
     this.handleInput(delta);
     this.applyPhysics(delta);
     this.updateMining(delta);
+    this.updateRunRecovery(delta);
     this.updateAnimation(deltaMs);
     this.updateCollisionDebug();
+    this.updateSaveTimer(deltaMs);
     this.updateHud();
   }
 
-  private createLevel(seed = 'gravity-dig-phaser'): void {
+  private createLevel(seed = this.save.activeRun?.seed ?? 'gravity-dig-phaser', restoreActiveRun = true): void {
     for (const overlay of this.crackOverlays.values()) overlay.destroy();
     this.crackOverlays.clear();
     for (const object of this.startDecor) object.destroy();
@@ -123,6 +127,14 @@ export class GameScene extends Phaser.Scene {
 
     const config = this.cache.json.get('dev-planet') as PlanetConfig;
     this.level = this.generator.generate(config, 1, seed);
+    const activeRun = restoreActiveRun && this.save.activeRun?.planetId === this.level.planetId && this.save.activeRun.seed === String(seed)
+      ? this.save.activeRun
+      : undefined;
+    this.runState = activeRun
+      ? normalizeRunState(activeRun, this.effectiveStats)
+      : createRunState(this.level.planetId, String(seed), this.effectiveStats);
+    this.save.activeRun = this.runState;
+    saveGame(this.save);
 
     this.addBackground();
     this.drawTiles();
@@ -276,8 +288,8 @@ export class GameScene extends Phaser.Scene {
     const down = (desktop && (this.cursors.down?.isDown || this.keys.S.isDown)) || joyDown || gamepadDown;
 
     this.velocity.x = 0;
-    if (left) this.velocity.x -= PLAYER_SPEED * this.inputStrength(mode, joy.x, gamepadX, -1);
-    if (right) this.velocity.x += PLAYER_SPEED * this.inputStrength(mode, joy.x, gamepadX, 1);
+    if (left) this.velocity.x -= this.effectiveStats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, -1);
+    if (right) this.velocity.x += this.effectiveStats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, 1);
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.G)) {
       this.gravityEnabled = !this.gravityEnabled;
@@ -285,12 +297,12 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
-      this.createLevel(`gravity-dig-phaser-${Date.now()}`);
+      this.createLevel(`gravity-dig-phaser-${Date.now()}`, false);
       return;
     }
 
-    if (up && !this.gravityEnabled) this.velocity.y = -PLAYER_SPEED;
-    if (down && !this.gravityEnabled) this.velocity.y = PLAYER_SPEED;
+    if (up && !this.gravityEnabled) this.velocity.y = -this.effectiveStats.moveSpeed;
+    if (down && !this.gravityEnabled) this.velocity.y = this.effectiveStats.moveSpeed;
     if (!up && !down && !this.gravityEnabled) this.velocity.y = 0;
 
     const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W));
@@ -327,7 +339,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private jump(): void {
-    this.velocity.y = JUMP_VELOCITY;
+    this.velocity.y = this.effectiveStats.jumpVelocity;
     this.grounded = false;
     this.coyoteTimer = 0;
     this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) });
@@ -443,14 +455,14 @@ export class GameScene extends Phaser.Scene {
     this.laser.lineStyle(firing ? 4 : 2, firing ? 0xf43f5e : 0xfb7185, firing ? 0.95 : 0.5);
     this.laser.lineBetween(origin.x, origin.y, target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2);
 
-    if (!firing || this.energy <= 0) {
+    if (!firing || this.runState.energy <= 0) {
       this.setLaserSound(false);
       return;
     }
 
     this.setLaserSound(true);
-    this.energy = Math.max(0, this.energy - ENERGY_COST_PER_SEC * delta);
-    target.health -= MINING_DAMAGE_PER_SEC * delta;
+    this.runState.energy = Math.max(0, this.runState.energy - this.effectiveStats.energyCostPerSec * delta);
+    target.health -= this.effectiveStats.miningDamagePerSec * delta;
     this.updateCrackOverlay(target);
 
     if (target.health <= 0) {
@@ -469,8 +481,8 @@ export class GameScene extends Phaser.Scene {
       const aimY = gamepad ? this.axis(gamepad, 3) : 0;
       if (Math.hypot(aimX, aimY) > 0.22) this.gamepadAim.set(aimX, aimY).normalize();
       this.currentAimWorld.set(
-        origin.x + this.gamepadAim.x * MINING_RANGE,
-        origin.y + this.gamepadAim.y * MINING_RANGE,
+        origin.x + this.gamepadAim.x * this.effectiveStats.miningRange,
+        origin.y + this.gamepadAim.y * this.effectiveStats.miningRange,
       );
       return this.currentAimWorld;
     }
@@ -478,8 +490,8 @@ export class GameScene extends Phaser.Scene {
     if (this.uiScene.isAiming()) {
       const aim = this.uiScene.getAimVector();
       this.currentAimWorld.set(
-        origin.x + aim.x * MINING_RANGE,
-        origin.y + aim.y * MINING_RANGE,
+        origin.x + aim.x * this.effectiveStats.miningRange,
+        origin.y + aim.y * this.effectiveStats.miningRange,
       );
       return this.currentAimWorld;
     }
@@ -508,7 +520,7 @@ export class GameScene extends Phaser.Scene {
     if (dir.lengthSq() <= 1) return undefined;
     dir.normalize();
 
-    for (let distance = 8; distance <= MINING_RANGE; distance += 8) {
+    for (let distance = 8; distance <= this.effectiveStats.miningRange; distance += 8) {
       const x = origin.x + dir.x * distance;
       const y = origin.y + dir.y * distance;
       const cell = this.level.tiles.get(tileKey(worldToTile(x), worldToTile(y)));
@@ -560,8 +572,13 @@ export class GameScene extends Phaser.Scene {
     this.crackOverlays.delete(key);
 
     if (isResourceTile(cell.type)) {
-      this.inventory.set(cell.type, (this.inventory.get(cell.type) ?? 0) + 1);
+      addItem(this.runState.cargo, cell.type as ItemId, 1);
+      this.save.profile.stats.resourcesMined += 1;
     }
+
+    this.save.profile.stats.blocksMined += 1;
+    this.save.activeRun = this.runState;
+    saveGame(this.save);
 
     cell.type = 'air';
     cell.health = 0;
@@ -634,9 +651,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    if (!this.isMiningPressed()) this.energy = Math.min(100, this.energy + ENERGY_REGEN_PER_SEC / 60);
     const tile = this.miningTarget;
-    const inv = [...this.inventory.entries()].map(([k, v]) => `${k}:${v}`).join('  ') || 'leer';
+    const inv = inventorySummary(this.runState.cargo);
     const inputMode = this.uiScene.getInputMode();
     const controls = inputMode === 'touch'
       ? 'Touch: linker Stick laufen/springen · rechter Stick zielen & minen'
@@ -646,8 +662,8 @@ export class GameScene extends Phaser.Scene {
     const hudState: HudState = {
       title: 'GRAVITY DIG — Mobile Phaser-Port',
       planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
-      stats: `Health: ${this.health}  Energy: ${Math.round(this.energy)}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
-      inventory: `Inventar: ${inv}`,
+      stats: `Health: ${Math.round(this.runState.health)}/${this.effectiveStats.maxHealth}  Energy: ${Math.round(this.runState.energy)}/${this.effectiveStats.maxEnergy}  Gravity: ${this.gravityEnabled ? 'ON' : 'OFF'}`,
+      inventory: `Cargo: ${inv}`,
       debug: controls,
       zoom: `Zoom: ${this.cameras.main.zoom.toFixed(2)} (Offset: ${this.debugZoomOffset >= 0 ? '+' : ''}${this.debugZoomOffset.toFixed(2)})`,
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
@@ -655,4 +671,19 @@ export class GameScene extends Phaser.Scene {
     };
     this.game.events.emit('hud:update', hudState);
   }
+
+  private updateRunRecovery(delta: number): void {
+    if (this.isMiningPressed()) return;
+    this.runState.energy = Math.min(this.effectiveStats.maxEnergy, this.runState.energy + this.effectiveStats.energyRegenPerSec * delta);
+  }
+
+  private updateSaveTimer(deltaMs: number): void {
+    this.saveTimer += deltaMs;
+    if (this.saveTimer < 1000) return;
+
+    this.saveTimer = 0;
+    this.save.activeRun = this.runState;
+    saveGame(this.save);
+  }
 }
+
