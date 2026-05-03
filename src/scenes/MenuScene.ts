@@ -58,7 +58,7 @@ export class MenuScene extends Phaser.Scene {
   private layout(): void {
     const width = this.scale.width;
     const height = this.scale.height;
-    const sceneScale = Math.min(width / this.background.width, height / this.background.height);
+    const sceneScale = width / this.background.width;
     this.background.setPosition(width / 2, height / 2).setScale(sceneScale);
 
     const buttonScale = sceneScale * MENU_BUTTON_SCALE;
