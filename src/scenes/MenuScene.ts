@@ -11,13 +11,18 @@ interface MenuButton {
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
 const BACKGROUND_WIDTH = 2048;
 const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 410;
+const MENU_X = 560;
 const MENU_TOP = 576;
 const MENU_BUTTON_SCALE = 0.205;
 const MENU_BUTTON_GAP = 0.14;
+const SELECTOR_WIDTH = 48;
+const SELECTOR_HEIGHT = 56;
+const SELECTOR_GAP = 28;
+const SELECTOR_SCALE = 0.9;
 
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
+  private selector!: Phaser.GameObjects.Triangle;
   private buttons: MenuButton[] = [];
   private activeIndex = 0;
 
@@ -30,8 +35,13 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor('#87d7ff');
+    this.cameras.main.setBackgroundColor('#000000');
     this.background = this.add.image(0, 0, 'title-screen').setOrigin(0.5).setDepth(0);
+    this.selector = this.add
+      .triangle(0, 0, 0, 0, SELECTOR_WIDTH, SELECTOR_HEIGHT / 2, 0, SELECTOR_HEIGHT, 0xf2c94c)
+      .setOrigin(0.5)
+      .setDepth(6)
+      .setStrokeStyle(4, 0x4d260f);
 
     this.buttons = MENU_ITEMS.map((action, index) => this.createMenuButton(action, index));
 
@@ -62,7 +72,9 @@ export class MenuScene extends Phaser.Scene {
     this.background.setPosition(width / 2, height / 2).setScale(sceneScale);
 
     const buttonScale = sceneScale * MENU_BUTTON_SCALE;
-    const buttonHeight = this.textures.get('menu-button-inactive').getSourceImage().height * buttonScale;
+    const buttonTexture = this.textures.get('menu-button-inactive').getSourceImage();
+    const buttonWidth = buttonTexture.width * buttonScale;
+    const buttonHeight = buttonTexture.height * buttonScale;
     const gap = buttonHeight * MENU_BUTTON_GAP;
     const left = this.backgroundToScreenX(MENU_X, width, sceneScale);
     const top = this.backgroundToScreenY(MENU_TOP, height, sceneScale);
@@ -74,6 +86,14 @@ export class MenuScene extends Phaser.Scene {
         .setPosition(left, top + index * (buttonHeight + gap))
         .setScale(buttonScale);
     });
+
+    const selectorScale = sceneScale * SELECTOR_SCALE;
+    this.selector
+      .setPosition(
+        left - buttonWidth / 2 - SELECTOR_GAP * sceneScale - (SELECTOR_WIDTH * selectorScale) / 2,
+        top + this.activeIndex * (buttonHeight + gap),
+      )
+      .setScale(selectorScale);
   }
 
   private backgroundToScreenX(x: number, screenWidth: number, scale: number): number {
@@ -90,6 +110,7 @@ export class MenuScene extends Phaser.Scene {
 
   private setActiveIndex(index: number): void {
     this.activeIndex = index;
+    this.layout();
   }
 
   private activate(action: MenuAction): void {
