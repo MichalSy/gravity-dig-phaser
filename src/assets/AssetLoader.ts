@@ -24,7 +24,7 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   load.image('tiles', versioned('/assets/tilesets/atlas/tiles_atlas.png'));
   load.image('backwall-tiles', versioned('/assets/tilesets/atlas/backwall_atlas.png'));
   load.image('bg-game', versioned('/assets/tilesets/bg/bg_game.png'));
-  load.image('ship', versioned('/assets/ships/drill_ship.png'));
+  load.image('ship', versioned('/assets/ships/the_bucket.png'));
   load.image('drill-tunnel-bg', versioned('/assets/ships/drill_tunnel_bg.png'));
   load.image('laser-dot', versioned('/assets/effects/laser_beam.png'));
   load.image('title-logo', versioned('/assets/tilesets/ui/title_logo.png'));
