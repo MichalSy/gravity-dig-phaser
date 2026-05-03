@@ -27,7 +27,7 @@ interface MenuButton {
 }
 
 const MENU_ITEMS: { label: string; action: MenuAction }[] = [
-  { label: 'ABENTEUER STARTEN', action: 'start' },
+  { label: 'STARTEN', action: 'start' },
   { label: 'OPTIONEN', action: 'options' },
   { label: 'CREDITS', action: 'credits' },
   { label: 'BEENDEN', action: 'quit' },
@@ -76,12 +76,11 @@ export class MenuScene extends Phaser.Scene {
     const cover = Math.max(width / this.background.width, height / this.background.height);
     this.background.setPosition(width / 2, height / 2).setScale(cover);
 
-    const buttonScale = Phaser.Math.Clamp(width / 2048, 0.34, 0.5);
+    const buttonScale = Phaser.Math.Clamp(width / 6400, 0.16, 0.24);
     const buttonHeight = this.buttons[0]?.image.height * buttonScale || 0;
-    const gap = buttonHeight * 0.1;
-    const stackHeight = this.buttons.length * buttonHeight + (this.buttons.length - 1) * gap;
-    const left = Math.max(112, width * 0.18);
-    const top = Math.max(height * 0.42, height - stackHeight - 70);
+    const gap = buttonHeight * 0.08;
+    const left = Phaser.Math.Clamp(width * 0.215, 168, 288);
+    const top = Phaser.Math.Clamp(height * 0.43, 260, 350);
 
     this.buttons.forEach((button, index) => {
       button.container
