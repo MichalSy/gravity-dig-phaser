@@ -9,6 +9,12 @@ interface MenuButton {
 }
 
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
+const BACKGROUND_WIDTH = 2048;
+const BACKGROUND_HEIGHT = 1152;
+const MENU_X = 410;
+const MENU_TOP = 576;
+const MENU_BUTTON_SCALE = 0.205;
+const MENU_BUTTON_GAP = 0.14;
 
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
@@ -52,14 +58,14 @@ export class MenuScene extends Phaser.Scene {
   private layout(): void {
     const width = this.scale.width;
     const height = this.scale.height;
-    const cover = Math.max(width / this.background.width, height / this.background.height);
-    this.background.setPosition(width / 2, height / 2).setScale(cover);
+    const sceneScale = Math.min(width / this.background.width, height / this.background.height);
+    this.background.setPosition(width / 2, height / 2).setScale(sceneScale);
 
-    const buttonScale = Phaser.Math.Clamp(width / 10000, 0.1, 0.14);
+    const buttonScale = sceneScale * MENU_BUTTON_SCALE;
     const buttonHeight = this.textures.get('menu-button-inactive').getSourceImage().height * buttonScale;
-    const gap = buttonHeight * 0.14;
-    const left = Phaser.Math.Clamp(width * 0.2, 150, 260);
-    const top = Phaser.Math.Clamp(height * 0.5, 320, 390);
+    const gap = buttonHeight * MENU_BUTTON_GAP;
+    const left = this.backgroundToScreenX(MENU_X, width, sceneScale);
+    const top = this.backgroundToScreenY(MENU_TOP, height, sceneScale);
 
     this.buttons.forEach((button, index) => {
       button.image
@@ -68,6 +74,14 @@ export class MenuScene extends Phaser.Scene {
         .setPosition(left, top + index * (buttonHeight + gap))
         .setScale(buttonScale);
     });
+  }
+
+  private backgroundToScreenX(x: number, screenWidth: number, scale: number): number {
+    return screenWidth / 2 + (x - BACKGROUND_WIDTH / 2) * scale;
+  }
+
+  private backgroundToScreenY(y: number, screenHeight: number, scale: number): number {
+    return screenHeight / 2 + (y - BACKGROUND_HEIGHT / 2) * scale;
   }
 
   private moveSelection(delta: number): void {
