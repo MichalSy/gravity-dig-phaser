@@ -36,7 +36,6 @@ export class MenuScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ENTER', () => this.activate(this.buttons[this.activeIndex].action));
     this.input.keyboard?.on('keydown-SPACE', () => this.activate(this.buttons[this.activeIndex].action));
     this.scale.on('resize', this.layout, this);
-    this.refreshSelection();
     this.layout();
   }
 
@@ -57,35 +56,26 @@ export class MenuScene extends Phaser.Scene {
     this.background.setPosition(width / 2, height / 2).setScale(cover);
 
     const buttonScale = Phaser.Math.Clamp(width / 6400, 0.16, 0.24);
-    const referenceHeight = this.textures.get('menu-button-active').getSourceImage().height * buttonScale;
-    const gap = referenceHeight * 0.08;
+    const buttonHeight = this.textures.get('menu-button-inactive').getSourceImage().height * buttonScale;
+    const gap = buttonHeight * 0.08;
     const left = Phaser.Math.Clamp(width * 0.215, 168, 288);
     const top = Phaser.Math.Clamp(height * 0.43, 260, 350);
 
     this.buttons.forEach((button, index) => {
       button.image
-        .setPosition(left, top + index * (referenceHeight + gap))
+        .clearTint()
+        .setTexture('menu-button-inactive')
+        .setPosition(left, top + index * (buttonHeight + gap))
         .setScale(buttonScale);
     });
   }
 
   private moveSelection(delta: number): void {
-    const next = Phaser.Math.Wrap(this.activeIndex + delta, 0, this.buttons.length);
-    this.setActiveIndex(next);
+    this.setActiveIndex(Phaser.Math.Wrap(this.activeIndex + delta, 0, this.buttons.length));
   }
 
   private setActiveIndex(index: number): void {
-    if (this.activeIndex === index) return;
     this.activeIndex = index;
-    this.refreshSelection();
-    this.layout();
-  }
-
-  private refreshSelection(): void {
-    this.buttons.forEach((button, index) => {
-      button.image.clearTint();
-      button.image.setTexture(index === this.activeIndex ? 'menu-button-active' : 'menu-button-inactive');
-    });
   }
 
   private activate(action: MenuAction): void {
