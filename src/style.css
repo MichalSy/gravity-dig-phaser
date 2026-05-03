@@ -1,9 +1,9 @@
 @font-face {
-  font-family: 'Pixelify Sans';
+  font-family: 'Silkscreen';
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 700;
   font-display: swap;
-  src: url('/assets/fonts/pixelify-sans-latin.woff2') format('woff2');
+  src: url('/assets/fonts/silkscreen-latin-700.woff2') format('woff2');
 }
 
 html,
@@ -28,7 +28,7 @@ body,
 }
 
 body {
-  font-family: 'Pixelify Sans', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: 'Silkscreen', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;

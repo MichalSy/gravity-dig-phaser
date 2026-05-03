@@ -10,28 +10,30 @@ interface MenuButton {
 }
 
 const MENU_LABELS: Record<MenuAction, string> = {
-  start: 'START',
-  options: 'OPTIONS',
-  credits: 'CREDITS',
-  quit: 'QUIT',
+  start: 'SPIELEN',
+  options: 'OPTIONEN',
+  credits: 'ABSPANN',
+  quit: 'BEENDEN',
 };
 
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
 const BACKGROUND_WIDTH = 2048;
 const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 460;
+const MENU_X = 426;
 const MENU_TOP = 576;
 const MENU_BUTTON_SCALE = 0.205;
+const MENU_BUTTON_WIDTH_SCALE = 1.2;
 const MENU_BUTTON_GAP = 0.14;
 const SELECTOR_WIDTH = 28;
 const SELECTOR_HEIGHT = 34;
 const SELECTOR_GAP = 14;
 const SELECTOR_SCALE = 0.7;
-const LABEL_FONT_SIZE = 44;
+const LABEL_FONT_SIZE = 27;
 
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
   private selector!: Phaser.GameObjects.Triangle;
+  private activeFrame!: Phaser.GameObjects.Graphics;
   private buttons: MenuButton[] = [];
   private activeIndex = 0;
 
@@ -51,6 +53,7 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(6)
       .setStrokeStyle(4, 0x4d260f);
+    this.activeFrame = this.add.graphics().setDepth(6);
 
     this.buttons = MENU_ITEMS.map((action, index) => this.createMenuButton(action, index));
 
@@ -68,12 +71,12 @@ export class MenuScene extends Phaser.Scene {
     const image = this.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setDepth(5);
     const label = this.add
       .text(0, 0, MENU_LABELS[action], {
-        fontFamily: 'Pixelify Sans',
+        fontFamily: 'Silkscreen',
         fontSize: `${LABEL_FONT_SIZE}px`,
         fontStyle: '700',
         color: '#fff4c7',
         stroke: '#4d260f',
-        strokeThickness: 6,
+        strokeThickness: 5,
         align: 'center',
       })
       .setOrigin(0.5)
@@ -98,7 +101,7 @@ export class MenuScene extends Phaser.Scene {
 
     const buttonScale = sceneScale * MENU_BUTTON_SCALE;
     const buttonTexture = this.textures.get('menu-button-inactive').getSourceImage();
-    const buttonWidth = buttonTexture.width * buttonScale;
+    const buttonWidth = buttonTexture.width * buttonScale * MENU_BUTTON_WIDTH_SCALE;
     const buttonHeight = buttonTexture.height * buttonScale;
     const gap = buttonHeight * MENU_BUTTON_GAP;
     const left = this.backgroundToScreenX(MENU_X, width, sceneScale);
@@ -112,15 +115,29 @@ export class MenuScene extends Phaser.Scene {
         .clearTint()
         .setTexture('menu-button-inactive')
         .setPosition(left, y)
-        .setScale(buttonScale);
+        .setScale(buttonScale * MENU_BUTTON_WIDTH_SCALE, buttonScale);
       button.label.setPosition(left, y - 1 * sceneScale).setFontSize(fontSize);
     });
+
+    const activeY = top + this.activeIndex * (buttonHeight + gap);
+    const framePaddingX = 8 * sceneScale;
+    const framePaddingY = 6 * sceneScale;
+    this.activeFrame
+      .clear()
+      .lineStyle(Math.max(2, 4 * sceneScale), 0xffe066, 1)
+      .strokeRoundedRect(
+        left - buttonWidth / 2 - framePaddingX,
+        activeY - buttonHeight / 2 - framePaddingY,
+        buttonWidth + framePaddingX * 2,
+        buttonHeight + framePaddingY * 2,
+        14 * sceneScale,
+      );
 
     const selectorScale = sceneScale * SELECTOR_SCALE;
     this.selector
       .setPosition(
         left - buttonWidth / 2 - SELECTOR_GAP * sceneScale - (SELECTOR_WIDTH * selectorScale) / 2,
-        top + this.activeIndex * (buttonHeight + gap),
+        activeY,
       )
       .setScale(selectorScale);
   }

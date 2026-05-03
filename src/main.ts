@@ -6,7 +6,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { UIScene } from './scenes/UIScene';
 
 async function startGame(): Promise<void> {
-  await document.fonts?.load('700 32px "Pixelify Sans"');
+  await document.fonts?.load('700 28px "Silkscreen"');
 
   new Phaser.Game({
     type: Phaser.AUTO,
