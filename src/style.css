@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/assets/fonts/pixelify-sans-latin.woff2') format('woff2');
+}
+
 html,
 body,
 #game {
@@ -20,7 +28,7 @@ body,
 }
 
 body {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-family: 'Pixelify Sans', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;

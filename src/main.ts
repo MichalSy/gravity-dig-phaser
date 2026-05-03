@@ -5,27 +5,33 @@ import { GameScene } from './scenes/GameScene';
 import { MenuScene } from './scenes/MenuScene';
 import { UIScene } from './scenes/UIScene';
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: 'game',
-  width: window.innerWidth || GAME_WIDTH,
-  height: window.innerHeight || GAME_HEIGHT,
-  backgroundColor: '#050816',
-  pixelArt: false,
-  smoothPixelArt: true,
-  antialias: true,
-  antialiasGL: true,
-  input: {
-    activePointers: 4,
-  },
-  scale: {
-    mode: Phaser.Scale.RESIZE,
-    width: '100%',
-    height: '100%',
-  },
-  render: {
+async function startGame(): Promise<void> {
+  await document.fonts?.load('700 32px "Pixelify Sans"');
+
+  new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: 'game',
+    width: window.innerWidth || GAME_WIDTH,
+    height: window.innerHeight || GAME_HEIGHT,
+    backgroundColor: '#050816',
+    pixelArt: false,
+    smoothPixelArt: true,
     antialias: true,
     antialiasGL: true,
-  },
-  scene: [MenuScene, GameScene, UIScene],
-});
+    input: {
+      activePointers: 4,
+    },
+    scale: {
+      mode: Phaser.Scale.RESIZE,
+      width: '100%',
+      height: '100%',
+    },
+    render: {
+      antialias: true,
+      antialiasGL: true,
+    },
+    scene: [MenuScene, GameScene, UIScene],
+  });
+}
+
+void startGame();

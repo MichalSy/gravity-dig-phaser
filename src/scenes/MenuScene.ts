@@ -6,7 +6,15 @@ type MenuAction = 'start' | 'options' | 'credits' | 'quit';
 interface MenuButton {
   action: MenuAction;
   image: Phaser.GameObjects.Image;
+  label: Phaser.GameObjects.Text;
 }
+
+const MENU_LABELS: Record<MenuAction, string> = {
+  start: 'START',
+  options: 'OPTIONS',
+  credits: 'CREDITS',
+  quit: 'QUIT',
+};
 
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
 const BACKGROUND_WIDTH = 2048;
@@ -19,6 +27,7 @@ const SELECTOR_WIDTH = 28;
 const SELECTOR_HEIGHT = 34;
 const SELECTOR_GAP = 14;
 const SELECTOR_SCALE = 0.7;
+const LABEL_FONT_SIZE = 44;
 
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
@@ -57,12 +66,28 @@ export class MenuScene extends Phaser.Scene {
 
   private createMenuButton(action: MenuAction, index: number): MenuButton {
     const image = this.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setDepth(5);
+    const label = this.add
+      .text(0, 0, MENU_LABELS[action], {
+        fontFamily: 'Pixelify Sans',
+        fontSize: `${LABEL_FONT_SIZE}px`,
+        fontStyle: '700',
+        color: '#fff4c7',
+        stroke: '#4d260f',
+        strokeThickness: 6,
+        align: 'center',
+      })
+      .setOrigin(0.5)
+      .setDepth(7)
+      .setResolution(2);
 
     image.setInteractive({ useHandCursor: true });
     image.on('pointerover', () => this.setActiveIndex(index));
     image.on('pointerdown', () => this.activate(action));
+    label.setInteractive({ useHandCursor: true });
+    label.on('pointerover', () => this.setActiveIndex(index));
+    label.on('pointerdown', () => this.activate(action));
 
-    return { action, image };
+    return { action, image, label };
   }
 
   private layout(): void {
@@ -80,11 +105,15 @@ export class MenuScene extends Phaser.Scene {
     const top = this.backgroundToScreenY(MENU_TOP, height, sceneScale);
 
     this.buttons.forEach((button, index) => {
+      const y = top + index * (buttonHeight + gap);
+      const fontSize = Math.max(14, LABEL_FONT_SIZE * sceneScale);
+
       button.image
         .clearTint()
         .setTexture('menu-button-inactive')
-        .setPosition(left, top + index * (buttonHeight + gap))
+        .setPosition(left, y)
         .setScale(buttonScale);
+      button.label.setPosition(left, y - 1 * sceneScale).setFontSize(fontSize);
     });
 
     const selectorScale = sceneScale * SELECTOR_SCALE;
