@@ -11,7 +11,7 @@ interface MenuButton {
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
 const BACKGROUND_WIDTH = 2048;
 const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 500;
+const MENU_X = 460;
 const MENU_TOP = 576;
 const MENU_BUTTON_SCALE = 0.205;
 const MENU_BUTTON_GAP = 0.14;
