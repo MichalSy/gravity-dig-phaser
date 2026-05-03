@@ -204,6 +204,7 @@ Aktueller Stand:
 - Profil wird geladen/erstellt.
 - Aktiver Run wird gespeichert.
 - Cargo-Slots, Energy, Health, Fuel und Lifetime-Mining-Stats werden persistent gehalten.
+- Am Schiff kann Cargo per `E` gesichert werden: Ressourcen wandern in das permanente Profil-Inventar, werden zu Credits bewertet und die Suit-Energy wird aufgefüllt.
 - Vollständige Weltmutation-Persistenz ist noch offen; aktuell kann ein geladener Run State-Werte behalten, aber Tile-Zerstörung wird aus dem Seed neu generiert.
 
 ---
@@ -211,9 +212,9 @@ Aktueller Stand:
 ## 9. Nächste Schritte
 
 1. **Schiff-Management UI**
-   - Cargo verkaufen
-   - Cargo ins Lager übertragen
-   - Credits anzeigen
+   - ✅ erster Dock-Loop: Cargo sichern/verkaufen, Lager befüllen, Credits zählen
+   - eigenes Schiff-/Shop-Menü bauen
+   - Credits und Lager sauber im Menü anzeigen
 
 2. **Upgrade-Shop**
    - Upgrades kaufen
@@ -243,4 +244,4 @@ Aktueller Stand:
 
 ---
 
-*Letzte Aktualisierung: 2026-05-02*
+*Letzte Aktualisierung: 2026-05-03*

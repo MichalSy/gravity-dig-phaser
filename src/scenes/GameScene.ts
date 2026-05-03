@@ -15,6 +15,7 @@ import {
 } from '../game/level';
 import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
 import { loadGameAssets } from '../assets/AssetLoader';
+import { ITEM_DEFINITIONS } from '../player/catalogs/items';
 import { addItem } from '../player/inventory';
 import { createRunState, normalizeRunState } from '../player/RunState';
 import { loadSaveGame, saveGame } from '../player/saveGame';
@@ -28,6 +29,9 @@ const START_TUNNEL_LEFT_TILE = -10;
 const START_TUNNEL_TOP_TILE = -2;
 const START_TUNNEL_WIDTH_TILES = 12;
 const START_TUNNEL_HEIGHT_TILES = 6;
+const SHIP_DOCK_CENTER_X = -3 * TILE_SIZE;
+const SHIP_DOCK_CENTER_Y = 2 * TILE_SIZE;
+const SHIP_DOCK_RADIUS = TILE_SIZE * 2.35;
 
 export class GameScene extends Phaser.Scene {
   private generator = new GravityDigLevelGenerator();
@@ -69,6 +73,9 @@ export class GameScene extends Phaser.Scene {
   private laserSound?: Phaser.Sound.BaseSound;
   private walkSoundIndex = 0;
   private lastFootstepFrame = -1;
+  private shipPrompt!: Phaser.GameObjects.Text;
+  private lastCargoReturnMessage = '';
+  private lastCargoReturnTimer = 0;
 
   constructor() {
     super('game');
@@ -105,6 +112,7 @@ export class GameScene extends Phaser.Scene {
     this.updateAnimation(deltaMs);
     this.updateCollisionDebug();
     this.updateSaveTimer(deltaMs);
+    this.updateShipPrompt(deltaMs);
     this.updateHud();
   }
 
@@ -239,6 +247,19 @@ export class GameScene extends Phaser.Scene {
 
     if (this.player) this.player.destroy();
     this.player = this.add.image(spawnX, spawnY, 'player-idle-east-0').setDepth(20).setScale(1.64);
+    this.shipPrompt?.destroy();
+    this.shipPrompt = this.add
+      .text(spawnX, spawnY - PLAYER_SIZE.h, '', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px',
+        fontStyle: '900',
+        color: '#e0f2fe',
+        backgroundColor: 'rgba(2,6,23,0.72)',
+        padding: { x: 10, y: 6 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(50)
+      .setVisible(false);
     this.velocity.set(0, 0);
 
     const worldLeft = -10 * TILE_SIZE;
@@ -254,7 +275,7 @@ export class GameScene extends Phaser.Scene {
   private createControls(): void {
     if (!this.input.keyboard) throw new Error('Keyboard input unavailable');
     this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
   private updateCameraZoom(): void {
@@ -299,6 +320,10 @@ export class GameScene extends Phaser.Scene {
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
       this.createLevel(`gravity-dig-phaser-${Date.now()}`, false);
       return;
+    }
+
+    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+      this.tryReturnCargoToShip();
     }
 
     if (up && !this.gravityEnabled) this.velocity.y = -this.effectiveStats.moveSpeed;
@@ -676,6 +701,70 @@ export class GameScene extends Phaser.Scene {
   private updateRunRecovery(delta: number): void {
     if (this.isMiningPressed()) return;
     this.runState.energy = Math.min(this.effectiveStats.maxEnergy, this.runState.energy + this.effectiveStats.energyRegenPerSec * delta);
+  }
+
+  private tryReturnCargoToShip(): void {
+    if (!this.isAtShipDock()) {
+      this.showShipMessage('Zu weit vom Schiff entfernt');
+      return;
+    }
+
+    const cargo = this.runState.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    if (cargo.length === 0) {
+      this.runState.energy = this.effectiveStats.maxEnergy;
+      this.save.activeRun = this.runState;
+      saveGame(this.save);
+      this.showShipMessage('Schiffsdock: Energie aufgefüllt');
+      return;
+    }
+
+    let credits = 0;
+    let transferred = 0;
+    for (const slot of cargo) {
+      if (!slot.itemId) continue;
+      const itemId = slot.itemId;
+      const definition = ITEM_DEFINITIONS[itemId];
+      const quantity = slot.quantity;
+      addItem(this.save.profile.inventory, itemId, quantity);
+      credits += definition.value * quantity;
+      transferred += quantity;
+      delete slot.itemId;
+      slot.quantity = 0;
+    }
+
+    this.save.profile.credits += credits;
+    this.save.profile.stats.creditsEarned += credits;
+    this.runState.energy = this.effectiveStats.maxEnergy;
+    this.save.activeRun = this.runState;
+    saveGame(this.save);
+    this.showShipMessage(`Cargo gesichert: ${transferred} Items · +${credits} Credits`);
+  }
+
+  private updateShipPrompt(deltaMs: number): void {
+    if (!this.shipPrompt) return;
+    this.lastCargoReturnTimer = Math.max(0, this.lastCargoReturnTimer - deltaMs);
+
+    const atDock = this.isAtShipDock();
+    const hasCargo = this.runState.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    const message = this.lastCargoReturnTimer > 0
+      ? this.lastCargoReturnMessage
+      : atDock
+        ? `${hasCargo ? 'E: Cargo sichern & verkaufen' : 'E: Energie am Schiff auffüllen'} · Credits: ${this.save.profile.credits}`
+        : '';
+
+    this.shipPrompt
+      .setText(message)
+      .setPosition(this.player.x, this.player.y - PLAYER_SIZE.h * 0.9)
+      .setVisible(Boolean(message));
+  }
+
+  private showShipMessage(message: string): void {
+    this.lastCargoReturnMessage = message;
+    this.lastCargoReturnTimer = 2200;
+  }
+
+  private isAtShipDock(): boolean {
+    return Phaser.Math.Distance.Between(this.player.x, this.player.y, SHIP_DOCK_CENTER_X, SHIP_DOCK_CENTER_Y) <= SHIP_DOCK_RADIUS;
   }
 
   private updateSaveTimer(deltaMs: number): void {

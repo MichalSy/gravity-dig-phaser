@@ -21,6 +21,7 @@ Controls:
 - `A/D` or arrow keys: move
 - `W` / `Space`: jump
 - Left mouse button: laser mine a block in range
+- `E` near the ship: secure/sell run cargo and refill suit energy
 - `G`: toggle gravity debug mode
 - `R`: regenerate world with a new seed
 
@@ -31,6 +32,7 @@ Implemented:
 - tile rendering from the original generated atlas
 - character animation frames from the Unity project copy
 - simple collision, camera follow, HUD and persistent run cargo
+- ship dock return loop: cargo is moved into permanent storage, sold for credits, and suit energy is refilled
 - mineable blocks with health and laser feedback
 - centralized player management for profile, run state, inventory, upgrades, perks and local savegames
 
