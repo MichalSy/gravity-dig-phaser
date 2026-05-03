@@ -14,7 +14,8 @@ function frameName(index: number): string {
 
 export function loadMenuAssets(scene: Phaser.Scene): void {
   scene.load.image('title-screen', versioned('/assets/ui/menu/title_screen.png'));
-  scene.load.image('menu-button-long', versioned('/assets/ui/menu/menu_button_long.png'));
+  scene.load.image('menu-button-active', versioned('/assets/ui/menu/menu_button_active.png'));
+  scene.load.image('menu-button-inactive', versioned('/assets/ui/menu/menu_button_inactive.png'));
 }
 
 export function loadGameAssets(scene: Phaser.Scene): void {
