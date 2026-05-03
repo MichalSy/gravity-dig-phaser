@@ -55,11 +55,11 @@ export class MenuScene extends Phaser.Scene {
     const cover = Math.max(width / this.background.width, height / this.background.height);
     this.background.setPosition(width / 2, height / 2).setScale(cover);
 
-    const buttonScale = Phaser.Math.Clamp(width / 6400, 0.16, 0.24);
+    const buttonScale = Phaser.Math.Clamp(width / 10000, 0.1, 0.14);
     const buttonHeight = this.textures.get('menu-button-inactive').getSourceImage().height * buttonScale;
-    const gap = buttonHeight * 0.08;
-    const left = Phaser.Math.Clamp(width * 0.215, 168, 288);
-    const top = Phaser.Math.Clamp(height * 0.43, 260, 350);
+    const gap = buttonHeight * 0.14;
+    const left = Phaser.Math.Clamp(width * 0.2, 150, 260);
+    const top = Phaser.Math.Clamp(height * 0.5, 320, 390);
 
     this.buttons.forEach((button, index) => {
       button.image
