@@ -17,11 +17,11 @@ interface MenuButton {
 
 const MENU_ITEMS: MenuItem[] = [
   { action: 'start', label: 'SPIELEN', enabled: true },
-  { action: 'options', label: 'OPTIONEN', enabled: false },
+  { action: 'options', label: 'OPTIONEN', enabled: true },
 ];
 const BACKGROUND_WIDTH = 2048;
 const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 426;
+const MENU_X = 442;
 const MENU_TOP = 576;
 const MENU_BUTTON_SCALE = 0.205;
 const MENU_BUTTON_WIDTH_SCALE = 1.2;
@@ -186,6 +186,11 @@ export class MenuScene extends Phaser.Scene {
 
     if (item.action === 'start') {
       this.scene.start('game');
+      return;
     }
+
+    const button = this.buttons[this.activeIndex];
+    button.image.setTint(0xfff1a8);
+    this.time.delayedCall(300, () => button.image.clearTint());
   }
 }

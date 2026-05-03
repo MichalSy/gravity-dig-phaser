@@ -54,6 +54,8 @@ jobs:
           tags: |
             ${{ steps.version.outputs.full_image }}
             ${{ steps.version.outputs.latest_image }}
+          build-args: |
+            VITE_APP_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
