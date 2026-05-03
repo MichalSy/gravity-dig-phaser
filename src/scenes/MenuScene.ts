@@ -9,13 +9,12 @@ interface MenuButton {
 }
 
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
-const BACKGROUND_WIDTH = 1024;
-const BACKGROUND_HEIGHT = 1024;
-const MENU_X = 205;
-const MENU_TOP = 608;
+const BACKGROUND_WIDTH = 2048;
+const BACKGROUND_HEIGHT = 1152;
+const MENU_X = 410;
+const MENU_TOP = 576;
 const MENU_BUTTON_SCALE = 0.205;
 const MENU_BUTTON_GAP = 0.14;
-const BACKGROUND_VERTICAL_OFFSET = -0.2;
 
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
@@ -60,14 +59,13 @@ export class MenuScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const sceneScale = width / this.background.width;
-    const backgroundCenterY = height / 2 + height * BACKGROUND_VERTICAL_OFFSET;
-    this.background.setPosition(width / 2, backgroundCenterY).setScale(sceneScale);
+    this.background.setPosition(width / 2, height / 2).setScale(sceneScale);
 
     const buttonScale = sceneScale * MENU_BUTTON_SCALE;
     const buttonHeight = this.textures.get('menu-button-inactive').getSourceImage().height * buttonScale;
     const gap = buttonHeight * MENU_BUTTON_GAP;
     const left = this.backgroundToScreenX(MENU_X, width, sceneScale);
-    const top = this.backgroundToScreenY(MENU_TOP, backgroundCenterY, sceneScale);
+    const top = this.backgroundToScreenY(MENU_TOP, height, sceneScale);
 
     this.buttons.forEach((button, index) => {
       button.image
@@ -82,8 +80,8 @@ export class MenuScene extends Phaser.Scene {
     return screenWidth / 2 + (x - BACKGROUND_WIDTH / 2) * scale;
   }
 
-  private backgroundToScreenY(y: number, backgroundCenterY: number, scale: number): number {
-    return backgroundCenterY + (y - BACKGROUND_HEIGHT / 2) * scale;
+  private backgroundToScreenY(y: number, screenHeight: number, scale: number): number {
+    return screenHeight / 2 + (y - BACKGROUND_HEIGHT / 2) * scale;
   }
 
   private moveSelection(delta: number): void {
