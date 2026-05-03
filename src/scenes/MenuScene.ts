@@ -36,7 +36,6 @@ const VERSION_FONT_SIZE = 16;
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
   private selector!: Phaser.GameObjects.Triangle;
-  private activeFrame!: Phaser.GameObjects.Graphics;
   private versionLabel!: Phaser.GameObjects.Text;
   private buttons: MenuButton[] = [];
   private activeIndex = 0;
@@ -57,7 +56,6 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(6)
       .setStrokeStyle(4, 0x4d260f);
-    this.activeFrame = this.add.graphics().setDepth(6);
     this.versionLabel = this.add
       .text(0, 0, `v${__APP_VERSION__}`, {
         fontFamily: 'Silkscreen',
@@ -133,7 +131,7 @@ export class MenuScene extends Phaser.Scene {
 
       button.image
         .clearTint()
-        .setTexture('menu-button-inactive')
+        .setTexture(index === this.activeIndex && button.item.enabled ? 'menu-button-active' : 'menu-button-inactive')
         .setPosition(left, y)
         .setScale(buttonScale * MENU_BUTTON_WIDTH_SCALE, buttonScale)
         .setAlpha(alpha);
@@ -148,19 +146,6 @@ export class MenuScene extends Phaser.Scene {
       .setFontSize(Math.max(10, VERSION_FONT_SIZE * sceneScale));
 
     const activeY = top + this.activeIndex * (buttonHeight + gap);
-    const framePaddingX = 8 * sceneScale;
-    const framePaddingY = 6 * sceneScale;
-    this.activeFrame
-      .clear()
-      .lineStyle(Math.max(2, 4 * sceneScale), 0xffe066, 1)
-      .strokeRoundedRect(
-        left - buttonWidth / 2 - framePaddingX,
-        activeY - buttonHeight / 2 - framePaddingY,
-        buttonWidth + framePaddingX * 2,
-        buttonHeight + framePaddingY * 2,
-        14 * sceneScale,
-      );
-
     const selectorScale = sceneScale * SELECTOR_SCALE;
     this.selector
       .setPosition(
