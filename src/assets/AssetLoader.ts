@@ -61,13 +61,13 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   load.json('dev-planet', versioned('/config/planets/dev_planet.json'));
 
   for (const dir of DIRECTIONS) {
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       load.image(`player-walk-${dir}-${i}`, versioned(`/assets/character/generated/walk/${dir}/frame_${frameName(i)}.png`));
     }
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < 2; i += 1) {
       load.image(`player-jump-${dir}-${i}`, versioned(`/assets/character/generated/jump/${dir}/frame_${frameName(i)}.png`));
     }
-    for (let i = 0; i < 6; i += 1) {
+    for (let i = 0; i < 4; i += 1) {
       load.image(`player-idle-${dir}-${i}`, versioned(`/assets/character/generated/idle/${dir}/frame_${frameName(i)}.png`));
     }
   }
