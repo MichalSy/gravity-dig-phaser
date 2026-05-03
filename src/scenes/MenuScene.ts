@@ -9,10 +9,10 @@ interface MenuButton {
 }
 
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
-const BACKGROUND_WIDTH = 2048;
-const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 410;
-const MENU_TOP = 576;
+const BACKGROUND_WIDTH = 1024;
+const BACKGROUND_HEIGHT = 1024;
+const MENU_X = 205;
+const MENU_TOP = 608;
 const MENU_BUTTON_SCALE = 0.205;
 const MENU_BUTTON_GAP = 0.14;
 
