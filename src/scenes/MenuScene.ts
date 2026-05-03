@@ -11,14 +11,14 @@ interface MenuButton {
 const MENU_ITEMS: MenuAction[] = ['start', 'options', 'credits', 'quit'];
 const BACKGROUND_WIDTH = 2048;
 const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 560;
+const MENU_X = 500;
 const MENU_TOP = 576;
 const MENU_BUTTON_SCALE = 0.205;
 const MENU_BUTTON_GAP = 0.14;
-const SELECTOR_WIDTH = 48;
-const SELECTOR_HEIGHT = 56;
-const SELECTOR_GAP = 28;
-const SELECTOR_SCALE = 0.9;
+const SELECTOR_WIDTH = 28;
+const SELECTOR_HEIGHT = 34;
+const SELECTOR_GAP = 14;
+const SELECTOR_SCALE = 0.7;
 
 export class MenuScene extends Phaser.Scene {
   private background!: Phaser.GameObjects.Image;
