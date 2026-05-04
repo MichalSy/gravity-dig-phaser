@@ -9,55 +9,55 @@ export interface GraphicAssetDefinition {
 }
 
 export const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
-  { key: 'title-screen', path: '/assets/ui/menu/title_screen.png', category: 'menu' },
-  { key: 'menu-button-active', path: '/assets/ui/menu/menu_button_active.png', category: 'menu' },
-  { key: 'menu-button-inactive', path: '/assets/ui/menu/menu_button_inactive.png', category: 'menu' },
+  { key: 'title-screen', path: '/assets/ui/menu/title_screen.webp', category: 'menu' },
+  { key: 'menu-button-active', path: '/assets/ui/menu/menu_button_active.webp', category: 'menu' },
+  { key: 'menu-button-inactive', path: '/assets/ui/menu/menu_button_inactive.webp', category: 'menu' },
 ];
 
 const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
-  { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.png', category: 'tiles' },
-  { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.png', category: 'backwall' },
-  { key: 'ship', path: '/assets/ships/the_bucket.png', category: 'ship' },
-  { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.png', category: 'ship' },
-  { key: 'laser-dot', path: '/assets/effects/laser_beam.png', category: 'effects' },
-  { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.png', category: 'hud' },
-  { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.png', category: 'hud' },
-  { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.png', category: 'hud' },
-  { key: 'hud-bar-orange', path: '/assets/ui/hud/hud_bar_orange.png', category: 'hud' },
-  { key: 'hud-bar-cyan', path: '/assets/ui/hud/hud_bar_cyan.png', category: 'hud' },
-  { key: 'hud-slot-active-empty', path: '/assets/ui/hud/hud_slot_active_empty.png', category: 'hud' },
-  { key: 'hud-slot-locked', path: '/assets/ui/hud/hud_slot_locked.png', category: 'hud' },
-  { key: 'hud-lock-icon', path: '/assets/ui/hud/hud_lock_icon.png', category: 'hud' },
-  { key: 'hud-item-rock', path: '/assets/ui/hud/hud_item_rock.png', category: 'hud' },
-  { key: 'hud-icon-hp', path: '/assets/ui/hud/hud_icon_hp.png', category: 'hud' },
-  { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.png', category: 'hud' },
-  { key: 'hud-v10-bottom-frame', path: '/assets/ui/hud/variant10/bottom_frame.png', category: 'hud' },
-  { key: 'hud-v10-energy-fill', path: '/assets/ui/hud/variant10/energy_fill.png', category: 'hud' },
-  { key: 'hud-v10-slot-active-empty', path: '/assets/ui/hud/variant10/slot_active_empty.png', category: 'hud' },
-  { key: 'hud-v10-slot-empty', path: '/assets/ui/hud/variant10/slot_empty.png', category: 'hud' },
-  { key: 'hud-v10-slot-locked', path: '/assets/ui/hud/variant10/slot_locked.png', category: 'hud' },
+  { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.webp', category: 'tiles' },
+  { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.webp', category: 'backwall' },
+  { key: 'ship', path: '/assets/ships/the_bucket.webp', category: 'ship' },
+  { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.webp', category: 'ship' },
+  { key: 'laser-dot', path: '/assets/effects/laser_beam.webp', category: 'effects' },
+  { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.webp', category: 'hud' },
+  { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.webp', category: 'hud' },
+  { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.webp', category: 'hud' },
+  { key: 'hud-bar-orange', path: '/assets/ui/hud/hud_bar_orange.webp', category: 'hud' },
+  { key: 'hud-bar-cyan', path: '/assets/ui/hud/hud_bar_cyan.webp', category: 'hud' },
+  { key: 'hud-slot-active-empty', path: '/assets/ui/hud/hud_slot_active_empty.webp', category: 'hud' },
+  { key: 'hud-slot-locked', path: '/assets/ui/hud/hud_slot_locked.webp', category: 'hud' },
+  { key: 'hud-lock-icon', path: '/assets/ui/hud/hud_lock_icon.webp', category: 'hud' },
+  { key: 'hud-item-rock', path: '/assets/ui/hud/hud_item_rock.webp', category: 'hud' },
+  { key: 'hud-icon-hp', path: '/assets/ui/hud/hud_icon_hp.webp', category: 'hud' },
+  { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.webp', category: 'hud' },
+  { key: 'hud-v10-bottom-frame', path: '/assets/ui/hud/variant10/bottom_frame.webp', category: 'hud' },
+  { key: 'hud-v10-energy-fill', path: '/assets/ui/hud/variant10/energy_fill.webp', category: 'hud' },
+  { key: 'hud-v10-slot-active-empty', path: '/assets/ui/hud/variant10/slot_active_empty.webp', category: 'hud' },
+  { key: 'hud-v10-slot-empty', path: '/assets/ui/hud/variant10/slot_empty.webp', category: 'hud' },
+  { key: 'hud-v10-slot-locked', path: '/assets/ui/hud/variant10/slot_locked.webp', category: 'hud' },
 ];
 
 const GAME_CRACK_GRAPHIC_ASSETS: GraphicAssetDefinition[] = Array.from({ length: 4 }, (_, index) => ({
   key: `crack-${index + 1}`,
-  path: `/assets/effects/cracks/crack-${index + 1}.png`,
+  path: `/assets/effects/cracks/crack-${index + 1}.webp`,
   category: 'effects',
 }));
 
 const GAME_PLAYER_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   ...Array.from({ length: 6 }, (_, index) => ({
     key: `player-walk-${index}`,
-    path: `/assets/character/generated/walk/east/frame_${frameName(index)}.png`,
+    path: `/assets/character/generated/walk/east/frame_${frameName(index)}.webp`,
     category: 'player',
   })),
   ...Array.from({ length: 2 }, (_, index) => ({
     key: `player-jump-${index}`,
-    path: `/assets/character/generated/jump/east/frame_${frameName(index)}.png`,
+    path: `/assets/character/generated/jump/east/frame_${frameName(index)}.webp`,
     category: 'player',
   })),
   ...Array.from({ length: 4 }, (_, index) => ({
     key: `player-idle-${index}`,
-    path: `/assets/character/generated/idle/east/frame_${frameName(index)}.png`,
+    path: `/assets/character/generated/idle/east/frame_${frameName(index)}.webp`,
     category: 'player',
   })),
 ];
