@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
+import { VirtualJoystick } from '../controls/VirtualJoystick';
+import { DeveloperDialog } from '../debug/DeveloperDialog';
 import { GameNode, NodeScene, type NodeContext, type RenderContext } from '../nodes';
-import type { HudState } from './HudState';
+import type { HudState, InputMode } from './HudState';
 
 interface HudTextStyle extends Phaser.Types.GameObjects.Text.TextStyle {
   fontFamily: string;
@@ -9,7 +11,9 @@ interface HudTextStyle extends Phaser.Types.GameObjects.Text.TextStyle {
 }
 
 const TEXT = {
+  label: { fontFamily: 'Arial, sans-serif', fontSize: '14px', fontStyle: '800', color: '#cbd5e1' } satisfies HudTextStyle,
   value: { fontFamily: 'Arial, sans-serif', fontSize: '15px', fontStyle: '800', color: '#f8fafc' } satisfies HudTextStyle,
+  small: { fontFamily: 'Arial, sans-serif', fontSize: '11px', fontStyle: '800', color: '#94a3b8' } satisfies HudTextStyle,
 };
 
 const UI_ATLAS = {
@@ -41,11 +45,16 @@ export function bottomHudDisplayHeight(width: number): number {
 
 export class GameplayUiScene extends NodeScene {
   private hudState?: HudState;
+  private inputMode: InputMode = 'desktop';
 
   constructor() {
     super({ sceneName: 'ui.gameplay', order: 100 });
     this.addChild(new StatusHudNode());
     this.addChild(new BottomHudNode());
+    this.addChild(new RuntimeDebugTextNode());
+    this.addChild(new DeveloperDialogNode());
+    this.addChild(new DebugPanelNode());
+    this.addChild(new TouchControlsNode());
   }
 
   setHudState(state: HudState): void {
@@ -54,6 +63,34 @@ export class GameplayUiScene extends NodeScene {
 
   getHudState(): HudState | undefined {
     return this.hudState;
+  }
+
+  setInputMode(inputMode: InputMode): void {
+    this.inputMode = inputMode;
+  }
+
+  getInputMode(): InputMode {
+    return this.inputMode;
+  }
+
+  getMoveVector(): Phaser.Math.Vector2 {
+    return this.requireNode<TouchControlsNode>('ui.touchControls').getMoveVector();
+  }
+
+  getAimVector(): Phaser.Math.Vector2 {
+    return this.requireNode<TouchControlsNode>('ui.touchControls').getAimVector();
+  }
+
+  isAiming(): boolean {
+    return !this.isMenuOpen() && this.inputMode === 'touch' && this.requireNode<TouchControlsNode>('ui.touchControls').isAiming();
+  }
+
+  isMenuOpen(): boolean {
+    return this.requireNode<DeveloperDialogNode>('ui.developerDialog').isOpen();
+  }
+
+  containsControlPointer(pointer: Phaser.Input.Pointer): boolean {
+    return this.inputMode === 'touch' && this.requireNode<TouchControlsNode>('ui.touchControls').containsPointer(pointer);
   }
 }
 
@@ -197,6 +234,263 @@ class BottomHudNode extends GameNode {
     this.slotFrames.length = 0;
     this.slotItems.length = 0;
     this.slotLabels.length = 0;
+  }
+}
+
+class RuntimeDebugTextNode extends GameNode {
+  private debugText!: Phaser.GameObjects.Text;
+
+  constructor() {
+    super({ name: 'ui.runtimeDebugText', order: 20 });
+  }
+
+  init(ctx: NodeContext): void {
+    this.debugText = ctx.phaserScene.add
+      .text(14, 0, '', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '14px',
+        color: '#bfdbfe',
+        backgroundColor: 'rgba(2,6,23,0.58)',
+        padding: { x: 10, y: 8 },
+        lineSpacing: 2,
+      })
+      .setScrollFactor(0)
+      .setDepth(40)
+      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+  }
+
+  render(ctx: RenderContext): void {
+    const state = this.requireNode<GameplayUiScene>('ui.gameplay').getHudState();
+    if (!state) return;
+
+    const width = ctx.phaserScene.scale.width;
+    const height = ctx.phaserScene.scale.height;
+    const bottomHudHeight = bottomHudDisplayHeight(width);
+    this.debugText
+      .setText([state.debug, state.zoom, state.target])
+      .setOrigin(0, 1)
+      .setPosition(14, height - bottomHudHeight - 24)
+      .setWordWrapWidth(Math.max(320, Math.min(560, width - 28)))
+      .setVisible(true);
+  }
+
+  destroy(): void {
+    this.debugText?.destroy();
+  }
+}
+
+class DeveloperDialogNode extends GameNode {
+  private developerDialog!: DeveloperDialog;
+
+  constructor() {
+    super({ name: 'ui.developerDialog', order: 30 });
+  }
+
+  init(ctx: NodeContext): void {
+    this.developerDialog = new DeveloperDialog(ctx.phaserScene);
+  }
+
+  toggle(): void {
+    this.developerDialog.toggle();
+  }
+
+  isOpen(): boolean {
+    return this.developerDialog?.isOpen() ?? false;
+  }
+
+  destroy(): void {
+    this.developerDialog?.destroy();
+  }
+}
+
+class DebugPanelNode extends GameNode {
+  private debugPanel!: Phaser.GameObjects.Container;
+  private collisionButton!: Phaser.GameObjects.Text;
+  private developerButton!: Phaser.GameObjects.Text;
+  private collisionDebugEnabled = false;
+
+  constructor() {
+    super({ name: 'ui.debugPanel', order: 40 });
+  }
+
+  init(ctx: NodeContext): void {
+    const resolution = Math.max(2, window.devicePixelRatio || 1);
+    const bg = ctx.phaserScene.add
+      .rectangle(0, 0, 156, 86, 0x020617, 0.72)
+      .setStrokeStyle(1, 0x38bdf8, 0.65)
+      .setOrigin(1, 0)
+      .setScrollFactor(0);
+
+    const title = ctx.phaserScene.add.text(-144, 7, 'DEBUG', TEXT.small).setScrollFactor(0).setResolution(resolution);
+
+    this.collisionButton = ctx.phaserScene.add
+      .text(-144, 24, 'Collision: OFF', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '13px',
+        fontStyle: '700',
+        color: '#f8fafc',
+        backgroundColor: 'rgba(15,23,42,0.88)',
+        padding: { x: 8, y: 4 },
+      })
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true })
+      .setResolution(resolution);
+
+    this.collisionButton.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.preventDefault();
+      pointer.event.stopPropagation();
+      this.toggleCollisionDebug(ctx.phaserScene);
+    });
+
+    this.developerButton = ctx.phaserScene.add
+      .text(-144, 56, 'Developer', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '13px',
+        fontStyle: '700',
+        color: '#082f49',
+        backgroundColor: 'rgba(103,232,249,0.92)',
+        padding: { x: 8, y: 4 },
+      })
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true })
+      .setResolution(resolution);
+
+    this.developerButton.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.preventDefault();
+      pointer.event.stopPropagation();
+      this.requireNode<DeveloperDialogNode>('ui.developerDialog').toggle();
+    });
+
+    this.debugPanel = ctx.phaserScene.add.container(0, 0, [bg, title, this.collisionButton, this.developerButton]).setDepth(40).setScrollFactor(0);
+  }
+
+  render(ctx: RenderContext): void {
+    this.debugPanel?.setPosition(ctx.phaserScene.scale.width - 12, 12);
+  }
+
+  containsPointer(pointer: Phaser.Input.Pointer): boolean {
+    return pointer.x >= this.debugPanel.x - 156 && pointer.x <= this.debugPanel.x && pointer.y >= this.debugPanel.y && pointer.y <= this.debugPanel.y + 86;
+  }
+
+  destroy(): void {
+    this.debugPanel?.destroy(true);
+  }
+
+  private toggleCollisionDebug(phaserScene: Phaser.Scene): void {
+    this.collisionDebugEnabled = !this.collisionDebugEnabled;
+    this.collisionButton.setText(`Collision: ${this.collisionDebugEnabled ? 'ON' : 'OFF'}`);
+    this.collisionButton.setColor(this.collisionDebugEnabled ? '#86efac' : '#f8fafc');
+    phaserScene.game.events.emit('debug:collision', this.collisionDebugEnabled);
+  }
+}
+
+class TouchControlsNode extends GameNode {
+  private leftJoystick!: VirtualJoystick;
+  private rightJoystick!: VirtualJoystick;
+  private controlsHint!: Phaser.GameObjects.Text;
+  private phaserScene!: Phaser.Scene;
+
+  constructor() {
+    super({ name: 'ui.touchControls', order: 50 });
+  }
+
+  init(ctx: NodeContext): void {
+    this.phaserScene = ctx.phaserScene;
+    this.phaserScene.input.addPointer(3);
+    this.leftJoystick = new VirtualJoystick(ctx.phaserScene, 'left', 'MOVE');
+    this.rightJoystick = new VirtualJoystick(ctx.phaserScene, 'right', 'LASER');
+    this.controlsHint = ctx.phaserScene.add
+      .text(0, 0, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '15px',
+        color: '#e2e8f0',
+        backgroundColor: 'rgba(2,6,23,0.45)',
+        padding: { x: 10, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(40)
+      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+
+    this.phaserScene.input.on('pointerdown', this.handlePointerDown, this);
+    this.phaserScene.input.on('pointermove', this.handlePointerMove, this);
+    this.phaserScene.input.on('pointerup', this.handlePointerUp, this);
+    this.phaserScene.input.on('pointerupoutside', this.handlePointerUp, this);
+  }
+
+  render(ctx: RenderContext): void {
+    const inputMode = this.requireNode<GameplayUiScene>('ui.gameplay').getInputMode();
+    const width = ctx.phaserScene.scale.width;
+    const height = ctx.phaserScene.scale.height;
+    const compact = height <= 430 || width <= 760;
+    const touchMode = inputMode === 'touch';
+
+    this.leftJoystick.layout();
+    this.rightJoystick.layout();
+    if (!touchMode) {
+      this.leftJoystick.setVisible(false);
+      this.rightJoystick.setVisible(false);
+    }
+
+    this.controlsHint
+      .setPosition(width / 2, Math.max(24, height - 26))
+      .setWordWrapWidth(Math.max(320, width - 48))
+      .setVisible(!compact && touchMode);
+  }
+
+  getMoveVector(): Phaser.Math.Vector2 {
+    return this.requireNode<GameplayUiScene>('ui.gameplay').getInputMode() === 'touch' ? this.leftJoystick.vector : Phaser.Math.Vector2.ZERO;
+  }
+
+  getAimVector(): Phaser.Math.Vector2 {
+    return this.requireNode<GameplayUiScene>('ui.gameplay').getInputMode() === 'touch' ? this.rightJoystick.aim : Phaser.Math.Vector2.RIGHT;
+  }
+
+  isAiming(): boolean {
+    return this.rightJoystick.active;
+  }
+
+  containsPointer(pointer: Phaser.Input.Pointer): boolean {
+    return this.leftJoystick.contains(pointer) || this.rightJoystick.contains(pointer);
+  }
+
+  destroy(): void {
+    this.phaserScene?.input.off('pointerdown', this.handlePointerDown, this);
+    this.phaserScene?.input.off('pointermove', this.handlePointerMove, this);
+    this.phaserScene?.input.off('pointerup', this.handlePointerUp, this);
+    this.phaserScene?.input.off('pointerupoutside', this.handlePointerUp, this);
+    this.controlsHint?.destroy();
+    this.leftJoystick?.setVisible(false);
+    this.rightJoystick?.setVisible(false);
+  }
+
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (!this.shouldHandlePointer(pointer)) return;
+    const handled = pointer.x < this.phaserScene.scale.width / 2
+      ? this.leftJoystick.handlePointerDown(pointer)
+      : this.rightJoystick.handlePointerDown(pointer);
+    if (handled) pointer.event.preventDefault();
+  }
+
+  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    if (!this.isTouchInputEnabled()) return;
+    this.leftJoystick.handlePointerMove(pointer);
+    this.rightJoystick.handlePointerMove(pointer);
+  }
+
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    if (!this.isTouchInputEnabled()) return;
+    this.leftJoystick.handlePointerUp(pointer);
+    this.rightJoystick.handlePointerUp(pointer);
+  }
+
+  private shouldHandlePointer(pointer: Phaser.Input.Pointer): boolean {
+    return this.isTouchInputEnabled() && !this.requireNode<DebugPanelNode>('ui.debugPanel').containsPointer(pointer);
+  }
+
+  private isTouchInputEnabled(): boolean {
+    const gameplayUi = this.requireNode<GameplayUiScene>('ui.gameplay');
+    return gameplayUi.getInputMode() === 'touch' && !gameplayUi.isMenuOpen();
   }
 }
 

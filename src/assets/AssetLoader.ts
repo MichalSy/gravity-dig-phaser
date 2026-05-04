@@ -36,11 +36,6 @@ const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   { key: 'hud-item-rock', path: '/assets/ui/hud/hud_item_rock.webp', category: 'hud', scenes: ['ui'] },
   { key: 'hud-icon-hp', path: '/assets/ui/hud/hud_icon_hp.webp', category: 'hud', scenes: ['ui'] },
   { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-v10-bottom-frame', path: '/assets/ui/hud/variant10/bottom_frame.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-v10-energy-fill', path: '/assets/ui/hud/variant10/energy_fill.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-v10-slot-active-empty', path: '/assets/ui/hud/variant10/slot_active_empty.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-v10-slot-empty', path: '/assets/ui/hud/variant10/slot_empty.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-v10-slot-locked', path: '/assets/ui/hud/variant10/slot_locked.webp', category: 'hud', scenes: ['ui'] },
 ];
 
 const GAME_CRACK_GRAPHIC_ASSETS: GraphicAssetDefinition[] = Array.from({ length: 4 }, (_, index) => ({
