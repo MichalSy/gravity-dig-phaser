@@ -4,6 +4,8 @@ import {
   PLAYER_SIZE,
   TILE_SIZE,
 } from '../config/gameConfig';
+import { NodeRuntime, NodeScene } from '../nodes';
+import { ManagersNode, PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
 import { UIScene } from './UIScene';
 import type { HudState, InputMode } from '../ui/HudState';
 import {
@@ -16,12 +18,6 @@ import {
 } from '../game/level';
 import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
 import { loadGameAssets } from '../assets/AssetLoader';
-import { ITEM_DEFINITIONS } from '../player/catalogs/items';
-import { addItem } from '../player/inventory';
-import { createRunState, normalizeRunState } from '../player/RunState';
-import { loadSaveGame, saveGame } from '../player/saveGame';
-import { computeEffectiveStats } from '../player/stats';
-import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from '../player/types';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
@@ -56,9 +52,8 @@ export class GameScene extends Phaser.Scene {
   private facing: Facing = 'east';
   private walkTimer = 0;
   private walkFrame = 0;
-  private save!: SaveGame;
-  private runState!: RunState;
-  private effectiveStats!: EffectivePlayerStats;
+  private gameRuntime!: NodeRuntime;
+  private playerState!: PlayerStateManagerNode;
   private saveTimer = 0;
   private miningTarget?: TileCell;
   private laser!: Phaser.GameObjects.Graphics;
@@ -90,8 +85,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.save = loadSaveGame();
-    this.effectiveStats = computeEffectiveStats(this.save.profile);
+    this.gameRuntime = new NodeRuntime({ phaserScene: this });
+    const gameNodeScene = this.gameRuntime.addScene(new NodeScene({ sceneName: 'game.nodes' }));
+    gameNodeScene.addChild(new ManagersNode());
+    this.gameRuntime.init();
+    this.gameRuntime.resolve();
+    this.playerState = this.gameRuntime.requireNode<PlayerStateManagerNode>('playerState');
+
     this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
     this.createLevel();
@@ -108,6 +108,8 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('gameplay-menu:opened', this.blockGameplayInput, this);
       this.game.events.off('gameplay-menu:closed', this.unblockGameplayInput, this);
       this.scale.off('resize', this.updateCameraZoom, this);
+      this.input.off('wheel', this.handleDebugZoomWheel, this);
+      this.gameRuntime.destroy();
     });
     this.updateCameraZoom();
 
@@ -118,6 +120,8 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     const delta = deltaMs / 1000;
+    this.gameRuntime.update(deltaMs);
+    this.gameRuntime.render();
     this.handleInput(delta);
     this.applyPhysics(delta);
     this.updateMining(delta);
@@ -129,7 +133,7 @@ export class GameScene extends Phaser.Scene {
     this.updateHud();
   }
 
-  private createLevel(seed = this.save.activeRun?.seed ?? 'gravity-dig-phaser', restoreActiveRun = true): void {
+  private createLevel(seed = this.playerState.getActiveRunSeed('gravity-dig-phaser'), restoreActiveRun = true): void {
     for (const overlay of this.crackOverlays.values()) overlay.destroy();
     this.crackOverlays.clear();
     for (const object of this.startDecor) object.destroy();
@@ -148,14 +152,7 @@ export class GameScene extends Phaser.Scene {
 
     const config = this.cache.json.get('dev-planet') as PlanetConfig;
     this.level = this.generator.generate(config, 1, seed);
-    const activeRun = restoreActiveRun && this.save.activeRun?.planetId === this.level.planetId && this.save.activeRun.seed === String(seed)
-      ? this.save.activeRun
-      : undefined;
-    this.runState = activeRun
-      ? normalizeRunState(activeRun, this.effectiveStats)
-      : createRunState(this.level.planetId, String(seed), this.effectiveStats);
-    this.save.activeRun = this.runState;
-    saveGame(this.save);
+    this.playerState.startRun(this.level.planetId, String(seed), restoreActiveRun);
 
     this.addBackground();
     this.drawTiles();
@@ -344,8 +341,8 @@ export class GameScene extends Phaser.Scene {
     const down = (desktop && (this.cursors.down?.isDown || this.keys.S.isDown)) || joyDown || gamepadDown;
 
     this.velocity.x = 0;
-    if (left) this.velocity.x -= this.effectiveStats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, -1);
-    if (right) this.velocity.x += this.effectiveStats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, 1);
+    if (left) this.velocity.x -= this.playerState.stats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, -1);
+    if (right) this.velocity.x += this.playerState.stats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, 1);
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.G)) {
       this.gravityEnabled = !this.gravityEnabled;
@@ -361,8 +358,8 @@ export class GameScene extends Phaser.Scene {
       this.tryReturnCargoToShip();
     }
 
-    if (up && !this.gravityEnabled) this.velocity.y = -this.effectiveStats.moveSpeed;
-    if (down && !this.gravityEnabled) this.velocity.y = this.effectiveStats.moveSpeed;
+    if (up && !this.gravityEnabled) this.velocity.y = -this.playerState.stats.moveSpeed;
+    if (down && !this.gravityEnabled) this.velocity.y = this.playerState.stats.moveSpeed;
     if (!up && !down && !this.gravityEnabled) this.velocity.y = 0;
 
     const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W));
@@ -399,7 +396,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private jump(): void {
-    this.velocity.y = this.effectiveStats.jumpVelocity;
+    this.velocity.y = this.playerState.stats.jumpVelocity;
     this.grounded = false;
     this.coyoteTimer = 0;
     this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) });
@@ -527,14 +524,14 @@ export class GameScene extends Phaser.Scene {
     this.laser.lineStyle(firing ? 4 : 2, firing ? 0xf43f5e : 0xfb7185, firing ? 0.95 : 0.5);
     this.laser.lineBetween(origin.x, origin.y, target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2);
 
-    if (!firing || this.runState.energy <= 0) {
+    if (!firing || !this.playerState.hasMiningEnergy()) {
       this.setLaserSound(false);
       return;
     }
 
     this.setLaserSound(true);
-    this.runState.energy = Math.max(0, this.runState.energy - this.effectiveStats.energyCostPerSec * delta);
-    target.health -= this.effectiveStats.miningDamagePerSec * delta;
+    this.playerState.consumeMiningEnergy(delta);
+    target.health -= this.playerState.stats.miningDamagePerSec * delta;
     this.updateCrackOverlay(target);
 
     if (target.health <= 0) {
@@ -553,8 +550,8 @@ export class GameScene extends Phaser.Scene {
       const aimY = gamepad ? this.axis(gamepad, 3) : 0;
       if (Math.hypot(aimX, aimY) > 0.22) this.gamepadAim.set(aimX, aimY).normalize();
       this.currentAimWorld.set(
-        origin.x + this.gamepadAim.x * this.effectiveStats.miningRange,
-        origin.y + this.gamepadAim.y * this.effectiveStats.miningRange,
+        origin.x + this.gamepadAim.x * this.playerState.stats.miningRange,
+        origin.y + this.gamepadAim.y * this.playerState.stats.miningRange,
       );
       return this.currentAimWorld;
     }
@@ -562,8 +559,8 @@ export class GameScene extends Phaser.Scene {
     if (this.uiScene.isAiming()) {
       const aim = this.uiScene.getAimVector();
       this.currentAimWorld.set(
-        origin.x + aim.x * this.effectiveStats.miningRange,
-        origin.y + aim.y * this.effectiveStats.miningRange,
+        origin.x + aim.x * this.playerState.stats.miningRange,
+        origin.y + aim.y * this.playerState.stats.miningRange,
       );
       return this.currentAimWorld;
     }
@@ -593,7 +590,7 @@ export class GameScene extends Phaser.Scene {
     if (dir.lengthSq() <= 1) return undefined;
     dir.normalize();
 
-    for (let distance = 8; distance <= this.effectiveStats.miningRange; distance += 8) {
+    for (let distance = 8; distance <= this.playerState.stats.miningRange; distance += 8) {
       const x = origin.x + dir.x * distance;
       const y = origin.y + dir.y * distance;
       const cell = this.level.tiles.get(tileKey(worldToTile(x), worldToTile(y)));
@@ -644,14 +641,7 @@ export class GameScene extends Phaser.Scene {
     this.crackOverlays.get(key)?.destroy();
     this.crackOverlays.delete(key);
 
-    if (isResourceTile(cell.type)) {
-      addItem(this.runState.cargo, cell.type as ItemId, 1);
-      this.save.profile.stats.resourcesMined += 1;
-    }
-
-    this.save.profile.stats.blocksMined += 1;
-    this.save.activeRun = this.runState;
-    saveGame(this.save);
+    this.playerState.recordMinedTile(cell.type);
 
     cell.type = 'air';
     cell.health = 0;
@@ -733,13 +723,13 @@ export class GameScene extends Phaser.Scene {
     const hudState: HudState = {
       title: 'GRAVITY DIG — Mobile Phaser-Port',
       planet: `Planet: ${this.level.planetName} | Seed: ${this.level.seed} | Gen: ${this.level.generationTimeMs}ms`,
-      health: { current: this.runState.health, max: this.effectiveStats.maxHealth },
-      energy: { current: this.runState.energy, max: this.effectiveStats.maxEnergy },
-      fuel: { current: this.runState.fuel, max: 100 },
+      health: { current: this.playerState.run.health, max: this.playerState.stats.maxHealth },
+      energy: { current: this.playerState.run.energy, max: this.playerState.stats.maxEnergy },
+      fuel: { current: this.playerState.run.fuel, max: 100 },
       cargo: {
-        slots: this.runState.cargo.slots,
-        visibleSlots: this.runState.cargo.slots.length,
-        stackLimit: this.runState.cargo.stackLimit,
+        slots: this.playerState.run.cargo.slots,
+        visibleSlots: this.playerState.run.cargo.slots.length,
+        stackLimit: this.playerState.run.cargo.stackLimit,
       },
       debug: controls,
       zoom: `Zoom: ${this.cameras.main.zoom.toFixed(2)} (Offset: ${this.debugZoomOffset >= 0 ? '+' : ''}${this.debugZoomOffset.toFixed(2)})`,
@@ -751,7 +741,7 @@ export class GameScene extends Phaser.Scene {
 
   private updateRunRecovery(delta: number): void {
     if (this.isMiningPressed()) return;
-    this.runState.energy = Math.min(this.effectiveStats.maxEnergy, this.runState.energy + this.effectiveStats.energyRegenPerSec * delta);
+    this.playerState.recoverEnergy(delta);
   }
 
   private tryReturnCargoToShip(): void {
@@ -760,35 +750,8 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    const cargo = this.runState.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
-    if (cargo.length === 0) {
-      this.runState.energy = this.effectiveStats.maxEnergy;
-      this.save.activeRun = this.runState;
-      saveGame(this.save);
-      this.showShipMessage('Schiffsdock: Energie aufgefüllt');
-      return;
-    }
-
-    let credits = 0;
-    let transferred = 0;
-    for (const slot of cargo) {
-      if (!slot.itemId) continue;
-      const itemId = slot.itemId;
-      const definition = ITEM_DEFINITIONS[itemId];
-      const quantity = slot.quantity;
-      addItem(this.save.profile.inventory, itemId, quantity);
-      credits += definition.value * quantity;
-      transferred += quantity;
-      delete slot.itemId;
-      slot.quantity = 0;
-    }
-
-    this.save.profile.credits += credits;
-    this.save.profile.stats.creditsEarned += credits;
-    this.runState.energy = this.effectiveStats.maxEnergy;
-    this.save.activeRun = this.runState;
-    saveGame(this.save);
-    this.showShipMessage(`Cargo gesichert: ${transferred} Items · +${credits} Credits`);
+    const result = this.playerState.returnCargoToShip();
+    this.showShipMessage(result.message);
   }
 
   private updateShipPrompt(deltaMs: number): void {
@@ -796,11 +759,11 @@ export class GameScene extends Phaser.Scene {
     this.lastCargoReturnTimer = Math.max(0, this.lastCargoReturnTimer - deltaMs);
 
     const atDock = this.isAtShipDock();
-    const hasCargo = this.runState.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    const hasCargo = this.playerState.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
     const message = this.lastCargoReturnTimer > 0
       ? this.lastCargoReturnMessage
       : atDock
-        ? `${hasCargo ? 'E: Cargo sichern & verkaufen' : 'E: Energie am Schiff auffüllen'} · Credits: ${this.save.profile.credits}`
+        ? `${hasCargo ? 'E: Cargo sichern & verkaufen' : 'E: Energie am Schiff auffüllen'} · Credits: ${this.playerState.save.profile.credits}`
         : '';
 
     this.shipPrompt
@@ -823,8 +786,7 @@ export class GameScene extends Phaser.Scene {
     if (this.saveTimer < 1000) return;
 
     this.saveTimer = 0;
-    this.save.activeRun = this.runState;
-    saveGame(this.save);
+    this.playerState.saveActiveRun();
   }
 }
 
