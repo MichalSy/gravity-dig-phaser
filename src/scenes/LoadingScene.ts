@@ -1,17 +1,10 @@
 import Phaser from 'phaser';
 import { loadGameAssets } from '../assets/AssetLoader';
 
-const BACKGROUND_WIDTH = 2048;
-const BACKGROUND_HEIGHT = 1152;
 const MIN_LOADING_MS = 900;
 
 export class LoadingScene extends Phaser.Scene {
-  private background?: Phaser.GameObjects.Image;
-  private pandaHead?: Phaser.GameObjects.Container;
-  private loadingText?: Phaser.GameObjects.Text;
-  private progressText?: Phaser.GameObjects.Text;
   private overlay?: HTMLDivElement;
-  private overlayPanda?: HTMLDivElement;
   private overlayProgress?: HTMLDivElement;
   private startTime = 0;
   private progress = 0;
@@ -23,7 +16,6 @@ export class LoadingScene extends Phaser.Scene {
 
   preload(): void {
     this.startTime = performance.now();
-    this.createLoadingView();
     this.createDomOverlay();
     this.load.on('progress', this.setProgress, this);
     this.load.once('complete', this.startGameBehindLoadingScreen, this);
@@ -37,87 +29,18 @@ export class LoadingScene extends Phaser.Scene {
     }
   }
 
-  update(_time: number, deltaMs: number): void {
+  update(): void {
     if (this.waitingForGameReady) {
       this.scene.bringToTop('loading');
     }
-
-    const rotation = deltaMs * 0.0042;
-    if (this.overlayPanda) {
-      const current = Number(this.overlayPanda.dataset.rotation ?? '0') + rotation;
-      this.overlayPanda.dataset.rotation = String(current);
-      this.overlayPanda.style.transform = `rotate(${current}rad)`;
-    }
-
-    if (!this.pandaHead?.active) return;
-    this.pandaHead.rotation += rotation;
-  }
-
-  private createLoadingView(): void {
-    this.cameras.main.setBackgroundColor('#050816');
-
-    if (this.textures.exists('loading-screen')) {
-      this.background = this.add.image(0, 0, 'loading-screen').setOrigin(0.5).setDepth(0);
-    }
-
-    this.pandaHead = this.createPandaHead().setDepth(5);
-    this.loadingText = this.add
-      .text(0, 0, 'LOADING', {
-        fontFamily: 'Silkscreen',
-        fontSize: '34px',
-        fontStyle: '700',
-        color: '#fff4c7',
-        stroke: '#3b210f',
-        strokeThickness: 7,
-      })
-      .setOrigin(0, 0.5)
-      .setDepth(6)
-      .setResolution(2);
-    this.progressText = this.add
-      .text(0, 0, '0%', {
-        fontFamily: 'Silkscreen',
-        fontSize: '22px',
-        fontStyle: '700',
-        color: '#93c5fd',
-        stroke: '#07111f',
-        strokeThickness: 5,
-      })
-      .setOrigin(0, 0.5)
-      .setDepth(6)
-      .setResolution(2);
-
-    this.scale.on('resize', this.layout, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off('resize', this.layout, this);
-      this.load.off('progress', this.setProgress, this);
-      this.game.events.off('game:ready', this.finishLoading, this);
-      this.removeDomOverlay();
-    });
-    this.layout();
-  }
-
-  private createPandaHead(): Phaser.GameObjects.Container {
-    const container = this.add.container(0, 0);
-    const shadow = this.add.circle(4, 7, 31, 0x1f2937, 0.42);
-    const leftEar = this.add.circle(-25, -25, 15, 0x171717, 1);
-    const rightEar = this.add.circle(25, -25, 15, 0x171717, 1);
-    const head = this.add.circle(0, 0, 34, 0xf8fafc, 1).setStrokeStyle(5, 0x171717, 1);
-    const leftPatch = this.add.ellipse(-14, -4, 18, 24, 0x171717, 1).setAngle(-18);
-    const rightPatch = this.add.ellipse(14, -4, 18, 24, 0x171717, 1).setAngle(18);
-    const leftEye = this.add.circle(-13, -5, 4, 0xffffff, 1);
-    const rightEye = this.add.circle(13, -5, 4, 0xffffff, 1);
-    const nose = this.add.ellipse(0, 10, 10, 7, 0x111827, 1);
-    const helmet = this.add.circle(0, 0, 43, 0x93c5fd, 0.24).setStrokeStyle(4, 0xdff7ff, 0.82);
-    const shine = this.add.arc(-14, -17, 22, 215, 292, false, 0xffffff, 0.32).setStrokeStyle(4, 0xffffff, 0.32);
-
-    container.add([shadow, leftEar, rightEar, head, leftPatch, rightPatch, leftEye, rightEye, nose, helmet, shine]);
-    return container;
   }
 
   private createDomOverlay(): void {
     this.removeDomOverlay();
 
+    const backgroundUrl = '/assets/ui/menu/loading_screen.webp';
     const overlay = document.createElement('div');
+    overlay.className = 'gd-loading-overlay';
     overlay.setAttribute('aria-hidden', 'true');
     overlay.style.position = 'fixed';
     overlay.style.inset = '0';
@@ -125,10 +48,16 @@ export class LoadingScene extends Phaser.Scene {
     overlay.style.pointerEvents = 'none';
     overlay.style.overflow = 'hidden';
     overlay.style.backgroundColor = '#050816';
-    overlay.style.backgroundImage = `url('/assets/ui/menu/loading_screen.webp?v=${Date.now().toString(36)}')`;
-    overlay.style.backgroundSize = 'cover';
-    overlay.style.backgroundPosition = 'center';
-    overlay.style.backgroundRepeat = 'no-repeat';
+    const background = document.createElement('img');
+    background.src = backgroundUrl;
+    background.alt = '';
+    background.decoding = 'async';
+    background.style.position = 'absolute';
+    background.style.inset = '0';
+    background.style.width = '100%';
+    background.style.height = '100%';
+    background.style.objectFit = 'cover';
+    background.style.objectPosition = 'center';
 
     const indicator = document.createElement('div');
     indicator.style.position = 'absolute';
@@ -143,16 +72,7 @@ export class LoadingScene extends Phaser.Scene {
     indicator.style.color = '#fff4c7';
     indicator.style.textShadow = '0 0 0 #3b210f, 0 3px 0 #3b210f, 3px 0 0 #3b210f, -3px 0 0 #3b210f, 0 -3px 0 #3b210f';
 
-    const panda = document.createElement('div');
-    panda.dataset.rotation = '0';
-    panda.style.width = '76px';
-    panda.style.height = '76px';
-    panda.style.borderRadius = '50%';
-    panda.style.boxSizing = 'border-box';
-    panda.style.border = '5px solid rgba(223, 247, 255, 0.9)';
-    panda.style.background = 'radial-gradient(circle at 36% 42%, #111827 0 11%, transparent 12%), radial-gradient(circle at 64% 42%, #111827 0 11%, transparent 12%), radial-gradient(circle at 50% 58%, #111827 0 7%, transparent 8%), radial-gradient(circle at 50% 50%, #f8fafc 0 58%, #93c5fd 59% 72%, rgba(147,197,253,0.25) 73%)';
-    panda.style.boxShadow = '0 10px 24px rgba(0,0,0,0.35), inset 0 0 0 3px #171717';
-
+    const panda = this.createDomPandaHead();
     const textColumn = document.createElement('div');
     const label = document.createElement('div');
     label.textContent = 'LOADING';
@@ -167,43 +87,51 @@ export class LoadingScene extends Phaser.Scene {
 
     textColumn.append(label, progress);
     indicator.append(panda, textColumn);
-    overlay.append(indicator);
+    overlay.append(background, indicator);
     document.body.append(overlay);
 
     this.overlay = overlay;
-    this.overlayPanda = panda;
     this.overlayProgress = progress;
+  }
+
+  private createDomPandaHead(): HTMLDivElement {
+    const panda = document.createElement('div');
+    panda.style.position = 'relative';
+    panda.style.width = '76px';
+    panda.style.height = '76px';
+    panda.style.animation = 'gd-loading-panda-spin 1.15s linear infinite';
+    panda.style.filter = 'drop-shadow(0 10px 18px rgba(0,0,0,0.35))';
+
+    const make = (styles: Partial<CSSStyleDeclaration>): HTMLDivElement => {
+      const element = document.createElement('div');
+      Object.assign(element.style, styles);
+      panda.append(element);
+      return element;
+    };
+
+    make({ position: 'absolute', left: '6px', top: '4px', width: '24px', height: '24px', borderRadius: '50%', background: '#171717' });
+    make({ position: 'absolute', right: '6px', top: '4px', width: '24px', height: '24px', borderRadius: '50%', background: '#171717' });
+    make({ position: 'absolute', inset: '5px', borderRadius: '50%', background: 'rgba(147,197,253,0.26)', border: '5px solid rgba(223,247,255,0.92)', boxSizing: 'border-box' });
+    make({ position: 'absolute', left: '11px', top: '11px', width: '54px', height: '54px', borderRadius: '50%', background: '#f8fafc', border: '4px solid #171717', boxSizing: 'border-box' });
+    make({ position: 'absolute', left: '21px', top: '28px', width: '15px', height: '21px', borderRadius: '50%', background: '#171717', transform: 'rotate(-18deg)' });
+    make({ position: 'absolute', right: '21px', top: '28px', width: '15px', height: '21px', borderRadius: '50%', background: '#171717', transform: 'rotate(18deg)' });
+    make({ position: 'absolute', left: '27px', top: '33px', width: '5px', height: '5px', borderRadius: '50%', background: '#ffffff' });
+    make({ position: 'absolute', right: '27px', top: '33px', width: '5px', height: '5px', borderRadius: '50%', background: '#ffffff' });
+    make({ position: 'absolute', left: '33px', top: '47px', width: '10px', height: '7px', borderRadius: '50%', background: '#111827' });
+    make({ position: 'absolute', left: '21px', top: '14px', width: '24px', height: '15px', borderTop: '4px solid rgba(255,255,255,0.44)', borderRadius: '50%', transform: 'rotate(-22deg)' });
+
+    return panda;
   }
 
   private removeDomOverlay(): void {
     this.overlay?.remove();
     this.overlay = undefined;
-    this.overlayPanda = undefined;
     this.overlayProgress = undefined;
-  }
-
-  private layout(): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const sceneScale = Math.max(width / BACKGROUND_WIDTH, height / BACKGROUND_HEIGHT);
-
-    this.background?.setPosition(width / 2, height / 2).setScale(sceneScale);
-
-    const indicatorScale = Phaser.Math.Clamp(Math.min(width, height) / 720, 0.62, 1.18);
-    const centerX = width * 0.66;
-    const centerY = height * 0.72;
-    const gap = 76 * indicatorScale;
-
-    this.pandaHead?.setPosition(centerX - gap, centerY).setScale(indicatorScale);
-    this.loadingText?.setPosition(centerX - gap + 70 * indicatorScale, centerY - 10 * indicatorScale).setFontSize(34 * indicatorScale);
-    this.progressText?.setPosition(centerX - gap + 74 * indicatorScale, centerY + 30 * indicatorScale).setFontSize(22 * indicatorScale);
   }
 
   private setProgress(progress: number): void {
     this.progress = Phaser.Math.Clamp(progress, 0, 1);
-    const text = `${Math.round(this.progress * 100)}%`;
-    this.progressText?.setText(text);
-    if (this.overlayProgress) this.overlayProgress.textContent = text;
+    if (this.overlayProgress) this.overlayProgress.textContent = `${Math.round(this.progress * 100)}%`;
   }
 
   private startGameBehindLoadingScreen(): void {
