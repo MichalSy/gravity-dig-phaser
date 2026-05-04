@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { VirtualJoystick } from '../controls/VirtualJoystick';
+import { DeveloperDialog } from '../debug/DeveloperDialog';
 import type { InventorySlot } from '../player/types';
 
 export type InputMode = 'touch' | 'desktop' | 'gamepad';
@@ -68,6 +69,8 @@ export class UIScene extends Phaser.Scene {
   private controlsHint!: Phaser.GameObjects.Text;
   private debugPanel!: Phaser.GameObjects.Container;
   private collisionButton!: Phaser.GameObjects.Text;
+  private developerButton!: Phaser.GameObjects.Text;
+  private developerDialog!: DeveloperDialog;
   private collisionDebugEnabled = false;
   private inputMode: InputMode = 'desktop';
   private latestHud?: HudState;
@@ -78,6 +81,7 @@ export class UIScene extends Phaser.Scene {
 
   create(): void {
     this.input.addPointer(3);
+    this.developerDialog = new DeveloperDialog(this);
     this.createHud();
     this.createDebugMenu();
     this.leftJoystick = new VirtualJoystick(this, 'left', 'MOVE');
@@ -90,6 +94,7 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerupoutside', this.handlePointerUp, this);
     this.scale.on('resize', this.layout, this);
     this.game.events.on('hud:update', this.updateHud, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.developerDialog.destroy());
     this.updateInputMode();
   }
 
@@ -175,7 +180,7 @@ export class UIScene extends Phaser.Scene {
 
   private createDebugMenu(): void {
     const bg = this.add
-      .rectangle(0, 0, 156, 52, 0x020617, 0.72)
+      .rectangle(0, 0, 156, 86, 0x020617, 0.72)
       .setStrokeStyle(1, 0x38bdf8, 0.65)
       .setOrigin(1, 0)
       .setScrollFactor(0);
@@ -204,7 +209,26 @@ export class UIScene extends Phaser.Scene {
       this.toggleCollisionDebug();
     });
 
-    this.debugPanel = this.add.container(0, 0, [bg, title, this.collisionButton]).setDepth(40).setScrollFactor(0);
+    this.developerButton = this.add
+      .text(-144, 56, 'Developer', {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '13px',
+        fontStyle: '700',
+        color: '#082f49',
+        backgroundColor: 'rgba(103,232,249,0.92)',
+        padding: { x: 8, y: 4 },
+      })
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true })
+      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+
+    this.developerButton.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      pointer.event.preventDefault();
+      pointer.event.stopPropagation();
+      this.developerDialog.toggle();
+    });
+
+    this.debugPanel = this.add.container(0, 0, [bg, title, this.collisionButton, this.developerButton]).setDepth(40).setScrollFactor(0);
   }
 
   private layout(): void {
@@ -359,7 +383,7 @@ export class UIScene extends Phaser.Scene {
   private isDebugMenuPointer(pointer: Phaser.Input.Pointer): boolean {
     if (!this.debugPanel) return false;
     const panelLeft = this.scale.width - 168;
-    return pointer.x >= panelLeft && pointer.x <= this.scale.width - 12 && pointer.y >= 12 && pointer.y <= 64;
+    return pointer.x >= panelLeft && pointer.x <= this.scale.width - 12 && pointer.y >= 12 && pointer.y <= 98;
   }
 
   private updateInputMode(): void {
