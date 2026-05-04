@@ -15,7 +15,7 @@ import {
   type TileType,
   isResourceTile,
 } from '../game/level';
-import { atlasFrameForTile, backwallFrameForTile, tileKey, worldToTile } from '../utils/tileMath';
+import { tileKey, worldToTile } from '../utils/tileMath';
 import { loadGameAssets } from '../assets/AssetLoader';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -31,13 +31,7 @@ const SHIP_DOCK_RADIUS = TILE_SIZE * 2.35;
 
 export class GameScene extends Phaser.Scene {
   private level!: LevelData;
-  private tilemap?: Phaser.Tilemaps.Tilemap;
-  private tileLayer?: Phaser.Tilemaps.TilemapLayer;
-  private backwallTilemap?: Phaser.Tilemaps.Tilemap;
-  private backwallLayer?: Phaser.Tilemaps.TilemapLayer;
   private crackOverlays = new Map<string, Phaser.GameObjects.Image>();
-  private mapOffsetX = 0;
-  private mapOffsetY = 0;
   private player!: Phaser.GameObjects.Image;
   private cursors!: CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -139,23 +133,14 @@ export class GameScene extends Phaser.Scene {
     this.crackOverlays.clear();
     for (const object of this.startDecor) object.destroy();
     this.startDecor = [];
-    this.tileLayer?.destroy();
-    this.backwallLayer?.destroy();
-    this.tilemap?.destroy();
-    this.backwallTilemap?.destroy();
     this.laser?.destroy();
     this.collisionDebug?.destroy();
     this.targetMarker?.destroy();
-    this.tileLayer = undefined;
-    this.backwallLayer = undefined;
-    this.tilemap = undefined;
-    this.backwallTilemap = undefined;
 
     this.level = this.levelNode.generate(seed);
     this.playerState.startRun(this.level.planetId, String(seed), restoreActiveRun);
 
     this.addBackground();
-    this.drawTiles();
     this.addStartTunnelBackground();
     this.addShip();
     this.addCoreMarker();
@@ -172,46 +157,6 @@ export class GameScene extends Phaser.Scene {
     for (let i = 0; i < 180; i += 1) {
       stars.fillCircle(rng.integerInRange(-600, 5600), rng.integerInRange(-2800, 420), rng.realInRange(0.8, 2.4));
     }
-  }
-
-  private drawTiles(): void {
-    const minX = Math.min(...[...this.level.tiles.values()].map((cell) => cell.x));
-    const maxX = Math.max(...[...this.level.tiles.values()].map((cell) => cell.x));
-    const minY = Math.min(...[...this.level.tiles.values()].map((cell) => cell.y));
-    const maxY = Math.max(...[...this.level.tiles.values()].map((cell) => cell.y));
-    const width = maxX - minX + 1;
-    const height = maxY - minY + 1;
-    const data = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
-    const backwallData = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
-
-    this.mapOffsetX = minX;
-    this.mapOffsetY = minY;
-
-    for (const cell of this.level.tiles.values()) {
-      if (cell.type === 'air') continue;
-      const localX = cell.x - minX;
-      const localY = cell.y - minY;
-
-      if (!cell.boundary) {
-        backwallData[localY][localX] = backwallFrameForTile(cell.x, cell.y);
-      }
-      data[localY][localX] = atlasFrameForTile(cell.type, cell.x, cell.y);
-    }
-
-    this.backwallTilemap = this.make.tilemap({ data: backwallData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-tiles', 'backwall-tiles', TILE_SIZE, TILE_SIZE, 0, 0);
-    if (!backwallTileset) throw new Error('Failed to create backwall tileset');
-    const backwallLayer = this.backwallTilemap.createLayer(0, backwallTileset, minX * TILE_SIZE, minY * TILE_SIZE);
-    if (!backwallLayer || backwallLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
-    this.backwallLayer = backwallLayer.setDepth(0.6).setAlpha(0.88);
-
-    this.tilemap = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
-    if (!tileset) throw new Error('Failed to create tileset');
-
-    const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
-    if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
-    this.tileLayer = layer.setDepth(2);
   }
 
   private addStartTunnelBackground(): void {
@@ -425,31 +370,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collides(cx: number, cy: number): boolean {
-    return this.getCollisionProbePoints(cx, cy).some(([x, y]) => this.isSolidAtWorld(x, y));
+    return this.levelNode.collidesBox(cx, cy, PLAYER_SIZE.w, PLAYER_SIZE.h);
   }
 
   private getCollisionProbePoints(cx: number, cy: number): [number, number][] {
-    const halfW = PLAYER_SIZE.w / 2;
-    const halfH = PLAYER_SIZE.h / 2;
-    return [
-      [cx - halfW, cy - halfH],
-      [cx + halfW, cy - halfH],
-      [cx - halfW, cy + halfH],
-      [cx + halfW, cy + halfH],
-    ];
+    return this.levelNode.getBoxProbePoints(cx, cy, PLAYER_SIZE.w, PLAYER_SIZE.h);
   }
 
   private isSolidAtWorld(x: number, y: number): boolean {
-    if (this.isBehindShipNozzleWall(x, y)) return true;
-
-    const tx = worldToTile(x);
-    const ty = worldToTile(y);
-    const cell = this.level.tiles.get(tileKey(tx, ty));
-    return !!cell && cell.type !== 'air';
-  }
-
-  private isBehindShipNozzleWall(x: number, y: number): boolean {
-    return x < -8.65 * TILE_SIZE && y >= -1.4 * TILE_SIZE && y <= 2.95 * TILE_SIZE;
+    return this.levelNode.isSolidAtWorld(x, y);
   }
 
   private blockGameplayInput(): void {
@@ -498,7 +427,7 @@ export class GameScene extends Phaser.Scene {
     this.collisionDebug.lineStyle(1, 0xef4444, 0.5);
     for (let ty = minTy; ty <= maxTy; ty += 1) {
       for (let tx = minTx; tx <= maxTx; tx += 1) {
-        const cell = this.level.tiles.get(tileKey(tx, ty));
+        const cell = this.levelNode.getCell(tx, ty);
         if (!cell || cell.type === 'air') continue;
         this.collisionDebug.strokeRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
@@ -593,7 +522,7 @@ export class GameScene extends Phaser.Scene {
     for (let distance = 8; distance <= this.playerState.stats.miningRange; distance += 8) {
       const x = origin.x + dir.x * distance;
       const y = origin.y + dir.y * distance;
-      const cell = this.level.tiles.get(tileKey(worldToTile(x), worldToTile(y)));
+      const cell = this.levelNode.getCellAtWorld(x, y);
       if (cell?.type && cell.type !== 'air') {
         return cell.type === 'bedrock' ? undefined : cell;
       }
@@ -635,17 +564,13 @@ export class GameScene extends Phaser.Scene {
 
   private mineTile(cell: TileCell): void {
     const key = tileKey(cell.x, cell.y);
-    const localX = cell.x - this.mapOffsetX;
-    const localY = cell.y - this.mapOffsetY;
-    this.tilemap?.putTileAt(-1, localX, localY, false, this.tileLayer);
+    const minedType = cell.type;
+
+    this.levelNode.clearTile(cell);
     this.crackOverlays.get(key)?.destroy();
     this.crackOverlays.delete(key);
 
-    this.playerState.recordMinedTile(cell.type);
-
-    cell.type = 'air';
-    cell.health = 0;
-    this.level.resources.delete(key);
+    this.playerState.recordMinedTile(minedType);
   }
 
   private playBlockBreakSound(type: TileType): void {
