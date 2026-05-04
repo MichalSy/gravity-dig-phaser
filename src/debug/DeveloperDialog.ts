@@ -17,6 +17,7 @@ interface GraphicAssetInfo {
 
 export class DeveloperDialog {
   private readonly scene: Phaser.Scene;
+  private readonly fileSizeCache = new Map<string, string>();
   private root?: HTMLDivElement;
   private activeTab: DeveloperTab = 'planet';
 
@@ -137,7 +138,8 @@ export class DeveloperDialog {
       const card = document.createElement('button');
       card.className = 'gd-dev-asset-card';
       card.type = 'button';
-      card.title = `${asset.key}\n${asset.path}\n${asset.width}×${asset.height}`;
+      const cachedSize = this.fileSizeCache.get(asset.path);
+      card.title = `${asset.key}\n${asset.path}\n${asset.width}×${asset.height}${cachedSize ? `\n${cachedSize}` : ''}`;
       card.addEventListener('click', () => this.openAssetPreview(asset));
 
       const preview = document.createElement('div');
@@ -157,14 +159,18 @@ export class DeveloperDialog {
 
       const meta = document.createElement('div');
       meta.className = 'gd-dev-asset-meta';
-      meta.textContent = `${asset.category} · ${asset.width}×${asset.height}`;
       meta.title = asset.path;
+      meta.append(
+        document.createTextNode(`${asset.category} · ${asset.width}×${asset.height} · `),
+        this.renderFileSizeLabel(asset),
+      );
 
       card.append(preview, name, meta);
       grid.appendChild(card);
     }
 
     wrap.appendChild(grid);
+    void this.populateFileSizes(assets);
     return wrap;
   }
 
@@ -180,8 +186,9 @@ export class DeveloperDialog {
     const header = document.createElement('div');
     header.className = 'gd-dev-lightbox-header';
 
+    const fileSize = this.fileSizeCache.get(asset.path) ?? 'Dateigröße wird geladen…';
     const title = document.createElement('div');
-    title.innerHTML = `<strong>${asset.key}</strong><span>${asset.category} · ${asset.width}×${asset.height} · ${asset.path}</span>`;
+    title.innerHTML = `<strong>${asset.key}</strong><span>${asset.category} · ${asset.width}×${asset.height} · ${fileSize} · ${asset.path}</span>`;
 
     const closeButton = document.createElement('button');
     closeButton.type = 'button';
@@ -247,6 +254,58 @@ export class DeveloperDialog {
     pre.textContent = JSON.stringify(value, null, 2);
     card.append(heading, pre);
     return card;
+  }
+
+  private renderFileSizeLabel(asset: GraphicAssetInfo): HTMLSpanElement {
+    const label = document.createElement('span');
+    label.className = 'gd-dev-asset-size';
+    label.dataset.assetPath = asset.path;
+    label.textContent = this.fileSizeCache.get(asset.path) ?? 'lädt…';
+    return label;
+  }
+
+  private async populateFileSizes(assets: GraphicAssetInfo[]): Promise<void> {
+    await Promise.all(assets.map((asset) => this.populateFileSize(asset.path)));
+  }
+
+  private async populateFileSize(path: string): Promise<void> {
+    if (this.fileSizeCache.has(path)) return;
+
+    this.fileSizeCache.set(path, 'lädt…');
+    this.updateFileSizeLabels(path);
+
+    try {
+      const response = await fetch(path, { method: 'HEAD' });
+      const contentLength = response.headers.get('content-length');
+      if (response.ok && contentLength) {
+        this.fileSizeCache.set(path, this.formatBytes(Number(contentLength)));
+        this.updateFileSizeLabels(path);
+        return;
+      }
+
+      const fallback = await fetch(path);
+      const blob = await fallback.blob();
+      this.fileSizeCache.set(path, this.formatBytes(blob.size));
+    } catch {
+      this.fileSizeCache.set(path, '–');
+    }
+
+    this.updateFileSizeLabels(path);
+  }
+
+  private updateFileSizeLabels(path: string): void {
+    if (!this.root) return;
+    const label = this.fileSizeCache.get(path) ?? '–';
+    for (const element of this.root.querySelectorAll<HTMLElement>(`.gd-dev-asset-size[data-asset-path="${CSS.escape(path)}"]`)) {
+      element.textContent = label;
+    }
+  }
+
+  private formatBytes(bytes: number): string {
+    if (!Number.isFinite(bytes) || bytes < 0) return '–';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   private getGraphicAssets(): GraphicAssetInfo[] {
@@ -346,6 +405,7 @@ export class DeveloperDialog {
       #${DIALOG_ID} .gd-dev-asset-preview img { max-width: 132px; max-height: 92px; object-fit: contain; image-rendering: pixelated; }
       #${DIALOG_ID} .gd-dev-asset-name { padding: 8px 8px 2px; color: #f8fafc; font-size: 12px; font-weight: 800; word-break: break-word; }
       #${DIALOG_ID} .gd-dev-asset-meta { padding: 0 8px 8px; color: #94a3b8; font-size: 11px; }
+      #${DIALOG_ID} .gd-dev-asset-size { color: #bae6fd; font-weight: 800; }
       #${DIALOG_ID} .gd-dev-lightbox { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; padding: 24px; background: rgba(2, 6, 23, 0.82); }
       #${DIALOG_ID} .gd-dev-lightbox-panel { width: min(980px, 100%); max-height: 100%; border: 1px solid rgba(103, 232, 249, 0.62); border-radius: 14px; overflow: hidden; background: rgba(8, 13, 25, 0.98); box-shadow: 0 24px 80px rgba(0,0,0,0.68); display: flex; flex-direction: column; }
       #${DIALOG_ID} .gd-dev-lightbox-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, 0.22); }
