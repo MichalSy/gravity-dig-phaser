@@ -297,7 +297,7 @@ export class UIScene extends Phaser.Scene {
     const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
 
     this.statusFrame
-      .setPosition(x, y)
+      .setPosition(x - HP_FUEL_ATLAS.hud.x * atlasScale, y - HP_FUEL_ATLAS.hud.y * atlasScale)
       .setCrop(HP_FUEL_ATLAS.hud.x, HP_FUEL_ATLAS.hud.y, HP_FUEL_ATLAS.hud.w, HP_FUEL_ATLAS.hud.h)
       .setScale(atlasScale)
       .setVisible(true);
@@ -401,10 +401,13 @@ export class UIScene extends Phaser.Scene {
     const safePct = Phaser.Math.Clamp(pct, 0, 1);
     const cropWidth = Math.max(1, Math.round(source.w * safePct));
 
+    const scaleX = width / source.w;
+    const scaleY = height / source.h;
+
     bar
-      .setPosition(x, y)
+      .setPosition(x - source.x * scaleX, y - source.y * scaleY)
       .setCrop(source.x, source.y, cropWidth, source.h)
-      .setScale(width / source.w, height / source.h)
+      .setScale(scaleX, scaleY)
       .setVisible(safePct > 0);
   }
 
