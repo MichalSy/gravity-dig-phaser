@@ -54,8 +54,8 @@ const UI_ATLAS = {
   energySlot: { x: 303, y: 180, w: 420, h: 155 },
   extraSlotOrigin: { x: 1152, y: 90 },
   firstSlotCenter: { x: 1026, y: 254 },
-  slotContentSize: 173,
-  repeatSlotHeight: 344,
+  slotContentSize: 165,
+  repeatSlotHeight: 352,
   repeatSlotStep: 278,
   bottomDisplayHeight: 150,
 } as const;
@@ -387,7 +387,7 @@ export class UIScene extends Phaser.Scene {
         label
           .setText(`x${slot?.quantity ?? 0}`)
           .setPosition(itemX + itemSize / 2 - 4 * atlasScale, itemY + itemSize / 2 - 4 * atlasScale)
-          .setScale(atlasScale * 3.55);
+          .setScale(atlasScale * 4.05);
       }
     }
   }
