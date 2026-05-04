@@ -4,14 +4,13 @@ import {
   PLAYER_SIZE,
   TILE_SIZE,
 } from '../config/gameConfig';
-import { NodeRuntime } from '../nodes';
+import { NodeRuntime, NodeScene } from '../nodes';
+import { LevelGeneratorManagerNode, LevelNode } from '../game/LevelNodes';
 import { PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
 import { UIScene } from './UIScene';
 import type { HudState, InputMode } from '../ui/HudState';
 import {
-  GravityDigLevelGenerator,
   type LevelData,
-  type PlanetConfig,
   type TileCell,
   type TileType,
   isResourceTile,
@@ -31,7 +30,6 @@ const SHIP_DOCK_CENTER_Y = 2 * TILE_SIZE;
 const SHIP_DOCK_RADIUS = TILE_SIZE * 2.35;
 
 export class GameScene extends Phaser.Scene {
-  private generator = new GravityDigLevelGenerator();
   private level!: LevelData;
   private tilemap?: Phaser.Tilemaps.Tilemap;
   private tileLayer?: Phaser.Tilemaps.TilemapLayer;
@@ -53,6 +51,7 @@ export class GameScene extends Phaser.Scene {
   private walkTimer = 0;
   private walkFrame = 0;
   private gameRuntime!: NodeRuntime;
+  private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
   private saveTimer = 0;
   private miningTarget?: TileCell;
@@ -87,8 +86,11 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.gameRuntime = new NodeRuntime({ phaserScene: this });
     this.gameRuntime.addPersistentNode(new PlayerStateManagerNode());
+    this.gameRuntime.addPersistentNode(new LevelGeneratorManagerNode());
+    this.gameRuntime.addScene(new NodeScene({ sceneName: 'game' })).addChild(new LevelNode());
     this.gameRuntime.init();
     this.gameRuntime.resolve();
+    this.levelNode = this.gameRuntime.requireNode<LevelNode>('level');
     this.playerState = this.gameRuntime.requireNode<PlayerStateManagerNode>('playerState');
 
     this.input.addPointer(3);
@@ -149,8 +151,7 @@ export class GameScene extends Phaser.Scene {
     this.tilemap = undefined;
     this.backwallTilemap = undefined;
 
-    const config = this.cache.json.get('dev-planet') as PlanetConfig;
-    this.level = this.generator.generate(config, 1, seed);
+    this.level = this.levelNode.generate(seed);
     this.playerState.startRun(this.level.planetId, String(seed), restoreActiveRun);
 
     this.addBackground();
