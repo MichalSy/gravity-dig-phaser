@@ -251,7 +251,7 @@ export class DeveloperDialog {
 
   private getGraphicAssets(): GraphicAssetInfo[] {
     return GAME_GRAPHIC_ASSETS
-      .filter((asset) => asset.showInDeveloper !== false && this.scene.textures.exists(asset.key))
+      .filter((asset) => this.scene.textures.exists(asset.key))
       .map((asset) => {
         const texture = this.scene.textures.get(asset.key);
         const sourceImage = texture.getSourceImage() as HTMLImageElement | HTMLCanvasElement;

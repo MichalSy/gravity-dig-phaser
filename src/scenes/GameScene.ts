@@ -164,7 +164,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   private addBackground(): void {
-    this.add.image(0, 0, 'bg-game').setOrigin(0.5).setScrollFactor(0.04).setScale(2.2).setDepth(-20);
     const stars = this.add.graphics().setDepth(-19).setScrollFactor(0.12);
     const rng = new Phaser.Math.RandomDataGenerator([String(this.level.seed)]);
     stars.fillStyle(0xffffff, 0.8);
