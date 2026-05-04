@@ -4,6 +4,9 @@ import { GAME_HEIGHT, GAME_WIDTH } from './config/gameConfig';
 import { GameScene } from './scenes/GameScene';
 import { MenuScene } from './scenes/MenuScene';
 import { UIScene } from './scenes/UIScene';
+import { installTouchImmersiveLandscapeGate } from './utils/screen';
+
+installTouchImmersiveLandscapeGate();
 
 async function startGame(): Promise<void> {
   await document.fonts?.load('700 28px "Silkscreen"');
