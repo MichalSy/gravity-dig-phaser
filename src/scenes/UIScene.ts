@@ -43,21 +43,21 @@ const TEXT = {
 
 const UI_ATLAS = {
   topHud: { x: 34, y: 34, w: 1242, h: 554 },
-  hpBar: { x: 112, y: 649, w: 655, h: 97 },
-  fuelBar: { x: 124, y: 818, w: 636, h: 86 },
-  hpSlot: { x: 365, y: 168, w: 655, h: 97 },
-  fuelSlot: { x: 365, y: 374, w: 636, h: 86 },
-  topDisplayWidth: 360,
-  bottomHud: { x: 44, y: 951, w: 1195, h: 443 },
+  hpBar: { x: 112, y: 650, w: 655, h: 95 },
+  fuelBar: { x: 124, y: 818, w: 632, h: 81 },
+  hpSlot: { x: 385 - 34, y: 200 - 34, w: 655, h: 95 },
+  fuelSlot: { x: 395 - 34, y: 406 - 34, w: 637, h: 85 },
+  topDisplayWidth: 400,
+  bottomHud: { x: 55, y: 1002, w: 1194, h: 442 },
   energyBar: { x: 139, y: 1495, w: 401, h: 108 },
-  energySlot: { x: 293, y: 190, w: 401, h: 108 },
+  energySlot: { x: 360 - 55, y: 1194 - 1002, w: 395, h: 125 },
   repeatSlot: { x: 866, y: 607, w: 374, h: 372 },
-  extraSlotOrigin: { x: 1225, y: 36 },
-  firstSlotCenter: { x: 1000, y: 259 },
+  extraSlotOrigin: { x: 1160, y: 65 },
+  firstSlotCenter: { x: 1010, y: 265 },
   slotContentSize: 128,
-  repeatSlotHeight: 170,
-  repeatSlotStep: 190,
-  bottomDisplayHeight: 150,
+  repeatSlotHeight: 372,
+  repeatSlotStep: 360,
+  bottomDisplayHeight: 180,
 } as const;
 
 export class UIScene extends Phaser.Scene {
