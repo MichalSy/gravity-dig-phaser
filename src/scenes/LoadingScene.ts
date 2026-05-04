@@ -103,13 +103,13 @@ export class LoadingScene extends Phaser.Scene {
     this.background?.setPosition(width / 2, height / 2).setScale(sceneScale);
 
     const indicatorScale = Phaser.Math.Clamp(Math.min(width, height) / 720, 0.62, 1.18);
-    const centerX = width / 2;
-    const centerY = height * 0.78;
-    const gap = 72 * indicatorScale;
+    const centerX = width * 0.66;
+    const centerY = height * 0.72;
+    const gap = 76 * indicatorScale;
 
     this.pandaHead?.setPosition(centerX - gap, centerY).setScale(indicatorScale);
-    this.loadingText?.setPosition(centerX - gap + 66 * indicatorScale, centerY - 10 * indicatorScale).setFontSize(34 * indicatorScale);
-    this.progressText?.setPosition(centerX - gap + 70 * indicatorScale, centerY + 30 * indicatorScale).setFontSize(22 * indicatorScale);
+    this.loadingText?.setPosition(centerX - gap + 70 * indicatorScale, centerY - 10 * indicatorScale).setFontSize(34 * indicatorScale);
+    this.progressText?.setPosition(centerX - gap + 74 * indicatorScale, centerY + 30 * indicatorScale).setFontSize(22 * indicatorScale);
   }
 
   private setProgress(progress: number): void {
