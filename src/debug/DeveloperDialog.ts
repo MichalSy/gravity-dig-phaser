@@ -396,7 +396,7 @@ export class DeveloperDialog {
       #${DIALOG_ID} th, #${DIALOG_ID} td { padding: 9px 12px; border-bottom: 1px solid rgba(148, 163, 184, 0.12); text-align: left; vertical-align: top; }
       #${DIALOG_ID} th { width: 34%; color: #93c5fd; font-weight: 800; }
       #${DIALOG_ID} td { color: #e5e7eb; }
-      #${DIALOG_ID} pre { margin: 0; padding: 14px; max-height: 520px; overflow: auto; font-size: 12px; line-height: 1.45; color: #dbeafe; background: rgba(2, 6, 23, 0.72); }
+      #${DIALOG_ID} pre { margin: 0; padding: 14px; overflow: visible; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; color: #dbeafe; background: rgba(2, 6, 23, 0.72); }
       #${DIALOG_ID} .gd-dev-toolbar { margin-bottom: 12px; color: #bae6fd; font-size: 13px; font-weight: 800; }
       #${DIALOG_ID} .gd-dev-asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
       #${DIALOG_ID} .gd-dev-asset-card { border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; background: rgba(15, 23, 42, 0.82); overflow: hidden; color: inherit; text-align: left; padding: 0; }
