@@ -42,21 +42,21 @@ const TEXT = {
 };
 
 const UI_ATLAS = {
-  topHud: { x: 24, y: 24, w: 1262, h: 574 },
-  hpBar: { x: 34, y: 632, w: 1336, h: 191 },
-  fuelBar: { x: 34, y: 867, w: 1121, h: 166 },
-  hpSlot: { x: 393, y: 210, w: 624, h: 70 },
-  fuelSlot: { x: 403, y: 431, w: 614, h: 70 },
+  topHud: { x: 34, y: 34, w: 1242, h: 554 },
+  hpBar: { x: 112, y: 649, w: 655, h: 97 },
+  fuelBar: { x: 124, y: 818, w: 636, h: 86 },
+  hpSlot: { x: 365, y: 168, w: 655, h: 97 },
+  fuelSlot: { x: 365, y: 374, w: 636, h: 86 },
   topDisplayWidth: 360,
-  bottomHud: { x: 24, y: 1091, w: 1215, h: 463 },
-  energyBar: { x: 24, y: 1578, w: 873, h: 245 },
-  repeatSlot: { x: 24, y: 1847, w: 465, h: 463 },
-  energySlot: { x: 303, y: 180, w: 420, h: 155 },
-  extraSlotOrigin: { x: 1176, y: 90 },
-  firstSlotCenter: { x: 1026, y: 254 },
-  slotContentSize: 149,
-  repeatSlotHeight: 368,
-  repeatSlotStep: 290,
+  bottomHud: { x: 44, y: 951, w: 1195, h: 443 },
+  energyBar: { x: 139, y: 1495, w: 401, h: 108 },
+  energySlot: { x: 293, y: 190, w: 401, h: 108 },
+  repeatSlot: { x: 866, y: 607, w: 374, h: 372 },
+  extraSlotOrigin: { x: 1225, y: 36 },
+  firstSlotCenter: { x: 1000, y: 259 },
+  slotContentSize: 128,
+  repeatSlotHeight: 170,
+  repeatSlotStep: 190,
   bottomDisplayHeight: 150,
 } as const;
 
@@ -273,7 +273,9 @@ export class UIScene extends Phaser.Scene {
       this.rightJoystick?.setVisible(false);
     }
 
-    this.debugText?.setOrigin(0, 1).setPosition(14, height - 14).setVisible(true);
+    const hudScale = Phaser.Math.Clamp(width / 1280, 0.5, 1);
+    const bottomHudHeight = UI_ATLAS.bottomDisplayHeight * hudScale;
+    this.debugText?.setOrigin(0, 1).setPosition(14, height - bottomHudHeight - 24).setVisible(true);
     this.debugText?.setWordWrapWidth(Math.max(320, Math.min(560, width - 28)));
     this.controlsHint?.setPosition(width / 2, Math.max(24, height - 26)).setVisible(!compact && touchMode);
     this.controlsHint?.setWordWrapWidth(Math.max(320, width - 48));
@@ -295,7 +297,7 @@ export class UIScene extends Phaser.Scene {
   private drawHud(state: HudState): void {
     const width = this.scale.width;
     const height = this.scale.height;
-    const scale = Phaser.Math.Clamp(width / 1280, 0.72, 1);
+    const scale = Phaser.Math.Clamp(width / 1280, 0.5, 1);
     this.drawStatusPanel(18, 18, scale, state);
     this.drawActionPanel(width / 2, height - 178 * scale, scale, state);
   }
@@ -327,7 +329,7 @@ export class UIScene extends Phaser.Scene {
   private drawActionPanel(centerX: number, _y: number, scale: number, state: HudState): void {
     this.actionGraphics.clear();
     const atlasScale = (UI_ATLAS.bottomDisplayHeight * scale) / UI_ATLAS.bottomHud.h;
-    const frameW = (UI_ATLAS.bottomHud.w + Math.max(0, Math.min(2, state.cargo.visibleSlots - 1)) * UI_ATLAS.repeatSlotStep) * atlasScale;
+    const frameW = (UI_ATLAS.bottomHud.w + Math.max(0, Math.min(this.slotFrames.length - 1, state.cargo.visibleSlots - 1)) * UI_ATLAS.repeatSlotStep) * atlasScale;
     const x = centerX - frameW / 2;
     const dockY = this.scale.height - UI_ATLAS.bottomHud.h * atlasScale - 10 * scale;
     const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
