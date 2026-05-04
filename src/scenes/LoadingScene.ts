@@ -79,7 +79,7 @@ export class LoadingScene extends Phaser.Scene {
     label.style.fontSize = '34px';
     label.style.lineHeight = '1';
     const progress = document.createElement('div');
-    progress.textContent = '0%';
+    progress.textContent = '0';
     progress.style.marginTop = '12px';
     progress.style.color = '#93c5fd';
     progress.style.fontSize = '22px';
@@ -131,7 +131,7 @@ export class LoadingScene extends Phaser.Scene {
 
   private setProgress(progress: number): void {
     this.progress = Phaser.Math.Clamp(progress, 0, 1);
-    if (this.overlayProgress) this.overlayProgress.textContent = `${Math.round(this.progress * 100)}%`;
+    if (this.overlayProgress) this.overlayProgress.textContent = `${Math.round(this.progress * 100)}`;
   }
 
   private startGameBehindLoadingScreen(): void {
