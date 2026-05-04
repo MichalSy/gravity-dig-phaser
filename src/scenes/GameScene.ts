@@ -95,8 +95,8 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
     this.createLevel();
     this.scene.launch('ui');
-    this.scene.bringToTop('ui');
     this.uiScene = this.scene.get('ui') as UIScene;
+    this.configureUiVisibilityDuringLoading();
     this.createControls();
     this.laserSound = this.sound.add('laser-loop', { loop: true, volume: 0.28 });
     this.game.events.on('debug:collision', this.setCollisionDebug, this);
@@ -287,6 +287,21 @@ export class GameScene extends Phaser.Scene {
     if (!this.input.keyboard) throw new Error('Keyboard input unavailable');
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
+  }
+
+  private configureUiVisibilityDuringLoading(): void {
+    const loadingActive = this.scene.isActive('loading') || this.scene.isVisible('loading');
+    this.scene.setVisible(!loadingActive, 'ui');
+
+    if (loadingActive) {
+      this.game.events.once('loading:complete', () => {
+        this.scene.setVisible(true, 'ui');
+        this.scene.bringToTop('ui');
+      });
+      return;
+    }
+
+    this.scene.bringToTop('ui');
   }
 
   private updateCameraZoom(): void {

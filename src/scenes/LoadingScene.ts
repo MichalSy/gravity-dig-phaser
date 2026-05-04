@@ -1,15 +1,11 @@
 import Phaser from 'phaser';
 import { loadGameAssets } from '../assets/AssetLoader';
 
-const BACKGROUND_WIDTH = 2048;
-const BACKGROUND_HEIGHT = 1152;
 const MIN_LOADING_MS = 900;
 
 export class LoadingScene extends Phaser.Scene {
-  private background?: Phaser.GameObjects.Image;
-  private pandaHead?: Phaser.GameObjects.Container;
-  private loadingText?: Phaser.GameObjects.Text;
-  private progressText?: Phaser.GameObjects.Text;
+  private overlay?: HTMLDivElement;
+  private overlayProgress?: HTMLDivElement;
   private startTime = 0;
   private progress = 0;
   private waitingForGameReady = false;
@@ -20,7 +16,7 @@ export class LoadingScene extends Phaser.Scene {
 
   preload(): void {
     this.startTime = performance.now();
-    this.createLoadingView();
+    this.createDomOverlay();
     this.load.on('progress', this.setProgress, this);
     this.load.once('complete', this.startGameBehindLoadingScreen, this);
     this.game.events.once('game:ready', this.finishLoading, this);
@@ -33,91 +29,109 @@ export class LoadingScene extends Phaser.Scene {
     }
   }
 
-  update(_time: number, deltaMs: number): void {
-    if (!this.pandaHead?.active) return;
-    this.pandaHead.rotation += deltaMs * 0.0042;
-  }
-
-  private createLoadingView(): void {
-    this.cameras.main.setBackgroundColor('#050816');
-
-    if (this.textures.exists('loading-screen')) {
-      this.background = this.add.image(0, 0, 'loading-screen').setOrigin(0.5).setDepth(0);
+  update(): void {
+    if (this.waitingForGameReady) {
+      this.scene.bringToTop('loading');
     }
-
-    this.pandaHead = this.createPandaHead().setDepth(5);
-    this.loadingText = this.add
-      .text(0, 0, 'LOADING', {
-        fontFamily: 'Silkscreen',
-        fontSize: '34px',
-        fontStyle: '700',
-        color: '#fff4c7',
-        stroke: '#3b210f',
-        strokeThickness: 7,
-      })
-      .setOrigin(0, 0.5)
-      .setDepth(6)
-      .setResolution(2);
-    this.progressText = this.add
-      .text(0, 0, '0%', {
-        fontFamily: 'Silkscreen',
-        fontSize: '22px',
-        fontStyle: '700',
-        color: '#93c5fd',
-        stroke: '#07111f',
-        strokeThickness: 5,
-      })
-      .setOrigin(0, 0.5)
-      .setDepth(6)
-      .setResolution(2);
-
-    this.scale.on('resize', this.layout, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off('resize', this.layout, this);
-      this.load.off('progress', this.setProgress, this);
-      this.game.events.off('game:ready', this.finishLoading, this);
-    });
-    this.layout();
   }
 
-  private createPandaHead(): Phaser.GameObjects.Container {
-    const container = this.add.container(0, 0);
-    const shadow = this.add.circle(4, 7, 31, 0x1f2937, 0.42);
-    const leftEar = this.add.circle(-25, -25, 15, 0x171717, 1);
-    const rightEar = this.add.circle(25, -25, 15, 0x171717, 1);
-    const head = this.add.circle(0, 0, 34, 0xf8fafc, 1).setStrokeStyle(5, 0x171717, 1);
-    const leftPatch = this.add.ellipse(-14, -4, 18, 24, 0x171717, 1).setAngle(-18);
-    const rightPatch = this.add.ellipse(14, -4, 18, 24, 0x171717, 1).setAngle(18);
-    const leftEye = this.add.circle(-13, -5, 4, 0xffffff, 1);
-    const rightEye = this.add.circle(13, -5, 4, 0xffffff, 1);
-    const nose = this.add.ellipse(0, 10, 10, 7, 0x111827, 1);
-    const helmet = this.add.circle(0, 0, 43, 0x93c5fd, 0.24).setStrokeStyle(4, 0xdff7ff, 0.82);
-    const shine = this.add.arc(-14, -17, 22, 215, 292, false, 0xffffff, 0.32).setStrokeStyle(4, 0xffffff, 0.32);
+  private createDomOverlay(): void {
+    this.removeDomOverlay();
 
-    container.add([shadow, leftEar, rightEar, head, leftPatch, rightPatch, leftEye, rightEye, nose, helmet, shine]);
-    return container;
+    const backgroundUrl = '/assets/ui/menu/loading_screen.webp';
+    const overlay = document.createElement('div');
+    overlay.className = 'gd-loading-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = '2147483647';
+    overlay.style.pointerEvents = 'none';
+    overlay.style.overflow = 'hidden';
+    overlay.style.backgroundColor = '#050816';
+    const background = document.createElement('img');
+    background.src = backgroundUrl;
+    background.alt = '';
+    background.decoding = 'async';
+    background.style.position = 'absolute';
+    background.style.inset = '0';
+    background.style.width = '100%';
+    background.style.height = '100%';
+    background.style.objectFit = 'cover';
+    background.style.objectPosition = 'center';
+
+    const indicator = document.createElement('div');
+    indicator.style.position = 'absolute';
+    indicator.style.left = '66%';
+    indicator.style.top = '72%';
+    indicator.style.display = 'grid';
+    indicator.style.gridTemplateColumns = '76px auto';
+    indicator.style.columnGap = '18px';
+    indicator.style.alignItems = 'center';
+    indicator.style.transform = 'translate(-50%, -50%)';
+    indicator.style.fontFamily = 'Silkscreen, monospace';
+    indicator.style.color = '#fff4c7';
+    indicator.style.textShadow = '0 0 0 #3b210f, 0 3px 0 #3b210f, 3px 0 0 #3b210f, -3px 0 0 #3b210f, 0 -3px 0 #3b210f';
+
+    const panda = this.createDomPandaHead();
+    const textColumn = document.createElement('div');
+    const label = document.createElement('div');
+    label.textContent = 'LOADING';
+    label.style.fontSize = '34px';
+    label.style.lineHeight = '1';
+    const progress = document.createElement('div');
+    progress.textContent = '0';
+    progress.style.marginTop = '12px';
+    progress.style.color = '#93c5fd';
+    progress.style.fontSize = '22px';
+    progress.style.textShadow = '0 0 0 #07111f, 0 3px 0 #07111f, 3px 0 0 #07111f, -3px 0 0 #07111f, 0 -3px 0 #07111f';
+
+    textColumn.append(label, progress);
+    indicator.append(panda, textColumn);
+    overlay.append(background, indicator);
+    document.body.append(overlay);
+
+    this.overlay = overlay;
+    this.overlayProgress = progress;
   }
 
-  private layout(): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const sceneScale = Math.max(width / BACKGROUND_WIDTH, height / BACKGROUND_HEIGHT);
+  private createDomPandaHead(): HTMLDivElement {
+    const panda = document.createElement('div');
+    panda.style.position = 'relative';
+    panda.style.width = '76px';
+    panda.style.height = '76px';
+    panda.style.animation = 'gd-loading-panda-spin 1.15s linear infinite';
+    panda.style.filter = 'drop-shadow(0 10px 18px rgba(0,0,0,0.35))';
 
-    this.background?.setPosition(width / 2, height / 2).setScale(sceneScale);
+    const make = (styles: Partial<CSSStyleDeclaration>): HTMLDivElement => {
+      const element = document.createElement('div');
+      Object.assign(element.style, styles);
+      panda.append(element);
+      return element;
+    };
 
-    const indicatorScale = Phaser.Math.Clamp(Math.min(width, height) / 720, 0.62, 1.18);
-    const centerX = width * 0.66;
-    const centerY = height * 0.72;
-    const gap = 76 * indicatorScale;
+    make({ position: 'absolute', left: '6px', top: '4px', width: '24px', height: '24px', borderRadius: '50%', background: '#171717' });
+    make({ position: 'absolute', right: '6px', top: '4px', width: '24px', height: '24px', borderRadius: '50%', background: '#171717' });
+    make({ position: 'absolute', inset: '5px', borderRadius: '50%', background: 'rgba(147,197,253,0.26)', border: '5px solid rgba(223,247,255,0.92)', boxSizing: 'border-box' });
+    make({ position: 'absolute', left: '11px', top: '11px', width: '54px', height: '54px', borderRadius: '50%', background: '#f8fafc', border: '4px solid #171717', boxSizing: 'border-box' });
+    make({ position: 'absolute', left: '21px', top: '28px', width: '15px', height: '21px', borderRadius: '50%', background: '#171717', transform: 'rotate(-18deg)' });
+    make({ position: 'absolute', right: '21px', top: '28px', width: '15px', height: '21px', borderRadius: '50%', background: '#171717', transform: 'rotate(18deg)' });
+    make({ position: 'absolute', left: '27px', top: '33px', width: '5px', height: '5px', borderRadius: '50%', background: '#ffffff' });
+    make({ position: 'absolute', right: '27px', top: '33px', width: '5px', height: '5px', borderRadius: '50%', background: '#ffffff' });
+    make({ position: 'absolute', left: '33px', top: '47px', width: '10px', height: '7px', borderRadius: '50%', background: '#111827' });
+    make({ position: 'absolute', left: '21px', top: '14px', width: '24px', height: '15px', borderTop: '4px solid rgba(255,255,255,0.44)', borderRadius: '50%', transform: 'rotate(-22deg)' });
 
-    this.pandaHead?.setPosition(centerX - gap, centerY).setScale(indicatorScale);
-    this.loadingText?.setPosition(centerX - gap + 70 * indicatorScale, centerY - 10 * indicatorScale).setFontSize(34 * indicatorScale);
-    this.progressText?.setPosition(centerX - gap + 74 * indicatorScale, centerY + 30 * indicatorScale).setFontSize(22 * indicatorScale);
+    return panda;
+  }
+
+  private removeDomOverlay(): void {
+    this.overlay?.remove();
+    this.overlay = undefined;
+    this.overlayProgress = undefined;
   }
 
   private setProgress(progress: number): void {
     this.progress = Phaser.Math.Clamp(progress, 0, 1);
-    this.progressText?.setText(`${Math.round(this.progress * 100)}%`);
+    if (this.overlayProgress) this.overlayProgress.textContent = `${Math.round(this.progress * 100)}`;
   }
 
   private startGameBehindLoadingScreen(): void {
@@ -130,8 +144,14 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   private finishLoading(): void {
+    this.scene.bringToTop('loading');
     const elapsed = performance.now() - this.startTime;
     const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-    this.time.delayedCall(remaining, () => this.scene.stop('loading'));
+    this.time.delayedCall(remaining, () => {
+      this.scene.bringToTop('loading');
+      this.removeDomOverlay();
+      this.scene.stop('loading');
+      this.game.events.emit('loading:complete');
+    });
   }
 }
