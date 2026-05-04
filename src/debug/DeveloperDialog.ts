@@ -74,7 +74,7 @@ export class DeveloperDialog {
 
     const header = document.createElement('div');
     header.className = 'gd-dev-header';
-    header.innerHTML = '<div><strong>Developer</strong><span>Gravity Dig diagnostics</span></div>';
+    header.innerHTML = '<div><strong>Developer / Diagnostics</strong></div>';
 
     const closeButton = document.createElement('button');
     closeButton.className = 'gd-dev-close';
@@ -127,6 +127,7 @@ export class DeveloperDialog {
 
   private renderGraphicsTab(): HTMLElement {
     const wrap = document.createElement('div');
+    wrap.className = 'gd-dev-graphics';
     const allAssets = this.getGraphicAssets();
     const assets = this.assetsForGraphicScene(allAssets);
 
@@ -416,16 +417,15 @@ export class DeveloperDialog {
     style.id = STYLE_ID;
     style.textContent = `
       #${DIALOG_ID} { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; background: rgba(2, 6, 23, 0.52); color: #e5e7eb; font-family: Arial, sans-serif; pointer-events: auto; }
-      #${DIALOG_ID} .gd-dev-shell { width: min(1120px, calc(100vw - 40px)); height: min(720px, calc(100vh - 40px)); border: 1px solid rgba(56, 189, 248, 0.55); border-radius: 14px; background: rgba(8, 13, 25, 0.96); box-shadow: 0 24px 80px rgba(0,0,0,0.55); overflow: hidden; display: flex; flex-direction: column; }
-      #${DIALOG_ID} .gd-dev-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 1px solid rgba(148, 163, 184, 0.22); background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9)); }
-      #${DIALOG_ID} .gd-dev-header strong { display: block; font-size: 22px; letter-spacing: 0.04em; color: #f8fafc; }
-      #${DIALOG_ID} .gd-dev-header span { display: block; margin-top: 3px; font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+      #${DIALOG_ID} .gd-dev-shell { width: min(1120px, calc(100vw - 40px)); height: min(90vh, calc(100vh - 24px)); border: 1px solid rgba(56, 189, 248, 0.55); border-radius: 14px; background: rgba(8, 13, 25, 0.96); box-shadow: 0 24px 80px rgba(0,0,0,0.55); overflow: hidden; display: flex; flex-direction: column; }
+      #${DIALOG_ID} .gd-dev-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid rgba(148, 163, 184, 0.22); background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9)); }
+      #${DIALOG_ID} .gd-dev-header strong { display: block; font-size: 18px; letter-spacing: 0.03em; color: #f8fafc; }
       #${DIALOG_ID} button { border: 0; border-radius: 8px; cursor: pointer; font-weight: 800; }
-      #${DIALOG_ID} .gd-dev-close { width: 36px; height: 36px; color: #f8fafc; background: rgba(239, 68, 68, 0.22); font-size: 26px; line-height: 1; }
+      #${DIALOG_ID} .gd-dev-close { width: 32px; height: 32px; color: #f8fafc; background: rgba(239, 68, 68, 0.22); font-size: 24px; line-height: 1; }
       #${DIALOG_ID} .gd-dev-tabs { display: flex; gap: 8px; padding: 10px 14px; border-bottom: 1px solid rgba(148, 163, 184, 0.18); background: rgba(2, 6, 23, 0.72); }
       #${DIALOG_ID} .gd-dev-tabs button { padding: 9px 14px; color: #cbd5e1; background: rgba(30, 41, 59, 0.9); }
       #${DIALOG_ID} .gd-dev-tabs button.active { color: #082f49; background: #67e8f9; }
-      #${DIALOG_ID} .gd-dev-content { flex: 1; overflow: auto; padding: 16px; }
+      #${DIALOG_ID} .gd-dev-content { flex: 1; min-height: 0; overflow: auto; padding: 16px; }
       #${DIALOG_ID} .gd-dev-grid { display: grid; gap: 14px; grid-template-columns: minmax(280px, 0.75fr) minmax(360px, 1.25fr); align-items: start; }
       #${DIALOG_ID} .gd-dev-card { border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; background: rgba(15, 23, 42, 0.78); overflow: hidden; }
       #${DIALOG_ID} .gd-dev-card h3 { margin: 0; padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, 0.18); color: #f8fafc; font-size: 15px; }
@@ -437,9 +437,10 @@ export class DeveloperDialog {
       #${DIALOG_ID} .gd-dev-subtabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
       #${DIALOG_ID} .gd-dev-subtabs button { padding: 8px 11px; color: #cbd5e1; background: rgba(30, 41, 59, 0.9); font-size: 12px; }
       #${DIALOG_ID} .gd-dev-subtabs button.active { color: #082f49; background: #bae6fd; }
+      #${DIALOG_ID} .gd-dev-graphics { height: 100%; min-height: 0; display: flex; flex-direction: column; }
       #${DIALOG_ID} .gd-dev-toolbar { margin-bottom: 12px; color: #bae6fd; font-size: 13px; font-weight: 800; }
-      #${DIALOG_ID} .gd-dev-asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
-      #${DIALOG_ID} .gd-dev-asset-card { border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; background: rgba(15, 23, 42, 0.82); overflow: hidden; color: inherit; text-align: left; padding: 0; }
+      #${DIALOG_ID} .gd-dev-asset-grid { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); align-content: start; gap: 12px; padding-right: 4px; }
+      #${DIALOG_ID} .gd-dev-asset-card { min-height: 158px; display: flex; flex-direction: column; border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; background: rgba(15, 23, 42, 0.82); overflow: hidden; color: inherit; text-align: left; padding: 0; }
       #${DIALOG_ID} .gd-dev-asset-card:hover { border-color: rgba(103, 232, 249, 0.72); transform: translateY(-1px); }
       #${DIALOG_ID} .gd-dev-asset-preview { height: 104px; display: grid; place-items: center; background: repeating-conic-gradient(rgba(255,255,255,0.08) 0 25%, transparent 0 50%) 50% / 18px 18px, rgba(2,6,23,0.55); }
       #${DIALOG_ID} .gd-dev-asset-preview img { max-width: 132px; max-height: 92px; object-fit: contain; image-rendering: pixelated; }
