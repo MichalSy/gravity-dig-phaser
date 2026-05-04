@@ -1,33 +1,9 @@
 import Phaser from 'phaser';
 import { VirtualJoystick } from '../controls/VirtualJoystick';
 import { DeveloperDialog } from '../debug/DeveloperDialog';
-import type { InventorySlot } from '../player/types';
-
-export type InputMode = 'touch' | 'desktop' | 'gamepad';
-
-export interface HudMeterState {
-  current: number;
-  max: number;
-}
-
-export interface HudCargoState {
-  slots: InventorySlot[];
-  visibleSlots: number;
-  stackLimit: number;
-}
-
-export interface HudState {
-  title: string;
-  planet: string;
-  health: HudMeterState;
-  energy: HudMeterState;
-  fuel: HudMeterState;
-  cargo: HudCargoState;
-  debug: string;
-  target: string;
-  zoom: string;
-  inputMode: InputMode;
-}
+import { NodeRuntime } from '../nodes';
+import { GameplayUiScene, bottomHudDisplayHeight } from '../ui/GameplayUiScene';
+import type { HudState, InputMode } from '../ui/HudState';
 
 interface HudTextStyle extends Phaser.Types.GameObjects.Text.TextStyle {
   fontFamily: string;
@@ -41,49 +17,11 @@ const TEXT = {
   small: { fontFamily: 'Arial, sans-serif', fontSize: '11px', fontStyle: '800', color: '#94a3b8' } satisfies HudTextStyle,
 };
 
-const UI_ATLAS = {
-  topHud: { x: 34, y: 34, w: 1242, h: 554 },
-  hpBar: { x: 112, y: 650, w: 655, h: 95 },
-  fuelBar: { x: 124, y: 818, w: 632, h: 81 },
-  hpSlot: { x: 385 - 34, y: 200 - 34, w: 655, h: 95 },
-  fuelSlot: { x: 395 - 34, y: 406 - 34, w: 637, h: 85 },
-  topDisplayWidth: 400,
-  bottomHud: { x: 55, y: 1002, w: 1194, h: 442 },
-  energyBar: { x: 139, y: 1495, w: 401, h: 108 },
-  energySlot: { x: 360 - 55, y: 1194 - 1002, w: 395, h: 125 },
-  repeatSlot: { x: 866, y: 607, w: 374, h: 372 },
-  extraSlotOrigin: { x: 1160, y: 65 },
-  firstSlotCenter: { x: 1010, y: 265 },
-  slotContentSize: 128,
-  repeatSlotHeight: 372,
-  repeatSlotStep: 360,
-  bottomDisplayHeight: 180,
-} as const;
-
 export class UIScene extends Phaser.Scene {
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
-  private statusGraphics!: Phaser.GameObjects.Graphics;
-  private actionGraphics!: Phaser.GameObjects.Graphics;
-  private statusFrame!: Phaser.GameObjects.Image;
-  private actionFrame!: Phaser.GameObjects.Image;
-  private hpFill!: Phaser.GameObjects.Image;
-  private fuelFill!: Phaser.GameObjects.Image;
-  private energyFill!: Phaser.GameObjects.Image;
-  private hpIcon!: Phaser.GameObjects.Image;
-  private fuelIcon!: Phaser.GameObjects.Image;
-  private slotFrames: Phaser.GameObjects.Image[] = [];
-  private slotItems: Phaser.GameObjects.Image[] = [];
-  private hpLabel!: Phaser.GameObjects.Text;
-  private hpValue!: Phaser.GameObjects.Text;
-  private fuelLabel!: Phaser.GameObjects.Text;
-  private fuelValue!: Phaser.GameObjects.Text;
-  private energyLabel!: Phaser.GameObjects.Text;
-  private energyValue!: Phaser.GameObjects.Text;
-  private cargoLabel!: Phaser.GameObjects.Text;
-  private statusBrandLabel!: Phaser.GameObjects.Text;
-  private brandLabel!: Phaser.GameObjects.Text;
-  private slotLabels: Phaser.GameObjects.Text[] = [];
+  private hudRuntime!: NodeRuntime;
+  private gameplayUiScene!: GameplayUiScene;
   private debugText!: Phaser.GameObjects.Text;
   private controlsHint!: Phaser.GameObjects.Text;
   private debugPanel!: Phaser.GameObjects.Container;
@@ -92,7 +30,6 @@ export class UIScene extends Phaser.Scene {
   private developerDialog!: DeveloperDialog;
   private collisionDebugEnabled = false;
   private inputMode: InputMode = 'desktop';
-  private latestHud?: HudState;
 
   constructor() {
     super('ui');
@@ -116,13 +53,16 @@ export class UIScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off('resize', this.layout, this);
       this.game.events.off('hud:update', this.updateHud, this);
+      this.hudRuntime.destroy();
       this.developerDialog.destroy();
     });
     this.updateInputMode();
   }
 
-  update(): void {
+  update(_time: number, deltaMs: number): void {
     this.updateInputMode();
+    this.hudRuntime.update(deltaMs);
+    this.hudRuntime.render();
   }
 
   getInputMode(): InputMode {
@@ -151,32 +91,10 @@ export class UIScene extends Phaser.Scene {
 
   private createHud(): void {
     const resolution = Math.max(2, window.devicePixelRatio || 1);
-    this.statusGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
-    this.actionGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
-
-    this.statusFrame = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
-    this.actionFrame = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.1);
-    this.hpFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.fuelFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.energyFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.2);
-    this.hpIcon = this.add.image(0, 0, 'hud-icon-hp').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
-    this.fuelIcon = this.add.image(0, 0, 'hud-icon-fuel').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
-
-    this.hpLabel = this.add.text(0, 0, 'HP', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.hpValue = this.add.text(0, 0, '', TEXT.value).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.fuelLabel = this.add.text(0, 0, 'SHIP FUEL', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.fuelValue = this.add.text(0, 0, '', TEXT.value).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.energyLabel = this.add.text(0, 0, 'SUIT ENERGY', { ...TEXT.label, color: '#67e8f9' }).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.energyValue = this.add.text(0, 0, '', TEXT.value).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.cargoLabel = this.add.text(0, 0, 'CARGO', TEXT.label).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.statusBrandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11).setResolution(resolution);
-    this.brandLabel = this.add.text(0, 0, 'GRAVITY DIG', TEXT.small).setOrigin(0.5, 0).setScrollFactor(0).setDepth(11).setResolution(resolution);
-
-    for (let i = 0; i < 4; i += 1) {
-      this.slotFrames.push(this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11).setVisible(false));
-      this.slotItems.push(this.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
-      this.slotLabels.push(this.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
-    }
+    this.hudRuntime = new NodeRuntime({ phaserScene: this });
+    this.gameplayUiScene = this.hudRuntime.addScene(new GameplayUiScene());
+    this.hudRuntime.init();
+    this.hudRuntime.resolve();
 
     this.debugText = this.add
       .text(14, 0, '', {
@@ -188,7 +106,7 @@ export class UIScene extends Phaser.Scene {
         lineSpacing: 2,
       })
       .setScrollFactor(0)
-      .setDepth(10)
+      .setDepth(40)
       .setResolution(resolution);
 
     this.controlsHint = this.add
@@ -201,7 +119,7 @@ export class UIScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(10)
+      .setDepth(40)
       .setResolution(resolution);
   }
 
@@ -273,164 +191,21 @@ export class UIScene extends Phaser.Scene {
       this.rightJoystick?.setVisible(false);
     }
 
-    const hudScale = Phaser.Math.Clamp(width / 1280, 0.5, 1);
-    const bottomHudHeight = UI_ATLAS.bottomDisplayHeight * hudScale;
+    const bottomHudHeight = bottomHudDisplayHeight(width);
     this.debugText?.setOrigin(0, 1).setPosition(14, height - bottomHudHeight - 24).setVisible(true);
     this.debugText?.setWordWrapWidth(Math.max(320, Math.min(560, width - 28)));
     this.controlsHint?.setPosition(width / 2, Math.max(24, height - 26)).setVisible(!compact && touchMode);
     this.controlsHint?.setWordWrapWidth(Math.max(320, width - 48));
     this.debugPanel?.setPosition(width - 12, 12);
-
-    if (this.latestHud) this.drawHud(this.latestHud);
   }
 
   private updateHud(state: HudState): void {
-    this.latestHud = state;
-    this.drawHud(state);
+    this.gameplayUiScene.setHudState(state);
     this.debugText.setText([
       state.debug,
       state.zoom,
       state.target,
     ]);
-  }
-
-  private drawHud(state: HudState): void {
-    const width = this.scale.width;
-    const height = this.scale.height;
-    const scale = Phaser.Math.Clamp(width / 1280, 0.5, 1);
-    this.drawStatusPanel(18, 18, scale, state);
-    this.drawActionPanel(width / 2, height - 178 * scale, scale, state);
-  }
-
-  private drawStatusPanel(x: number, y: number, scale: number, state: HudState): void {
-    this.statusGraphics.clear();
-    const atlasScale = (UI_ATLAS.topDisplayWidth * scale) / UI_ATLAS.topHud.w;
-    const pctHp = Phaser.Math.Clamp(state.health.current / state.health.max, 0, 1);
-    const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
-
-    this.statusFrame
-      .setPosition(x - UI_ATLAS.topHud.x * atlasScale, y - UI_ATLAS.topHud.y * atlasScale)
-      .setCrop(UI_ATLAS.topHud.x, UI_ATLAS.topHud.y, UI_ATLAS.topHud.w, UI_ATLAS.topHud.h)
-      .setScale(atlasScale)
-      .setVisible(true);
-
-    this.placeAtlasBar(this.hpFill, UI_ATLAS.hpBar, x + UI_ATLAS.hpSlot.x * atlasScale, y + UI_ATLAS.hpSlot.y * atlasScale, UI_ATLAS.hpSlot.w * atlasScale, UI_ATLAS.hpSlot.h * atlasScale, pctHp);
-    this.placeAtlasBar(this.fuelFill, UI_ATLAS.fuelBar, x + UI_ATLAS.fuelSlot.x * atlasScale, y + UI_ATLAS.fuelSlot.y * atlasScale, UI_ATLAS.fuelSlot.w * atlasScale, UI_ATLAS.fuelSlot.h * atlasScale, pctFuel);
-
-    this.hpIcon.setVisible(false);
-    this.fuelIcon.setVisible(false);
-    this.hpLabel.setVisible(false);
-    this.hpValue.setVisible(false);
-    this.fuelLabel.setVisible(false);
-    this.fuelValue.setVisible(false);
-    this.statusBrandLabel.setVisible(false);
-  }
-
-  private drawActionPanel(centerX: number, _y: number, scale: number, state: HudState): void {
-    this.actionGraphics.clear();
-    const atlasScale = (UI_ATLAS.bottomDisplayHeight * scale) / UI_ATLAS.bottomHud.h;
-    const frameW = (UI_ATLAS.bottomHud.w + Math.max(0, Math.min(this.slotFrames.length - 1, state.cargo.visibleSlots - 1)) * UI_ATLAS.repeatSlotStep) * atlasScale;
-    const x = centerX - frameW / 2;
-    const dockY = this.scale.height - UI_ATLAS.bottomHud.h * atlasScale - 10 * scale;
-    const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
-
-    this.placeAtlasRegion(this.actionFrame, UI_ATLAS.bottomHud, x, dockY, atlasScale);
-    this.placeAtlasBar(
-      this.energyFill,
-      UI_ATLAS.energyBar,
-      x + UI_ATLAS.energySlot.x * atlasScale,
-      dockY + UI_ATLAS.energySlot.y * atlasScale,
-      UI_ATLAS.energySlot.w * atlasScale,
-      UI_ATLAS.energySlot.h * atlasScale,
-      pctEnergy,
-    );
-
-    this.energyLabel.setVisible(false);
-    this.energyValue.setVisible(false);
-    this.cargoLabel.setVisible(false);
-    this.brandLabel.setVisible(false);
-
-    const extraSlotCount = Math.max(0, Math.min(this.slotFrames.length - 1, state.cargo.visibleSlots - 1));
-    const slotScale = (UI_ATLAS.repeatSlotHeight * atlasScale) / UI_ATLAS.repeatSlot.h;
-    const repeatSlotW = UI_ATLAS.repeatSlot.w * slotScale;
-    const repeatSlotH = UI_ATLAS.repeatSlot.h * slotScale;
-    const firstExtraX = x + UI_ATLAS.extraSlotOrigin.x * atlasScale;
-    const extraY = dockY + UI_ATLAS.extraSlotOrigin.y * atlasScale;
-
-    for (let i = 0; i < this.slotLabels.length; i += 1) {
-      const label = this.slotLabels[i];
-      const frame = this.slotFrames[i];
-      const item = this.slotItems[i];
-      const active = i < state.cargo.visibleSlots;
-      const slot = state.cargo.slots[i];
-      const isExtraSlot = i > 0 && i <= extraSlotCount;
-      const sx = firstExtraX + (i - 1) * UI_ATLAS.repeatSlotStep * atlasScale;
-      const sy = extraY;
-      const cx = sx + repeatSlotW / 2;
-      const cy = sy + repeatSlotH / 2;
-
-      if (isExtraSlot) {
-        // Slots overlap through left-side connector pixels. Keep slots below the bottom
-        // HUD frame, and stack them visually from right to left behind that frame.
-        frame.setDepth(10.8 + (extraSlotCount - i) * 0.01);
-        this.placeAtlasRegion(frame, UI_ATLAS.repeatSlot, sx, sy, slotScale);
-      } else {
-        frame.setVisible(false);
-      }
-
-      const hasItem = Boolean(active && slot?.itemId && slot.quantity > 0);
-      const itemX = i === 0 ? x + UI_ATLAS.firstSlotCenter.x * atlasScale : cx;
-      const itemY = i === 0 ? dockY + UI_ATLAS.firstSlotCenter.y * atlasScale : cy;
-      const itemSize = UI_ATLAS.slotContentSize * atlasScale;
-      item
-        .setPosition(itemX, itemY)
-        .setDisplaySize(itemSize, itemSize)
-        .setVisible(hasItem && i < state.cargo.visibleSlots);
-
-      label.setVisible(hasItem && i < state.cargo.visibleSlots);
-      if (hasItem) {
-        label
-          .setText(`x${slot?.quantity ?? 0}`)
-          .setPosition(itemX + itemSize / 2 - 4 * atlasScale, itemY + itemSize / 2 - 4 * atlasScale)
-          .setScale(atlasScale * 4.05);
-      }
-    }
-  }
-
-  private placeAtlasRegion(
-    image: Phaser.GameObjects.Image,
-    source: { x: number; y: number; w: number; h: number },
-    x: number,
-    y: number,
-    scale: number,
-  ): void {
-    image
-      .setPosition(x - source.x * scale, y - source.y * scale)
-      .setCrop(source.x, source.y, source.w, source.h)
-      .setScale(scale)
-      .setVisible(true);
-  }
-
-  private placeAtlasBar(
-    bar: Phaser.GameObjects.Image,
-    source: { x: number; y: number; w: number; h: number },
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    pct: number,
-  ): void {
-    const safePct = Phaser.Math.Clamp(pct, 0, 1);
-    const cropWidth = Math.max(1, Math.round(source.w * safePct));
-
-    const scaleX = width / source.w;
-    const scaleY = height / source.h;
-
-    bar
-      .setPosition(x - source.x * scaleX, y - source.y * scaleY)
-      .setCrop(source.x, source.y, cropWidth, source.h)
-      .setScale(scaleX, scaleY)
-      .setVisible(safePct > 0);
   }
 
   private toggleCollisionDebug(): void {

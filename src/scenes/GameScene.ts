@@ -4,7 +4,8 @@ import {
   PLAYER_SIZE,
   TILE_SIZE,
 } from '../config/gameConfig';
-import { UIScene, type HudState, type InputMode } from './UIScene';
+import { UIScene } from './UIScene';
+import type { HudState, InputMode } from '../ui/HudState';
 import {
   GravityDigLevelGenerator,
   type LevelData,
