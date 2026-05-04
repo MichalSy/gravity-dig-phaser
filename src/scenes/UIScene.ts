@@ -41,6 +41,15 @@ const TEXT = {
   small: { fontFamily: 'Arial, sans-serif', fontSize: '11px', fontStyle: '800', color: '#94a3b8' } satisfies HudTextStyle,
 };
 
+const HP_FUEL_ATLAS = {
+  hud: { x: 24, y: 24, w: 1262, h: 574 },
+  hpBar: { x: 34, y: 632, w: 1336, h: 191 },
+  fuelBar: { x: 34, y: 867, w: 1121, h: 166 },
+  hpSlot: { x: 393, y: 210, w: 624, h: 70 },
+  fuelSlot: { x: 403, y: 431, w: 614, h: 70 },
+  displayWidth: 360,
+} as const;
+
 export class UIScene extends Phaser.Scene {
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
@@ -135,10 +144,10 @@ export class UIScene extends Phaser.Scene {
     this.statusGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
     this.actionGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
 
-    this.statusFrame = this.add.image(0, 0, 'hud-status-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.statusFrame = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
     this.actionFrame = this.add.image(0, 0, 'hud-v10-bottom-frame').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
-    this.hpFill = this.add.image(0, 0, 'hud-bar-red').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.fuelFill = this.add.image(0, 0, 'hud-bar-orange').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.hpFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.fuelFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
     this.energyFill = this.add.image(0, 0, 'hud-v10-energy-fill').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
     this.hpIcon = this.add.image(0, 0, 'hud-icon-hp').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
     this.fuelIcon = this.add.image(0, 0, 'hud-icon-fuel').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
@@ -283,28 +292,25 @@ export class UIScene extends Phaser.Scene {
 
   private drawStatusPanel(x: number, y: number, scale: number, state: HudState): void {
     this.statusGraphics.clear();
-    const w = 360 * scale;
-    const h = 156 * scale;
+    const atlasScale = (HP_FUEL_ATLAS.displayWidth * scale) / HP_FUEL_ATLAS.hud.w;
     const pctHp = Phaser.Math.Clamp(state.health.current / state.health.max, 0, 1);
     const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
 
-    this.statusFrame.setPosition(x, y).setDisplaySize(w, h).setVisible(true);
-    this.hpIcon.setPosition(x + 61 * scale, y + 53 * scale).setDisplaySize(32 * scale, 30 * scale).setVisible(true);
-    this.fuelIcon.setPosition(x + 60 * scale, y + 107 * scale).setDisplaySize(26 * scale, 32 * scale).setVisible(true);
-
-    this.placeCroppedBar(this.hpFill, x + 98 * scale, y + 50 * scale, 228 * scale, 17 * scale, pctHp);
-    this.placeCroppedBar(this.fuelFill, x + 98 * scale, y + 103 * scale, 228 * scale, 17 * scale, pctFuel);
-
-    this.hpLabel.setPosition(x + 102 * scale, y + 34 * scale).setScale(scale * 1.05).setVisible(true);
-    this.hpValue.setText(`${Math.round(state.health.current)}/${state.health.max}`)
-      .setPosition(x + 255 * scale, y + 33 * scale)
-      .setScale(scale * 1.0)
+    this.statusFrame
+      .setPosition(x, y)
+      .setCrop(HP_FUEL_ATLAS.hud.x, HP_FUEL_ATLAS.hud.y, HP_FUEL_ATLAS.hud.w, HP_FUEL_ATLAS.hud.h)
+      .setScale(atlasScale)
       .setVisible(true);
-    this.fuelLabel.setPosition(x + 102 * scale, y + 87 * scale).setScale(scale * 1.05).setVisible(true);
-    this.fuelValue.setText(`${Math.round(state.fuel.current)}/${state.fuel.max}`)
-      .setPosition(x + 255 * scale, y + 87 * scale)
-      .setScale(scale * 1.0)
-      .setVisible(true);
+
+    this.placeAtlasBar(this.hpFill, HP_FUEL_ATLAS.hpBar, x + HP_FUEL_ATLAS.hpSlot.x * atlasScale, y + HP_FUEL_ATLAS.hpSlot.y * atlasScale, HP_FUEL_ATLAS.hpSlot.w * atlasScale, HP_FUEL_ATLAS.hpSlot.h * atlasScale, pctHp);
+    this.placeAtlasBar(this.fuelFill, HP_FUEL_ATLAS.fuelBar, x + HP_FUEL_ATLAS.fuelSlot.x * atlasScale, y + HP_FUEL_ATLAS.fuelSlot.y * atlasScale, HP_FUEL_ATLAS.fuelSlot.w * atlasScale, HP_FUEL_ATLAS.fuelSlot.h * atlasScale, pctFuel);
+
+    this.hpIcon.setVisible(false);
+    this.fuelIcon.setVisible(false);
+    this.hpLabel.setVisible(false);
+    this.hpValue.setVisible(false);
+    this.fuelLabel.setVisible(false);
+    this.fuelValue.setVisible(false);
     this.statusBrandLabel.setVisible(false);
   }
 
@@ -380,6 +386,25 @@ export class UIScene extends Phaser.Scene {
       .setPosition(x, y)
       .setCrop(0, 0, cropWidth, source.height)
       .setScale(scaleX, scaleY)
+      .setVisible(safePct > 0);
+  }
+
+  private placeAtlasBar(
+    bar: Phaser.GameObjects.Image,
+    source: { x: number; y: number; w: number; h: number },
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    pct: number,
+  ): void {
+    const safePct = Phaser.Math.Clamp(pct, 0, 1);
+    const cropWidth = Math.max(1, Math.round(source.w * safePct));
+
+    bar
+      .setPosition(x, y)
+      .setCrop(source.x, source.y, cropWidth, source.h)
+      .setScale(width / source.w, height / source.h)
       .setVisible(safePct > 0);
   }
 

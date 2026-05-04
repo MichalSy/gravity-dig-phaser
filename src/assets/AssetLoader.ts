@@ -23,6 +23,7 @@ const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   { key: 'ship', path: '/assets/ships/the_bucket.webp', category: 'ship', scenes: ['game'] },
   { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.webp', category: 'ship', scenes: ['game'] },
   { key: 'laser-dot', path: '/assets/effects/laser_beam.webp', category: 'effects', scenes: ['game'] },
+  { key: 'hud-hp-fuel-atlas', path: '/assets/ui/hud/hud_hp_fuel_atlas.webp', category: 'hud', scenes: ['ui'] },
   { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.webp', category: 'hud', scenes: ['ui'] },
   { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.webp', category: 'hud', scenes: ['ui'] },
   { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.webp', category: 'hud', scenes: ['ui'] },
