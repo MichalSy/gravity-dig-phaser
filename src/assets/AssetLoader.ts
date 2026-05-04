@@ -7,6 +7,7 @@ export interface GraphicAssetDefinition {
   key: string;
   path: string;
   category: string;
+  showInDeveloper?: boolean;
 }
 
 export const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
@@ -18,7 +19,7 @@ export const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
 const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.png', category: 'tiles' },
   { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.png', category: 'backwall' },
-  { key: 'bg-game', path: '/assets/tilesets/bg/bg_game.png', category: 'world' },
+  { key: 'bg-game', path: '/assets/tilesets/bg/bg_game.png', category: 'world', showInDeveloper: false },
   { key: 'ship', path: '/assets/ships/the_bucket.png', category: 'ship' },
   { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.png', category: 'ship' },
   { key: 'laser-dot', path: '/assets/effects/laser_beam.png', category: 'effects' },
