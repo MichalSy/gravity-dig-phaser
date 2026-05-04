@@ -240,7 +240,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   private layout(): void {
-    if (!this.scene.isActive()) return;
+    if (!this.debugPanel?.active) return;
 
     const width = this.scale.width;
     const height = this.scale.height;
@@ -254,8 +254,8 @@ export class UIScene extends Phaser.Scene {
       this.rightJoystick?.setVisible(false);
     }
 
-    this.debugText?.setPosition(14, 188).setVisible(false);
-    this.debugText?.setWordWrapWidth(Math.max(320, width - 28));
+    this.debugText?.setOrigin(0, 1).setPosition(14, height - 14).setVisible(true);
+    this.debugText?.setWordWrapWidth(Math.max(320, Math.min(560, width - 28)));
     this.controlsHint?.setPosition(width / 2, Math.max(24, height - 26)).setVisible(!compact && touchMode);
     this.controlsHint?.setWordWrapWidth(Math.max(320, width - 48));
     this.debugPanel?.setPosition(width - 12, 12);
