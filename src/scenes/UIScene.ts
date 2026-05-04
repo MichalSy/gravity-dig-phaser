@@ -370,6 +370,9 @@ export class UIScene extends Phaser.Scene {
       const cy = sy + repeatSlotH / 2;
 
       if (isExtraSlot) {
+        // Slots overlap through left-side connector pixels. Render visual stacking from
+        // right to left: rightmost slots stay behind, left neighbours cover connectors.
+        frame.setDepth(11 + (extraSlotCount - i) * 0.01);
         this.placeAtlasRegion(frame, UI_ATLAS.repeatSlot, sx, sy, slotScale);
       } else {
         frame.setVisible(false);
