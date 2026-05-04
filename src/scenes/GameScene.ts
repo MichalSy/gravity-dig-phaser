@@ -112,6 +112,7 @@ export class GameScene extends Phaser.Scene {
 
     this.scale.on('resize', this.updateCameraZoom, this);
     this.input.on('wheel', this.handleDebugZoomWheel, this);
+    this.time.delayedCall(0, () => this.game.events.emit('game:ready'));
   }
 
   update(_time: number, deltaMs: number): void {

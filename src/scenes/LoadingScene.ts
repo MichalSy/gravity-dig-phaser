@@ -12,22 +12,24 @@ export class LoadingScene extends Phaser.Scene {
   private progressText?: Phaser.GameObjects.Text;
   private startTime = 0;
   private progress = 0;
+  private waitingForGameReady = false;
 
   constructor() {
     super('loading');
   }
 
-  create(): void {
+  preload(): void {
     this.startTime = performance.now();
     this.createLoadingView();
     this.load.on('progress', this.setProgress, this);
-    this.load.once('complete', this.finishLoading, this);
+    this.load.once('complete', this.startGameBehindLoadingScreen, this);
+    this.game.events.once('game:ready', this.finishLoading, this);
     loadGameAssets(this);
+  }
 
-    if (this.load.totalToLoad > 0) {
-      this.load.start();
-    } else {
-      this.finishLoading();
+  create(): void {
+    if (!this.waitingForGameReady && this.load.totalToLoad === 0) {
+      this.startGameBehindLoadingScreen();
     }
   }
 
@@ -73,6 +75,7 @@ export class LoadingScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off('resize', this.layout, this);
       this.load.off('progress', this.setProgress, this);
+      this.game.events.off('game:ready', this.finishLoading, this);
     });
     this.layout();
   }
@@ -117,10 +120,18 @@ export class LoadingScene extends Phaser.Scene {
     this.progressText?.setText(`${Math.round(this.progress * 100)}%`);
   }
 
-  private finishLoading(): void {
+  private startGameBehindLoadingScreen(): void {
+    if (this.waitingForGameReady) return;
+
+    this.waitingForGameReady = true;
     this.setProgress(1);
+    this.scene.launch('game');
+    this.scene.bringToTop('loading');
+  }
+
+  private finishLoading(): void {
     const elapsed = performance.now() - this.startTime;
     const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-    this.time.delayedCall(remaining, () => this.scene.start('game'));
+    this.time.delayedCall(remaining, () => this.scene.stop('loading'));
   }
 }
