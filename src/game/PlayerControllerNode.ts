@@ -3,20 +3,16 @@ import { GRAVITY, PLAYER_SIZE } from '../config/gameConfig';
 import { GameNode, type NodeContext } from '../nodes';
 import type { InputMode } from '../ui/HudState';
 import type { UIScene } from '../scenes/UIScene';
+import type { GameWorldNode } from './GameplayNodes';
 import { LevelNode } from './LevelNodes';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 
-export interface PlayerControllerInput {
-  uiScene: UIScene;
-  onRegenerateLevel(): void;
-  onReturnCargoToShip(): void;
-}
-
 export class PlayerControllerNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
+  private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
   private player?: Phaser.GameObjects.Image;
   private cursors!: CursorKeys;
@@ -39,11 +35,19 @@ export class PlayerControllerNode extends GameNode {
 
     this.cursors = this.phaserScene.input.keyboard.createCursorKeys();
     this.keys = this.phaserScene.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.phaserScene.game.events.on('gameplay-menu:opened', this.blockInput, this);
+    this.phaserScene.game.events.on('gameplay-menu:closed', this.unblockInput, this);
   }
 
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('level');
+    this.world = this.requireNode<GameWorldNode>('world');
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
+  }
+
+  destroy(): void {
+    this.phaserScene.game.events.off('gameplay-menu:opened', this.blockInput, this);
+    this.phaserScene.game.events.off('gameplay-menu:closed', this.unblockInput, this);
   }
 
   setPlayer(player: Phaser.GameObjects.Image): void {
@@ -51,10 +55,11 @@ export class PlayerControllerNode extends GameNode {
     this.resetMotion();
   }
 
-  updateController(deltaSeconds: number, input: PlayerControllerInput): void {
+  update(deltaMs: number): void {
     if (!this.player) return;
 
-    this.handleInput(deltaSeconds, input);
+    const deltaSeconds = deltaMs / 1000;
+    this.handleInput(deltaSeconds);
     this.applyPhysics(deltaSeconds);
   }
 
@@ -107,7 +112,7 @@ export class PlayerControllerNode extends GameNode {
     return Boolean(button?.pressed || (button?.value ?? 0) > 0.35);
   }
 
-  private handleInput(deltaSeconds: number, input: PlayerControllerInput): void {
+  private handleInput(deltaSeconds: number): void {
     if (this.blocked) {
       this.currentVelocity.x = 0;
       this.jumpHeld = false;
@@ -115,8 +120,9 @@ export class PlayerControllerNode extends GameNode {
       return;
     }
 
-    const mode = input.uiScene.getInputMode();
-    const joy = input.uiScene.getMoveVector();
+    const uiScene = this.uiScene;
+    const mode = uiScene.getInputMode();
+    const joy = uiScene.getMoveVector();
     const gamepad = mode === 'gamepad' ? this.getGamepad() : undefined;
     const gamepadX = gamepad ? this.axis(gamepad, 0) : 0;
     const gamepadY = gamepad ? this.axis(gamepad, 1) : 0;
@@ -143,12 +149,12 @@ export class PlayerControllerNode extends GameNode {
     }
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
-      input.onRegenerateLevel();
+      this.world.createLevel(`gravity-dig-phaser-${Date.now()}`, false);
       return;
     }
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
-      input.onReturnCargoToShip();
+      this.phaserScene.game.events.emit('ship:return-cargo');
     }
 
     if (up && !this.gravityActive) this.currentVelocity.y = -this.playerState.stats.moveSpeed;
@@ -223,5 +229,9 @@ export class PlayerControllerNode extends GameNode {
     if (mode === 'touch') return Math.max(0.45, Math.abs(touchAxis));
     if (mode === 'gamepad') return Math.max(0.45, Math.abs(gamepadAxis));
     return direction ? 1 : 0;
+  }
+
+  private get uiScene(): UIScene {
+    return this.phaserScene.scene.get('ui') as UIScene;
   }
 }

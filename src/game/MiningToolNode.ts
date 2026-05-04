@@ -3,8 +3,10 @@ import { PLAYER_SIZE, TILE_SIZE } from '../config/gameConfig';
 import { GameNode, type NodeContext } from '../nodes';
 import type { UIScene } from '../scenes/UIScene';
 import { tileKey } from '../utils/tileMath';
+import type { GameWorldNode } from './GameplayNodes';
 import { isResourceTile, type TileCell, type TileType } from './level';
 import { LevelNode } from './LevelNodes';
+import { PlayerControllerNode } from './PlayerControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export interface MiningToolInput {
@@ -22,6 +24,8 @@ export interface MiningToolInput {
 export class MiningToolNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
+  private world!: GameWorldNode;
+  private playerController!: PlayerControllerNode;
   private playerState!: PlayerStateManagerNode;
   private laser!: Phaser.GameObjects.Graphics;
   private targetMarker!: Phaser.GameObjects.Rectangle;
@@ -45,14 +49,18 @@ export class MiningToolNode extends GameNode {
       .setVisible(false)
       .setDepth(25);
     this.laserSound = this.phaserScene.sound.add('laser-loop', { loop: true, volume: 0.28 });
+    this.phaserScene.game.events.on('gameplay-menu:opened', this.stopFiring, this);
   }
 
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('level');
+    this.world = this.requireNode<GameWorldNode>('world');
+    this.playerController = this.requireNode<PlayerControllerNode>('playerController');
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
   }
 
   destroy(): void {
+    this.phaserScene.game.events.off('gameplay-menu:opened', this.stopFiring, this);
     this.resetForLevel();
     this.targetMarker?.destroy();
     this.laser?.destroy();
@@ -77,7 +85,11 @@ export class MiningToolNode extends GameNode {
     this.setLaserSound(false);
   }
 
-  updateMining(deltaSeconds: number, input: MiningToolInput): void {
+  update(deltaMs: number): void {
+    this.updateMining(deltaMs / 1000);
+  }
+
+  updateMining(deltaSeconds: number, input = this.getMiningInput()): void {
     const aimWorld = this.getAimWorldPoint(input);
     const target = this.findFirstMineableTile(aimWorld, input);
     const firing = this.isMiningPressed(input);
@@ -113,7 +125,7 @@ export class MiningToolNode extends GameNode {
     }
   }
 
-  getAimWorldPoint(input: MiningToolInput): Phaser.Math.Vector2 {
+  getAimWorldPoint(input = this.getMiningInput()): Phaser.Math.Vector2 {
     const origin = this.getLaserOrigin(input);
 
     if (input.uiScene.getInputMode() === 'gamepad') {
@@ -143,7 +155,7 @@ export class MiningToolNode extends GameNode {
     return this.currentAimWorld;
   }
 
-  isMiningPressed(input: MiningToolInput): boolean {
+  isMiningPressed(input = this.getMiningInput()): boolean {
     if (input.inputBlocked) return false;
     const mode = input.uiScene.getInputMode();
     if (mode === 'touch') return input.uiScene.isAiming();
@@ -173,6 +185,20 @@ export class MiningToolNode extends GameNode {
 
   private getLaserOrigin(input: MiningToolInput): Phaser.Math.Vector2 {
     return this.laserOrigin.set(input.playerX, input.playerY + PLAYER_SIZE.h * 0.18);
+  }
+
+  private getMiningInput(): MiningToolInput {
+    return {
+      playerX: this.world.player.x,
+      playerY: this.world.player.y,
+      uiScene: this.phaserScene.scene.get('ui') as UIScene,
+      activePointer: this.phaserScene.input.activePointer,
+      camera: this.phaserScene.cameras.main,
+      inputBlocked: this.playerController.inputBlocked,
+      getGamepad: () => this.playerController.getGamepad(),
+      axis: (gamepad, index) => this.playerController.axis(gamepad, index),
+      button: (gamepad, index) => this.playerController.button(gamepad, index),
+    };
   }
 
   private setLaserSound(active: boolean): void {
