@@ -1,20 +1,19 @@
 import Phaser from 'phaser';
 import {
-  GRAVITY,
   PLAYER_SIZE,
   TILE_SIZE,
 } from '../config/gameConfig';
 import { NodeRuntime, NodeScene } from '../nodes';
 import { LevelGeneratorManagerNode, LevelNode } from '../game/LevelNodes';
 import { MiningToolNode, type MiningToolInput } from '../game/MiningToolNode';
+import { PlayerControllerNode, type PlayerControllerInput } from '../game/PlayerControllerNode';
 import { PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
 import { UIScene } from './UIScene';
-import type { HudState, InputMode } from '../ui/HudState';
+import type { HudState } from '../ui/HudState';
 import { type LevelData } from '../game/level';
 import { worldToTile } from '../utils/tileMath';
 import { loadGameAssets } from '../assets/AssetLoader';
 
-type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 type Facing = 'east' | 'west';
 
 const START_TUNNEL_LEFT_TILE = -10;
@@ -28,19 +27,12 @@ const SHIP_DOCK_RADIUS = TILE_SIZE * 2.35;
 export class GameScene extends Phaser.Scene {
   private level!: LevelData;
   private player!: Phaser.GameObjects.Image;
-  private cursors!: CursorKeys;
-  private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private velocity = new Phaser.Math.Vector2(0, 0);
-  private grounded = false;
-  private coyoteTimer = 0;
-  private jumpBufferTimer = 0;
-  private touchJumpHeld = false;
-  private gravityEnabled = true;
   private facing: Facing = 'east';
   private walkTimer = 0;
   private walkFrame = 0;
   private gameRuntime!: NodeRuntime;
   private levelNode!: LevelNode;
+  private playerController!: PlayerControllerNode;
   private miningTool!: MiningToolNode;
   private playerState!: PlayerStateManagerNode;
   private saveTimer = 0;
@@ -48,7 +40,6 @@ export class GameScene extends Phaser.Scene {
   private startDecor: Phaser.GameObjects.GameObject[] = [];
   private debugZoomOffset = 0;
   private collisionDebugEnabled = false;
-  private gameplayInputBlocked = false;
   private uiScene!: UIScene;
   private walkSoundIndex = 0;
   private lastFootstepFrame = -1;
@@ -72,10 +63,12 @@ export class GameScene extends Phaser.Scene {
     this.gameRuntime.addPersistentNode(new LevelGeneratorManagerNode());
     const gameNodeScene = this.gameRuntime.addScene(new NodeScene({ sceneName: 'game' }));
     gameNodeScene.addChild(new LevelNode());
+    gameNodeScene.addChild(new PlayerControllerNode());
     gameNodeScene.addChild(new MiningToolNode());
     this.gameRuntime.init();
     this.gameRuntime.resolve();
     this.levelNode = this.gameRuntime.requireNode<LevelNode>('level');
+    this.playerController = this.gameRuntime.requireNode<PlayerControllerNode>('playerController');
     this.miningTool = this.gameRuntime.requireNode<MiningToolNode>('miningTool');
     this.playerState = this.gameRuntime.requireNode<PlayerStateManagerNode>('playerState');
 
@@ -85,7 +78,6 @@ export class GameScene extends Phaser.Scene {
     this.scene.launch('ui');
     this.uiScene = this.scene.get('ui') as UIScene;
     this.configureUiVisibilityDuringLoading();
-    this.createControls();
     this.game.events.on('debug:collision', this.setCollisionDebug, this);
     this.game.events.on('gameplay-menu:opened', this.blockGameplayInput, this);
     this.game.events.on('gameplay-menu:closed', this.unblockGameplayInput, this);
@@ -108,8 +100,7 @@ export class GameScene extends Phaser.Scene {
     const delta = deltaMs / 1000;
     this.gameRuntime.update(deltaMs);
     this.gameRuntime.render();
-    this.handleInput(delta);
-    this.applyPhysics(delta);
+    this.playerController.updateController(delta, this.getPlayerControllerInput());
     this.miningTool.updateMining(delta, this.getMiningInput());
     this.updateRunRecovery(delta);
     this.updateAnimation(deltaMs);
@@ -200,7 +191,7 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(50)
       .setVisible(false);
-    this.velocity.set(0, 0);
+    this.playerController.setPlayer(this.player);
 
     const worldLeft = -10 * TILE_SIZE;
     const worldTop = (-this.level.heightDown - 1) * TILE_SIZE;
@@ -210,12 +201,6 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setRoundPixels(true);
     this.cameras.main.startFollow(this.player, true, 0.18, 0.18);
     this.updateCameraZoom();
-  }
-
-  private createControls(): void {
-    if (!this.input.keyboard) throw new Error('Keyboard input unavailable');
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
   private configureUiVisibilityDuringLoading(): void {
@@ -240,123 +225,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDebugZoomWheel(_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number): void {
-    if (this.gameplayInputBlocked) return;
+    if (this.playerController.inputBlocked) return;
     this.debugZoomOffset = Phaser.Math.Clamp(this.debugZoomOffset + (deltaY > 0 ? -0.15 : 0.15), -1.2, 2.5);
     this.updateCameraZoom();
-  }
-
-  private handleInput(delta: number): void {
-    if (this.gameplayInputBlocked) {
-      this.velocity.x = 0;
-      this.touchJumpHeld = false;
-      this.jumpBufferTimer = 0;
-      return;
-    }
-
-    const mode = this.uiScene.getInputMode();
-    const joy = this.uiScene.getMoveVector();
-    const gamepad = mode === 'gamepad' ? this.getGamepad() : undefined;
-    const gamepadX = gamepad ? this.axis(gamepad, 0) : 0;
-    const gamepadY = gamepad ? this.axis(gamepad, 1) : 0;
-    const desktop = mode === 'desktop';
-    const touch = mode === 'touch';
-    const gamepadMode = mode === 'gamepad';
-
-    const left = (desktop && (this.cursors.left?.isDown || this.keys.A.isDown)) || (touch && joy.x < -0.22) || (gamepadMode && gamepadX < -0.22);
-    const right = (desktop && (this.cursors.right?.isDown || this.keys.D.isDown)) || (touch && joy.x > 0.22) || (gamepadMode && gamepadX > 0.22);
-    const joyUp = touch && joy.y < -0.56;
-    const joyDown = touch && joy.y > 0.56;
-    const gamepadUp = gamepadMode && (gamepadY < -0.56 || this.button(gamepad, 0));
-    const gamepadDown = gamepadMode && gamepadY > 0.56;
-    const up = (desktop && (this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown)) || joyUp || gamepadUp;
-    const down = (desktop && (this.cursors.down?.isDown || this.keys.S.isDown)) || joyDown || gamepadDown;
-
-    this.velocity.x = 0;
-    if (left) this.velocity.x -= this.playerState.stats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, -1);
-    if (right) this.velocity.x += this.playerState.stats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, 1);
-
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.G)) {
-      this.gravityEnabled = !this.gravityEnabled;
-      this.velocity.y = 0;
-    }
-
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
-      this.createLevel(`gravity-dig-phaser-${Date.now()}`, false);
-      return;
-    }
-
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
-      this.tryReturnCargoToShip();
-    }
-
-    if (up && !this.gravityEnabled) this.velocity.y = -this.playerState.stats.moveSpeed;
-    if (down && !this.gravityEnabled) this.velocity.y = this.playerState.stats.moveSpeed;
-    if (!up && !down && !this.gravityEnabled) this.velocity.y = 0;
-
-    const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W));
-    const touchJump = joyUp && !this.touchJumpHeld;
-    const gamepadJump = gamepadMode && this.button(gamepad, 0) && !this.touchJumpHeld;
-    this.touchJumpHeld = joyUp || (gamepadMode && this.button(gamepad, 0));
-
-    if (keyboardJump || touchJump || gamepadJump) {
-      if (this.grounded || this.coyoteTimer > 0) {
-        this.jump();
-      } else {
-        this.jumpBufferTimer = 0.1;
-      }
-    }
-
-    if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= delta;
-  }
-
-  private applyPhysics(delta: number): void {
-    const wasGrounded = this.grounded;
-    if (this.gravityEnabled) this.velocity.y += GRAVITY * delta;
-
-    this.moveAxis(this.velocity.x * delta, 0);
-    this.grounded = false;
-    this.moveAxis(0, this.velocity.y * delta);
-
-    if (wasGrounded && !this.grounded) this.coyoteTimer = 0.1;
-    if (this.coyoteTimer > 0) this.coyoteTimer -= delta;
-
-    if (this.jumpBufferTimer > 0 && (this.grounded || this.coyoteTimer > 0)) {
-      this.jump();
-      this.jumpBufferTimer = 0;
-    }
-  }
-
-  private jump(): void {
-    this.velocity.y = this.playerState.stats.jumpVelocity;
-    this.grounded = false;
-    this.coyoteTimer = 0;
-    this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) });
-  }
-
-  private moveAxis(dx: number, dy: number): void {
-    if (dx === 0 && dy === 0) return;
-
-    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8);
-    const stepX = dx / steps;
-    const stepY = dy / steps;
-
-    for (let i = 0; i < steps; i += 1) {
-      const nextX = this.player.x + stepX;
-      const nextY = this.player.y + stepY;
-      if (!this.collides(nextX, nextY)) {
-        this.player.setPosition(nextX, nextY);
-        continue;
-      }
-
-      if (dy > 0) this.grounded = true;
-      if (dy !== 0) this.velocity.y = 0;
-      if (dx !== 0) this.velocity.x = 0;
-      break;
-    }
-  }
-
-  private collides(cx: number, cy: number): boolean {
-    return this.levelNode.collidesBox(cx, cy, PLAYER_SIZE.w, PLAYER_SIZE.h);
   }
 
   private getCollisionProbePoints(cx: number, cy: number): [number, number][] {
@@ -368,15 +239,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private blockGameplayInput(): void {
-    this.gameplayInputBlocked = true;
-    this.velocity.x = 0;
-    this.touchJumpHeld = false;
-    this.jumpBufferTimer = 0;
+    this.playerController.blockInput();
     this.miningTool.stopFiring();
   }
 
   private unblockGameplayInput(): void {
-    this.gameplayInputBlocked = false;
+    this.playerController.unblockInput();
   }
 
   private setCollisionDebug(enabled: boolean): void {
@@ -420,6 +288,14 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private getPlayerControllerInput(): PlayerControllerInput {
+    return {
+      uiScene: this.uiScene,
+      onRegenerateLevel: () => this.createLevel(`gravity-dig-phaser-${Date.now()}`, false),
+      onReturnCargoToShip: () => this.tryReturnCargoToShip(),
+    };
+  }
+
   private getMiningInput(): MiningToolInput {
     return {
       playerX: this.player.x,
@@ -427,10 +303,10 @@ export class GameScene extends Phaser.Scene {
       uiScene: this.uiScene,
       activePointer: this.input.activePointer,
       camera: this.cameras.main,
-      inputBlocked: this.gameplayInputBlocked,
-      getGamepad: () => this.getGamepad(),
-      axis: (gamepad, index) => this.axis(gamepad, index),
-      button: (gamepad, index) => this.button(gamepad, index),
+      inputBlocked: this.playerController.inputBlocked,
+      getGamepad: () => this.playerController.getGamepad(),
+      axis: (gamepad, index) => this.playerController.axis(gamepad, index),
+      button: (gamepad, index) => this.playerController.button(gamepad, index),
     };
   }
 
@@ -439,8 +315,8 @@ export class GameScene extends Phaser.Scene {
     if (this.miningTool.isMiningPressed(miningInput)) {
       const aim = this.miningTool.getAimWorldPoint(miningInput);
       if (Math.abs(aim.x - this.player.x) > 10) this.facing = aim.x >= this.player.x ? 'east' : 'west';
-    } else if (Math.abs(this.velocity.x) > 1) {
-      this.facing = this.velocity.x > 0 ? 'east' : 'west';
+    } else if (Math.abs(this.playerController.velocity.x) > 1) {
+      this.facing = this.playerController.velocity.x > 0 ? 'east' : 'west';
     }
 
     this.walkTimer += deltaMs;
@@ -449,16 +325,16 @@ export class GameScene extends Phaser.Scene {
       this.walkTimer = 0;
     }
 
-    const airborne = this.gravityEnabled && !this.grounded;
-    const moving = Math.abs(this.velocity.x) > 1 || (!this.gravityEnabled && Math.abs(this.velocity.y) > 1);
+    const airborne = this.playerController.gravityEnabled && !this.playerController.grounded;
+    const moving = Math.abs(this.playerController.velocity.x) > 1 || (!this.playerController.gravityEnabled && Math.abs(this.playerController.velocity.y) > 1);
     const prefix = airborne ? 'player-jump' : moving ? 'player-walk' : 'player-idle';
-    const frame = airborne ? (this.velocity.y < 0 ? 0 : 1) : this.walkFrame % (moving ? 6 : 4);
+    const frame = airborne ? (this.playerController.velocity.y < 0 ? 0 : 1) : this.walkFrame % (moving ? 6 : 4);
     this.player.setTexture(`${prefix}-${frame}`).setFlipX(this.facing === 'west');
 
-    if (!airborne && moving && this.grounded && (frame === 1 || frame === 4) && frame !== this.lastFootstepFrame) {
+    if (!airborne && moving && this.playerController.grounded && (frame === 1 || frame === 4) && frame !== this.lastFootstepFrame) {
       this.playFootstep();
       this.lastFootstepFrame = frame;
-    } else if (!moving || !this.grounded) {
+    } else if (!moving || !this.playerController.grounded) {
       this.lastFootstepFrame = -1;
     }
   }
@@ -469,26 +345,6 @@ export class GameScene extends Phaser.Scene {
       volume: 0.16,
       detune: Phaser.Math.Between(-30, 30),
     });
-  }
-
-  private getGamepad(): Gamepad | undefined {
-    return navigator.getGamepads?.().find((pad): pad is Gamepad => Boolean(pad)) ?? undefined;
-  }
-
-  private axis(gamepad: Gamepad | undefined, index: number): number {
-    const value = gamepad?.axes[index] ?? 0;
-    return Math.abs(value) < 0.18 ? 0 : value;
-  }
-
-  private button(gamepad: Gamepad | undefined, index: number): boolean {
-    const button = gamepad?.buttons[index];
-    return Boolean(button?.pressed || (button?.value ?? 0) > 0.35);
-  }
-
-  private inputStrength(mode: InputMode, touchAxis: number, gamepadAxis: number, direction: -1 | 1): number {
-    if (mode === 'touch') return Math.max(0.45, Math.abs(touchAxis));
-    if (mode === 'gamepad') return Math.max(0.45, Math.abs(gamepadAxis));
-    return direction ? 1 : 0;
   }
 
   private updateHud(): void {
