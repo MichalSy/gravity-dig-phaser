@@ -17,12 +17,11 @@ export const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
 
 const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.png', category: 'tiles' },
-  { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.png', category: 'tiles' },
+  { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.png', category: 'backwall' },
   { key: 'bg-game', path: '/assets/tilesets/bg/bg_game.png', category: 'world' },
   { key: 'ship', path: '/assets/ships/the_bucket.png', category: 'ship' },
   { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.png', category: 'ship' },
   { key: 'laser-dot', path: '/assets/effects/laser_beam.png', category: 'effects' },
-  { key: 'title-logo', path: '/assets/tilesets/ui/title_logo.png', category: 'ui' },
   { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.png', category: 'hud' },
   { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.png', category: 'hud' },
   { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.png', category: 'hud' },
