@@ -52,8 +52,11 @@ const UI_ATLAS = {
   energyBar: { x: 24, y: 1578, w: 873, h: 245 },
   repeatSlot: { x: 24, y: 1847, w: 465, h: 463 },
   energySlot: { x: 303, y: 180, w: 420, h: 155 },
-  extraSlotOrigin: { x: 1152, y: 0 },
-  repeatSlotStep: 386,
+  extraSlotOrigin: { x: 1152, y: 90 },
+  firstSlotCenter: { x: 1026, y: 254 },
+  slotContentSize: 185,
+  repeatSlotHeight: 332,
+  repeatSlotStep: 278,
   bottomDisplayHeight: 150,
 } as const;
 
@@ -346,8 +349,9 @@ export class UIScene extends Phaser.Scene {
     this.brandLabel.setVisible(false);
 
     const extraSlotCount = Math.max(0, Math.min(this.slotFrames.length - 1, state.cargo.visibleSlots - 1));
-    const repeatSlotW = UI_ATLAS.repeatSlot.w * atlasScale;
-    const repeatSlotH = UI_ATLAS.repeatSlot.h * atlasScale;
+    const slotScale = (UI_ATLAS.repeatSlotHeight * atlasScale) / UI_ATLAS.repeatSlot.h;
+    const repeatSlotW = UI_ATLAS.repeatSlot.w * slotScale;
+    const repeatSlotH = UI_ATLAS.repeatSlot.h * slotScale;
     const firstExtraX = x + UI_ATLAS.extraSlotOrigin.x * atlasScale;
     const extraY = dockY + UI_ATLAS.extraSlotOrigin.y * atlasScale;
 
@@ -364,15 +368,15 @@ export class UIScene extends Phaser.Scene {
       const cy = sy + repeatSlotH / 2;
 
       if (isExtraSlot) {
-        this.placeAtlasRegion(frame, UI_ATLAS.repeatSlot, sx, sy, atlasScale);
+        this.placeAtlasRegion(frame, UI_ATLAS.repeatSlot, sx, sy, slotScale);
       } else {
         frame.setVisible(false);
       }
 
       const hasItem = Boolean(active && slot?.itemId && slot.quantity > 0);
-      const itemX = i === 0 ? x + 1026 * atlasScale : cx;
-      const itemY = i === 0 ? dockY + 254 * atlasScale : cy;
-      const itemSize = 94 * atlasScale;
+      const itemX = i === 0 ? x + UI_ATLAS.firstSlotCenter.x * atlasScale : cx;
+      const itemY = i === 0 ? dockY + UI_ATLAS.firstSlotCenter.y * atlasScale : cy;
+      const itemSize = UI_ATLAS.slotContentSize * atlasScale;
       item
         .setPosition(itemX, itemY)
         .setDisplaySize(itemSize, itemSize)
@@ -383,7 +387,7 @@ export class UIScene extends Phaser.Scene {
         label
           .setText(`x${slot?.quantity ?? 0}`)
           .setPosition(itemX + itemSize / 2 - 4 * atlasScale, itemY + itemSize / 2 - 4 * atlasScale)
-          .setScale(atlasScale * 1.9);
+          .setScale(atlasScale * 2.8);
       }
     }
   }
