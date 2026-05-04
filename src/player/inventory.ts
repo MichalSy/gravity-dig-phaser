@@ -45,7 +45,17 @@ export function getInventoryRemaining(inventory: InventoryState): number {
 }
 
 export function canAddItem(inventory: InventoryState, itemId: ItemId, quantity = 1): boolean {
-  return findWritableSlot(inventory, itemId, quantity) !== undefined;
+  let remaining = Math.max(0, Math.floor(quantity));
+  if (remaining === 0) return true;
+
+  for (const slot of inventory.slots) {
+    if (slot.itemId && slot.itemId !== itemId) continue;
+    const used = slot.itemId ? slot.quantity : 0;
+    remaining -= Math.max(0, inventory.stackLimit - used);
+    if (remaining <= 0) return true;
+  }
+
+  return false;
 }
 
 export function addItem(inventory: InventoryState, itemId: ItemId, quantity = 1): number {

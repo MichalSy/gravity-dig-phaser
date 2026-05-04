@@ -155,10 +155,10 @@ export class UIScene extends Phaser.Scene {
     this.actionGraphics = this.add.graphics().setScrollFactor(0).setDepth(10);
 
     this.statusFrame = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
-    this.actionFrame = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.actionFrame = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.1);
     this.hpFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
     this.fuelFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.energyFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.energyFill = this.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.2);
     this.hpIcon = this.add.image(0, 0, 'hud-icon-hp').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
     this.fuelIcon = this.add.image(0, 0, 'hud-icon-fuel').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(11);
 
@@ -370,9 +370,9 @@ export class UIScene extends Phaser.Scene {
       const cy = sy + repeatSlotH / 2;
 
       if (isExtraSlot) {
-        // Slots overlap through left-side connector pixels. Render visual stacking from
-        // right to left: rightmost slots stay behind, left neighbours cover connectors.
-        frame.setDepth(11 + (extraSlotCount - i) * 0.01);
+        // Slots overlap through left-side connector pixels. Keep slots below the bottom
+        // HUD frame, and stack them visually from right to left behind that frame.
+        frame.setDepth(10.8 + (extraSlotCount - i) * 0.01);
         this.placeAtlasRegion(frame, UI_ATLAS.repeatSlot, sx, sy, slotScale);
       } else {
         frame.setVisible(false);

@@ -20,7 +20,7 @@ export function computeEffectiveStats(profile: PlayerProfile): EffectivePlayerSt
     miningRange: MINING_RANGE,
     moveSpeed: PLAYER_SPEED,
     jumpVelocity: JUMP_VELOCITY,
-    cargoSlots: 1,
+    cargoSlots: 2,
     cargoStackLimit: 3,
     sightRadius: 3,
     fuelEfficiency: 1,

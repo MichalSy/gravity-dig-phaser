@@ -735,7 +735,11 @@ export class GameScene extends Phaser.Scene {
       health: { current: this.runState.health, max: this.effectiveStats.maxHealth },
       energy: { current: this.runState.energy, max: this.effectiveStats.maxEnergy },
       fuel: { current: this.runState.fuel, max: 100 },
-      cargo: { slots: this.runState.cargo.slots, visibleSlots: 4, stackLimit: this.runState.cargo.stackLimit },
+      cargo: {
+        slots: this.runState.cargo.slots,
+        visibleSlots: this.runState.cargo.slots.length,
+        stackLimit: this.runState.cargo.stackLimit,
+      },
       debug: controls,
       zoom: `Zoom: ${this.cameras.main.zoom.toFixed(2)} (Offset: ${this.debugZoomOffset >= 0 ? '+' : ''}${this.debugZoomOffset.toFixed(2)})`,
       target: tile ? `Target: ${tile.type} (${Math.max(0, Math.ceil(tile.health))}/${tile.maxHealth}) @ ${tile.x},${tile.y}` : 'Target: keines in Reichweite',
