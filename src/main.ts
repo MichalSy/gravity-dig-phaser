@@ -8,7 +8,7 @@ import { UIScene } from './scenes/UIScene';
 async function startGame(): Promise<void> {
   await document.fonts?.load('700 28px "Silkscreen"');
 
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
     width: window.innerWidth || GAME_WIDTH,
@@ -32,6 +32,10 @@ async function startGame(): Promise<void> {
     },
     scene: [MenuScene, GameScene, UIScene],
   });
+
+  if (import.meta.env.DEV) {
+    (window as typeof window & { __GRAVITY_DIG_GAME__?: Phaser.Game }).__GRAVITY_DIG_GAME__ = game;
+  }
 }
 
 void startGame();

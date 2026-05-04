@@ -115,7 +115,11 @@ export class UIScene extends Phaser.Scene {
   }
 
   isAiming(): boolean {
-    return this.inputMode === 'touch' && this.rightJoystick.active;
+    return !this.isMenuOpen() && this.inputMode === 'touch' && this.rightJoystick.active;
+  }
+
+  isMenuOpen(): boolean {
+    return this.developerDialog?.isOpen() ?? false;
   }
 
   containsControlPointer(pointer: Phaser.Input.Pointer): boolean {
@@ -406,7 +410,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.isDebugMenuPointer(pointer)) return;
+    if (this.isDebugMenuPointer(pointer) || this.isMenuOpen()) return;
     if (this.inputMode !== 'touch') return;
     const handled = pointer.x < this.scale.width / 2
       ? this.leftJoystick.handlePointerDown(pointer)
@@ -415,13 +419,13 @@ export class UIScene extends Phaser.Scene {
   }
 
   private handlePointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.inputMode !== 'touch') return;
+    if (this.isMenuOpen() || this.inputMode !== 'touch') return;
     this.leftJoystick.handlePointerMove(pointer);
     this.rightJoystick.handlePointerMove(pointer);
   }
 
   private handlePointerUp(pointer: Phaser.Input.Pointer): void {
-    if (this.inputMode !== 'touch') return;
+    if (this.isMenuOpen() || this.inputMode !== 'touch') return;
     this.leftJoystick.handlePointerUp(pointer);
     this.rightJoystick.handlePointerUp(pointer);
   }

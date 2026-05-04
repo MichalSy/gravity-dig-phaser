@@ -34,9 +34,14 @@ export class DeveloperDialog {
     this.open();
   }
 
+  isOpen(): boolean {
+    return Boolean(this.root);
+  }
+
   close(): void {
     this.root?.remove();
     this.root = undefined;
+    this.scene.game.events.emit('gameplay-menu:closed');
   }
 
   refresh(): void {
@@ -52,6 +57,7 @@ export class DeveloperDialog {
     this.root = document.createElement('div');
     this.root.id = DIALOG_ID;
     document.body.appendChild(this.root);
+    this.scene.game.events.emit('gameplay-menu:opened');
     this.render();
   }
 

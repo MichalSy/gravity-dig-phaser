@@ -65,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private startDecor: Phaser.GameObjects.GameObject[] = [];
   private debugZoomOffset = 0;
   private collisionDebugEnabled = false;
+  private gameplayInputBlocked = false;
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private uiScene!: UIScene;
   private currentAimWorld = new Phaser.Math.Vector2(1, 0);
@@ -97,6 +98,13 @@ export class GameScene extends Phaser.Scene {
     this.createControls();
     this.laserSound = this.sound.add('laser-loop', { loop: true, volume: 0.28 });
     this.game.events.on('debug:collision', this.setCollisionDebug, this);
+    this.game.events.on('gameplay-menu:opened', this.blockGameplayInput, this);
+    this.game.events.on('gameplay-menu:closed', this.unblockGameplayInput, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off('debug:collision', this.setCollisionDebug, this);
+      this.game.events.off('gameplay-menu:opened', this.blockGameplayInput, this);
+      this.game.events.off('gameplay-menu:closed', this.unblockGameplayInput, this);
+    });
     this.updateCameraZoom();
 
     this.scale.on('resize', this.updateCameraZoom, this);
@@ -285,11 +293,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleDebugZoomWheel(_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number): void {
+    if (this.gameplayInputBlocked) return;
     this.debugZoomOffset = Phaser.Math.Clamp(this.debugZoomOffset + (deltaY > 0 ? -0.15 : 0.15), -1.2, 2.5);
     this.updateCameraZoom();
   }
 
   private handleInput(delta: number): void {
+    if (this.gameplayInputBlocked) {
+      this.velocity.x = 0;
+      this.touchJumpHeld = false;
+      this.jumpBufferTimer = 0;
+      return;
+    }
+
     const mode = this.uiScene.getInputMode();
     const joy = this.uiScene.getMoveVector();
     const gamepad = mode === 'gamepad' ? this.getGamepad() : undefined;
@@ -420,6 +436,18 @@ export class GameScene extends Phaser.Scene {
     return x < -8.65 * TILE_SIZE && y >= -1.4 * TILE_SIZE && y <= 2.95 * TILE_SIZE;
   }
 
+  private blockGameplayInput(): void {
+    this.gameplayInputBlocked = true;
+    this.velocity.x = 0;
+    this.touchJumpHeld = false;
+    this.jumpBufferTimer = 0;
+    this.setLaserSound(false);
+  }
+
+  private unblockGameplayInput(): void {
+    this.gameplayInputBlocked = false;
+  }
+
   private setCollisionDebug(enabled: boolean): void {
     this.collisionDebugEnabled = enabled;
     if (!enabled) this.collisionDebug?.clear();
@@ -529,6 +557,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isMiningPressed(): boolean {
+    if (this.gameplayInputBlocked) return false;
     const mode = this.uiScene.getInputMode();
     if (mode === 'touch') return this.uiScene.isAiming();
     if (mode === 'gamepad') {
