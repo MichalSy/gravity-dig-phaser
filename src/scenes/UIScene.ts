@@ -94,7 +94,11 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerupoutside', this.handlePointerUp, this);
     this.scale.on('resize', this.layout, this);
     this.game.events.on('hud:update', this.updateHud, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.developerDialog.destroy());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.layout, this);
+      this.game.events.off('hud:update', this.updateHud, this);
+      this.developerDialog.destroy();
+    });
     this.updateInputMode();
   }
 
@@ -236,6 +240,8 @@ export class UIScene extends Phaser.Scene {
   }
 
   private layout(): void {
+    if (!this.scene.isActive()) return;
+
     const width = this.scale.width;
     const height = this.scale.height;
     const compact = height <= 430 || width <= 760;

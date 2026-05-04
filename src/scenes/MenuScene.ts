@@ -79,6 +79,9 @@ export class MenuScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ENTER', () => this.activate(this.buttons[this.activeIndex].item));
     this.input.keyboard?.on('keydown-SPACE', () => this.activate(this.buttons[this.activeIndex].item));
     this.scale.on('resize', this.layout, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off('resize', this.layout, this);
+    });
     this.layout();
   }
 
@@ -111,6 +114,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private layout(): void {
+    if (!this.scene.isActive() || !this.background?.active) return;
+
     const width = this.scale.width;
     const height = this.scale.height;
     const sceneScale = width / this.background.width;

@@ -104,6 +104,7 @@ export class GameScene extends Phaser.Scene {
       this.game.events.off('debug:collision', this.setCollisionDebug, this);
       this.game.events.off('gameplay-menu:opened', this.blockGameplayInput, this);
       this.game.events.off('gameplay-menu:closed', this.unblockGameplayInput, this);
+      this.scale.off('resize', this.updateCameraZoom, this);
     });
     this.updateCameraZoom();
 
