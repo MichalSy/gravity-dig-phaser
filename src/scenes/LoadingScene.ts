@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { loadGameAssets } from '../assets/AssetLoader';
+import { GAME_EVENTS, emitGameEvent, onceGameEvent } from '../game/gameEvents';
 
 const MIN_LOADING_MS = 900;
 
@@ -19,7 +20,7 @@ export class LoadingScene extends Phaser.Scene {
     this.createDomOverlay();
     this.load.on('progress', this.setProgress, this);
     this.load.once('complete', this.startGameBehindLoadingScreen, this);
-    this.game.events.once('game:ready', this.finishLoading, this);
+    onceGameEvent(this, GAME_EVENTS.gameReady, this.finishLoading, this);
     loadGameAssets(this);
   }
 
@@ -151,7 +152,7 @@ export class LoadingScene extends Phaser.Scene {
       this.scene.bringToTop('loading');
       this.removeDomOverlay();
       this.scene.stop('loading');
-      this.game.events.emit('loading:complete');
+      emitGameEvent(this, GAME_EVENTS.loadingComplete);
     });
   }
 }

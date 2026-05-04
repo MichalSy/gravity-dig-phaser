@@ -38,6 +38,7 @@ export class LevelNode extends GameNode {
   private backwallLayer?: Phaser.Tilemaps.TilemapLayer;
   private mapOffsetXValue = 0;
   private mapOffsetYValue = 0;
+  override readonly dependencies = ['levelGenerator'] as const;
 
   constructor() {
     super({ name: 'level', order: 0 });

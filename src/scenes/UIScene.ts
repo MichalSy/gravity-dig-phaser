@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { NodeRuntime } from '../nodes';
+import { GAME_EVENTS, offGameEvent, onGameEvent } from '../game/gameEvents';
 import { GameplayUiScene } from '../ui/GameplayUiScene';
 import type { HudState, InputMode } from '../ui/HudState';
 
@@ -18,9 +19,9 @@ export class UIScene extends Phaser.Scene {
     this.hudRuntime.init();
     this.hudRuntime.resolve();
 
-    this.game.events.on('hud:update', this.updateHud, this);
+    onGameEvent(this, GAME_EVENTS.hudUpdate, this.updateHud, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off('hud:update', this.updateHud, this);
+      offGameEvent(this, GAME_EVENTS.hudUpdate, this.updateHud, this);
       this.hudRuntime?.destroy();
     });
     this.updateInputMode();
@@ -29,7 +30,6 @@ export class UIScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     this.updateInputMode();
     this.hudRuntime?.update(deltaMs);
-    this.hudRuntime?.render();
   }
 
   getInputMode(): InputMode {

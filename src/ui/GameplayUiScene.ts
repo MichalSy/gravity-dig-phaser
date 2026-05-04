@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { VirtualJoystick } from '../controls/VirtualJoystick';
 import { DeveloperDialog } from '../debug/DeveloperDialog';
-import { GameNode, NodeScene, type NodeContext, type RenderContext } from '../nodes';
+import { GAME_EVENTS, emitGameEvent } from '../game/gameEvents';
+import { GameNode, NodeScene, type NodeContext } from '../nodes';
 import type { HudState, InputMode } from './HudState';
 
 interface HudTextStyle extends Phaser.Types.GameObjects.Text.TextStyle {
@@ -95,6 +96,7 @@ export class GameplayUiScene extends NodeScene {
 }
 
 class StatusHudNode extends GameNode {
+  private phaserScene!: Phaser.Scene;
   private statusFrame!: Phaser.GameObjects.Image;
   private hpFill!: Phaser.GameObjects.Image;
   private fuelFill!: Phaser.GameObjects.Image;
@@ -104,18 +106,19 @@ class StatusHudNode extends GameNode {
   }
 
   init(ctx: NodeContext): void {
-    this.statusFrame = ctx.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
-    this.hpFill = ctx.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.fuelFill = ctx.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.phaserScene = ctx.phaserScene;
+    this.statusFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
+    this.hpFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.fuelFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
   }
 
-  render(ctx: RenderContext): void {
+  update(): void {
     const state = this.requireNode<GameplayUiScene>('ui.gameplay').getHudState();
     if (!state) return;
 
     const x = 18;
     const y = 18;
-    const scale = hudScaleForWidth(ctx.phaserScene.scale.width);
+    const scale = hudScaleForWidth(this.phaserScene.scale.width);
     const atlasScale = (UI_ATLAS.topDisplayWidth * scale) / UI_ATLAS.topHud.w;
     const pctHp = Phaser.Math.Clamp(state.health.current / state.health.max, 0, 1);
     const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
@@ -138,6 +141,7 @@ class StatusHudNode extends GameNode {
 }
 
 class BottomHudNode extends GameNode {
+  private phaserScene!: Phaser.Scene;
   private actionFrame!: Phaser.GameObjects.Image;
   private energyFill!: Phaser.GameObjects.Image;
   private readonly slotFrames: Phaser.GameObjects.Image[] = [];
@@ -149,27 +153,28 @@ class BottomHudNode extends GameNode {
   }
 
   init(ctx: NodeContext): void {
+    this.phaserScene = ctx.phaserScene;
     const resolution = Math.max(2, window.devicePixelRatio || 1);
-    this.actionFrame = ctx.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.1);
-    this.energyFill = ctx.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.2);
+    this.actionFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.1);
+    this.energyFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.2);
 
     for (let i = 0; i < 4; i += 1) {
-      this.slotFrames.push(ctx.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10.8).setVisible(false));
-      this.slotItems.push(ctx.phaserScene.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
-      this.slotLabels.push(ctx.phaserScene.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
+      this.slotFrames.push(this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10.8).setVisible(false));
+      this.slotItems.push(this.phaserScene.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
+      this.slotLabels.push(this.phaserScene.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
     }
   }
 
-  render(ctx: RenderContext): void {
+  update(): void {
     const state = this.requireNode<GameplayUiScene>('ui.gameplay').getHudState();
     if (!state) return;
 
-    const scale = hudScaleForWidth(ctx.phaserScene.scale.width);
+    const scale = hudScaleForWidth(this.phaserScene.scale.width);
     const atlasScale = (UI_ATLAS.bottomDisplayHeight * scale) / UI_ATLAS.bottomHud.h;
     const extraSlotCount = Math.max(0, Math.min(this.slotFrames.length - 1, state.cargo.visibleSlots - 1));
     const frameW = (UI_ATLAS.bottomHud.w + extraSlotCount * UI_ATLAS.repeatSlotStep) * atlasScale;
-    const x = ctx.phaserScene.scale.width / 2 - frameW / 2;
-    const dockY = ctx.phaserScene.scale.height - UI_ATLAS.bottomHud.h * atlasScale - 10 * scale;
+    const x = this.phaserScene.scale.width / 2 - frameW / 2;
+    const dockY = this.phaserScene.scale.height - UI_ATLAS.bottomHud.h * atlasScale - 10 * scale;
     const pctEnergy = Phaser.Math.Clamp(state.energy.current / state.energy.max, 0, 1);
 
     placeAtlasRegion(this.actionFrame, UI_ATLAS.bottomHud, x, dockY, atlasScale);
@@ -238,6 +243,7 @@ class BottomHudNode extends GameNode {
 }
 
 class RuntimeDebugTextNode extends GameNode {
+  private phaserScene!: Phaser.Scene;
   private debugText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -245,7 +251,8 @@ class RuntimeDebugTextNode extends GameNode {
   }
 
   init(ctx: NodeContext): void {
-    this.debugText = ctx.phaserScene.add
+    this.phaserScene = ctx.phaserScene;
+    this.debugText = this.phaserScene.add
       .text(14, 0, '', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '14px',
@@ -259,12 +266,12 @@ class RuntimeDebugTextNode extends GameNode {
       .setResolution(Math.max(2, window.devicePixelRatio || 1));
   }
 
-  render(ctx: RenderContext): void {
+  update(): void {
     const state = this.requireNode<GameplayUiScene>('ui.gameplay').getHudState();
     if (!state) return;
 
-    const width = ctx.phaserScene.scale.width;
-    const height = ctx.phaserScene.scale.height;
+    const width = this.phaserScene.scale.width;
+    const height = this.phaserScene.scale.height;
     const bottomHudHeight = bottomHudDisplayHeight(width);
     this.debugText
       .setText([state.debug, state.zoom, state.target])
@@ -304,6 +311,7 @@ class DeveloperDialogNode extends GameNode {
 }
 
 class DebugPanelNode extends GameNode {
+  private phaserScene!: Phaser.Scene;
   private debugPanel!: Phaser.GameObjects.Container;
   private collisionButton!: Phaser.GameObjects.Text;
   private developerButton!: Phaser.GameObjects.Text;
@@ -314,16 +322,17 @@ class DebugPanelNode extends GameNode {
   }
 
   init(ctx: NodeContext): void {
+    this.phaserScene = ctx.phaserScene;
     const resolution = Math.max(2, window.devicePixelRatio || 1);
-    const bg = ctx.phaserScene.add
+    const bg = this.phaserScene.add
       .rectangle(0, 0, 156, 86, 0x020617, 0.72)
       .setStrokeStyle(1, 0x38bdf8, 0.65)
       .setOrigin(1, 0)
       .setScrollFactor(0);
 
-    const title = ctx.phaserScene.add.text(-144, 7, 'DEBUG', TEXT.small).setScrollFactor(0).setResolution(resolution);
+    const title = this.phaserScene.add.text(-144, 7, 'DEBUG', TEXT.small).setScrollFactor(0).setResolution(resolution);
 
-    this.collisionButton = ctx.phaserScene.add
+    this.collisionButton = this.phaserScene.add
       .text(-144, 24, 'Collision: OFF', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '13px',
@@ -339,10 +348,10 @@ class DebugPanelNode extends GameNode {
     this.collisionButton.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       pointer.event.preventDefault();
       pointer.event.stopPropagation();
-      this.toggleCollisionDebug(ctx.phaserScene);
+      this.toggleCollisionDebug(this.phaserScene);
     });
 
-    this.developerButton = ctx.phaserScene.add
+    this.developerButton = this.phaserScene.add
       .text(-144, 56, 'Developer', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '13px',
@@ -361,11 +370,11 @@ class DebugPanelNode extends GameNode {
       this.requireNode<DeveloperDialogNode>('ui.developerDialog').toggle();
     });
 
-    this.debugPanel = ctx.phaserScene.add.container(0, 0, [bg, title, this.collisionButton, this.developerButton]).setDepth(40).setScrollFactor(0);
+    this.debugPanel = this.phaserScene.add.container(0, 0, [bg, title, this.collisionButton, this.developerButton]).setDepth(40).setScrollFactor(0);
   }
 
-  render(ctx: RenderContext): void {
-    this.debugPanel?.setPosition(ctx.phaserScene.scale.width - 12, 12);
+  update(): void {
+    this.debugPanel?.setPosition(this.phaserScene.scale.width - 12, 12);
   }
 
   containsPointer(pointer: Phaser.Input.Pointer): boolean {
@@ -380,7 +389,7 @@ class DebugPanelNode extends GameNode {
     this.collisionDebugEnabled = !this.collisionDebugEnabled;
     this.collisionButton.setText(`Collision: ${this.collisionDebugEnabled ? 'ON' : 'OFF'}`);
     this.collisionButton.setColor(this.collisionDebugEnabled ? '#86efac' : '#f8fafc');
-    phaserScene.game.events.emit('debug:collision', this.collisionDebugEnabled);
+    emitGameEvent(phaserScene, GAME_EVENTS.debugCollision, this.collisionDebugEnabled);
   }
 }
 
@@ -397,9 +406,9 @@ class TouchControlsNode extends GameNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.phaserScene.input.addPointer(3);
-    this.leftJoystick = new VirtualJoystick(ctx.phaserScene, 'left', 'MOVE');
-    this.rightJoystick = new VirtualJoystick(ctx.phaserScene, 'right', 'LASER');
-    this.controlsHint = ctx.phaserScene.add
+    this.leftJoystick = new VirtualJoystick(this.phaserScene, 'left', 'MOVE');
+    this.rightJoystick = new VirtualJoystick(this.phaserScene, 'right', 'LASER');
+    this.controlsHint = this.phaserScene.add
       .text(0, 0, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
         fontFamily: 'Arial, sans-serif',
         fontSize: '15px',
@@ -418,10 +427,10 @@ class TouchControlsNode extends GameNode {
     this.phaserScene.input.on('pointerupoutside', this.handlePointerUp, this);
   }
 
-  render(ctx: RenderContext): void {
+  update(): void {
     const inputMode = this.requireNode<GameplayUiScene>('ui.gameplay').getInputMode();
-    const width = ctx.phaserScene.scale.width;
-    const height = ctx.phaserScene.scale.height;
+    const width = this.phaserScene.scale.width;
+    const height = this.phaserScene.scale.height;
     const compact = height <= 430 || width <= 760;
     const touchMode = inputMode === 'touch';
 

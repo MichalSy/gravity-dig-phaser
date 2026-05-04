@@ -1,46 +1,9 @@
 import type Phaser from 'phaser';
-import { GameNode, type NodeContext, type RenderContext } from './GameNode';
+import { GameNode, type NodeContext } from './GameNode';
 import { NodeScene } from './NodeScene';
 
 export interface NodeRuntimeOptions {
   phaserScene: Phaser.Scene;
-}
-
-class RuntimeRenderContext implements RenderContext {
-  readonly sceneIndex: number;
-  traversalIndex = 0;
-  private readonly base: NodeContext;
-  private readonly depthBase: number;
-  private readonly depthStep: number;
-
-  constructor(base: NodeContext, sceneIndex: number, depthBase: number, depthStep: number) {
-    this.base = base;
-    this.sceneIndex = sceneIndex;
-    this.depthBase = depthBase;
-    this.depthStep = depthStep;
-  }
-
-  get phaserScene(): Phaser.Scene {
-    return this.base.phaserScene;
-  }
-
-  get runtime(): NodeRuntime {
-    return this.base.runtime;
-  }
-
-  getNode<T extends GameNode = GameNode>(name: string): T | undefined {
-    return this.base.getNode<T>(name);
-  }
-
-  requireNode<T extends GameNode = GameNode>(name: string): T {
-    return this.base.requireNode<T>(name);
-  }
-
-  nextDepth(): number {
-    const depth = this.depthBase + this.traversalIndex * this.depthStep;
-    this.traversalIndex += 1;
-    return depth;
-  }
 }
 
 export class NodeRuntime {
@@ -135,19 +98,6 @@ export class NodeRuntime {
     this.resolve();
     for (const node of this.sortedPersistentNodes()) node.updateTree(deltaMs);
     for (const scene of this.sortedScenes()) scene.updateTree(deltaMs);
-  }
-
-  render(): void {
-    this.resolve();
-    for (const node of this.sortedPersistentNodes()) {
-      const renderCtx = new RuntimeRenderContext(this.ctx, -1, -1000, 0.001);
-      node.renderTree(renderCtx);
-    }
-
-    this.sortedScenes().forEach((scene, sceneIndex) => {
-      const renderCtx = new RuntimeRenderContext(this.ctx, sceneIndex, sceneIndex * 1000, 0.001);
-      scene.renderTree(renderCtx);
-    });
   }
 
   destroy(): void {

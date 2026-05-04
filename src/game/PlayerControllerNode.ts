@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { GRAVITY, PLAYER_SIZE } from '../config/gameConfig';
 import { GameNode, type NodeContext } from '../nodes';
-import type { InputMode } from '../ui/HudState';
 import type { UIScene } from '../scenes/UIScene';
-import type { GameWorldNode } from './GameplayNodes';
+import type { GameWorldNode } from './nodes/GameWorldNode';
+import { inputStrength } from './gameplayLogic';
+import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from './gameEvents';
+import { createPlayerControllerData, type PlayerControllerData } from './nodeData';
 import { LevelNode } from './LevelNodes';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
@@ -17,13 +19,8 @@ export class PlayerControllerNode extends GameNode {
   private player?: Phaser.GameObjects.Image;
   private cursors!: CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private readonly currentVelocity = new Phaser.Math.Vector2(0, 0);
-  private isGrounded = false;
-  private coyoteTimer = 0;
-  private jumpBufferTimer = 0;
-  private jumpHeld = false;
-  private gravityActive = true;
-  private blocked = false;
+  override readonly dependencies = ['level', 'world', 'playerState'] as const;
+  readonly data: PlayerControllerData = createPlayerControllerData();
 
   constructor() {
     super({ name: 'playerController', order: 10 });
@@ -35,8 +32,8 @@ export class PlayerControllerNode extends GameNode {
 
     this.cursors = this.phaserScene.input.keyboard.createCursorKeys();
     this.keys = this.phaserScene.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
-    this.phaserScene.game.events.on('gameplay-menu:opened', this.blockInput, this);
-    this.phaserScene.game.events.on('gameplay-menu:closed', this.unblockInput, this);
+    onGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuOpened, this.blockInput, this);
+    onGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuClosed, this.unblockInput, this);
   }
 
   resolve(): void {
@@ -46,8 +43,8 @@ export class PlayerControllerNode extends GameNode {
   }
 
   destroy(): void {
-    this.phaserScene.game.events.off('gameplay-menu:opened', this.blockInput, this);
-    this.phaserScene.game.events.off('gameplay-menu:closed', this.unblockInput, this);
+    offGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuOpened, this.blockInput, this);
+    offGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuClosed, this.unblockInput, this);
   }
 
   setPlayer(player: Phaser.GameObjects.Image): void {
@@ -64,38 +61,38 @@ export class PlayerControllerNode extends GameNode {
   }
 
   blockInput(): void {
-    this.blocked = true;
-    this.currentVelocity.x = 0;
-    this.jumpHeld = false;
-    this.jumpBufferTimer = 0;
+    this.data.inputBlocked = true;
+    this.data.velocity.x = 0;
+    this.data.jumpHeld = false;
+    this.data.jumpBufferTimerSeconds = 0;
   }
 
   unblockInput(): void {
-    this.blocked = false;
+    this.data.inputBlocked = false;
   }
 
   resetMotion(): void {
-    this.currentVelocity.set(0, 0);
-    this.isGrounded = false;
-    this.coyoteTimer = 0;
-    this.jumpBufferTimer = 0;
-    this.jumpHeld = false;
+    this.data.velocity.set(0, 0);
+    this.data.grounded = false;
+    this.data.coyoteTimerSeconds = 0;
+    this.data.jumpBufferTimerSeconds = 0;
+    this.data.jumpHeld = false;
   }
 
   get velocity(): Phaser.Math.Vector2 {
-    return this.currentVelocity;
+    return this.data.velocity;
   }
 
   get grounded(): boolean {
-    return this.isGrounded;
+    return this.data.grounded;
   }
 
   get gravityEnabled(): boolean {
-    return this.gravityActive;
+    return this.data.gravityEnabled;
   }
 
   get inputBlocked(): boolean {
-    return this.blocked;
+    return this.data.inputBlocked;
   }
 
   getGamepad(): Gamepad | undefined {
@@ -113,10 +110,10 @@ export class PlayerControllerNode extends GameNode {
   }
 
   private handleInput(deltaSeconds: number): void {
-    if (this.blocked) {
-      this.currentVelocity.x = 0;
-      this.jumpHeld = false;
-      this.jumpBufferTimer = 0;
+    if (this.data.inputBlocked) {
+      this.data.velocity.x = 0;
+      this.data.jumpHeld = false;
+      this.data.jumpBufferTimerSeconds = 0;
       return;
     }
 
@@ -139,13 +136,13 @@ export class PlayerControllerNode extends GameNode {
     const up = (desktop && (this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown)) || joyUp || gamepadUp;
     const down = (desktop && (this.cursors.down?.isDown || this.keys.S.isDown)) || joyDown || gamepadDown;
 
-    this.currentVelocity.x = 0;
-    if (left) this.currentVelocity.x -= this.playerState.stats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, -1);
-    if (right) this.currentVelocity.x += this.playerState.stats.moveSpeed * this.inputStrength(mode, joy.x, gamepadX, 1);
+    this.data.velocity.x = 0;
+    if (left) this.data.velocity.x -= this.playerState.stats.moveSpeed * inputStrength(mode, joy.x, gamepadX);
+    if (right) this.data.velocity.x += this.playerState.stats.moveSpeed * inputStrength(mode, joy.x, gamepadX);
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.G)) {
-      this.gravityActive = !this.gravityActive;
-      this.currentVelocity.y = 0;
+      this.data.gravityEnabled = !this.data.gravityEnabled;
+      this.data.velocity.y = 0;
     }
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
@@ -154,52 +151,52 @@ export class PlayerControllerNode extends GameNode {
     }
 
     if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
-      this.phaserScene.game.events.emit('ship:return-cargo');
+      emitGameEvent(this.phaserScene, GAME_EVENTS.shipReturnCargo);
     }
 
-    if (up && !this.gravityActive) this.currentVelocity.y = -this.playerState.stats.moveSpeed;
-    if (down && !this.gravityActive) this.currentVelocity.y = this.playerState.stats.moveSpeed;
-    if (!up && !down && !this.gravityActive) this.currentVelocity.y = 0;
+    if (up && !this.data.gravityEnabled) this.data.velocity.y = -this.playerState.stats.moveSpeed;
+    if (down && !this.data.gravityEnabled) this.data.velocity.y = this.playerState.stats.moveSpeed;
+    if (!up && !down && !this.data.gravityEnabled) this.data.velocity.y = 0;
 
     const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W));
-    const touchJump = joyUp && !this.jumpHeld;
-    const gamepadJump = gamepadMode && this.button(gamepad, 0) && !this.jumpHeld;
-    this.jumpHeld = joyUp || (gamepadMode && this.button(gamepad, 0));
+    const touchJump = joyUp && !this.data.jumpHeld;
+    const gamepadJump = gamepadMode && this.button(gamepad, 0) && !this.data.jumpHeld;
+    this.data.jumpHeld = joyUp || (gamepadMode && this.button(gamepad, 0));
 
     if (keyboardJump || touchJump || gamepadJump) {
-      if (this.isGrounded || this.coyoteTimer > 0) {
+      if (this.data.grounded || this.data.coyoteTimerSeconds > 0) {
         this.jump();
       } else {
-        this.jumpBufferTimer = 0.1;
+        this.data.jumpBufferTimerSeconds = 0.1;
       }
     }
 
-    if (this.jumpBufferTimer > 0) this.jumpBufferTimer -= deltaSeconds;
+    if (this.data.jumpBufferTimerSeconds > 0) this.data.jumpBufferTimerSeconds -= deltaSeconds;
   }
 
   private applyPhysics(deltaSeconds: number): void {
     if (!this.player) return;
 
-    const wasGrounded = this.isGrounded;
-    if (this.gravityActive) this.currentVelocity.y += GRAVITY * deltaSeconds;
+    const wasGrounded = this.data.grounded;
+    if (this.data.gravityEnabled) this.data.velocity.y += GRAVITY * deltaSeconds;
 
-    this.moveAxis(this.currentVelocity.x * deltaSeconds, 0);
-    this.isGrounded = false;
-    this.moveAxis(0, this.currentVelocity.y * deltaSeconds);
+    this.moveAxis(this.data.velocity.x * deltaSeconds, 0);
+    this.data.grounded = false;
+    this.moveAxis(0, this.data.velocity.y * deltaSeconds);
 
-    if (wasGrounded && !this.isGrounded) this.coyoteTimer = 0.1;
-    if (this.coyoteTimer > 0) this.coyoteTimer -= deltaSeconds;
+    if (wasGrounded && !this.data.grounded) this.data.coyoteTimerSeconds = 0.1;
+    if (this.data.coyoteTimerSeconds > 0) this.data.coyoteTimerSeconds -= deltaSeconds;
 
-    if (this.jumpBufferTimer > 0 && (this.isGrounded || this.coyoteTimer > 0)) {
+    if (this.data.jumpBufferTimerSeconds > 0 && (this.data.grounded || this.data.coyoteTimerSeconds > 0)) {
       this.jump();
-      this.jumpBufferTimer = 0;
+      this.data.jumpBufferTimerSeconds = 0;
     }
   }
 
   private jump(): void {
-    this.currentVelocity.y = this.playerState.stats.jumpVelocity;
-    this.isGrounded = false;
-    this.coyoteTimer = 0;
+    this.data.velocity.y = this.playerState.stats.jumpVelocity;
+    this.data.grounded = false;
+    this.data.coyoteTimerSeconds = 0;
     this.phaserScene.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) });
   }
 
@@ -218,18 +215,13 @@ export class PlayerControllerNode extends GameNode {
         continue;
       }
 
-      if (dy > 0) this.isGrounded = true;
-      if (dy !== 0) this.currentVelocity.y = 0;
-      if (dx !== 0) this.currentVelocity.x = 0;
+      if (dy > 0) this.data.grounded = true;
+      if (dy !== 0) this.data.velocity.y = 0;
+      if (dx !== 0) this.data.velocity.x = 0;
       break;
     }
   }
 
-  private inputStrength(mode: InputMode, touchAxis: number, gamepadAxis: number, direction: -1 | 1): number {
-    if (mode === 'touch') return Math.max(0.45, Math.abs(touchAxis));
-    if (mode === 'gamepad') return Math.max(0.45, Math.abs(gamepadAxis));
-    return direction ? 1 : 0;
-  }
 
   private get uiScene(): UIScene {
     return this.phaserScene.scene.get('ui') as UIScene;

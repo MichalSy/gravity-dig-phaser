@@ -3,8 +3,10 @@ import { PLAYER_SIZE, TILE_SIZE } from '../config/gameConfig';
 import { GameNode, type NodeContext } from '../nodes';
 import type { UIScene } from '../scenes/UIScene';
 import { tileKey } from '../utils/tileMath';
-import type { GameWorldNode } from './GameplayNodes';
+import type { GameWorldNode } from './nodes/GameWorldNode';
 import { isResourceTile, type TileCell, type TileType } from './level';
+import { GAME_EVENTS, offGameEvent, onGameEvent } from './gameEvents';
+import { createMiningToolData, type MiningToolData } from './nodeData';
 import { LevelNode } from './LevelNodes';
 import { PlayerControllerNode } from './PlayerControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
@@ -31,10 +33,8 @@ export class MiningToolNode extends GameNode {
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private laserSound?: Phaser.Sound.BaseSound;
   private readonly crackOverlays = new Map<string, Phaser.GameObjects.Image>();
-  private readonly currentAimWorld = new Phaser.Math.Vector2(1, 0);
-  private readonly laserOrigin = new Phaser.Math.Vector2(0, 0);
-  private readonly gamepadAim = new Phaser.Math.Vector2(1, 0);
-  private currentTarget?: TileCell;
+  override readonly dependencies = ['level', 'world', 'playerController', 'playerState'] as const;
+  readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
     super({ name: 'miningTool', order: 20 });
@@ -49,7 +49,7 @@ export class MiningToolNode extends GameNode {
       .setVisible(false)
       .setDepth(25);
     this.laserSound = this.phaserScene.sound.add('laser-loop', { loop: true, volume: 0.28 });
-    this.phaserScene.game.events.on('gameplay-menu:opened', this.stopFiring, this);
+    onGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuOpened, this.stopFiring, this);
   }
 
   resolve(): void {
@@ -60,7 +60,7 @@ export class MiningToolNode extends GameNode {
   }
 
   destroy(): void {
-    this.phaserScene.game.events.off('gameplay-menu:opened', this.stopFiring, this);
+    offGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuOpened, this.stopFiring, this);
     this.resetForLevel();
     this.targetMarker?.destroy();
     this.laser?.destroy();
@@ -69,7 +69,7 @@ export class MiningToolNode extends GameNode {
   }
 
   get target(): TileCell | undefined {
-    return this.currentTarget;
+    return this.data.target;
   }
 
   resetForLevel(): void {
@@ -79,7 +79,7 @@ export class MiningToolNode extends GameNode {
   }
 
   stopFiring(): void {
-    this.currentTarget = undefined;
+    this.data.target = undefined;
     this.laser?.clear();
     this.targetMarker?.setVisible(false);
     this.setLaserSound(false);
@@ -96,7 +96,7 @@ export class MiningToolNode extends GameNode {
 
     this.laser.clear();
     this.targetMarker.setVisible(false);
-    this.currentTarget = target;
+    this.data.target = target;
 
     if (!target) {
       this.setLaserSound(false);
@@ -132,27 +132,27 @@ export class MiningToolNode extends GameNode {
       const gamepad = input.getGamepad();
       const aimX = gamepad ? input.axis(gamepad, 2) : 0;
       const aimY = gamepad ? input.axis(gamepad, 3) : 0;
-      if (Math.hypot(aimX, aimY) > 0.22) this.gamepadAim.set(aimX, aimY).normalize();
-      this.currentAimWorld.set(
-        origin.x + this.gamepadAim.x * this.playerState.stats.miningRange,
-        origin.y + this.gamepadAim.y * this.playerState.stats.miningRange,
+      if (Math.hypot(aimX, aimY) > 0.22) this.data.gamepadAim.set(aimX, aimY).normalize();
+      this.data.currentAimWorld.set(
+        origin.x + this.data.gamepadAim.x * this.playerState.stats.miningRange,
+        origin.y + this.data.gamepadAim.y * this.playerState.stats.miningRange,
       );
-      return this.currentAimWorld;
+      return this.data.currentAimWorld;
     }
 
     if (input.uiScene.isAiming()) {
       const aim = input.uiScene.getAimVector();
-      this.currentAimWorld.set(
+      this.data.currentAimWorld.set(
         origin.x + aim.x * this.playerState.stats.miningRange,
         origin.y + aim.y * this.playerState.stats.miningRange,
       );
-      return this.currentAimWorld;
+      return this.data.currentAimWorld;
     }
 
     if (input.uiScene.getInputMode() === 'desktop') {
-      this.currentAimWorld.copy(input.activePointer.positionToCamera(input.camera) as Phaser.Math.Vector2);
+      this.data.currentAimWorld.copy(input.activePointer.positionToCamera(input.camera) as Phaser.Math.Vector2);
     }
-    return this.currentAimWorld;
+    return this.data.currentAimWorld;
   }
 
   isMiningPressed(input = this.getMiningInput()): boolean {
@@ -184,7 +184,7 @@ export class MiningToolNode extends GameNode {
   }
 
   private getLaserOrigin(input: MiningToolInput): Phaser.Math.Vector2 {
-    return this.laserOrigin.set(input.playerX, input.playerY + PLAYER_SIZE.h * 0.18);
+    return this.data.laserOrigin.set(input.playerX, input.playerY + PLAYER_SIZE.h * 0.18);
   }
 
   private getMiningInput(): MiningToolInput {

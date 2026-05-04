@@ -9,11 +9,6 @@ export interface NodeContext {
   requireNode<T extends GameNode = GameNode>(name: string): T;
 }
 
-export interface RenderContext extends NodeContext {
-  sceneIndex: number;
-  traversalIndex: number;
-  nextDepth(): number;
-}
 
 export interface GameNodeOptions {
   name?: string;
@@ -34,6 +29,7 @@ export abstract class GameNode {
   size: SizeLike;
   anchor: Anchor;
   parent?: GameNode;
+  readonly dependencies: readonly string[] = [];
 
   private readonly childNodes: GameNode[] = [];
   private nodeContext?: NodeContext;
@@ -88,7 +84,6 @@ export abstract class GameNode {
   init(_ctx: NodeContext): void {}
   resolve(_ctx: NodeContext): void {}
   update(_deltaMs: number): void {}
-  render(_ctx: RenderContext): void {}
   destroy(): void {}
 
   initTree(ctx: NodeContext): void {
@@ -105,6 +100,7 @@ export abstract class GameNode {
   resolveTree(ctx: NodeContext): void {
     if (this.resolved) return;
 
+    this.validateDependencies(ctx);
     this.resolve(ctx);
     this.resolved = true;
 
@@ -116,13 +112,6 @@ export abstract class GameNode {
 
     this.update(deltaMs);
     for (const child of this.sortedChildren()) child.updateTree(deltaMs);
-  }
-
-  renderTree(ctx: RenderContext): void {
-    if (!this.visible) return;
-
-    this.render(ctx);
-    for (const child of this.sortedChildren()) child.renderTree(ctx);
   }
 
   destroyTree(): void {
@@ -176,6 +165,14 @@ export abstract class GameNode {
 
   debugName(): string {
     return this.name ?? this.constructor.name;
+  }
+
+  private validateDependencies(ctx: NodeContext): void {
+    for (const dependency of this.dependencies) {
+      if (!ctx.getNode(dependency)) {
+        throw new Error(`Node ${this.debugName()} depends on missing node '${dependency}'`);
+      }
+    }
   }
 
   private sortChildren(): void {

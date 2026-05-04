@@ -13,6 +13,7 @@ import {
 import { LevelGeneratorManagerNode, LevelNode } from '../game/LevelNodes';
 import { MiningToolNode } from '../game/MiningToolNode';
 import { PlayerControllerNode } from '../game/PlayerControllerNode';
+import { GAME_EVENTS, emitGameEvent, onceGameEvent } from '../game/gameEvents';
 import { PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
 import { loadGameAssets } from '../assets/AssetLoader';
 
@@ -59,12 +60,11 @@ export class GameScene extends Phaser.Scene {
       this.gameRuntime.destroy();
     });
 
-    this.time.delayedCall(0, () => this.game.events.emit('game:ready'));
+    this.time.delayedCall(0, () => emitGameEvent(this, GAME_EVENTS.gameReady));
   }
 
   update(_time: number, deltaMs: number): void {
     this.gameRuntime.update(deltaMs);
-    this.gameRuntime.render();
   }
 
   private configureUiVisibilityDuringLoading(): void {
@@ -72,7 +72,7 @@ export class GameScene extends Phaser.Scene {
     this.scene.setVisible(!loadingActive, 'ui');
 
     if (loadingActive) {
-      this.game.events.once('loading:complete', () => {
+      onceGameEvent(this, GAME_EVENTS.loadingComplete, () => {
         this.scene.setVisible(true, 'ui');
         this.scene.bringToTop('ui');
       });
