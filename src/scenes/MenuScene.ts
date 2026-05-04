@@ -114,7 +114,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private layout(): void {
-    if (!this.scene.isActive() || !this.background?.active) return;
+    if (!this.background?.active) return;
 
     const width = this.scale.width;
     const height = this.scale.height;
