@@ -52,11 +52,11 @@ const UI_ATLAS = {
   energyBar: { x: 24, y: 1578, w: 873, h: 245 },
   repeatSlot: { x: 24, y: 1847, w: 465, h: 463 },
   energySlot: { x: 303, y: 180, w: 420, h: 155 },
-  extraSlotOrigin: { x: 1164, y: 90 },
+  extraSlotOrigin: { x: 1176, y: 90 },
   firstSlotCenter: { x: 1026, y: 254 },
-  slotContentSize: 157,
-  repeatSlotHeight: 360,
-  repeatSlotStep: 278,
+  slotContentSize: 149,
+  repeatSlotHeight: 368,
+  repeatSlotStep: 290,
   bottomDisplayHeight: 150,
 } as const;
 
