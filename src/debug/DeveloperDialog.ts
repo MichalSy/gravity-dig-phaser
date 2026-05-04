@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_GRAPHIC_ASSETS } from '../assets/AssetLoader';
+import { ALL_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 
 const DIALOG_ID = 'gravity-dig-developer-dialog';
 const STYLE_ID = 'gravity-dig-developer-dialog-style';
@@ -309,7 +309,7 @@ export class DeveloperDialog {
   }
 
   private getGraphicAssets(): GraphicAssetInfo[] {
-    return GAME_GRAPHIC_ASSETS
+    return ALL_GRAPHIC_ASSETS
       .filter((asset) => this.scene.textures.exists(asset.key))
       .map((asset) => {
         const texture = this.scene.textures.get(asset.key);

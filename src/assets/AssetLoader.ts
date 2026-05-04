@@ -68,6 +68,11 @@ export const GAME_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   ...GAME_PLAYER_GRAPHIC_ASSETS,
 ];
 
+export const ALL_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+  ...MENU_GRAPHIC_ASSETS,
+  ...GAME_GRAPHIC_ASSETS,
+];
+
 function versioned(path: string): string {
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}v=${ASSET_VERSION}`;
