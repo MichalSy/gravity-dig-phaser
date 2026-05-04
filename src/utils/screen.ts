@@ -14,7 +14,10 @@ type ScreenOrientationWithLock = ScreenOrientation & {
   lock?: (orientation: OrientationLockType) => Promise<void>;
 };
 
+export const VIEWPORT_REFRESH_EVENT = 'gravity-dig:viewport-refresh';
+
 const TOUCH_IMMERSIVE_RETRY_MS = 500;
+const VIEWPORT_REFRESH_DELAYS_MS = [0, 80, 180, 360, 720] as const;
 let lastTouchImmersiveAttempt = Number.NEGATIVE_INFINITY;
 
 function fullscreenElement(): Element | null {
@@ -29,6 +32,16 @@ function isCoarsePointer(): boolean {
 function isTouchEvent(event: Event): boolean {
   if (event.type.startsWith('touch')) return true;
   return (event as PointerEvent).pointerType === 'touch';
+}
+
+function emitViewportRefresh(): void {
+  window.dispatchEvent(new CustomEvent(VIEWPORT_REFRESH_EVENT));
+}
+
+function scheduleViewportRefresh(): void {
+  for (const delay of VIEWPORT_REFRESH_DELAYS_MS) {
+    window.setTimeout(emitViewportRefresh, delay);
+  }
 }
 
 export async function requestFullscreen(): Promise<void> {
@@ -58,8 +71,11 @@ export async function requestLandscapeLock(): Promise<void> {
 }
 
 export async function requestImmersiveLandscape(): Promise<void> {
+  scheduleViewportRefresh();
   await requestFullscreen();
+  scheduleViewportRefresh();
   await requestLandscapeLock();
+  scheduleViewportRefresh();
 }
 
 export function installTouchImmersiveLandscapeGate(): void {
@@ -75,4 +91,7 @@ export function installTouchImmersiveLandscapeGate(): void {
 
   window.addEventListener('pointerdown', requestFromTouch, { capture: true, passive: true });
   window.addEventListener('touchstart', requestFromTouch, { capture: true, passive: true });
+  window.addEventListener('orientationchange', scheduleViewportRefresh, { passive: true });
+  window.addEventListener('resize', scheduleViewportRefresh, { passive: true });
+  window.visualViewport?.addEventListener('resize', scheduleViewportRefresh, { passive: true });
 }
