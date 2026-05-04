@@ -44,6 +44,7 @@ class RuntimeRenderContext implements RenderContext {
 }
 
 export class NodeRuntime {
+  private readonly rootNodes: GameNode[] = [];
   private readonly nodeScenes: NodeScene[] = [];
   private readonly registry = new Map<string, GameNode>();
   private readonly ctx: NodeContext;
@@ -59,8 +60,35 @@ export class NodeRuntime {
     };
   }
 
+  get roots(): readonly GameNode[] {
+    return this.rootNodes;
+  }
+
   get scenes(): readonly NodeScene[] {
     return this.nodeScenes;
+  }
+
+  addRoot<T extends GameNode>(root: T): T {
+    if (root.parent) throw new Error(`Root node '${root.debugName()}' cannot have a parent`);
+    if (this.rootNodes.includes(root)) return root;
+
+    this.rootNodes.push(root);
+    this.sortRoots();
+
+    if (this.initialized) {
+      this.mountSubtree(root, this.ctx);
+      if (this.resolved) root.resolveTree(this.ctx);
+    }
+
+    return root;
+  }
+
+  removeRoot(root: GameNode): void {
+    const index = this.rootNodes.indexOf(root);
+    if (index < 0) return;
+
+    root.destroyTree();
+    this.rootNodes.splice(index, 1);
   }
 
   addScene<T extends NodeScene>(scene: T): T {
@@ -89,6 +117,7 @@ export class NodeRuntime {
   init(): void {
     if (this.initialized) return;
 
+    for (const root of this.sortedRoots()) root.initTree(this.ctx);
     for (const scene of this.sortedScenes()) scene.initTree(this.ctx);
     this.initialized = true;
   }
@@ -97,17 +126,24 @@ export class NodeRuntime {
     this.init();
     if (this.resolved) return;
 
+    for (const root of this.sortedRoots()) root.resolveTree(this.ctx);
     for (const scene of this.sortedScenes()) scene.resolveTree(this.ctx);
     this.resolved = true;
   }
 
   update(deltaMs: number): void {
     this.resolve();
+    for (const root of this.sortedRoots()) root.updateTree(deltaMs);
     for (const scene of this.sortedScenes()) scene.updateTree(deltaMs);
   }
 
   render(): void {
     this.resolve();
+    for (const root of this.sortedRoots()) {
+      const renderCtx = new RuntimeRenderContext(this.ctx, -1, -1000, 0.001);
+      root.renderTree(renderCtx);
+    }
+
     this.sortedScenes().forEach((scene, sceneIndex) => {
       const renderCtx = new RuntimeRenderContext(this.ctx, sceneIndex, sceneIndex * 1000, 0.001);
       scene.renderTree(renderCtx);
@@ -116,7 +152,9 @@ export class NodeRuntime {
 
   destroy(): void {
     for (const scene of [...this.nodeScenes].reverse()) scene.destroyTree();
+    for (const root of [...this.rootNodes].reverse()) root.destroyTree();
     this.nodeScenes.length = 0;
+    this.rootNodes.length = 0;
     this.registry.clear();
     this.initialized = false;
     this.resolved = false;
@@ -147,6 +185,15 @@ export class NodeRuntime {
   mountSubtree(node: GameNode, ctx = this.ctx): void {
     node.initTree(ctx);
     if (this.resolved) node.resolveTree(ctx);
+  }
+
+  private sortRoots(): void {
+    this.rootNodes.sort((a, b) => a.order - b.order);
+  }
+
+  private sortedRoots(): readonly GameNode[] {
+    this.sortRoots();
+    return this.rootNodes;
   }
 
   private sortScenes(): void {

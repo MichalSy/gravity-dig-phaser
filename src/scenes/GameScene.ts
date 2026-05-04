@@ -4,7 +4,7 @@ import {
   PLAYER_SIZE,
   TILE_SIZE,
 } from '../config/gameConfig';
-import { NodeRuntime, NodeScene } from '../nodes';
+import { NodeRuntime } from '../nodes';
 import { ManagersNode, PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
 import { UIScene } from './UIScene';
 import type { HudState, InputMode } from '../ui/HudState';
@@ -86,8 +86,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.gameRuntime = new NodeRuntime({ phaserScene: this });
-    const gameNodeScene = this.gameRuntime.addScene(new NodeScene({ sceneName: 'game.nodes' }));
-    gameNodeScene.addChild(new ManagersNode());
+    this.gameRuntime.addRoot(new ManagersNode());
     this.gameRuntime.init();
     this.gameRuntime.resolve();
     this.playerState = this.gameRuntime.requireNode<PlayerStateManagerNode>('playerState');
