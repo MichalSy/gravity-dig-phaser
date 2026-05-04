@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import './style.css';
 import { GAME_HEIGHT, GAME_WIDTH } from './config/gameConfig';
 import { GameScene } from './scenes/GameScene';
+import { LoadingScene } from './scenes/LoadingScene';
 import { MenuScene } from './scenes/MenuScene';
 import { UIScene } from './scenes/UIScene';
 import { installTouchImmersiveLandscapeGate, VIEWPORT_REFRESH_EVENT } from './utils/screen';
@@ -33,7 +34,7 @@ async function startGame(): Promise<void> {
       antialias: true,
       antialiasGL: true,
     },
-    scene: [MenuScene, GameScene, UIScene],
+    scene: [MenuScene, LoadingScene, GameScene, UIScene],
   });
 
   const resizeGameToViewport = (): void => {

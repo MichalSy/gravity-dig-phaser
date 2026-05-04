@@ -83,7 +83,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    loadGameAssets(this);
+    if (!this.textures.exists('tiles')) {
+      loadGameAssets(this);
+    }
   }
 
   create(): void {

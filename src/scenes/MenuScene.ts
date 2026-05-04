@@ -190,7 +190,7 @@ export class MenuScene extends Phaser.Scene {
     }
 
     if (item.action === 'start') {
-      this.scene.start('game');
+      this.scene.start('loading');
       return;
     }
 

@@ -13,6 +13,7 @@ export interface GraphicAssetDefinition {
 
 export const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   { key: 'title-screen', path: '/assets/ui/menu/title_screen.webp', category: 'menu', scenes: ['menu'] },
+  { key: 'loading-screen', path: '/assets/ui/menu/loading_screen.webp', category: 'menu', scenes: ['menu'] },
   { key: 'menu-button-active', path: '/assets/ui/menu/menu_button_active.webp', category: 'menu', scenes: ['menu'] },
   { key: 'menu-button-inactive', path: '/assets/ui/menu/menu_button_inactive.webp', category: 'menu', scenes: ['menu'] },
 ];
