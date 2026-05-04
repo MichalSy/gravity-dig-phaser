@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 
 const ASSET_VERSION = Date.now().toString(36);
-const DIRECTIONS = ['east', 'west'] as const;
 
 export interface GraphicAssetDefinition {
   key: string;
@@ -47,23 +46,23 @@ const GAME_CRACK_GRAPHIC_ASSETS: GraphicAssetDefinition[] = Array.from({ length:
   category: 'effects',
 }));
 
-const GAME_PLAYER_GRAPHIC_ASSETS: GraphicAssetDefinition[] = DIRECTIONS.flatMap((dir) => [
+const GAME_PLAYER_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   ...Array.from({ length: 6 }, (_, index) => ({
-    key: `player-walk-${dir}-${index}`,
-    path: `/assets/character/generated/walk/${dir}/frame_${frameName(index)}.png`,
-    category: `player-${dir}`,
+    key: `player-walk-${index}`,
+    path: `/assets/character/generated/walk/east/frame_${frameName(index)}.png`,
+    category: 'player',
   })),
   ...Array.from({ length: 2 }, (_, index) => ({
-    key: `player-jump-${dir}-${index}`,
-    path: `/assets/character/generated/jump/${dir}/frame_${frameName(index)}.png`,
-    category: `player-${dir}`,
+    key: `player-jump-${index}`,
+    path: `/assets/character/generated/jump/east/frame_${frameName(index)}.png`,
+    category: 'player',
   })),
   ...Array.from({ length: 4 }, (_, index) => ({
-    key: `player-idle-${dir}-${index}`,
-    path: `/assets/character/generated/idle/${dir}/frame_${frameName(index)}.png`,
-    category: `player-${dir}`,
+    key: `player-idle-${index}`,
+    path: `/assets/character/generated/idle/east/frame_${frameName(index)}.png`,
+    category: 'player',
   })),
-]);
+];
 
 export const GAME_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   ...GAME_STATIC_GRAPHIC_ASSETS,

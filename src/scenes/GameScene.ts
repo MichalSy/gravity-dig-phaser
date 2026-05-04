@@ -246,7 +246,7 @@ export class GameScene extends Phaser.Scene {
     const spawnY = this.level.spawn.y * TILE_SIZE + TILE_SIZE / 2;
 
     if (this.player) this.player.destroy();
-    this.player = this.add.image(spawnX, spawnY, 'player-idle-east-0').setDepth(20).setScale(0.9);
+    this.player = this.add.image(spawnX, spawnY, 'player-idle-0').setDepth(20).setScale(0.9);
     this.shipPrompt?.destroy();
     this.shipPrompt = this.add
       .text(spawnX, spawnY - PLAYER_SIZE.h, '', {
@@ -636,7 +636,7 @@ export class GameScene extends Phaser.Scene {
     const moving = Math.abs(this.velocity.x) > 1 || (!this.gravityEnabled && Math.abs(this.velocity.y) > 1);
     const prefix = airborne ? 'player-jump' : moving ? 'player-walk' : 'player-idle';
     const frame = airborne ? (this.velocity.y < 0 ? 0 : 1) : this.walkFrame % (moving ? 6 : 4);
-    this.player.setTexture(`${prefix}-${this.facing}-${frame}`);
+    this.player.setTexture(`${prefix}-${frame}`).setFlipX(this.facing === 'west');
 
     if (!airborne && moving && this.grounded && (frame === 1 || frame === 4) && frame !== this.lastFootstepFrame) {
       this.playFootstep();
