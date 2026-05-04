@@ -1,15 +1,17 @@
 import Phaser from 'phaser';
-import { ALL_GRAPHIC_ASSETS } from '../assets/AssetLoader';
+import { ALL_GRAPHIC_ASSETS, type AssetScene } from '../assets/AssetLoader';
 
 const DIALOG_ID = 'gravity-dig-developer-dialog';
 const STYLE_ID = 'gravity-dig-developer-dialog-style';
 
 type DeveloperTab = 'planet' | 'graphics' | 'runtime';
+type GraphicSceneTab = 'all' | AssetScene;
 
 interface GraphicAssetInfo {
   key: string;
   path: string;
   category: string;
+  scenes: AssetScene[];
   width: number;
   height: number;
   src?: string;
@@ -20,6 +22,7 @@ export class DeveloperDialog {
   private readonly fileSizeCache = new Map<string, string>();
   private root?: HTMLDivElement;
   private activeTab: DeveloperTab = 'planet';
+  private activeGraphicScene: GraphicSceneTab = 'all';
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -124,11 +127,27 @@ export class DeveloperDialog {
 
   private renderGraphicsTab(): HTMLElement {
     const wrap = document.createElement('div');
-    const assets = this.getGraphicAssets();
+    const allAssets = this.getGraphicAssets();
+    const assets = this.assetsForGraphicScene(allAssets);
+
+    const sceneTabs = document.createElement('div');
+    sceneTabs.className = 'gd-dev-subtabs';
+    for (const tab of this.getGraphicSceneTabs(allAssets)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = tab.key === this.activeGraphicScene ? 'active' : '';
+      button.textContent = `${tab.label} (${tab.count})`;
+      button.addEventListener('click', () => {
+        this.activeGraphicScene = tab.key;
+        this.render();
+      });
+      sceneTabs.appendChild(button);
+    }
+    wrap.appendChild(sceneTabs);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'gd-dev-toolbar';
-    toolbar.textContent = `${assets.length} geladene Grafik-Texturen`;
+    toolbar.textContent = `${assets.length} von ${allAssets.length} geladenen Grafik-Texturen`;
     wrap.appendChild(toolbar);
 
     const grid = document.createElement('div');
@@ -161,7 +180,7 @@ export class DeveloperDialog {
       meta.className = 'gd-dev-asset-meta';
       meta.title = asset.path;
       meta.append(
-        document.createTextNode(`${asset.category} · ${asset.width}×${asset.height} · `),
+        document.createTextNode(`${asset.category} · ${asset.scenes.join(', ')} · ${asset.width}×${asset.height} · `),
         this.renderFileSizeLabel(asset),
       );
 
@@ -188,7 +207,7 @@ export class DeveloperDialog {
 
     const fileSize = this.fileSizeCache.get(asset.path) ?? 'Dateigröße wird geladen…';
     const title = document.createElement('div');
-    title.innerHTML = `<strong>${asset.key}</strong><span>${asset.category} · ${asset.width}×${asset.height} · ${fileSize} · ${asset.path}</span>`;
+    title.innerHTML = `<strong>${asset.key}</strong><span>${asset.category} · ${asset.scenes.join(', ')} · ${asset.width}×${asset.height} · ${fileSize} · ${asset.path}</span>`;
 
     const closeButton = document.createElement('button');
     closeButton.type = 'button';
@@ -256,6 +275,23 @@ export class DeveloperDialog {
     return card;
   }
 
+  private getGraphicSceneTabs(assets: GraphicAssetInfo[]): Array<{ key: GraphicSceneTab; label: string; count: number }> {
+    const sceneCount = (scene: AssetScene): number => assets.filter((asset) => asset.scenes.includes(scene)).length;
+    const tabs: Array<{ key: GraphicSceneTab; label: string; count: number }> = [
+      { key: 'all', label: 'Alle', count: assets.length },
+      { key: 'menu', label: 'MenuScene', count: sceneCount('menu') },
+      { key: 'game', label: 'GameScene', count: sceneCount('game') },
+      { key: 'ui', label: 'UIScene', count: sceneCount('ui') },
+    ];
+    return tabs.filter((tab) => tab.count > 0);
+  }
+
+  private assetsForGraphicScene(assets: GraphicAssetInfo[]): GraphicAssetInfo[] {
+    const scene = this.activeGraphicScene;
+    if (scene === 'all') return assets;
+    return assets.filter((asset) => asset.scenes.includes(scene));
+  }
+
   private renderFileSizeLabel(asset: GraphicAssetInfo): HTMLSpanElement {
     const label = document.createElement('span');
     label.className = 'gd-dev-asset-size';
@@ -318,6 +354,7 @@ export class DeveloperDialog {
           key: asset.key,
           path: asset.path,
           category: asset.category,
+          scenes: asset.scenes,
           width: sourceImage.width,
           height: sourceImage.height,
           src: this.sourceImageToDataUrl(sourceImage),
@@ -397,6 +434,9 @@ export class DeveloperDialog {
       #${DIALOG_ID} th { width: 34%; color: #93c5fd; font-weight: 800; }
       #${DIALOG_ID} td { color: #e5e7eb; }
       #${DIALOG_ID} pre { margin: 0; padding: 14px; overflow: visible; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; color: #dbeafe; background: rgba(2, 6, 23, 0.72); }
+      #${DIALOG_ID} .gd-dev-subtabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+      #${DIALOG_ID} .gd-dev-subtabs button { padding: 8px 11px; color: #cbd5e1; background: rgba(30, 41, 59, 0.9); font-size: 12px; }
+      #${DIALOG_ID} .gd-dev-subtabs button.active { color: #082f49; background: #bae6fd; }
       #${DIALOG_ID} .gd-dev-toolbar { margin-bottom: 12px; color: #bae6fd; font-size: 13px; font-weight: 800; }
       #${DIALOG_ID} .gd-dev-asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
       #${DIALOG_ID} .gd-dev-asset-card { border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; background: rgba(15, 23, 42, 0.82); overflow: hidden; color: inherit; text-align: left; padding: 0; }
