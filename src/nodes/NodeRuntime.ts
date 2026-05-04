@@ -44,7 +44,7 @@ class RuntimeRenderContext implements RenderContext {
 }
 
 export class NodeRuntime {
-  private readonly rootNodes: GameNode[] = [];
+  private readonly persistentNodeList: GameNode[] = [];
   private readonly nodeScenes: NodeScene[] = [];
   private readonly registry = new Map<string, GameNode>();
   private readonly ctx: NodeContext;
@@ -60,35 +60,35 @@ export class NodeRuntime {
     };
   }
 
-  get roots(): readonly GameNode[] {
-    return this.rootNodes;
+  get persistentNodes(): readonly GameNode[] {
+    return this.persistentNodeList;
   }
 
   get scenes(): readonly NodeScene[] {
     return this.nodeScenes;
   }
 
-  addRoot<T extends GameNode>(root: T): T {
-    if (root.parent) throw new Error(`Root node '${root.debugName()}' cannot have a parent`);
-    if (this.rootNodes.includes(root)) return root;
+  addPersistentNode<T extends GameNode>(node: T): T {
+    if (node.parent) throw new Error(`Persistent node '${node.debugName()}' cannot have a parent`);
+    if (this.persistentNodeList.includes(node)) return node;
 
-    this.rootNodes.push(root);
-    this.sortRoots();
+    this.persistentNodeList.push(node);
+    this.sortPersistentNodes();
 
     if (this.initialized) {
-      this.mountSubtree(root, this.ctx);
-      if (this.resolved) root.resolveTree(this.ctx);
+      this.mountSubtree(node, this.ctx);
+      if (this.resolved) node.resolveTree(this.ctx);
     }
 
-    return root;
+    return node;
   }
 
-  removeRoot(root: GameNode): void {
-    const index = this.rootNodes.indexOf(root);
+  removePersistentNode(node: GameNode): void {
+    const index = this.persistentNodeList.indexOf(node);
     if (index < 0) return;
 
-    root.destroyTree();
-    this.rootNodes.splice(index, 1);
+    node.destroyTree();
+    this.persistentNodeList.splice(index, 1);
   }
 
   addScene<T extends NodeScene>(scene: T): T {
@@ -117,7 +117,7 @@ export class NodeRuntime {
   init(): void {
     if (this.initialized) return;
 
-    for (const root of this.sortedRoots()) root.initTree(this.ctx);
+    for (const node of this.sortedPersistentNodes()) node.initTree(this.ctx);
     for (const scene of this.sortedScenes()) scene.initTree(this.ctx);
     this.initialized = true;
   }
@@ -126,22 +126,22 @@ export class NodeRuntime {
     this.init();
     if (this.resolved) return;
 
-    for (const root of this.sortedRoots()) root.resolveTree(this.ctx);
+    for (const node of this.sortedPersistentNodes()) node.resolveTree(this.ctx);
     for (const scene of this.sortedScenes()) scene.resolveTree(this.ctx);
     this.resolved = true;
   }
 
   update(deltaMs: number): void {
     this.resolve();
-    for (const root of this.sortedRoots()) root.updateTree(deltaMs);
+    for (const node of this.sortedPersistentNodes()) node.updateTree(deltaMs);
     for (const scene of this.sortedScenes()) scene.updateTree(deltaMs);
   }
 
   render(): void {
     this.resolve();
-    for (const root of this.sortedRoots()) {
+    for (const node of this.sortedPersistentNodes()) {
       const renderCtx = new RuntimeRenderContext(this.ctx, -1, -1000, 0.001);
-      root.renderTree(renderCtx);
+      node.renderTree(renderCtx);
     }
 
     this.sortedScenes().forEach((scene, sceneIndex) => {
@@ -152,9 +152,9 @@ export class NodeRuntime {
 
   destroy(): void {
     for (const scene of [...this.nodeScenes].reverse()) scene.destroyTree();
-    for (const root of [...this.rootNodes].reverse()) root.destroyTree();
+    for (const node of [...this.persistentNodeList].reverse()) node.destroyTree();
     this.nodeScenes.length = 0;
-    this.rootNodes.length = 0;
+    this.persistentNodeList.length = 0;
     this.registry.clear();
     this.initialized = false;
     this.resolved = false;
@@ -187,13 +187,13 @@ export class NodeRuntime {
     if (this.resolved) node.resolveTree(ctx);
   }
 
-  private sortRoots(): void {
-    this.rootNodes.sort((a, b) => a.order - b.order);
+  private sortPersistentNodes(): void {
+    this.persistentNodeList.sort((a, b) => a.order - b.order);
   }
 
-  private sortedRoots(): readonly GameNode[] {
-    this.sortRoots();
-    return this.rootNodes;
+  private sortedPersistentNodes(): readonly GameNode[] {
+    this.sortPersistentNodes();
+    return this.persistentNodeList;
   }
 
   private sortScenes(): void {

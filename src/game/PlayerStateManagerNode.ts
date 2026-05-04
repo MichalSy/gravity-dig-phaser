@@ -13,13 +13,6 @@ export interface CargoReturnResult {
   credits: number;
 }
 
-export class ManagersNode extends GameNode {
-  constructor() {
-    super({ name: 'Managers', order: 0 });
-    this.addChild(new PlayerStateManagerNode());
-  }
-}
-
 export class PlayerStateManagerNode extends GameNode {
   private saveGameState!: SaveGame;
   private activeRunState!: RunState;
