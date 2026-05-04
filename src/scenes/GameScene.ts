@@ -229,7 +229,7 @@ export class GameScene extends Phaser.Scene {
       .image(shipCenterX, shipBottomY, 'ship')
       .setOrigin(0.5, 1)
       .setDepth(8)
-      .setDisplaySize(TILE_SIZE * 5.7, TILE_SIZE * 3.5)
+      .setDisplaySize(TILE_SIZE * 5.71, TILE_SIZE * 3.5)
       .setAlpha(0.96);
 
     this.startDecor.push(ship);
