@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameNode, type NodeContext } from '../../nodes';
+import { GameNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerPresentationData, type PlayerPresentationData } from '../nodeData';
 import { MiningToolNode } from './MiningToolNode';
@@ -26,6 +26,25 @@ export class PlayerPresentationNode extends GameNode {
     this.world = this.requireNode<GameWorldNode>('world');
     this.playerController = this.requireNode<PlayerControllerNode>('playerController');
     this.miningTool = this.requireNode<MiningToolNode>('miningTool');
+  }
+
+  override getDebugBounds(): NodeDebugBounds | undefined {
+    const player = this.world?.player;
+    if (!player) return undefined;
+    const bounds = player.getBounds();
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+  }
+
+  override getDebugProps(): NodeDebugProps {
+    const player = this.world?.player;
+    return {
+      ...super.getDebugProps(),
+      facing: this.data.facing,
+      walkFrame: this.data.walkFrame,
+      x: player?.x ?? null,
+      y: player?.y ?? null,
+      texture: player?.texture.key ?? null,
+    };
   }
 
   update(deltaMs: number): void {

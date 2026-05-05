@@ -74,6 +74,30 @@ export interface DebugNodeDeltaMessage {
   sentAt: number;
 }
 
+export interface DebugNodeSelectMessage {
+  type: 'node:select';
+  sessionId: string;
+  nodeId?: string;
+  sentAt: number;
+}
+
+export interface DebugNodeBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scrollFactor?: number;
+}
+
+export interface DebugNodePropsMessage {
+  type: 'node:props';
+  sessionId: string;
+  nodeId: string;
+  bounds?: DebugNodeBounds;
+  props: Record<string, string | number | boolean | null>;
+  sentAt: number;
+}
+
 export type DebugMessage =
   | DebugHelloMessage
   | DebugPingMessage
@@ -81,4 +105,6 @@ export type DebugMessage =
   | DebugTextMessage
   | DebugRelayStatusMessage
   | DebugNodeTreeMessage
-  | DebugNodeDeltaMessage;
+  | DebugNodeDeltaMessage
+  | DebugNodeSelectMessage
+  | DebugNodePropsMessage;

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, RefreshCw, RotateCcw } from 'lucide-react';
-import type { DebugMessage, DebugNodeDelta, DebugNodeDescriptor } from '@gravity-dig/debug-protocol';
+import type { DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function createSessionId(): string {
@@ -10,22 +10,21 @@ function createSessionId(): string {
   return `debug-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function isLocalEditorHost(): boolean {
+  if (typeof window === 'undefined') return false;
+  return ['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
+}
+
 function defaultRelayUrl(): string {
   const configured = process.env.NEXT_PUBLIC_DEBUG_RELAY_URL;
   if (configured) return configured;
-  if (typeof window === 'undefined') return 'ws://localhost:8787/debug';
-  return window.location.protocol === 'https:'
-    ? 'wss://gravity-dig-relay.sytko.de/debug'
-    : 'ws://localhost:8787/debug';
+  return isLocalEditorHost() ? 'ws://localhost:8787/debug' : 'wss://gravity-dig-relay.sytko.de/debug';
 }
 
 function defaultGameUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_URL;
   if (configured) return configured;
-  if (typeof window === 'undefined') return 'http://localhost:5173';
-  return window.location.protocol === 'https:'
-    ? 'https://gravity-dig-phaser.sytko.de'
-    : 'http://localhost:5173';
+  return isLocalEditorHost() ? 'http://localhost:5173' : 'https://gravity-dig-phaser.sytko.de';
 }
 
 function buildDebugGameUrl(sessionId: string): string {
@@ -42,6 +41,7 @@ export default function Home() {
   const [gameCount, setGameCount] = useState(0);
   const [treeRoots, setTreeRoots] = useState<DebugNodeDescriptor[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
+  const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const reconnectTimerRef = useRef<number | undefined>(undefined);
@@ -109,6 +109,11 @@ export default function Home() {
           return next;
         });
         setLastEvent(`${message.deltas.length} Node-Änderung(en)`);
+        return;
+      }
+
+      if (message.type === 'node:props') {
+        setSelectedNodeProps(message);
       }
     }
 
@@ -122,6 +127,13 @@ export default function Home() {
     };
   }, [sessionId]);
 
+  useEffect(() => {
+    setSelectedNodeProps(undefined);
+    if (socketRef.current?.readyState !== WebSocket.OPEN) return;
+    const selectMessage: DebugMessage = { type: 'node:select', sessionId, nodeId: selectedNodeId, sentAt: Date.now() };
+    socketRef.current.send(JSON.stringify(selectMessage));
+  }, [selectedNodeId, sessionId]);
+
   function openGameInTab(): void {
     window.open(debugGameUrl, '_blank', 'noopener,noreferrer');
   }
@@ -133,6 +145,7 @@ export default function Home() {
   function newSession(): void {
     setTreeRoots([]);
     setSelectedNodeId(undefined);
+    setSelectedNodeProps(undefined);
     setGameCount(0);
     setLastEvent('Neue Session bereit.');
     setSessionId(createSessionId());
@@ -196,7 +209,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} debugProps={selectedNodeProps} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -257,7 +270,7 @@ function NodeTreeItem({
   );
 }
 
-function Inspector({ node }: { node: DebugNodeDescriptor }) {
+function Inspector({ node, debugProps }: { node: DebugNodeDescriptor; debugProps?: DebugNodePropsMessage }) {
   return (
     <div className={styles.inspector}>
       <div>
@@ -284,7 +297,33 @@ function Inspector({ node }: { node: DebugNodeDescriptor }) {
         <span>Children</span>
         <strong>{node.children.length}</strong>
       </div>
+      <div>
+        <label>Debug Bounds</label>
+        <code>{debugProps?.bounds ? `${Math.round(debugProps.bounds.x)}, ${Math.round(debugProps.bounds.y)} · ${Math.round(debugProps.bounds.width)}×${Math.round(debugProps.bounds.height)}` : 'Keine Bounds exposed'}</code>
+      </div>
+      <div>
+        <label>Exposed Props</label>
+        <div className={styles.inspectorGrid}>
+          {debugProps ? Object.entries(debugProps.props).map(([key, value]) => (
+            <FragmentRow key={key} name={key} value={value} />
+          )) : (
+            <>
+              <span>Status</span>
+              <strong>Warte auf Node-Debugdaten...</strong>
+            </>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+function FragmentRow({ name, value }: { name: string; value: string | number | boolean | null }) {
+  return (
+    <>
+      <span>{name}</span>
+      <strong>{value === null ? 'null' : String(value)}</strong>
+    </>
   );
 }
 

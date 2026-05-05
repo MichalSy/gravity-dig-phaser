@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import type { DebugMessage } from '@gravity-dig/debug-protocol';
 import { GameNode, type NodeContext } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
@@ -12,7 +13,11 @@ export class DebugBridgeNode extends GameNode {
   private lastTree?: DebugNodeTreeSnapshot;
   private treeCheckElapsedMs = 0;
   private readonly nodeIds = new WeakMap<GameNode, string>();
+  private readonly nodesById = new Map<string, GameNode>();
   private nextNodeId = 1;
+  private selectedNodeId?: string;
+  private propsElapsedMs = 0;
+  private overlay?: Phaser.GameObjects.Graphics;
 
   constructor(config: DebugConnectionConfig) {
     super({ name: 'debugBridge', order: -100 });
@@ -21,10 +26,18 @@ export class DebugBridgeNode extends GameNode {
 
   init(ctx: NodeContext): void {
     this.ctx = ctx;
+    this.overlay = ctx.phaserScene.add.graphics().setDepth(100_000).setVisible(false);
     this.connect();
   }
 
   update(deltaMs: number): void {
+    this.drawSelectedNodeOverlay();
+    this.propsElapsedMs += deltaMs;
+    if (this.propsElapsedMs >= 100) {
+      this.propsElapsedMs = 0;
+      this.sendSelectedNodeProps();
+    }
+
     this.treeCheckElapsedMs += deltaMs;
     if (this.treeCheckElapsedMs < 250) return;
 
@@ -34,10 +47,14 @@ export class DebugBridgeNode extends GameNode {
 
   destroy(): void {
     this.clearReconnectTimer();
+    this.overlay?.destroy();
+    this.overlay = undefined;
     this.socket?.close();
     this.socket = undefined;
     this.ctx = undefined;
     this.lastTree = undefined;
+    this.selectedNodeId = undefined;
+    this.nodesById.clear();
   }
 
   private connect(): void {
@@ -53,7 +70,14 @@ export class DebugBridgeNode extends GameNode {
     });
 
     socket.addEventListener('message', (event) => {
-      console.info('[Gravity Dig Debug] message', event.data);
+      const message = this.parseMessage(event.data);
+      if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
+      if (message.type === 'node:select') {
+        this.selectedNodeId = message.nodeId;
+        this.propsElapsedMs = 100;
+        this.drawSelectedNodeOverlay();
+        this.sendSelectedNodeProps();
+      }
     });
 
     socket.addEventListener('close', () => {
@@ -98,12 +122,64 @@ export class DebugBridgeNode extends GameNode {
 
   private getStableNodeId(node: GameNode): string {
     const existing = this.nodeIds.get(node);
-    if (existing) return existing;
+    if (existing) {
+      this.nodesById.set(existing, node);
+      return existing;
+    }
 
     const id = `node-${this.nextNodeId.toString(36)}`;
     this.nextNodeId += 1;
     this.nodeIds.set(node, id);
+    this.nodesById.set(id, node);
     return id;
+  }
+
+  private drawSelectedNodeOverlay(): void {
+    const overlay = this.overlay;
+    if (!overlay || !this.selectedNodeId) {
+      overlay?.clear().setVisible(false);
+      return;
+    }
+
+    const node = this.nodesById.get(this.selectedNodeId);
+    const bounds = node?.getDebugBounds();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+      overlay.clear().setVisible(false);
+      return;
+    }
+
+    overlay
+      .clear()
+      .setVisible(true)
+      .setScrollFactor(bounds.scrollFactor ?? 1)
+      .lineStyle(3, 0x38bdf8, 1)
+      .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
+      .lineStyle(1, 0xffffff, 0.9)
+      .strokeRect(bounds.x - 3, bounds.y - 3, bounds.width + 6, bounds.height + 6);
+  }
+
+  private sendSelectedNodeProps(): void {
+    if (!this.selectedNodeId || this.socket?.readyState !== WebSocket.OPEN) return;
+    const node = this.nodesById.get(this.selectedNodeId);
+    if (!node) return;
+
+    this.send({
+      type: 'node:props',
+      sessionId: this.config.sessionId,
+      nodeId: this.selectedNodeId,
+      bounds: node.getDebugBounds(),
+      props: node.getDebugProps(),
+      sentAt: Date.now(),
+    });
+  }
+
+  private parseMessage(data: unknown): DebugMessage | undefined {
+    if (typeof data !== 'string') return undefined;
+    try {
+      return JSON.parse(data) as DebugMessage;
+    } catch {
+      return undefined;
+    }
   }
 
   private scheduleReconnect(): void {

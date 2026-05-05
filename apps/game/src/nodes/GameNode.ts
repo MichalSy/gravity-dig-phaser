@@ -10,6 +10,16 @@ export interface NodeContext {
 }
 
 
+export interface NodeDebugBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  scrollFactor?: number;
+}
+
+export type NodeDebugProps = Record<string, string | number | boolean | null>;
+
 export interface GameNodeOptions {
   name?: string;
   active?: boolean;
@@ -151,6 +161,24 @@ export abstract class GameNode {
     return {
       x: worldPosition.x - offset.x,
       y: worldPosition.y - offset.y,
+    };
+  }
+
+  getDebugBounds(): NodeDebugBounds | undefined {
+    if (this.size.width <= 0 || this.size.height <= 0) return undefined;
+    const origin = this.getWorldOrigin();
+    return { x: origin.x, y: origin.y, width: this.size.width, height: this.size.height };
+  }
+
+  getDebugProps(): NodeDebugProps {
+    return {
+      active: this.active,
+      visible: this.visible,
+      order: this.order,
+      x: this.position.x,
+      y: this.position.y,
+      width: this.size.width,
+      height: this.size.height,
     };
   }
 

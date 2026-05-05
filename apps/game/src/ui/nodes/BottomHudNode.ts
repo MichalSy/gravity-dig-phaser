@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
-import { GameNode, type NodeContext } from '../../nodes';
+import { GameNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import { placeAtlasBar, placeAtlasRegion, TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
@@ -33,6 +33,21 @@ export class BottomHudNode extends GameNode {
 
   resolve(): void {
     this.hudState = this.requireNode<HudStateNode>('hudState');
+  }
+
+  override getDebugBounds(): NodeDebugBounds | undefined {
+    const bounds = this.actionFrame?.getBounds();
+    if (!bounds) return undefined;
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, scrollFactor: 0 };
+  }
+
+  override getDebugProps(): NodeDebugProps {
+    const state = this.hudState?.getState();
+    return {
+      ...super.getDebugProps(),
+      energy: state ? Math.round(state.energy.current) : null,
+      cargoSlots: state?.cargo.slots.length ?? null,
+    };
   }
 
   update(): void {
