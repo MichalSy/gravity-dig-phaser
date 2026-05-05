@@ -239,7 +239,9 @@ export abstract class GameNode {
     const minY = Math.min(0, ...childBounds.map((bounds) => bounds.y));
     const maxX = Math.max(0, ...childBounds.map((bounds) => bounds.x + bounds.width));
     const maxY = Math.max(0, ...childBounds.map((bounds) => bounds.y + bounds.height));
-    this.contentBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    const scrollFactors = childBounds.map((bounds) => bounds.scrollFactor).filter((value): value is number => value !== undefined);
+    const scrollFactor = scrollFactors.length > 0 && scrollFactors.every((value) => value === scrollFactors[0]) ? scrollFactors[0] : undefined;
+    this.contentBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor };
     this.size = { width: maxX - minX, height: maxY - minY };
   }
 
@@ -332,7 +334,7 @@ export abstract class GameNode {
     const minY = Math.min(...ys);
     const maxX = Math.max(...xs);
     const maxY = Math.max(...ys);
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, corners };
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor: localBounds.scrollFactor, corners };
   }
 
   getDebugBounds(): NodeDebugBounds | undefined {

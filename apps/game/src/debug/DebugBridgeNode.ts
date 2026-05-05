@@ -82,6 +82,11 @@ export class DebugBridgeNode extends GameNode {
     socket.addEventListener('message', (event) => {
       const message = this.parseMessage(event.data);
       if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
+      if (message.type === 'relay:status' && message.editors > 0) {
+        this.sendAssetList();
+        this.sendTreeSnapshot();
+        this.sendSelectedNodeProps();
+      }
       if (message.type === 'node:select') {
         this.selectedNodeId = message.nodeId;
         this.propsElapsedMs = 100;
