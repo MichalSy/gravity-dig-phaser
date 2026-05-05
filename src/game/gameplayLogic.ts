@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { PLAYER_SIZE, TILE_SIZE } from '../config/gameConfig';
 import type { HudState, InputMode } from '../ui/HudState';
 import type { LevelData, TileCell } from './level';
-import type { MiningToolNode } from './MiningToolNode';
-import type { PlayerStateManagerNode } from './PlayerStateManagerNode';
+import type { MiningToolNode } from './nodes/MiningToolNode';
+import type { PlayerStateManagerNode } from './nodes/PlayerStateManagerNode';
 import type { CameraZoomNode } from './nodes/CameraZoomNode';
 
 export const START_TUNNEL_LEFT_TILE = -10;

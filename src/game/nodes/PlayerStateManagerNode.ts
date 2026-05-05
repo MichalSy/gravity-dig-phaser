@@ -1,11 +1,11 @@
-import { GameNode } from '../nodes';
-import { ITEM_DEFINITIONS } from '../player/catalogs/items';
-import { addItem } from '../player/inventory';
-import { createRunState, normalizeRunState } from '../player/RunState';
-import { loadSaveGame, saveGame } from '../player/saveGame';
-import { computeEffectiveStats } from '../player/stats';
-import type { TileType } from './level';
-import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from '../player/types';
+import { GameNode } from '../../nodes';
+import { ITEM_DEFINITIONS } from '../../player/catalogs/items';
+import { addItem } from '../../player/inventory';
+import { createRunState, normalizeRunState } from '../../player/RunState';
+import { loadSaveGame, saveGame } from '../../player/saveGame';
+import { computeEffectiveStats } from '../../player/stats';
+import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from '../../player/types';
+import type { TileType } from '../level';
 
 export interface CargoReturnResult {
   message: string;

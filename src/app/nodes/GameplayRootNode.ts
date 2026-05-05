@@ -1,22 +1,26 @@
-import { NodeScene } from '../../nodes';
-import { LevelNode } from '../../game/LevelNodes';
-import { MiningToolNode } from '../../game/MiningToolNode';
-import { PlayerControllerNode } from '../../game/PlayerControllerNode';
+import { GameplayInputNode } from './GameplayInputNode';
+import { HudStateNode } from './HudStateNode';
+import { NodeRoot } from '../../nodes';
 import {
   AutoSaveNode,
   CameraZoomNode,
   CollisionDebugNode,
   GameWorldNode,
   HudNode,
+  LevelNode,
+  MiningToolNode,
+  PlayerControllerNode,
   PlayerPresentationNode,
   RunRecoveryNode,
   ShipDockNode,
-} from '../../game/GameplayNodes';
-import { GameplayUiScene } from '../../ui/GameplayUiScene';
+} from '../../game/nodes';
+import { GameplayUiRootNode } from '../../ui/nodes';
 
-export class GameplayRootNode extends NodeScene {
+export class GameplayRootNode extends NodeRoot {
   constructor() {
-    super({ sceneName: 'gameplay', order: 20 });
+    super({ rootName: 'gameplay', order: 20 });
+    this.addChild(new GameplayInputNode());
+    this.addChild(new HudStateNode());
     this.addChild(new LevelNode());
     this.addChild(new CameraZoomNode());
     this.addChild(new GameWorldNode());
@@ -28,6 +32,6 @@ export class GameplayRootNode extends NodeScene {
     this.addChild(new RunRecoveryNode());
     this.addChild(new ShipDockNode());
     this.addChild(new AutoSaveNode());
-    this.addChild(new GameplayUiScene());
+    this.addChild(new GameplayUiRootNode());
   }
 }

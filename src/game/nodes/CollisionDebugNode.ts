@@ -4,7 +4,7 @@ import { GameNode, type NodeContext } from '../../nodes';
 import { worldToTile } from '../../utils/tileMath';
 import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createCollisionDebugData, type CollisionDebugData } from '../nodeData';
-import { LevelNode } from '../LevelNodes';
+import { LevelNode } from './LevelNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class CollisionDebugNode extends GameNode {

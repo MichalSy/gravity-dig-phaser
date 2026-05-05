@@ -1,13 +1,12 @@
 import Phaser from 'phaser';
 import { loadMenuAssets } from '../assets/AssetLoader';
-import { LevelGeneratorManagerNode } from '../game/LevelNodes';
-import { PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
-import { NodeRuntime, NodeScene } from '../nodes';
+import { LevelGeneratorManagerNode, PlayerStateManagerNode } from '../game/nodes';
+import { NodeRoot, NodeRuntime } from '../nodes';
 import { GameplayRootNode, LoadingNode, MenuNode } from '../app/nodes';
 
 export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
-  private appRoot!: NodeScene;
+  private appRoot!: NodeRoot;
   private menuNode!: MenuNode;
   private loadingNode!: LoadingNode;
   private gameplayMounted = false;
@@ -25,7 +24,7 @@ export class AppScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
 
     this.appRuntime = new NodeRuntime({ phaserScene: this });
-    this.appRoot = this.appRuntime.addScene(new NodeScene({ sceneName: 'app' }));
+    this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'app' }));
     this.menuNode = this.appRoot.addChild(new MenuNode(() => this.startGame()));
     this.loadingNode = this.appRoot.addChild(new LoadingNode(() => this.mountGameplay()));
 

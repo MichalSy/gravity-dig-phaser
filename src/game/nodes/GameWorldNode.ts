@@ -10,10 +10,10 @@ import {
   worldBoundsForLevel,
 } from '../gameplayLogic';
 import { createGameWorldData, type GameWorldData } from '../nodeData';
-import { LevelNode } from '../LevelNodes';
-import { MiningToolNode } from '../MiningToolNode';
-import { PlayerControllerNode } from '../PlayerControllerNode';
-import { PlayerStateManagerNode } from '../PlayerStateManagerNode';
+import { LevelNode } from './LevelNode';
+import { MiningToolNode } from './MiningToolNode';
+import { PlayerControllerNode } from './PlayerControllerNode';
+import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 import { CameraZoomNode } from './CameraZoomNode';
 import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 

@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { GameNode, type NodeContext } from '../../nodes';
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerPresentationData, type PlayerPresentationData } from '../nodeData';
-import { MiningToolNode } from '../MiningToolNode';
-import { PlayerControllerNode } from '../PlayerControllerNode';
+import { MiningToolNode } from './MiningToolNode';
+import { PlayerControllerNode } from './PlayerControllerNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class PlayerPresentationNode extends GameNode {

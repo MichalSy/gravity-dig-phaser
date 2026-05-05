@@ -1,6 +1,6 @@
 import { GameNode } from '../../nodes';
 import { createAutoSaveData, type AutoSaveData } from '../nodeData';
-import { PlayerStateManagerNode } from '../PlayerStateManagerNode';
+import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class AutoSaveNode extends GameNode {
   private playerState!: PlayerStateManagerNode;

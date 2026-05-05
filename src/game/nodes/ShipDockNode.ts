@@ -4,7 +4,7 @@ import { GameNode, type NodeContext } from '../../nodes';
 import { buildShipDockPrompt, isAtShipDock, playerPromptY } from '../gameplayLogic';
 import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createShipDockData, type ShipDockData } from '../nodeData';
-import { PlayerStateManagerNode } from '../PlayerStateManagerNode';
+import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class ShipDockNode extends GameNode {

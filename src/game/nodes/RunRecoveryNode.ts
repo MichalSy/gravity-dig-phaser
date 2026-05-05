@@ -1,6 +1,6 @@
 import { GameNode } from '../../nodes';
-import { MiningToolNode } from '../MiningToolNode';
-import { PlayerStateManagerNode } from '../PlayerStateManagerNode';
+import { MiningToolNode } from './MiningToolNode';
+import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class RunRecoveryNode extends GameNode {
   private playerState!: PlayerStateManagerNode;

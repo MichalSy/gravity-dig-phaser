@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GameNode, type NodeContext } from '../../nodes';
 import { createCameraZoomData, type CameraZoomData } from '../nodeData';
-import { PlayerControllerNode } from '../PlayerControllerNode';
+import { PlayerControllerNode } from './PlayerControllerNode';
 
 export class CameraZoomNode extends GameNode {
   private phaserScene!: Phaser.Scene;

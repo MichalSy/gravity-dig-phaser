@@ -1,17 +1,19 @@
+import { GameplayInputNode, HudStateNode } from '../../app/nodes';
 import { GameNode } from '../../nodes';
-import type { GameplayUiScene } from '../../ui/GameplayUiScene';
 import { buildHudState } from '../gameplayLogic';
-import { MiningToolNode } from '../MiningToolNode';
-import { PlayerStateManagerNode } from '../PlayerStateManagerNode';
 import { CameraZoomNode } from './CameraZoomNode';
 import { GameWorldNode } from './GameWorldNode';
+import { MiningToolNode } from './MiningToolNode';
+import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class HudNode extends GameNode {
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
   private miningTool!: MiningToolNode;
   private cameraZoom!: CameraZoomNode;
-  override readonly dependencies = ['world', 'playerState', 'miningTool', 'cameraZoom', 'ui.gameplay'] as const;
+  private gameplayInput!: GameplayInputNode;
+  private hudState!: HudStateNode;
+  override readonly dependencies = ['world', 'playerState', 'miningTool', 'cameraZoom', 'gameplayInput', 'hudState'] as const;
 
   constructor() {
     super({ name: 'hud', order: 60 });
@@ -22,19 +24,17 @@ export class HudNode extends GameNode {
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
     this.miningTool = this.requireNode<MiningToolNode>('miningTool');
     this.cameraZoom = this.requireNode<CameraZoomNode>('cameraZoom');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
+    this.hudState = this.requireNode<HudStateNode>('hudState');
   }
 
   update(): void {
-    this.uiScene.setHudState(buildHudState({
+    this.hudState.setState(buildHudState({
       level: this.world.level,
-      inputMode: this.uiScene.getInputMode(),
+      inputMode: this.gameplayInput.getInputMode(),
       playerState: this.playerState,
       miningTool: this.miningTool,
       cameraZoom: this.cameraZoom,
     }));
-  }
-
-  private get uiScene(): GameplayUiScene {
-    return this.requireNode<GameplayUiScene>('ui.gameplay');
   }
 }

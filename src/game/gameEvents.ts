@@ -1,16 +1,12 @@
 import type Phaser from 'phaser';
 import type { LevelData } from './level';
-import type { HudState } from '../ui/HudState';
 
 export const GAME_EVENTS = {
   gameplayMenuOpened: 'gameplay-menu:opened',
   gameplayMenuClosed: 'gameplay-menu:closed',
   worldLevelCreated: 'world:level-created',
   shipReturnCargo: 'ship:return-cargo',
-  hudUpdate: 'hud:update',
   debugCollision: 'debug:collision',
-  gameReady: 'game:ready',
-  loadingComplete: 'loading:complete',
 } as const;
 
 export interface GameEventPayloads {
@@ -18,10 +14,7 @@ export interface GameEventPayloads {
   [GAME_EVENTS.gameplayMenuClosed]: void;
   [GAME_EVENTS.worldLevelCreated]: LevelData;
   [GAME_EVENTS.shipReturnCargo]: void;
-  [GAME_EVENTS.hudUpdate]: HudState;
   [GAME_EVENTS.debugCollision]: boolean;
-  [GAME_EVENTS.gameReady]: void;
-  [GAME_EVENTS.loadingComplete]: void;
 }
 
 type EventName = keyof GameEventPayloads;

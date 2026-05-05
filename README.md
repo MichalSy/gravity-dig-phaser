@@ -66,17 +66,19 @@ src/
 ├── main.ts                 # Phaser bootstrap only
 ├── config/gameConfig.ts    # Tunables and dimensions
 ├── controls/               # Mobile/desktop input helpers
-├── app/nodes/              # App/menu/loading/gameplay runtime roots
+├── app/nodes/              # App roots/state/menu/loading nodes
 ├── game/level.ts           # Deterministic world generation + level types
+├── game/nodes/             # Gameplay/save/level runtime nodes
 ├── player/                 # Profile, run state, inventory, upgrades, perks, savegame
 ├── scenes/AppScene.ts      # Single Phaser scene adapter
+├── ui/nodes/               # HUD/debug/touch-control nodes
 └── utils/                  # Small pure helpers
 ```
 
 Rules:
 
 - `main.ts` stays thin.
-- New gameplay belongs in systems/modules, not in bootstrap.
+- New runtime behavior belongs in one node per file; avoid multi-node catch-all files.
 - Player progress/state belongs in `src/player/`, not directly in `AppScene`.
 - Engine-facing orchestration stays in `scenes/AppScene.ts`; app/game/UI flow belongs in runtime nodes.
 - Pure logic stays independent from Phaser where practical.

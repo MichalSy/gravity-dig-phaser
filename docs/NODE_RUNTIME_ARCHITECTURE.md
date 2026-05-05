@@ -55,7 +55,7 @@ Each `GameNode` supports:
    - remove listeners
    - destroy Phaser objects owned by the node
 
-`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by root node trees in `order`.
+`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by `NodeRoot` trees in `order`.
 
 ## Dependencies
 
@@ -63,7 +63,7 @@ Nodes declare required node names with `dependencies`:
 
 ```ts
 export class MiningToolNode extends GameNode {
-  override readonly dependencies = ['level', 'world', 'playerController', 'playerState'] as const;
+  override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'gameplayInput'] as const;
 }
 ```
 
@@ -133,16 +133,21 @@ Current examples:
 
 Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function and let the node orchestrate it.
 
-## Gameplay Node Layout
+## Node Layout
 
-Gameplay node files live in:
+Every runtime node lives in its own file. Root nodes compose child nodes; large multi-node files are intentionally avoided.
 
 ```txt
-src/game/nodes/
+src/app/nodes/       # app roots/state/menu/loading
+src/game/nodes/      # gameplay/runtime/save nodes
+src/ui/nodes/        # HUD, debug panel, touch controls
+src/nodes/           # node runtime primitives
 ```
 
 Current gameplay nodes mounted under `GameplayRootNode`:
 
+- `GameplayInputNode` — input mode, touch vectors, menu/input blocking state
+- `HudStateNode` — current HUD view model for UI rendering
 - `LevelNode` — level data, tilemaps, collision queries, tile clearing
 - `CameraZoomNode` — debug zoom state and camera zoom sync
 - `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow
@@ -151,7 +156,7 @@ Current gameplay nodes mounted under `GameplayRootNode`:
 - `PlayerPresentationNode` — animation, facing, footsteps
 - `CollisionDebugNode` — collision debug graphics
 - `RunRecoveryNode` — energy recovery while not mining
-- `HudNode` — writes the HUD view model into `GameplayUiScene`
+- `HudNode` — writes the HUD view model into `HudStateNode`
 - `ShipDockNode` — ship prompt and cargo return interaction
 - `AutoSaveNode` — periodic active-run save
 
@@ -160,15 +165,24 @@ Persistent nodes:
 - `PlayerStateManagerNode` — save/profile/run state
 - `LevelGeneratorManagerNode` — planet config and pure level generation
 
+UI nodes mounted under `GameplayUiRootNode`:
+
+- `StatusHudNode`
+- `BottomHudNode`
+- `RuntimeDebugTextNode`
+- `DeveloperDialogNode`
+- `DebugPanelNode`
+- `TouchControlsNode`
+
 ## Adding a New Node
 
-1. Create `src/game/nodes/MyNode.ts`.
+1. Create exactly one node class per file, e.g. `src/game/nodes/MyNode.ts`.
 2. Add a `data` object in `src/game/nodeData.ts` when the node owns runtime state.
 3. Declare `dependencies` explicitly.
 4. Register event listeners in `init()` and remove them in `destroy()`.
 5. Resolve other nodes in `resolve()`.
 6. Put simulation and Phaser sync in `update()`.
-7. Export from `src/game/nodes/index.ts`.
+7. Export from the relevant barrel (`src/game/nodes/index.ts`, `src/app/nodes/index.ts`, or `src/ui/nodes/index.ts`).
 8. Register in `src/app/nodes/GameplayRootNode.ts`.
 9. Add/adjust smoke coverage if the node affects gameplay.
 
@@ -179,4 +193,5 @@ Persistent nodes:
 - Do not hide runtime state in unrelated private fields when it belongs in node data.
 - Do not introduce new raw string gameplay events in node code; use `GAME_EVENTS`.
 - Do not store save-game state in node data.
+- Do not add multiple node classes to one file.
 - Do not add more Phaser scenes for app/game/UI state; model them as runtime nodes unless Phaser lifecycle isolation is genuinely required.

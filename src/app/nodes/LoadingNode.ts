@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { loadGameAssets } from '../../assets/AssetLoader';
-import { GAME_EVENTS, emitGameEvent, onceGameEvent } from '../../game/gameEvents';
 import { GameNode, type NodeContext } from '../../nodes';
 
 const MIN_LOADING_MS = 900;
@@ -38,7 +37,6 @@ export class LoadingNode extends GameNode {
     this.startTime = performance.now();
     this.createDomOverlay();
     this.setProgress(0);
-    onceGameEvent(this.phaserScene, GAME_EVENTS.gameReady, this.finishLoading, this);
 
     if (this.areGameAssetsLoaded()) {
       this.setProgress(1);
@@ -65,7 +63,7 @@ export class LoadingNode extends GameNode {
     this.phaserScene.load.off('progress', this.setProgress, this);
     this.setProgress(1);
     this.mountGameplay();
-    emitGameEvent(this.phaserScene, GAME_EVENTS.gameReady);
+    this.finishLoading();
   }
 
   private createDomOverlay(): void {
@@ -174,7 +172,6 @@ export class LoadingNode extends GameNode {
       this.removeDomOverlay();
       this.loading = false;
       this.active = false;
-      emitGameEvent(this.phaserScene, GAME_EVENTS.loadingComplete);
     });
   }
 }

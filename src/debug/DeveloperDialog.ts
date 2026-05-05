@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ALL_GRAPHIC_ASSETS, type AssetScene } from '../assets/AssetLoader';
+import { GAME_EVENTS, emitGameEvent } from '../game/gameEvents';
 
 const DIALOG_ID = 'gravity-dig-developer-dialog';
 const STYLE_ID = 'gravity-dig-developer-dialog-style';
@@ -45,7 +46,7 @@ export class DeveloperDialog {
   close(): void {
     this.root?.remove();
     this.root = undefined;
-    this.scene.game.events.emit('gameplay-menu:closed');
+    emitGameEvent(this.scene, GAME_EVENTS.gameplayMenuClosed);
   }
 
   refresh(): void {
@@ -61,7 +62,7 @@ export class DeveloperDialog {
     this.root = document.createElement('div');
     this.root.id = DIALOG_ID;
     document.body.appendChild(this.root);
-    this.scene.game.events.emit('gameplay-menu:opened');
+    emitGameEvent(this.scene, GAME_EVENTS.gameplayMenuOpened);
     this.render();
   }
 

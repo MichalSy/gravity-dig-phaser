@@ -1,20 +1,20 @@
 import Phaser from 'phaser';
-import { PLAYER_SIZE, TILE_SIZE } from '../config/gameConfig';
-import { GameNode, type NodeContext } from '../nodes';
-import type { GameplayUiScene } from '../ui/GameplayUiScene';
-import { tileKey } from '../utils/tileMath';
-import type { GameWorldNode } from './nodes/GameWorldNode';
-import { isResourceTile, type TileCell, type TileType } from './level';
-import { GAME_EVENTS, offGameEvent, onGameEvent } from './gameEvents';
-import { createMiningToolData, type MiningToolData } from './nodeData';
-import { LevelNode } from './LevelNodes';
+import { GameplayInputNode } from '../../app/nodes';
+import { PLAYER_SIZE, TILE_SIZE } from '../../config/gameConfig';
+import { GameNode, type NodeContext } from '../../nodes';
+import { tileKey } from '../../utils/tileMath';
+import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
+import { isResourceTile, type TileCell, type TileType } from '../level';
+import { createMiningToolData, type MiningToolData } from '../nodeData';
+import type { GameWorldNode } from './GameWorldNode';
+import { LevelNode } from './LevelNode';
 import { PlayerControllerNode } from './PlayerControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export interface MiningToolInput {
   playerX: number;
   playerY: number;
-  uiScene: GameplayUiScene;
+  inputState: GameplayInputNode;
   activePointer: Phaser.Input.Pointer;
   camera: Phaser.Cameras.Scene2D.Camera;
   inputBlocked: boolean;
@@ -33,7 +33,7 @@ export class MiningToolNode extends GameNode {
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private laserSound?: Phaser.Sound.BaseSound;
   private readonly crackOverlays = new Map<string, Phaser.GameObjects.Image>();
-  override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'ui.gameplay'] as const;
+  override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'gameplayInput'] as const;
   readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
@@ -128,7 +128,7 @@ export class MiningToolNode extends GameNode {
   getAimWorldPoint(input = this.getMiningInput()): Phaser.Math.Vector2 {
     const origin = this.getLaserOrigin(input);
 
-    if (input.uiScene.getInputMode() === 'gamepad') {
+    if (input.inputState.getInputMode() === 'gamepad') {
       const gamepad = input.getGamepad();
       const aimX = gamepad ? input.axis(gamepad, 2) : 0;
       const aimY = gamepad ? input.axis(gamepad, 3) : 0;
@@ -140,8 +140,8 @@ export class MiningToolNode extends GameNode {
       return this.data.currentAimWorld;
     }
 
-    if (input.uiScene.isAiming()) {
-      const aim = input.uiScene.getAimVector();
+    if (input.inputState.isAiming()) {
+      const aim = input.inputState.getAimVector();
       this.data.currentAimWorld.set(
         origin.x + aim.x * this.playerState.stats.miningRange,
         origin.y + aim.y * this.playerState.stats.miningRange,
@@ -149,7 +149,7 @@ export class MiningToolNode extends GameNode {
       return this.data.currentAimWorld;
     }
 
-    if (input.uiScene.getInputMode() === 'desktop') {
+    if (input.inputState.getInputMode() === 'desktop') {
       this.data.currentAimWorld.copy(input.activePointer.positionToCamera(input.camera) as Phaser.Math.Vector2);
     }
     return this.data.currentAimWorld;
@@ -157,8 +157,8 @@ export class MiningToolNode extends GameNode {
 
   isMiningPressed(input = this.getMiningInput()): boolean {
     if (input.inputBlocked) return false;
-    const mode = input.uiScene.getInputMode();
-    if (mode === 'touch') return input.uiScene.isAiming();
+    const mode = input.inputState.getInputMode();
+    if (mode === 'touch') return input.inputState.isAiming();
     if (mode === 'gamepad') {
       const gamepad = input.getGamepad();
       return input.button(gamepad, 7) || input.button(gamepad, 5);
@@ -191,7 +191,7 @@ export class MiningToolNode extends GameNode {
     return {
       playerX: this.world.player.x,
       playerY: this.world.player.y,
-      uiScene: this.requireNode<GameplayUiScene>('ui.gameplay'),
+      inputState: this.requireNode<GameplayInputNode>('gameplayInput'),
       activePointer: this.phaserScene.input.activePointer,
       camera: this.phaserScene.cameras.main,
       inputBlocked: this.playerController.inputBlocked,

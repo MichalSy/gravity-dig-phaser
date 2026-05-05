@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
-import { GRAVITY, PLAYER_SIZE } from '../config/gameConfig';
-import { GameNode, type NodeContext } from '../nodes';
-import type { GameplayUiScene } from '../ui/GameplayUiScene';
-import type { GameWorldNode } from './nodes/GameWorldNode';
-import { inputStrength } from './gameplayLogic';
-import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from './gameEvents';
-import { createPlayerControllerData, type PlayerControllerData } from './nodeData';
-import { LevelNode } from './LevelNodes';
+import { GameplayInputNode } from '../../app/nodes';
+import { GRAVITY, PLAYER_SIZE } from '../../config/gameConfig';
+import { GameNode, type NodeContext } from '../../nodes';
+import { inputStrength } from '../gameplayLogic';
+import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
+import { createPlayerControllerData, type PlayerControllerData } from '../nodeData';
+import type { GameWorldNode } from './GameWorldNode';
+import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -19,7 +19,7 @@ export class PlayerControllerNode extends GameNode {
   private player?: Phaser.GameObjects.Image;
   private cursors!: CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  override readonly dependencies = ['level', 'world', 'playerState', 'ui.gameplay'] as const;
+  override readonly dependencies = ['level', 'world', 'playerState', 'gameplayInput'] as const;
   readonly data: PlayerControllerData = createPlayerControllerData();
 
   constructor() {
@@ -117,9 +117,8 @@ export class PlayerControllerNode extends GameNode {
       return;
     }
 
-    const uiScene = this.uiScene;
-    const mode = uiScene.getInputMode();
-    const joy = uiScene.getMoveVector();
+    const mode = this.inputState.getInputMode();
+    const joy = this.inputState.getMoveVector();
     const gamepad = mode === 'gamepad' ? this.getGamepad() : undefined;
     const gamepadX = gamepad ? this.axis(gamepad, 0) : 0;
     const gamepadY = gamepad ? this.axis(gamepad, 1) : 0;
@@ -223,7 +222,7 @@ export class PlayerControllerNode extends GameNode {
   }
 
 
-  private get uiScene(): GameplayUiScene {
-    return this.requireNode<GameplayUiScene>('ui.gameplay');
+  private get inputState(): GameplayInputNode {
+    return this.requireNode<GameplayInputNode>('gameplayInput');
   }
 }

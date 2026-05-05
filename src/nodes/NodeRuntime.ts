@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { GameNode, type NodeContext } from './GameNode';
-import { NodeScene } from './NodeScene';
+import { NodeRoot } from './NodeRoot';
 
 export interface NodeRuntimeOptions {
   phaserScene: Phaser.Scene;
@@ -8,7 +8,7 @@ export interface NodeRuntimeOptions {
 
 export class NodeRuntime {
   private readonly persistentNodeList: GameNode[] = [];
-  private readonly nodeScenes: NodeScene[] = [];
+  private readonly rootNodes: NodeRoot[] = [];
   private readonly registry = new Map<string, GameNode>();
   private readonly ctx: NodeContext;
   private initialized = false;
@@ -27,8 +27,8 @@ export class NodeRuntime {
     return this.persistentNodeList;
   }
 
-  get scenes(): readonly NodeScene[] {
-    return this.nodeScenes;
+  get roots(): readonly NodeRoot[] {
+    return this.rootNodes;
   }
 
   addPersistentNode<T extends GameNode>(node: T): T {
@@ -54,34 +54,34 @@ export class NodeRuntime {
     this.persistentNodeList.splice(index, 1);
   }
 
-  addScene<T extends NodeScene>(scene: T): T {
-    if (scene.parent) throw new Error(`NodeScene '${scene.debugName()}' cannot have a parent`);
-    if (this.nodeScenes.includes(scene)) return scene;
+  addRoot<T extends NodeRoot>(root: T): T {
+    if (root.parent) throw new Error(`NodeRoot '${root.debugName()}' cannot have a parent`);
+    if (this.rootNodes.includes(root)) return root;
 
-    this.nodeScenes.push(scene);
-    this.sortScenes();
+    this.rootNodes.push(root);
+    this.sortRoots();
 
     if (this.initialized) {
-      this.mountSubtree(scene, this.ctx);
-      if (this.resolved) scene.resolveTree(this.ctx);
+      this.mountSubtree(root, this.ctx);
+      if (this.resolved) root.resolveTree(this.ctx);
     }
 
-    return scene;
+    return root;
   }
 
-  removeScene(scene: NodeScene): void {
-    const index = this.nodeScenes.indexOf(scene);
+  removeRoot(root: NodeRoot): void {
+    const index = this.rootNodes.indexOf(root);
     if (index < 0) return;
 
-    scene.destroyTree();
-    this.nodeScenes.splice(index, 1);
+    root.destroyTree();
+    this.rootNodes.splice(index, 1);
   }
 
   init(): void {
     if (this.initialized) return;
 
     for (const node of this.sortedPersistentNodes()) node.initTree(this.ctx);
-    for (const scene of this.sortedScenes()) scene.initTree(this.ctx);
+    for (const root of this.sortedRoots()) root.initTree(this.ctx);
     this.initialized = true;
   }
 
@@ -90,20 +90,20 @@ export class NodeRuntime {
     if (this.resolved) return;
 
     for (const node of this.sortedPersistentNodes()) node.resolveTree(this.ctx);
-    for (const scene of this.sortedScenes()) scene.resolveTree(this.ctx);
+    for (const root of this.sortedRoots()) root.resolveTree(this.ctx);
     this.resolved = true;
   }
 
   update(deltaMs: number): void {
     this.resolve();
     for (const node of this.sortedPersistentNodes()) node.updateTree(deltaMs);
-    for (const scene of this.sortedScenes()) scene.updateTree(deltaMs);
+    for (const root of this.sortedRoots()) root.updateTree(deltaMs);
   }
 
   destroy(): void {
-    for (const scene of [...this.nodeScenes].reverse()) scene.destroyTree();
+    for (const root of [...this.rootNodes].reverse()) root.destroyTree();
     for (const node of [...this.persistentNodeList].reverse()) node.destroyTree();
-    this.nodeScenes.length = 0;
+    this.rootNodes.length = 0;
     this.persistentNodeList.length = 0;
     this.registry.clear();
     this.initialized = false;
@@ -146,12 +146,12 @@ export class NodeRuntime {
     return this.persistentNodeList;
   }
 
-  private sortScenes(): void {
-    this.nodeScenes.sort((a, b) => a.order - b.order);
+  private sortRoots(): void {
+    this.rootNodes.sort((a, b) => a.order - b.order);
   }
 
-  private sortedScenes(): readonly NodeScene[] {
-    this.sortScenes();
-    return this.nodeScenes;
+  private sortedRoots(): readonly NodeRoot[] {
+    this.sortRoots();
+    return this.rootNodes;
   }
 }
