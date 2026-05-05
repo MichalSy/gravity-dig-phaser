@@ -453,7 +453,7 @@ export default function Home() {
           </div>
         </aside>
       </section>
-      {originalAsset && <OriginalAssetDialog asset={originalAsset} onClose={() => setOriginalAssetId(undefined)} />}
+      {originalAsset && <OriginalAssetDialog asset={originalAsset} assets={imageAssets} onClose={() => setOriginalAssetId(undefined)} />}
     </main>
   );
 }
@@ -562,16 +562,97 @@ function FramePreview({ asset, compact }: { asset: DebugImageAssetDescriptor; co
   return <canvas ref={canvasRef} className={compact ? styles.assetThumbnail : styles.assetImagePreview} aria-label={asset.id} />;
 }
 
-function OriginalAssetDialog({ asset, onClose }: { asset: DebugImageAssetDescriptor; onClose(): void }) {
-  const src = asset.kind === 'frame' ? asset.sourceUrl : asset.url;
+function OriginalAssetDialog({ asset, assets, onClose }: { asset: DebugImageAssetDescriptor; assets: DebugImageAssetDescriptor[]; onClose(): void }) {
+  const atlasId = asset.kind === 'frame' ? asset.sourceImageId : asset.id;
+  const atlasAsset = atlasId ? assets.find((candidate) => candidate.id === atlasId) : undefined;
+  const frames = atlasId ? assets.filter((candidate) => candidate.kind === 'frame' && candidate.sourceImageId === atlasId && candidate.rect) : [];
+  const initialFrameId = asset.kind === 'frame' ? asset.id : frames[0]?.id;
+  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>(initialFrameId);
+  const [activeTab, setActiveTab] = useState<'frame' | 'atlas'>('frame');
+
+  useEffect(() => {
+    setSelectedFrameId(initialFrameId);
+    setActiveTab('frame');
+  }, [initialFrameId]);
+
+  const selectedFrame = selectedFrameId ? frames.find((frame) => frame.id === selectedFrameId) : undefined;
+  const src = atlasAsset?.url ?? asset.sourceUrl ?? asset.url;
+  const showAtlasViewer = Boolean(src && atlasAsset && frames.length > 0);
+
   return (
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.assetDialog} onClick={(event) => event.stopPropagation()}>
         <div className={styles.dialogHeader}>
-          <strong>{asset.id}</strong>
-          <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+          <strong>{atlasAsset?.id ?? asset.id}</strong>
+          <div className={styles.dialogHeaderActions}>
+            {showAtlasViewer && (
+              <div className={styles.dialogTabs} role="tablist" aria-label="Atlas Ansicht">
+                <button type="button" className={activeTab === 'frame' ? styles.activeDialogTab : ''} onClick={() => setActiveTab('frame')}>Frame</button>
+                <button type="button" className={activeTab === 'atlas' ? styles.activeDialogTab : ''} onClick={() => setActiveTab('atlas')}>Atlas</button>
+              </div>
+            )}
+            <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+          </div>
         </div>
-        {src ? <img className={styles.originalAssetImage} src={src} alt={asset.id} /> : <p className={styles.empty}>Keine URL vorhanden.</p>}
+        {showAtlasViewer ? (
+          <div className={styles.atlasDialogBody}>
+            <aside className={styles.frameList}>
+              <div className={styles.frameListHeader}>{frames.length} Frames</div>
+              {frames.map((frame) => (
+                <button
+                  key={frame.id}
+                  type="button"
+                  className={`${styles.frameListItem} ${frame.id === selectedFrame?.id ? styles.selectedFrameListItem : ''}`}
+                  onClick={() => setSelectedFrameId(frame.id)}
+                >
+                  <FramePreview asset={frame} compact />
+                  <span>{frame.frameKey ?? frame.id}</span>
+                  <small>{frame.rect?.width}×{frame.rect?.height}</small>
+                </button>
+              ))}
+            </aside>
+            <section className={styles.atlasPreviewPanel}>
+              {activeTab === 'frame' && selectedFrame ? (
+                <div className={styles.dialogFramePreview}>
+                  <FramePreview asset={selectedFrame} compact={false} />
+                </div>
+              ) : (
+                <AtlasImageWithFrame atlas={atlasAsset} selectedFrame={selectedFrame} />
+              )}
+              {selectedFrame && (
+                <div className={styles.dialogFrameMeta}>
+                  <strong>{selectedFrame.frameKey ?? selectedFrame.id}</strong>
+                  <span>{selectedFrame.rect ? `${selectedFrame.rect.x},${selectedFrame.rect.y} · ${selectedFrame.rect.width}×${selectedFrame.rect.height}` : 'Kein Rect'}</span>
+                </div>
+              )}
+            </section>
+          </div>
+        ) : src ? (
+          <img className={styles.originalAssetImage} src={src} alt={asset.id} />
+        ) : <p className={styles.empty}>Keine URL vorhanden.</p>}
+      </div>
+    </div>
+  );
+}
+
+function AtlasImageWithFrame({ atlas, selectedFrame }: { atlas?: DebugImageAssetDescriptor; selectedFrame?: DebugImageAssetDescriptor }) {
+  if (!atlas?.url) return <p className={styles.empty}>Keine Atlas-URL vorhanden.</p>;
+  const rect = selectedFrame?.rect;
+  return (
+    <div className={styles.atlasImageStage}>
+      <div className={styles.atlasImageWrap}>
+        <img className={styles.originalAssetImage} src={atlas.url} alt={atlas.id} />
+        {rect && atlas.width > 0 && atlas.height > 0 && (
+          <div
+            className={styles.frameRectOverlay}
+            style={{
+              left: `${(rect.x / atlas.width) * 100}%`,
+              top: `${(rect.y / atlas.height) * 100}%`,
+              width: `${(rect.width / atlas.width) * 100}%`,
+              height: `${(rect.height / atlas.height) * 100}%`,
+            }}
+          />
+        )}
       </div>
     </div>
   );

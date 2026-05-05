@@ -453,6 +453,7 @@
 }
 
 .assetDialog {
+  width: min(96vw, 1400px);
   max-width: min(96vw, 1400px);
   max-height: 92vh;
   display: grid;
@@ -475,7 +476,155 @@
 }
 
 .dialogHeader strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e0f2fe; font-size: 13px; }
+
+.dialogHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialogTabs {
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 9px;
+  padding: 2px;
+  background: rgba(2, 6, 23, 0.48);
+}
+
+.dialogTabs button {
+  border: 0;
+  border-radius: 7px;
+  padding: 5px 9px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.dialogTabs .activeDialogTab {
+  background: rgba(14, 165, 233, 0.28);
+  color: #e0f2fe;
+}
+
+.atlasDialogBody {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: rgba(2, 6, 23, 0.72);
+}
+
+.frameList {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+  border-right: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.frameListHeader {
+  color: #7dd3fc;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 2px 6px;
+}
+
+.frameListItem {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 9px;
+  padding: 6px;
+  background: rgba(2, 6, 23, 0.52);
+  color: inherit;
+  text-align: left;
+}
+
+.frameListItem:hover { border-color: rgba(125, 211, 252, 0.42); background: rgba(14, 165, 233, 0.12); }
+.selectedFrameListItem { border-color: rgba(56, 189, 248, 0.76); background: rgba(14, 165, 233, 0.2); }
+.frameListItem canvas,
+.frameListItem img { width: 56px; height: 42px; border-radius: 6px; background: rgba(2, 6, 23, 0.72); }
+.frameListItem span { min-width: 0; color: #e0f2fe; font-size: 11px; font-weight: 850; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.frameListItem small { color: #94a3b8; font-size: 10px; white-space: nowrap; }
+
+.atlasPreviewPanel {
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.dialogFramePreview,
+.atlasImageStage {
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    #020617;
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  border-radius: 12px;
+}
+
+.dialogFramePreview .assetImagePreview {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+}
+
+.atlasImageWrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.frameRectOverlay {
+  position: absolute;
+  border: 3px solid #38bdf8;
+  background: rgba(56, 189, 248, 0.18);
+  box-shadow: 0 0 0 2px rgba(2, 6, 23, 0.8), 0 0 22px rgba(56, 189, 248, 0.52);
+  pointer-events: none;
+}
+
+.dialogFrameMeta {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px 0;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.dialogFrameMeta strong { min-width: 0; color: #e0f2fe; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dialogFrameMeta span { white-space: nowrap; }
+
 .originalAssetImage { max-width: 100%; max-height: calc(92vh - 44px); object-fit: contain; image-rendering: pixelated; background: #020617; }
+.atlasImageWrap .originalAssetImage { display: block; max-height: calc(92vh - 96px); }
 
 .columnResizer,
 .assetSplitResizer,
