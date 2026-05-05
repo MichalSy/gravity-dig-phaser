@@ -95,6 +95,7 @@ The C# gameplay code is treated as reference only; Phaser/TypeScript is the cano
 - Engine-facing orchestration stays in `scenes/AppScene.ts`; app/game/UI flow belongs in runtime nodes.
 - Pure/domain logic lives outside nodes where practical: level pipeline, input intents, physics, mining, world geometry, UI layout.
 - Assets/configs stay in `apps/game/public/` so they are deployable as static files.
+- Image rendering uses typed asset records (`ImageAsset`, `FrameAsset`, `ImageAnimationAsset`) resolved by `AssetCatalog`; nodes consume assets instead of parsing atlas metadata themselves.
 
 ## Development
 

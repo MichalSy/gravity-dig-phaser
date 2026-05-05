@@ -6,7 +6,6 @@ import {
   START_TUNNEL_LEFT_TILE,
   START_TUNNEL_TOP_TILE,
   START_TUNNEL_WIDTH_TILES,
-  spawnToWorld,
 } from './worldGeometry';
 
 export class WorldView {
@@ -23,11 +22,6 @@ export class WorldView {
       this.createShip(),
       ...this.createCoreMarker(level),
     ];
-  }
-
-  createPlayer(level: LevelData): Phaser.GameObjects.Image {
-    const spawn = spawnToWorld(level);
-    return this.scene.add.image(spawn.x, spawn.y, 'player-idle-0').setDepth(20).setScale(0.9);
   }
 
   private createBackground(level: LevelData): Phaser.GameObjects.Graphics {

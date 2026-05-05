@@ -1,0 +1,87 @@
+import type Phaser from 'phaser';
+import { ImageAssetKind, type FrameAsset, type ImageAnimationAsset, type RenderableImageAsset } from './imageAssets';
+import { imageAtlasMetaKey, type ImageAtlasMeta } from './imageAtlasMeta';
+
+export interface ImageAssetDefinition {
+  key: string;
+  path: string;
+  meta?: boolean;
+}
+
+export class AssetCatalog {
+  private readonly images = new Map<string, RenderableImageAsset>();
+  private readonly animations = new Map<string, ImageAnimationAsset>();
+  private readonly scene: Phaser.Scene;
+
+  constructor(scene: Phaser.Scene) {
+    this.scene = scene;
+  }
+
+  registerImages(definitions: readonly ImageAssetDefinition[]): void {
+    for (const definition of definitions) this.registerImage(definition);
+  }
+
+  image(id: string): RenderableImageAsset {
+    const asset = this.images.get(id);
+    if (!asset) throw new Error(`Image asset '${id}' is not registered`);
+    return asset;
+  }
+
+  animation(id: string): ImageAnimationAsset {
+    const asset = this.animations.get(id);
+    if (!asset) throw new Error(`Image animation asset '${id}' is not registered`);
+    return asset;
+  }
+
+  hasImage(id: string): boolean {
+    return this.images.has(id);
+  }
+
+  private registerImage(definition: ImageAssetDefinition): void {
+    if (!this.scene.textures.exists(definition.key)) return;
+
+    const texture = this.scene.textures.get(definition.key);
+    const source = texture.getSourceImage() as { width?: number; height?: number } | undefined;
+    const width = source?.width ?? 0;
+    const height = source?.height ?? 0;
+
+    this.images.set(definition.key, {
+      kind: ImageAssetKind.Image,
+      id: definition.key,
+      textureKey: definition.key,
+      width,
+      height,
+    });
+
+    if (!definition.meta) return;
+
+    const meta = this.scene.cache.json.get(imageAtlasMetaKey(definition.key)) as ImageAtlasMeta | undefined;
+    if (!meta) return;
+
+    for (const [frameKey, rect] of Object.entries(meta.frames ?? {})) {
+      texture.add(frameKey, 0, rect.x, rect.y, rect.width, rect.height);
+      const id = `${definition.key}#${frameKey}`;
+      this.images.set(id, {
+        kind: ImageAssetKind.Frame,
+        id,
+        textureKey: definition.key,
+        frameKey,
+        sourceImageId: definition.key,
+        rect,
+        width: rect.width,
+        height: rect.height,
+      } satisfies FrameAsset);
+    }
+
+    for (const [animationKey, animation] of Object.entries(meta.animations ?? {})) {
+      const id = `${definition.key}@${animationKey}`;
+      this.animations.set(id, {
+        kind: ImageAssetKind.Animation,
+        id,
+        frames: animation.frames.map((frameKey) => this.image(`${definition.key}#${frameKey}`)),
+        fps: animation.fps,
+        loop: animation.loop ?? true,
+      });
+    }
+  }
+}

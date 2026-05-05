@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { loadMenuAssets } from '../assets/AssetLoader';
+import { loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { LevelGeneratorManagerNode, PlayerStateManagerNode } from '../game/nodes';
 import { NodeRoot, NodeRuntime } from '../nodes';
 import { GameplayRootNode, LoadingNode, MenuNode } from '../app/nodes';
@@ -25,6 +25,7 @@ export class AppScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
 
     this.appRuntime = new NodeRuntime({ phaserScene: this });
+    this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
     const debugConfig = readDebugConnectionConfig();
     if (debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(debugConfig));
 

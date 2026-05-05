@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
+import { GameNode, ImageNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerPresentationData, type PlayerPresentationData } from '../nodeData';
 import { MiningToolNode } from './MiningToolNode';
@@ -11,7 +11,8 @@ export class PlayerPresentationNode extends GameNode {
   private world!: GameWorldNode;
   private playerController!: PlayerControllerNode;
   private miningTool!: MiningToolNode;
-  override readonly dependencies = ['world', 'playerController', 'miningTool'] as const;
+  private playerImage!: ImageNode;
+  override readonly dependencies = ['world', 'playerController', 'miningTool', 'playerImage'] as const;
   readonly data: PlayerPresentationData = createPlayerPresentationData();
 
   constructor() {
@@ -26,6 +27,7 @@ export class PlayerPresentationNode extends GameNode {
     this.world = this.requireNode<GameWorldNode>('world');
     this.playerController = this.requireNode<PlayerControllerNode>('playerController');
     this.miningTool = this.requireNode<MiningToolNode>('miningTool');
+    this.playerImage = this.requireNode<ImageNode>('playerImage');
   }
 
   override getDebugBounds(): NodeDebugBounds | undefined {
@@ -66,7 +68,9 @@ export class PlayerPresentationNode extends GameNode {
     });
 
     this.data.facing = animation.facing;
-    player.setTexture(animation.textureKey).setFlipX(animation.flipX);
+    this.playerImage.setAsset(this.assets.image(animation.textureKey));
+    this.playerImage.flipX = animation.flipX;
+    player.setFlipX(animation.flipX);
 
     if (animation.footstepFrame !== undefined && animation.footstepFrame !== this.data.lastFootstepFrame) {
       this.playFootstep();

@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import { LoadingOverlayView } from '../loading/LoadingOverlayView';
-import { loadGameAssets } from '../../assets/AssetLoader';
-import { GameNode, type NodeContext } from '../../nodes';
+import { GAME_GRAPHIC_ASSETS, loadGameAssets } from '../../assets/AssetLoader';
+import { GameNode, type NodeContext, type NodeRuntime } from '../../nodes';
 
 const MIN_LOADING_MS = 900;
 
 export class LoadingNode extends GameNode {
   private phaserScene!: Phaser.Scene;
+  private runtime!: NodeRuntime;
   private readonly overlay = new LoadingOverlayView();
   private startTime = 0;
   private progress = 0;
@@ -21,6 +22,7 @@ export class LoadingNode extends GameNode {
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
+    this.runtime = ctx.runtime;
   }
 
   destroy(): void {
@@ -61,6 +63,7 @@ export class LoadingNode extends GameNode {
   private handleAssetsLoaded(): void {
     this.phaserScene.load.off('progress', this.setProgress, this);
     this.setProgress(1);
+    this.runtime.registerImageAssets(GAME_GRAPHIC_ASSETS);
     this.mountGameplay();
     this.finishLoading();
   }

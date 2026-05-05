@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { GameNode, type NodeContext } from '../../nodes';
+import { GameNode, ImageNode, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { WorldView } from '../world/WorldView';
-import { worldBoundsForLevel } from '../world/worldGeometry';
+import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { CameraZoomNode } from './CameraZoomNode';
 import { LevelNode } from './LevelNode';
 import { MiningToolNode } from './MiningToolNode';
@@ -18,6 +18,7 @@ export class GameWorldNode extends GameNode {
   private miningTool!: MiningToolNode;
   private cameraZoom!: CameraZoomNode;
   private worldView!: WorldView;
+  private playerImageNode!: ImageNode;
   override readonly dependencies = ['level', 'playerState', 'playerController', 'miningTool', 'cameraZoom'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
@@ -28,6 +29,17 @@ export class GameWorldNode extends GameNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.worldView = new WorldView(this.phaserScene);
+    this.playerImageNode = this.addChild(
+      new ImageNode({
+        name: 'playerImage',
+        assetId: 'player-idle-0',
+        order: 50,
+        anchor: 'center',
+        depth: 20,
+        scale: 0.9,
+        syncMode: 'object-to-node',
+      }),
+    );
   }
 
   resolve(): void {
@@ -41,7 +53,6 @@ export class GameWorldNode extends GameNode {
 
   destroy(): void {
     this.clearSceneObjects();
-    this.data.player?.destroy();
     this.data.player = undefined;
   }
 
@@ -74,8 +85,10 @@ export class GameWorldNode extends GameNode {
   }
 
   private spawnPlayer(): void {
-    this.data.player?.destroy();
-    this.data.player = this.worldView.createPlayer(this.level);
+    const spawn = spawnToWorld(this.level);
+    this.data.player = this.playerImageNode.image;
+    this.data.player.setPosition(spawn.x, spawn.y);
+    this.playerImageNode.update(0);
     this.playerController.setPlayer(this.data.player);
 
     const bounds = worldBoundsForLevel(this.level);

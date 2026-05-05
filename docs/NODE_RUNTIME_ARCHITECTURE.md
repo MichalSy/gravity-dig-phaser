@@ -145,6 +145,31 @@ Current examples:
 
 Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function or focused view/helper module and let the node orchestrate it.
 
+## Image Assets and Display Nodes
+
+Image loading is split into three responsibilities:
+
+- `AssetLoader` queues Phaser files (`.webp`, optional `.webp.json` metadata).
+- `AssetCatalog` resolves typed records such as `ImageAsset`, `FrameAsset`, and `ImageAnimationAsset`.
+- Display nodes consume resolved assets; they do not parse file names or JSON metadata.
+
+Asset ids use compact references:
+
+```txt
+player.webp          # whole image
+player.webp#idle_01  # named frame from player.webp.json
+player.webp@walk     # animation from player.webp.json
+```
+
+The first implementation keeps the current texture keys (`player-idle-0`, etc.) as valid `ImageAsset` ids while adding support for future `image.webp.json` atlas metadata. `ImageAssetKind` is an enum-like const object because the game tsconfig uses `erasableSyntaxOnly`, which rejects runtime TypeScript enums.
+
+Display primitives live under `src/nodes/`:
+
+- `TransformNode` — position/size/anchor/depth/scale base.
+- `ImageNode` — renders either an `ImageAsset` or `FrameAsset`.
+- `AnimatedImageNode` — plays an `ImageAnimationAsset` frame sequence.
+- `DisplayNodeFactory` — small construction helper for display nodes.
+
 ## Node Layout
 
 Every runtime node lives in its own file. Root nodes compose child nodes; large multi-node files are intentionally avoided.
@@ -170,7 +195,7 @@ Current gameplay nodes mounted under `GameplayRootNode`:
 - `HudStateNode` — current HUD view model for UI rendering
 - `LevelNode` — level data lifecycle plus tile/collision query facade
 - `CameraZoomNode` — camera zoom sync
-- `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow
+- `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow; owns `playerImage` as an `ImageNode`
 - `PlayerControllerNode` — player input to movement/physics; no world reset or debug toggles
 - `MiningToolNode` — mining input, laser, targeting, tile damage, crack overlays, block break handling
 - `PlayerPresentationNode` — animation, facing, footsteps

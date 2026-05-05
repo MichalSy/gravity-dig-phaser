@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { AssetCatalog, type ImageAssetDefinition } from '../assets/AssetCatalog';
 import { GameNode, type NodeContext } from './GameNode';
 import { NodeRoot } from './NodeRoot';
 
@@ -10,14 +11,17 @@ export class NodeRuntime {
   private readonly persistentNodeList: GameNode[] = [];
   private readonly rootNodes: NodeRoot[] = [];
   private readonly registry = new Map<string, GameNode>();
+  private readonly assetCatalog: AssetCatalog;
   private readonly ctx: NodeContext;
   private initialized = false;
   private resolved = false;
 
   constructor(options: NodeRuntimeOptions) {
+    this.assetCatalog = new AssetCatalog(options.phaserScene);
     this.ctx = {
       phaserScene: options.phaserScene,
       runtime: this,
+      assets: this.assetCatalog,
       getNode: <T extends GameNode = GameNode>(name: string): T | undefined => this.getNode<T>(name),
       requireNode: <T extends GameNode = GameNode>(name: string): T => this.requireNode<T>(name),
     };
@@ -29,6 +33,14 @@ export class NodeRuntime {
 
   get roots(): readonly NodeRoot[] {
     return this.rootNodes;
+  }
+
+  get assets(): AssetCatalog {
+    return this.assetCatalog;
+  }
+
+  registerImageAssets(definitions: readonly ImageAssetDefinition[]): void {
+    this.assetCatalog.registerImages(definitions);
   }
 
   addPersistentNode<T extends GameNode>(node: T): T {

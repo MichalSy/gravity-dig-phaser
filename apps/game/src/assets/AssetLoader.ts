@@ -1,20 +1,19 @@
 import Phaser from 'phaser';
+import type { ImageAssetDefinition } from './AssetCatalog';
+import { imageAtlasMetaKey, imageAtlasMetaPath } from './imageAtlasMeta';
 
 const ASSET_VERSION = Date.now().toString(36);
 
-interface GraphicAssetDefinition {
-  key: string;
-  path: string;
-}
+type GraphicAssetDefinition = ImageAssetDefinition;
 
-const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+export const MENU_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = [
   { key: 'title-screen', path: '/assets/ui/menu/title_screen.webp' },
   { key: 'loading-screen', path: '/assets/ui/menu/loading_screen.webp' },
   { key: 'menu-button-active', path: '/assets/ui/menu/menu_button_active.webp' },
   { key: 'menu-button-inactive', path: '/assets/ui/menu/menu_button_inactive.webp' },
 ];
 
-const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+const GAME_STATIC_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = [
   { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.webp' },
   { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.webp' },
   { key: 'ship', path: '/assets/ships/the_bucket.webp' },
@@ -34,12 +33,12 @@ const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.webp' },
 ];
 
-const GAME_CRACK_GRAPHIC_ASSETS: GraphicAssetDefinition[] = Array.from({ length: 4 }, (_, index) => ({
+const GAME_CRACK_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = Array.from({ length: 4 }, (_, index) => ({
   key: `crack-${index + 1}`,
   path: `/assets/effects/cracks/crack-${index + 1}.webp`,
 }));
 
-const GAME_PLAYER_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+const GAME_PLAYER_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = [
   ...Array.from({ length: 6 }, (_, index) => ({
     key: `player-walk-${index}`,
     path: `/assets/character/generated/walk/east/frame_${frameName(index)}.webp`,
@@ -54,7 +53,7 @@ const GAME_PLAYER_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   })),
 ];
 
-const GAME_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+export const GAME_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = [
   ...GAME_STATIC_GRAPHIC_ASSETS,
   ...GAME_CRACK_GRAPHIC_ASSETS,
   ...GAME_PLAYER_GRAPHIC_ASSETS,
@@ -71,6 +70,7 @@ function frameName(index: number): string {
 
 function loadImageAsset(load: Phaser.Loader.LoaderPlugin, asset: GraphicAssetDefinition): void {
   load.image(asset.key, versioned(asset.path));
+  if (asset.meta) load.json(imageAtlasMetaKey(asset.key), versioned(imageAtlasMetaPath(asset.path)));
 }
 
 export function loadMenuAssets(scene: Phaser.Scene): void {

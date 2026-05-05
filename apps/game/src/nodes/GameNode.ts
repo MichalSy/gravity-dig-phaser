@@ -1,10 +1,12 @@
 import type Phaser from 'phaser';
+import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
 
 export interface NodeContext {
   phaserScene: Phaser.Scene;
   runtime: NodeRuntime;
+  assets: AssetCatalog;
   getNode<T extends GameNode = GameNode>(name: string): T | undefined;
   requireNode<T extends GameNode = GameNode>(name: string): T;
 }
@@ -66,6 +68,11 @@ export abstract class GameNode {
 
   get isResolved(): boolean {
     return this.resolved;
+  }
+
+  protected get assets(): AssetCatalog {
+    if (!this.nodeContext) throw new Error(`Node ${this.debugName()} is not initialized and cannot access assets`);
+    return this.nodeContext.assets;
   }
 
   addChild<T extends GameNode>(child: T): T {
