@@ -19,7 +19,7 @@ export class ImageNode extends TransformNode {
   private readonly syncMode: ImageNodeSyncMode;
 
   constructor(options: ImageNodeOptions) {
-    super(options);
+    super({ ...options, className: options.className ?? 'ImageNode' });
     this.assetId = options.assetId;
     this.flipX = options.flipX ?? false;
     this.syncMode = options.syncMode ?? 'node-to-object';

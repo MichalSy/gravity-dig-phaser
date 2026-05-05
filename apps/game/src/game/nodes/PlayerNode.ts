@@ -1,10 +1,11 @@
+import Phaser from 'phaser';
 import { GameNode, ImageNode } from '../../nodes';
 import { PlayerControllerNode } from './PlayerControllerNode';
 import { PlayerPresentationNode } from './PlayerPresentationNode';
 
 export class PlayerNode extends GameNode {
   constructor() {
-    super({ name: 'player', order: 8 });
+    super({ name: 'player', order: 8, className: 'PlayerNode' });
     this.addChild(new PlayerControllerNode());
     this.addChild(new PlayerPresentationNode());
     this.addChild(
@@ -18,5 +19,20 @@ export class PlayerNode extends GameNode {
         syncMode: 'object-to-node',
       }),
     );
+  }
+
+  get image(): Phaser.GameObjects.Image {
+    return this.imageNode.image;
+  }
+
+  spawnAt(x: number, y: number): Phaser.GameObjects.Image {
+    this.image.setPosition(x, y);
+    this.imageNode.update(0);
+    this.requireNode<PlayerControllerNode>('playerController').setPlayer(this.image);
+    return this.image;
+  }
+
+  private get imageNode(): ImageNode {
+    return this.requireNode<ImageNode>('playerImage');
   }
 }

@@ -24,6 +24,7 @@ export type NodeDebugProps = Record<string, string | number | boolean | null>;
 
 export interface GameNodeOptions {
   name?: string;
+  className?: string;
   active?: boolean;
   visible?: boolean;
   order?: number;
@@ -34,6 +35,7 @@ export interface GameNodeOptions {
 
 export abstract class GameNode {
   readonly name?: string;
+  private readonly debugClassNameValue: string;
   active: boolean;
   visible: boolean;
   order: number;
@@ -50,6 +52,7 @@ export abstract class GameNode {
 
   protected constructor(options: GameNodeOptions = {}) {
     this.name = options.name;
+    this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
     this.visible = options.visible ?? true;
     this.order = options.order ?? 0;
@@ -199,7 +202,11 @@ export abstract class GameNode {
   }
 
   debugName(): string {
-    return this.name ?? this.constructor.name;
+    return this.name ?? this.debugClassNameValue;
+  }
+
+  debugClassName(): string {
+    return this.debugClassNameValue;
   }
 
   private validateDependencies(ctx: NodeContext): void {

@@ -10,7 +10,7 @@ export class CameraZoomNode extends GameNode {
   readonly data: CameraZoomData = createCameraZoomData();
 
   constructor() {
-    super({ name: 'cameraZoom', order: 1 });
+    super({ name: 'cameraZoom', order: 1, className: 'CameraZoomNode' });
   }
 
   init(ctx: NodeContext): void {

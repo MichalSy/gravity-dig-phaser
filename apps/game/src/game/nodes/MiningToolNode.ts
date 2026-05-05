@@ -26,7 +26,7 @@ export class MiningToolNode extends GameNode {
   readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
-    super({ name: 'miningTool', order: 20 });
+    super({ name: 'miningTool', order: 20, className: 'MiningToolNode' });
   }
 
   init(ctx: NodeContext): void {

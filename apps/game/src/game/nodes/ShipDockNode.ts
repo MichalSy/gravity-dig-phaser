@@ -16,7 +16,7 @@ export class ShipDockNode extends GameNode {
   readonly data: ShipDockData = createShipDockData();
 
   constructor() {
-    super({ name: 'shipDock', order: 80 });
+    super({ name: 'shipDock', order: 80, className: 'ShipDockNode' });
   }
 
   init(ctx: NodeContext): void {

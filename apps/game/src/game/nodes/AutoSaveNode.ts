@@ -8,7 +8,7 @@ export class AutoSaveNode extends GameNode {
   readonly data: AutoSaveData = createAutoSaveData();
 
   constructor() {
-    super({ name: 'autoSave', order: 90 });
+    super({ name: 'autoSave', order: 90, className: 'AutoSaveNode' });
   }
 
   resolve(): void {

@@ -12,7 +12,7 @@ export class StatusHudNode extends GameNode {
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
-    super({ name: 'ui.statusHud', order: 0 });
+    super({ name: 'ui.statusHud', order: 0, className: 'StatusHudNode' });
   }
 
   init(ctx: NodeContext): void {

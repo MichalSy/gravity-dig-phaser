@@ -17,7 +17,7 @@ export class PlayerControllerNode extends GameNode {
   readonly data: PlayerControllerData = createPlayerControllerData();
 
   constructor() {
-    super({ name: 'playerController', order: 10 });
+    super({ name: 'playerController', order: 10, className: 'PlayerControllerNode' });
   }
 
   init(ctx: NodeContext): void {

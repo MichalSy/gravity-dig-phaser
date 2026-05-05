@@ -12,7 +12,7 @@ export class HudNode extends GameNode {
   override readonly dependencies = ['world', 'playerState', 'gameplayInput', 'hudState'] as const;
 
   constructor() {
-    super({ name: 'hud', order: 60 });
+    super({ name: 'hud', order: 60, className: 'HudNode' });
   }
 
   resolve(): void {

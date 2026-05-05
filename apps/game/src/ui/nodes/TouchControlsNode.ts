@@ -13,7 +13,7 @@ export class TouchControlsNode extends GameNode {
   override readonly dependencies = ['gameplayInput'] as const;
 
   constructor() {
-    super({ name: 'ui.touchControls', order: 50 });
+    super({ name: 'ui.touchControls', order: 50, className: 'TouchControlsNode' });
   }
 
   init(ctx: NodeContext): void {

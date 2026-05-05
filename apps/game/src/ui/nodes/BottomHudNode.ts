@@ -15,7 +15,7 @@ export class BottomHudNode extends GameNode {
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
-    super({ name: 'ui.bottomHud', order: 10 });
+    super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode' });
   }
 
   init(ctx: NodeContext): void {

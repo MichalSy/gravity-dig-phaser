@@ -5,7 +5,7 @@ export class HudStateNode extends GameNode {
   private state?: HudState;
 
   constructor() {
-    super({ name: 'hudState', order: 0 });
+    super({ name: 'hudState', order: 0, className: 'HudStateNode' });
   }
 
   setState(state: HudState): void {

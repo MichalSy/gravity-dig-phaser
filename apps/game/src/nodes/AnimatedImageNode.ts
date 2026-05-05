@@ -13,7 +13,7 @@ export class AnimatedImageNode extends ImageNode {
   private frameElapsedMs = 0;
 
   constructor(options: AnimatedImageNodeOptions) {
-    super({ ...options, assetId: '' });
+    super({ ...options, assetId: '', className: options.className ?? 'AnimatedImageNode' });
     this.animationId = options.animationId;
   }
 

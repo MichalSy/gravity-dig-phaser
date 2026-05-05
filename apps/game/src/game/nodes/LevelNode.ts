@@ -12,7 +12,7 @@ export class LevelNode extends GameNode {
   override readonly dependencies = ['levelGenerator'] as const;
 
   constructor() {
-    super({ name: 'level', order: 0 });
+    super({ name: 'level', order: 0, className: 'LevelNode' });
   }
 
   init(ctx: NodeContext): void {

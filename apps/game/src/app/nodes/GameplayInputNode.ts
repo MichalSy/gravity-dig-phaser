@@ -33,7 +33,7 @@ export class GameplayInputNode extends GameNode {
   private controlPointerResolver: (pointer: Phaser.Input.Pointer) => boolean = () => false;
 
   constructor() {
-    super({ name: 'gameplayInput', order: 0 });
+    super({ name: 'gameplayInput', order: 0, className: 'GameplayInputNode' });
   }
 
   init(ctx: NodeContext): void {

@@ -16,7 +16,7 @@ export class PlayerPresentationNode extends GameNode {
   readonly data: PlayerPresentationData = createPlayerPresentationData();
 
   constructor() {
-    super({ name: 'playerPresentation', order: 30 });
+    super({ name: 'playerPresentation', order: 30, className: 'PlayerPresentationNode' });
   }
 
   init(ctx: NodeContext): void {

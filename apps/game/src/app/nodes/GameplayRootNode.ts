@@ -16,7 +16,7 @@ import { GameplayUiRootNode } from '../../ui/nodes';
 
 export class GameplayRootNode extends NodeRoot {
   constructor() {
-    super({ rootName: 'gameplay', order: 20 });
+    super({ rootName: 'gameplay', order: 20, className: 'GameplayRootNode' });
     this.addChild(new GameplayInputNode());
     this.addChild(new HudStateNode());
     this.addChild(new LevelNode());
