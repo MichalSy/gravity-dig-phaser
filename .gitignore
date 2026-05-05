@@ -5,3 +5,6 @@ dist
 *.meta
 .vscode
 .idea
+
+.next
+**/.next
