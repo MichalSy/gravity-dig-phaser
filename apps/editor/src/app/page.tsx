@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw, RotateCcw } from 'lucide-react';
 import type { DebugMessage, DebugNodeDelta, DebugNodeDescriptor } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -41,10 +41,16 @@ export default function Home() {
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [gameCount, setGameCount] = useState(0);
   const [treeRoots, setTreeRoots] = useState<DebugNodeDescriptor[]>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
+  const [gameFrameKey, setGameFrameKey] = useState(0);
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
   const debugGameUrl = useMemo(() => buildDebugGameUrl(sessionId), [sessionId]);
+  const selectedNode = useMemo(
+    () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
+    [selectedNodeId, treeRoots],
+  );
 
   useEffect(() => {
     let disposed = false;
@@ -59,7 +65,7 @@ export default function Home() {
         const hello: DebugMessage = { type: 'hello', role: 'editor', sessionId };
         socket.send(JSON.stringify(hello));
         setStatus('connected');
-        setLastEvent('Editor verbunden. Game starten.');
+        setLastEvent('Relay verbunden. Game wird im Editor geladen.');
       });
 
       socket.addEventListener('message', (event) => {
@@ -91,12 +97,17 @@ export default function Home() {
 
       if (message.type === 'node:tree') {
         setTreeRoots(message.roots);
+        setSelectedNodeId((current) => current ?? message.roots[0]?.id);
         setLastEvent(`Node Tree geladen: ${countNodes(message.roots)} Nodes`);
         return;
       }
 
       if (message.type === 'node:delta') {
-        setTreeRoots((current) => applyNodeDeltas(current, message.deltas));
+        setTreeRoots((current) => {
+          const next = applyNodeDeltas(current, message.deltas);
+          setSelectedNodeId((selected) => (selected && findNode(next, selected) ? selected : next[0]?.id));
+          return next;
+        });
         setLastEvent(`${message.deltas.length} Node-Änderung(en)`);
       }
     }
@@ -111,72 +122,169 @@ export default function Home() {
     };
   }, [sessionId]);
 
-  function openGame(): void {
+  function openGameInTab(): void {
     window.open(debugGameUrl, '_blank', 'noopener,noreferrer');
+  }
+
+  function reloadGameFrame(): void {
+    setGameFrameKey((current) => current + 1);
   }
 
   function newSession(): void {
     setTreeRoots([]);
+    setSelectedNodeId(undefined);
     setGameCount(0);
     setLastEvent('Neue Session bereit.');
     setSessionId(createSessionId());
+    setGameFrameKey((current) => current + 1);
   }
 
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
-  const gameText = gameCount > 0 ? 'Game verbunden' : 'Kein Game verbunden';
+  const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
 
   return (
-    <main className={styles.shell}>
-      <section className={styles.heroCard}>
-        <div>
-          <p className={styles.eyebrow}>Gravity Dig</p>
+    <main className={styles.appShell}>
+      <header className={styles.toolbar}>
+        <div className={styles.brandBlock}>
+          <span className={styles.eyebrow}>Gravity Dig</span>
           <h1 className={styles.title}>Debug Editor</h1>
-          <p className={styles.copy}>Automatisch gekoppelt. Game starten, Tree ansehen.</p>
         </div>
         <div className={styles.statusStack}>
           <span className={`${styles.badge} ${styles[status]}`}>{statusText}</span>
-          <span className={`${styles.badge} ${gameCount > 0 ? styles.connected : styles.disconnected}`}>{gameText}</span>
+          <span className={`${styles.badge} ${gameCount > 0 ? styles.connected : styles.connecting}`}>{gameText}</span>
         </div>
         <div className={styles.actions}>
-          <button className={styles.button} onClick={openGame}>
-            <ExternalLink size={18} /> Game starten
+          <button className={styles.button} onClick={reloadGameFrame}>
+            <RotateCcw size={16} /> Game neu laden
           </button>
-          <button className={`${styles.button} ${styles.secondary}`} onClick={newSession}>
-            <RefreshCw size={18} /> Neue Session
+          <button className={`${styles.button} ${styles.secondary}`} onClick={openGameInTab}>
+            <ExternalLink size={16} /> Neuer Tab
+          </button>
+          <button className={`${styles.button} ${styles.ghost}`} onClick={newSession}>
+            <RefreshCw size={16} /> Neue Session
           </button>
         </div>
-      </section>
+      </header>
 
-      <section className={styles.card}>
-        <div className={styles.header}>
-          <h2 className={styles.sectionTitle}>Node Hierarchie</h2>
-          <span className={styles.muted}>{lastEvent}</span>
-        </div>
-        {treeRoots.length > 0 ? <NodeTree nodes={treeRoots} /> : <p className={styles.empty}>Noch kein Tree. Starte das Game.</p>}
+      <section className={styles.workbench}>
+        <aside className={styles.panel}>
+          <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`} />
+          <div className={styles.panelBody}>
+            {treeRoots.length > 0 ? (
+              <NodeTree nodes={treeRoots} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
+            ) : (
+              <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
+            )}
+          </div>
+        </aside>
+
+        <section className={styles.viewportPanel}>
+          <PanelHeader title="Game" meta={lastEvent} />
+          <div className={styles.viewportBody}>
+            <div className={styles.frameStage}>
+              <iframe
+                key={`${sessionId}-${gameFrameKey}`}
+                className={styles.gameFrame}
+                title="Gravity Dig Game"
+                src={debugGameUrl}
+                allow="gamepad; fullscreen"
+              />
+            </div>
+          </div>
+        </section>
+
+        <aside className={styles.panel}>
+          <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
+          <div className={styles.panelBody}>
+            {selectedNode ? <Inspector node={selectedNode} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+          </div>
+        </aside>
       </section>
     </main>
   );
 }
 
-function NodeTree({ nodes }: { nodes: DebugNodeDescriptor[] }) {
+function PanelHeader({ title, meta }: { title: string; meta: string }) {
+  return (
+    <div className={styles.panelHeader}>
+      <h2>{title}</h2>
+      <span>{meta}</span>
+    </div>
+  );
+}
+
+function NodeTree({
+  nodes,
+  selectedNodeId,
+  onSelectNode,
+}: {
+  nodes: DebugNodeDescriptor[];
+  selectedNodeId?: string;
+  onSelectNode(id: string): void;
+}) {
   return (
     <ol className={styles.treeList}>
-      {nodes.map((node) => <NodeTreeItem key={node.id} node={node} />)}
+      {nodes.map((node) => (
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+      ))}
     </ol>
   );
 }
 
-function NodeTreeItem({ node }: { node: DebugNodeDescriptor }) {
+function NodeTreeItem({
+  node,
+  selectedNodeId,
+  onSelectNode,
+}: {
+  node: DebugNodeDescriptor;
+  selectedNodeId?: string;
+  onSelectNode(id: string): void;
+}) {
   return (
     <li className={styles.treeItem}>
-      <div className={`${styles.nodeRow} ${!node.active ? styles.inactiveNode : ''}`}>
+      <button
+        type="button"
+        className={`${styles.nodeRow} ${!node.active ? styles.inactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}
+        onClick={() => onSelectNode(node.id)}
+      >
         <span className={styles.nodeName}>{node.name}</span>
         <span className={styles.nodeMeta}>{node.className}</span>
         {!node.active && <span className={styles.nodeFlag}>inactive</span>}
         {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
-      </div>
-      {node.children.length > 0 && <NodeTree nodes={node.children} />}
+      </button>
+      {node.children.length > 0 && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />}
     </li>
+  );
+}
+
+function Inspector({ node }: { node: DebugNodeDescriptor }) {
+  return (
+    <div className={styles.inspector}>
+      <div>
+        <label>Name</label>
+        <strong>{node.name}</strong>
+      </div>
+      <div>
+        <label>Class</label>
+        <strong>{node.className}</strong>
+      </div>
+      <div>
+        <label>ID</label>
+        <code>{node.id}</code>
+      </div>
+      <div className={styles.inspectorGrid}>
+        <span>Active</span>
+        <strong>{node.active ? 'true' : 'false'}</strong>
+        <span>Visible</span>
+        <strong>{node.visible ? 'true' : 'false'}</strong>
+        <span>Order</span>
+        <strong>{node.order}</strong>
+        <span>Index</span>
+        <strong>{node.index}</strong>
+        <span>Children</span>
+        <strong>{node.children.length}</strong>
+      </div>
+    </div>
   );
 }
 
