@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
-import { GRAVITY, PLAYER_SIZE } from '../../config/gameConfig';
 import { GameNode, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createPlayerControllerData, type PlayerControllerData } from '../nodeData';
+import { stepPlayerPhysics } from '../physics/playerMovement';
 import type { GameWorldNode } from './GameWorldNode';
 import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
@@ -134,20 +134,13 @@ export class PlayerControllerNode extends GameNode {
   private applyPhysics(deltaSeconds: number): void {
     if (!this.player) return;
 
-    const wasGrounded = this.data.grounded;
-    if (this.data.gravityEnabled) this.data.velocity.y += GRAVITY * deltaSeconds;
-
-    this.moveAxis(this.data.velocity.x * deltaSeconds, 0);
-    this.data.grounded = false;
-    this.moveAxis(0, this.data.velocity.y * deltaSeconds);
-
-    if (wasGrounded && !this.data.grounded) this.data.coyoteTimerSeconds = 0.1;
-    if (this.data.coyoteTimerSeconds > 0) this.data.coyoteTimerSeconds -= deltaSeconds;
-
-    if (this.data.jumpBufferTimerSeconds > 0 && (this.data.grounded || this.data.coyoteTimerSeconds > 0)) {
-      this.jump();
-      this.data.jumpBufferTimerSeconds = 0;
-    }
+    stepPlayerPhysics({
+      player: this.player,
+      data: this.data,
+      deltaSeconds,
+      collidesBox: (x, y, width, height) => this.levelNode.collidesBox(x, y, width, height),
+      jump: () => this.jump(),
+    });
   }
 
   private jump(): void {
@@ -155,28 +148,6 @@ export class PlayerControllerNode extends GameNode {
     this.data.grounded = false;
     this.data.coyoteTimerSeconds = 0;
     this.phaserScene.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) });
-  }
-
-  private moveAxis(dx: number, dy: number): void {
-    if (!this.player || (dx === 0 && dy === 0)) return;
-
-    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8);
-    const stepX = dx / steps;
-    const stepY = dy / steps;
-
-    for (let i = 0; i < steps; i += 1) {
-      const nextX = this.player.x + stepX;
-      const nextY = this.player.y + stepY;
-      if (!this.levelNode.collidesBox(nextX, nextY, PLAYER_SIZE.w, PLAYER_SIZE.h)) {
-        this.player.setPosition(nextX, nextY);
-        continue;
-      }
-
-      if (dy > 0) this.data.grounded = true;
-      if (dy !== 0) this.data.velocity.y = 0;
-      if (dx !== 0) this.data.velocity.x = 0;
-      break;
-    }
   }
 
 }

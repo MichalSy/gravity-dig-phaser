@@ -4,11 +4,11 @@ import type { LevelData } from './level';
 type Facing = 'east' | 'west';
 
 export interface CameraZoomData {
-  debugZoomOffset: number;
+  zoomOffset: number;
 }
 
 export function createCameraZoomData(): CameraZoomData {
-  return { debugZoomOffset: 0 };
+  return { zoomOffset: 0 };
 }
 
 export interface GameWorldData {
@@ -37,14 +37,6 @@ export function createPlayerPresentationData(): PlayerPresentationData {
     walkSoundIndex: 0,
     lastFootstepFrame: -1,
   };
-}
-
-export interface CollisionDebugData {
-  enabled: boolean;
-}
-
-export function createCollisionDebugData(): CollisionDebugData {
-  return { enabled: false };
 }
 
 export interface ShipDockData {

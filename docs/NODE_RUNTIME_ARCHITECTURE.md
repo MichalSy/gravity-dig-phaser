@@ -120,7 +120,11 @@ Reusable decision logic lives outside the node classes:
 ```txt
 src/game/gameplayLogic.ts      # gameplay decisions and view-model builders
 src/game/level/                # deterministic level generation pipeline
+src/game/mining/               # mining targeting, damage, and laser view
+src/game/physics/              # movement/physics helpers
+src/game/world/                # world geometry and decoration/player view factories
 src/input/gameplayIntents.ts   # player/mining input intent builders
+src/app/menu/                  # menu config/layout/view
 src/ui/layout/                 # pure UI layout calculations
 ```
 
@@ -130,11 +134,12 @@ Current examples:
 - `buildHudState(...)`
 - `buildShipDockPrompt(...)`
 - `isAtShipDock(...)`
-- `spawnToWorld(...)`
-- `worldBoundsForLevel(...)`
 - `buildPlayerInputIntent(...)`
 - `buildMiningInputIntent(...)`
 - `computeBottomHudLayout(...)`
+- `stepPlayerPhysics(...)`
+- `findFirstMineableTile(...)`
+- `worldBoundsForLevel(...)`
 
 Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function or focused view/helper module and let the node orchestrate it.
 
@@ -144,12 +149,16 @@ Every runtime node lives in its own file. Root nodes compose child nodes; large 
 
 ```txt
 src/app/loading/     # loading overlay view
+src/app/menu/        # menu view/config/layout
 src/app/nodes/       # app roots/state/menu/loading
 src/game/level/      # level generation domain pipeline
+src/game/mining/     # mining targeting, damage, laser view
 src/game/nodes/      # gameplay/runtime/save nodes
+src/game/physics/    # physics helpers
+src/game/world/      # world geometry and view factories
 src/input/           # input intent builders
 src/ui/layout/       # UI layout calculators
-src/ui/nodes/        # HUD, debug panel, touch controls
+src/ui/nodes/        # HUD and touch controls
 src/nodes/           # node runtime primitives
 ```
 
@@ -163,7 +172,6 @@ Current gameplay nodes mounted under `GameplayRootNode`:
 - `PlayerControllerNode` — player input, movement, physics, collision stepping
 - `MiningToolNode` — mining input, laser, targeting, tile damage, crack overlays, block break handling
 - `PlayerPresentationNode` — animation, facing, footsteps
-- `CollisionDebugNode` — collision debug graphics
 - `RunRecoveryNode` — energy recovery while not mining
 - `HudNode` — writes the HUD view model into `HudStateNode`
 - `ShipDockNode` — ship prompt and cargo return interaction
@@ -178,9 +186,6 @@ UI nodes mounted under `GameplayUiRootNode`:
 
 - `StatusHudNode`
 - `BottomHudNode`
-- `RuntimeDebugTextNode`
-- `DeveloperDialogNode`
-- `DebugPanelNode`
 - `TouchControlsNode`
 
 ## Adding a New Node

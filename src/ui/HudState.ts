@@ -20,8 +20,5 @@ export interface HudState {
   energy: HudMeterState;
   fuel: HudMeterState;
   cargo: HudCargoState;
-  debug: string;
-  target: string;
-  zoom: string;
   inputMode: InputMode;
 }

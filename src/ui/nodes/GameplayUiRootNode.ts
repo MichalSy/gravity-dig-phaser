@@ -2,9 +2,6 @@ import { GameplayInputNode, HudStateNode } from '../../app/nodes';
 import { NodeRoot } from '../../nodes';
 import type { InputMode } from '../HudState';
 import { BottomHudNode } from './BottomHudNode';
-import { DebugPanelNode } from './DebugPanelNode';
-import { DeveloperDialogNode } from './DeveloperDialogNode';
-import { RuntimeDebugTextNode } from './RuntimeDebugTextNode';
 import { StatusHudNode } from './StatusHudNode';
 import { TouchControlsNode } from './TouchControlsNode';
 
@@ -15,9 +12,6 @@ export class GameplayUiRootNode extends NodeRoot {
     super({ rootName: 'ui.gameplay', order: 100 });
     this.addChild(new StatusHudNode());
     this.addChild(new BottomHudNode());
-    this.addChild(new RuntimeDebugTextNode());
-    this.addChild(new DeveloperDialogNode());
-    this.addChild(new DebugPanelNode());
     this.addChild(new TouchControlsNode());
   }
 

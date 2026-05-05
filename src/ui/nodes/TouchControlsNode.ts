@@ -2,19 +2,15 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { VirtualJoystick } from '../../controls/VirtualJoystick';
 import { GameNode, type NodeContext } from '../../nodes';
-import { DebugPanelNode } from './DebugPanelNode';
-import { DeveloperDialogNode } from './DeveloperDialogNode';
 import { UI_DEPTH } from './uiLayout';
 
 export class TouchControlsNode extends GameNode {
   private inputState!: GameplayInputNode;
-  private debugPanel!: DebugPanelNode;
-  private developerDialog!: DeveloperDialogNode;
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
   private controlsHint!: Phaser.GameObjects.Text;
   private phaserScene!: Phaser.Scene;
-  override readonly dependencies = ['gameplayInput', 'ui.debugPanel', 'ui.developerDialog'] as const;
+  override readonly dependencies = ['gameplayInput'] as const;
 
   constructor() {
     super({ name: 'ui.touchControls', order: 50 });
@@ -46,8 +42,6 @@ export class TouchControlsNode extends GameNode {
 
   resolve(): void {
     this.inputState = this.requireNode<GameplayInputNode>('gameplayInput');
-    this.debugPanel = this.requireNode<DebugPanelNode>('ui.debugPanel');
-    this.developerDialog = this.requireNode<DeveloperDialogNode>('ui.developerDialog');
     this.inputState.setControlPointerResolver((pointer) => this.containsPointer(pointer));
   }
 
@@ -65,7 +59,7 @@ export class TouchControlsNode extends GameNode {
       this.rightJoystick.setVisible(false);
     }
 
-    this.inputState.setMenuOpen(this.developerDialog.isOpen());
+    this.inputState.setMenuOpen(false);
     this.inputState.setMoveVector(touchMode ? this.leftJoystick.vector : Phaser.Math.Vector2.ZERO);
     this.inputState.setAimVector(touchMode ? this.rightJoystick.aim : Phaser.Math.Vector2.RIGHT);
     this.inputState.setAiming(this.rightJoystick.active);
@@ -91,7 +85,7 @@ export class TouchControlsNode extends GameNode {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
-    if (!this.shouldHandlePointer(pointer)) return;
+    if (!this.isTouchInputEnabled()) return;
     const handled = pointer.x < this.phaserScene.scale.width / 2
       ? this.leftJoystick.handlePointerDown(pointer)
       : this.rightJoystick.handlePointerDown(pointer);
@@ -108,10 +102,6 @@ export class TouchControlsNode extends GameNode {
     if (!this.isTouchInputEnabled()) return;
     this.leftJoystick.handlePointerUp(pointer);
     this.rightJoystick.handlePointerUp(pointer);
-  }
-
-  private shouldHandlePointer(pointer: Phaser.Input.Pointer): boolean {
-    return this.isTouchInputEnabled() && !this.debugPanel.containsPointer(pointer);
   }
 
   private isTouchInputEnabled(): boolean {

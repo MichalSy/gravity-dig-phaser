@@ -1,45 +1,11 @@
 import Phaser from 'phaser';
+import { MENU_ITEMS, type MenuItem } from '../menu/menuConfig';
+import { MenuView } from '../menu/MenuView';
 import { GameNode, type NodeContext } from '../../nodes';
-
-type MenuAction = 'start' | 'options';
-
-interface MenuItem {
-  action: MenuAction;
-  label: string;
-  enabled: boolean;
-}
-
-interface MenuButton {
-  item: MenuItem;
-  image: Phaser.GameObjects.Image;
-  label: Phaser.GameObjects.Text;
-}
-
-const MENU_ITEMS: MenuItem[] = [
-  { action: 'start', label: 'SPIELEN', enabled: true },
-  { action: 'options', label: 'OPTIONEN', enabled: true },
-];
-const BACKGROUND_WIDTH = 2048;
-const BACKGROUND_HEIGHT = 1152;
-const MENU_X = 442;
-const MENU_TOP = 620;
-const MENU_BUTTON_SCALE = 0.205;
-const MENU_BUTTON_WIDTH_SCALE = 1.2;
-const MENU_BUTTON_GAP = 0.14;
-const SELECTOR_WIDTH = 28;
-const SELECTOR_HEIGHT = 34;
-const SELECTOR_GAP = 14;
-const SELECTOR_SCALE = 0.7;
-const LABEL_FONT_SIZE = 27;
-const VERSION_FONT_SIZE = 16;
-const MENU_DEPTH = 2000;
 
 export class MenuNode extends GameNode {
   private phaserScene!: Phaser.Scene;
-  private background?: Phaser.GameObjects.Image;
-  private selector?: Phaser.GameObjects.Triangle;
-  private versionLabel?: Phaser.GameObjects.Text;
-  private buttons: MenuButton[] = [];
+  private view?: MenuView;
   private activeIndex = 0;
 
   private readonly onStart: () => void;
@@ -51,30 +17,11 @@ export class MenuNode extends GameNode {
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    this.phaserScene.cameras.main.setBackgroundColor('#000000');
-    this.background = this.phaserScene.add.image(0, 0, 'title-screen').setOrigin(0.5).setScrollFactor(0).setDepth(MENU_DEPTH);
-    this.selector = this.phaserScene.add
-      .triangle(0, 0, 0, 0, SELECTOR_WIDTH, SELECTOR_HEIGHT / 2, 0, SELECTOR_HEIGHT, 0xf2c94c)
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MENU_DEPTH + 6)
-      .setStrokeStyle(4, 0x4d260f);
-    this.versionLabel = this.phaserScene.add
-      .text(0, 0, `v${__APP_VERSION__}`, {
-        fontFamily: 'Silkscreen',
-        fontSize: `${VERSION_FONT_SIZE}px`,
-        fontStyle: '700',
-        color: '#fff4c7',
-        stroke: '#000000',
-        strokeThickness: 4,
-      })
-      .setOrigin(1, 1)
-      .setScrollFactor(0)
-      .setDepth(MENU_DEPTH + 8)
-      .setAlpha(0.82)
-      .setResolution(2);
-
-    this.buttons = MENU_ITEMS.map((item, index) => this.createMenuButton(item, index));
+    this.view = new MenuView(this.phaserScene, {
+      onHover: (index) => this.setActiveIndex(index),
+      onActivate: (item) => this.activate(item),
+    });
+    this.view.mount();
 
     this.phaserScene.input.keyboard?.on('keydown-UP', this.moveSelectionUp, this);
     this.phaserScene.input.keyboard?.on('keydown-W', this.moveSelectionUp, this);
@@ -94,17 +41,8 @@ export class MenuNode extends GameNode {
     this.phaserScene.input.keyboard?.off('keydown-ENTER', this.activateCurrent, this);
     this.phaserScene.input.keyboard?.off('keydown-SPACE', this.activateCurrent, this);
     this.phaserScene.scale.off('resize', this.layout, this);
-    this.background?.destroy();
-    this.selector?.destroy();
-    this.versionLabel?.destroy();
-    this.background = undefined;
-    this.selector = undefined;
-    this.versionLabel = undefined;
-    for (const button of this.buttons) {
-      button.image.destroy();
-      button.label.destroy();
-    }
-    this.buttons = [];
+    this.view?.destroy();
+    this.view = undefined;
   }
 
   close(): void {
@@ -114,88 +52,8 @@ export class MenuNode extends GameNode {
     this.destroy();
   }
 
-  private createMenuButton(item: MenuItem, index: number): MenuButton {
-    const image = this.phaserScene.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setScrollFactor(0).setDepth(MENU_DEPTH + 5);
-    const label = this.phaserScene.add
-      .text(0, 0, item.label, {
-        fontFamily: 'Silkscreen',
-        fontSize: `${LABEL_FONT_SIZE}px`,
-        fontStyle: '700',
-        color: '#fff4c7',
-        stroke: '#4d260f',
-        strokeThickness: 5,
-        align: 'center',
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(MENU_DEPTH + 7)
-      .setResolution(2);
-
-    if (item.enabled) {
-      image.setInteractive({ useHandCursor: true });
-      image.on('pointerover', () => this.setActiveIndex(index));
-      image.on('pointerdown', () => this.activate(item));
-      label.setInteractive({ useHandCursor: true });
-      label.on('pointerover', () => this.setActiveIndex(index));
-      label.on('pointerdown', () => this.activate(item));
-    }
-
-    return { item, image, label };
-  }
-
   private layout(): void {
-    if (!this.background?.active || !this.selector || !this.versionLabel) return;
-
-    const width = this.phaserScene.scale.width;
-    const height = this.phaserScene.scale.height;
-    const sceneScale = width / this.background.width;
-    this.background.setPosition(width / 2, height / 2).setScale(sceneScale);
-
-    const buttonScale = sceneScale * MENU_BUTTON_SCALE;
-    const buttonTexture = this.phaserScene.textures.get('menu-button-inactive').getSourceImage();
-    const buttonWidth = buttonTexture.width * buttonScale * MENU_BUTTON_WIDTH_SCALE;
-    const buttonHeight = buttonTexture.height * buttonScale;
-    const gap = buttonHeight * MENU_BUTTON_GAP;
-    const left = this.backgroundToScreenX(MENU_X, width, sceneScale);
-    const top = this.backgroundToScreenY(MENU_TOP, height, sceneScale);
-
-    this.buttons.forEach((button, index) => {
-      const y = top + index * (buttonHeight + gap);
-      const fontSize = Math.max(14, LABEL_FONT_SIZE * sceneScale);
-      const alpha = button.item.enabled ? 1 : 0.45;
-
-      button.image
-        .clearTint()
-        .setTexture(index === this.activeIndex && button.item.enabled ? 'menu-button-active' : 'menu-button-inactive')
-        .setPosition(left, y)
-        .setScale(buttonScale * MENU_BUTTON_WIDTH_SCALE, buttonScale)
-        .setAlpha(alpha);
-      button.label
-        .setPosition(left, y - 1 * sceneScale)
-        .setFontSize(fontSize)
-        .setAlpha(alpha);
-    });
-
-    this.versionLabel
-      .setPosition(width - 18 * sceneScale, height - 14 * sceneScale)
-      .setFontSize(Math.max(10, VERSION_FONT_SIZE * sceneScale));
-
-    const activeY = top + this.activeIndex * (buttonHeight + gap);
-    const selectorScale = sceneScale * SELECTOR_SCALE;
-    this.selector
-      .setPosition(
-        left - buttonWidth / 2 - SELECTOR_GAP * sceneScale - (SELECTOR_WIDTH * selectorScale) / 2,
-        activeY,
-      )
-      .setScale(selectorScale);
-  }
-
-  private backgroundToScreenX(x: number, screenWidth: number, scale: number): number {
-    return screenWidth / 2 + (x - BACKGROUND_WIDTH / 2) * scale;
-  }
-
-  private backgroundToScreenY(y: number, screenHeight: number, scale: number): number {
-    return screenHeight / 2 + (y - BACKGROUND_HEIGHT / 2) * scale;
+    this.view?.layout(this.activeIndex);
   }
 
   private moveSelectionUp(): void {
@@ -207,19 +65,19 @@ export class MenuNode extends GameNode {
   }
 
   private activateCurrent(): void {
-    const button = this.buttons[this.activeIndex];
-    if (button) this.activate(button.item);
+    const item = MENU_ITEMS[this.activeIndex];
+    if (item) this.activate(item);
   }
 
   private moveSelection(delta: number): void {
-    const enabledIndexes = this.buttons.flatMap((button, index) => (button.item.enabled ? [index] : []));
+    const enabledIndexes = MENU_ITEMS.flatMap((item, index) => (item.enabled ? [index] : []));
     const enabledPosition = enabledIndexes.indexOf(this.activeIndex);
     const nextPosition = Phaser.Math.Wrap(enabledPosition + delta, 0, enabledIndexes.length);
     this.setActiveIndex(enabledIndexes[nextPosition]);
   }
 
   private setActiveIndex(index: number): void {
-    if (!this.buttons[index]?.item.enabled) return;
+    if (!MENU_ITEMS[index]?.enabled) return;
 
     this.activeIndex = index;
     this.layout();
@@ -233,8 +91,6 @@ export class MenuNode extends GameNode {
       return;
     }
 
-    const button = this.buttons[this.activeIndex];
-    button.image.setTint(0xfff1a8);
-    this.phaserScene.time.delayedCall(300, () => button.image.clearTint());
+    this.view?.flashActiveButton(this.activeIndex);
   }
 }

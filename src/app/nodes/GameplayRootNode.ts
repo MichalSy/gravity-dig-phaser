@@ -4,7 +4,6 @@ import { NodeRoot } from '../../nodes';
 import {
   AutoSaveNode,
   CameraZoomNode,
-  CollisionDebugNode,
   GameWorldNode,
   HudNode,
   LevelNode,
@@ -27,7 +26,6 @@ export class GameplayRootNode extends NodeRoot {
     this.addChild(new PlayerControllerNode());
     this.addChild(new MiningToolNode());
     this.addChild(new PlayerPresentationNode());
-    this.addChild(new CollisionDebugNode());
     this.addChild(new HudNode());
     this.addChild(new RunRecoveryNode());
     this.addChild(new ShipDockNode());

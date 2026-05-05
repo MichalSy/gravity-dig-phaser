@@ -6,7 +6,6 @@ export const GAME_EVENTS = {
   gameplayMenuClosed: 'gameplay-menu:closed',
   worldLevelCreated: 'world:level-created',
   shipReturnCargo: 'ship:return-cargo',
-  debugCollision: 'debug:collision',
 } as const;
 
 export interface GameEventPayloads {
@@ -14,7 +13,6 @@ export interface GameEventPayloads {
   [GAME_EVENTS.gameplayMenuClosed]: void;
   [GAME_EVENTS.worldLevelCreated]: LevelData;
   [GAME_EVENTS.shipReturnCargo]: void;
-  [GAME_EVENTS.debugCollision]: boolean;
 }
 
 type EventName = keyof GameEventPayloads;

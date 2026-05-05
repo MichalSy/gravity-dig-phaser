@@ -2,79 +2,62 @@ import Phaser from 'phaser';
 
 const ASSET_VERSION = Date.now().toString(36);
 
-export type AssetScene = 'menu' | 'game' | 'ui';
-
-export interface GraphicAssetDefinition {
+interface GraphicAssetDefinition {
   key: string;
   path: string;
-  category: string;
-  scenes: AssetScene[];
 }
 
-export const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
-  { key: 'title-screen', path: '/assets/ui/menu/title_screen.webp', category: 'menu', scenes: ['menu'] },
-  { key: 'loading-screen', path: '/assets/ui/menu/loading_screen.webp', category: 'menu', scenes: ['menu'] },
-  { key: 'menu-button-active', path: '/assets/ui/menu/menu_button_active.webp', category: 'menu', scenes: ['menu'] },
-  { key: 'menu-button-inactive', path: '/assets/ui/menu/menu_button_inactive.webp', category: 'menu', scenes: ['menu'] },
+const MENU_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+  { key: 'title-screen', path: '/assets/ui/menu/title_screen.webp' },
+  { key: 'loading-screen', path: '/assets/ui/menu/loading_screen.webp' },
+  { key: 'menu-button-active', path: '/assets/ui/menu/menu_button_active.webp' },
+  { key: 'menu-button-inactive', path: '/assets/ui/menu/menu_button_inactive.webp' },
 ];
 
 const GAME_STATIC_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
-  { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.webp', category: 'tiles', scenes: ['game'] },
-  { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.webp', category: 'backwall', scenes: ['game'] },
-  { key: 'ship', path: '/assets/ships/the_bucket.webp', category: 'ship', scenes: ['game'] },
-  { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.webp', category: 'ship', scenes: ['game'] },
-  { key: 'laser-dot', path: '/assets/effects/laser_beam.webp', category: 'effects', scenes: ['game'] },
-  { key: 'hud-hp-fuel-atlas', path: '/assets/ui/hud/hud_hp_fuel_atlas.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-bar-orange', path: '/assets/ui/hud/hud_bar_orange.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-bar-cyan', path: '/assets/ui/hud/hud_bar_cyan.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-slot-active-empty', path: '/assets/ui/hud/hud_slot_active_empty.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-slot-locked', path: '/assets/ui/hud/hud_slot_locked.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-lock-icon', path: '/assets/ui/hud/hud_lock_icon.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-item-rock', path: '/assets/ui/hud/hud_item_rock.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-icon-hp', path: '/assets/ui/hud/hud_icon_hp.webp', category: 'hud', scenes: ['ui'] },
-  { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.webp', category: 'hud', scenes: ['ui'] },
+  { key: 'tiles', path: '/assets/tilesets/atlas/tiles_atlas.webp' },
+  { key: 'backwall-tiles', path: '/assets/tilesets/atlas/backwall_atlas.webp' },
+  { key: 'ship', path: '/assets/ships/the_bucket.webp' },
+  { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.webp' },
+  { key: 'laser-dot', path: '/assets/effects/laser_beam.webp' },
+  { key: 'hud-hp-fuel-atlas', path: '/assets/ui/hud/hud_hp_fuel_atlas.webp' },
+  { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.webp' },
+  { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.webp' },
+  { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.webp' },
+  { key: 'hud-bar-orange', path: '/assets/ui/hud/hud_bar_orange.webp' },
+  { key: 'hud-bar-cyan', path: '/assets/ui/hud/hud_bar_cyan.webp' },
+  { key: 'hud-slot-active-empty', path: '/assets/ui/hud/hud_slot_active_empty.webp' },
+  { key: 'hud-slot-locked', path: '/assets/ui/hud/hud_slot_locked.webp' },
+  { key: 'hud-lock-icon', path: '/assets/ui/hud/hud_lock_icon.webp' },
+  { key: 'hud-item-rock', path: '/assets/ui/hud/hud_item_rock.webp' },
+  { key: 'hud-icon-hp', path: '/assets/ui/hud/hud_icon_hp.webp' },
+  { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.webp' },
 ];
 
 const GAME_CRACK_GRAPHIC_ASSETS: GraphicAssetDefinition[] = Array.from({ length: 4 }, (_, index) => ({
   key: `crack-${index + 1}`,
   path: `/assets/effects/cracks/crack-${index + 1}.webp`,
-  category: 'effects',
-  scenes: ['game' as AssetScene],
 }));
 
 const GAME_PLAYER_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   ...Array.from({ length: 6 }, (_, index) => ({
     key: `player-walk-${index}`,
     path: `/assets/character/generated/walk/east/frame_${frameName(index)}.webp`,
-    category: 'player',
-    scenes: ['game' as AssetScene],
   })),
   ...Array.from({ length: 2 }, (_, index) => ({
     key: `player-jump-${index}`,
     path: `/assets/character/generated/jump/east/frame_${frameName(index)}.webp`,
-    category: 'player',
-    scenes: ['game' as AssetScene],
   })),
   ...Array.from({ length: 4 }, (_, index) => ({
     key: `player-idle-${index}`,
     path: `/assets/character/generated/idle/east/frame_${frameName(index)}.webp`,
-    category: 'player',
-    scenes: ['game' as AssetScene],
   })),
 ];
 
-export const GAME_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
+const GAME_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
   ...GAME_STATIC_GRAPHIC_ASSETS,
   ...GAME_CRACK_GRAPHIC_ASSETS,
   ...GAME_PLAYER_GRAPHIC_ASSETS,
-];
-
-export const ALL_GRAPHIC_ASSETS: GraphicAssetDefinition[] = [
-  ...MENU_GRAPHIC_ASSETS,
-  ...GAME_GRAPHIC_ASSETS,
 ];
 
 function versioned(path: string): string {
@@ -109,5 +92,4 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   }
 
   load.json('dev-planet', versioned('/config/planets/dev_planet.json'));
-
 }
