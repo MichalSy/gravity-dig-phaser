@@ -549,7 +549,6 @@ function FramePreview({ asset, compact }: { asset: DebugImageAssetDescriptor; co
     const context = canvas.getContext('2d');
     if (!context) return;
     const image = new Image();
-    image.crossOrigin = 'anonymous';
     image.onload = () => {
       canvas.width = asset.rect?.width ?? asset.width;
       canvas.height = asset.rect?.height ?? asset.height;
