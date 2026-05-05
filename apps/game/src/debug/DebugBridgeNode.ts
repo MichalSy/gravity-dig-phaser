@@ -27,6 +27,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   init(ctx: NodeContext): void {
+    GameNode.debugLayoutEnabled = true;
     this.ctx = ctx;
     this.overlay = ctx.phaserScene.add.graphics().setDepth(100_000).setVisible(false);
     this.connect();
@@ -54,6 +55,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   destroy(): void {
+    GameNode.debugLayoutEnabled = false;
     this.clearReconnectTimer();
     this.overlay?.destroy();
     this.overlay = undefined;

@@ -69,18 +69,12 @@ export class BottomHudNode extends GameNode {
 
     for (let i = 0; i < this.slotLabels.length; i += 1) {
       const label = this.slotLabels[i];
-      const frame = this.slotFrameNodes[i].image;
       const item = this.slotItemNodes[i].image;
       const slot = state.cargo.slots[i];
       const slotLayout = computeBottomHudSlotLayout(layout, state, i);
 
-      if (slotLayout.isExtraSlot) {
-        this.slotFrameNodes[i].depth = UI_DEPTH + slotLayout.frameDepth;
-        this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale);
-      } else {
-        this.slotFrameNodes[i].visible = false;
-        frame.setVisible(false);
-      }
+      this.slotFrameNodes[i].depth = UI_DEPTH + slotLayout.frameDepth;
+      this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
 
       this.slotItemNodes[i].position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
       this.slotItemNodes[i].size = { width: slotLayout.itemSize, height: slotLayout.itemSize };
@@ -99,14 +93,14 @@ export class BottomHudNode extends GameNode {
     }
   }
 
-  private placeRegionNode(node: ImageNode, x: number, y: number, scale: number): void {
+  private placeRegionNode(node: ImageNode, x: number, y: number, scale: number, visible = true): void {
     node.position = { x, y };
     node.scale = scale;
     node.scaleX = scale;
     node.scaleY = scale;
     node.size = { width: node.image.frame.width * Math.abs(scale), height: node.image.frame.height * Math.abs(scale) };
-    node.visible = true;
-    node.image.setCrop().setVisible(true);
+    node.visible = visible;
+    node.image.setCrop().setVisible(visible);
   }
 
   private placeBarNode(node: ImageNode, frame: { w: number; h: number }, x: number, y: number, width: number, height: number, pct: number): void {

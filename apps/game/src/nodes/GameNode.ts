@@ -45,6 +45,8 @@ export interface GameNodeOptions {
 }
 
 export abstract class GameNode {
+  static debugLayoutEnabled = false;
+
   readonly name?: string;
   private readonly debugClassNameValue: string;
   active: boolean;
@@ -245,8 +247,9 @@ export abstract class GameNode {
   updateContentSizeFromChildren(): void {
     if (this.sizeMode !== 'content' || this.children.length === 0) return;
 
+    const includeHidden = GameNode.debugLayoutEnabled;
     const childBounds = this.children
-      .filter((child) => child.visible)
+      .filter((child) => includeHidden || child.visible)
       .map((child) => child.getBoundsInParentSpace())
       .filter((bounds): bounds is NodeDebugBounds => Boolean(bounds));
     if (childBounds.length === 0) return;
