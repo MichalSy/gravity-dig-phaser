@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
-import { ImageAssetKind, type FrameAsset, type ImageAnimationAsset, type RenderableImageAsset } from './imageAssets';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor } from '@gravity-dig/debug-protocol';
+import { ImageAssetKind, isFrameAsset, type FrameAsset, type ImageAnimationAsset, type RenderableImageAsset } from './imageAssets';
 import { imageAtlasMetaKey, type ImageAtlasMeta } from './imageAtlasMeta';
 
 export interface ImageAssetDefinition {
@@ -8,9 +9,15 @@ export interface ImageAssetDefinition {
   meta?: boolean;
 }
 
+interface ImageAssetSource {
+  path: string;
+  url: string;
+}
+
 export class AssetCatalog {
   private readonly images = new Map<string, RenderableImageAsset>();
   private readonly animations = new Map<string, ImageAnimationAsset>();
+  private readonly imageSources = new Map<string, ImageAssetSource>();
   private readonly scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene) {
@@ -37,6 +44,45 @@ export class AssetCatalog {
     return this.images.has(id);
   }
 
+  listDebugImages(): DebugImageAssetDescriptor[] {
+    return [...this.images.values()].map((asset) => {
+      if (isFrameAsset(asset)) {
+        const source = this.imageSources.get(asset.sourceImageId);
+        return {
+          id: asset.id,
+          kind: asset.kind,
+          textureKey: asset.textureKey,
+          url: source?.url,
+          width: asset.width,
+          height: asset.height,
+          frameKey: asset.frameKey,
+          sourceImageId: asset.sourceImageId,
+          sourceUrl: source?.url,
+          rect: asset.rect,
+        } satisfies DebugImageAssetDescriptor;
+      }
+
+      return {
+        id: asset.id,
+        kind: asset.kind,
+        textureKey: asset.textureKey,
+        url: this.imageSources.get(asset.id)?.url,
+        width: asset.width,
+        height: asset.height,
+      } satisfies DebugImageAssetDescriptor;
+    });
+  }
+
+  listDebugAnimations(): DebugImageAnimationDescriptor[] {
+    return [...this.animations.values()].map((animation) => ({
+      id: animation.id,
+      kind: animation.kind,
+      frameIds: animation.frames.map((frame) => frame.id),
+      fps: animation.fps,
+      loop: animation.loop,
+    }));
+  }
+
   private registerImage(definition: ImageAssetDefinition): void {
     if (!this.scene.textures.exists(definition.key)) return;
 
@@ -52,6 +98,7 @@ export class AssetCatalog {
       width,
       height,
     });
+    this.imageSources.set(definition.key, { path: definition.path, url: new URL(definition.path, window.location.origin).toString() });
 
     if (!definition.meta) return;
 

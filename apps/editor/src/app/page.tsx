@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
-import type { DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function createSessionId(): string {
@@ -43,6 +43,10 @@ export default function Home() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
   const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
+  const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
+  const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
+  const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
+  const [originalAssetId, setOriginalAssetId] = useState<string | undefined>();
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const reconnectTimerRef = useRef<number | undefined>(undefined);
@@ -51,6 +55,14 @@ export default function Home() {
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
     [selectedNodeId, treeRoots],
+  );
+  const selectedAsset = useMemo(
+    () => (selectedAssetId ? imageAssets.find((asset) => asset.id === selectedAssetId) : undefined),
+    [imageAssets, selectedAssetId],
+  );
+  const originalAsset = useMemo(
+    () => (originalAssetId ? imageAssets.find((asset) => asset.id === originalAssetId) : undefined),
+    [imageAssets, originalAssetId],
   );
 
   useEffect(() => {
@@ -98,6 +110,14 @@ export default function Home() {
       if (message.type === 'relay:status') {
         setGameCount(message.games);
         if (message.games > 0) setLastEvent('Game verbunden.');
+        return;
+      }
+
+      if (message.type === 'asset:list') {
+        setImageAssets(message.images);
+        setAnimations(message.animations);
+        setSelectedAssetId((current) => current && message.images.some((asset) => asset.id === current) ? current : message.images[0]?.id);
+        setLastEvent(`Assets geladen: ${message.images.length} Bilder`);
         return;
       }
 
@@ -156,6 +176,10 @@ export default function Home() {
     setSelectedNodeId(undefined);
     setExpandedNodeIds(new Set());
     setSelectedNodeProps(undefined);
+    setImageAssets([]);
+    setAnimations([]);
+    setSelectedAssetId(undefined);
+    setOriginalAssetId(undefined);
     setGameCount(0);
     setLastEvent('Neue Session bereit.');
     setSessionId(createSessionId());
@@ -234,6 +258,14 @@ export default function Home() {
               />
             </div>
           </div>
+          <AssetExplorer
+            assets={imageAssets}
+            animations={animations}
+            selectedAssetId={selectedAssetId}
+            selectedAsset={selectedAsset}
+            onSelectAsset={setSelectedAssetId}
+            onOpenOriginal={setOriginalAssetId}
+          />
         </section>
 
         <aside className={styles.panel}>
@@ -243,7 +275,118 @@ export default function Home() {
           </div>
         </aside>
       </section>
+      {originalAsset && <OriginalAssetDialog asset={originalAsset} onClose={() => setOriginalAssetId(undefined)} />}
     </main>
+  );
+}
+
+function AssetExplorer({
+  assets,
+  animations,
+  selectedAssetId,
+  selectedAsset,
+  onSelectAsset,
+  onOpenOriginal,
+}: {
+  assets: DebugImageAssetDescriptor[];
+  animations: DebugImageAnimationDescriptor[];
+  selectedAssetId?: string;
+  selectedAsset?: DebugImageAssetDescriptor;
+  onSelectAsset(id: string): void;
+  onOpenOriginal(id: string): void;
+}) {
+  return (
+    <section className={styles.assetExplorer}>
+      <PanelHeader title="Asset Explorer" meta={`${assets.length} Images · ${animations.length} Animations`} />
+      <div className={styles.assetExplorerBody}>
+        <div className={styles.assetGrid}>
+          {assets.length > 0 ? assets.map((asset) => (
+            <button
+              key={asset.id}
+              type="button"
+              className={`${styles.assetTile} ${asset.id === selectedAssetId ? styles.selectedAssetTile : ''}`}
+              onClick={() => onSelectAsset(asset.id)}
+            >
+              <AssetPreview asset={asset} compact />
+              <span>{asset.id}</span>
+              <small>{asset.kind} · {asset.width}×{asset.height}</small>
+            </button>
+          )) : <p className={styles.empty}>Noch keine ImageAssets vom Game empfangen.</p>}
+        </div>
+        <AssetDetails asset={selectedAsset} onOpenOriginal={onOpenOriginal} />
+      </div>
+    </section>
+  );
+}
+
+function AssetDetails({ asset, onOpenOriginal }: { asset?: DebugImageAssetDescriptor; onOpenOriginal(id: string): void }) {
+  if (!asset) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle ein Asset.</p></aside>;
+
+  return (
+    <aside className={styles.assetDetails}>
+      <div className={styles.assetPreviewLarge}>
+        <AssetPreview asset={asset} />
+      </div>
+      <button type="button" className={styles.button} onClick={() => onOpenOriginal(asset.id)}>
+        <ExternalLink size={16} /> Original anzeigen
+      </button>
+      <div className={styles.inspectorGrid}>
+        <FragmentRow name="id" value={asset.id} />
+        <FragmentRow name="kind" value={asset.kind} />
+        <FragmentRow name="textureKey" value={asset.textureKey} />
+        <FragmentRow name="width" value={asset.width} />
+        <FragmentRow name="height" value={asset.height} />
+        <FragmentRow name="url" value={asset.url ?? null} />
+        <FragmentRow name="frameKey" value={asset.frameKey ?? null} />
+        <FragmentRow name="sourceImageId" value={asset.sourceImageId ?? null} />
+        <FragmentRow name="sourceUrl" value={asset.sourceUrl ?? null} />
+        <FragmentRow name="rect" value={asset.rect ? `${asset.rect.x},${asset.rect.y} ${asset.rect.width}×${asset.rect.height}` : null} />
+      </div>
+    </aside>
+  );
+}
+
+function AssetPreview({ asset, compact = false }: { asset: DebugImageAssetDescriptor; compact?: boolean }) {
+  const src = asset.kind === 'frame' ? asset.sourceUrl : asset.url;
+  if (!src) return <div className={styles.assetPreviewMissing}>Keine URL</div>;
+  if (asset.kind === 'frame' && asset.rect) return <FramePreview asset={asset} compact={compact} />;
+  return <img className={compact ? styles.assetThumbnail : styles.assetImagePreview} src={src} alt={asset.id} loading="lazy" />;
+}
+
+function FramePreview({ asset, compact }: { asset: DebugImageAssetDescriptor; compact: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (!asset.sourceUrl || !asset.rect || !canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      canvas.width = asset.rect?.width ?? asset.width;
+      canvas.height = asset.rect?.height ?? asset.height;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, asset.rect!.x, asset.rect!.y, asset.rect!.width, asset.rect!.height, 0, 0, canvas.width, canvas.height);
+    };
+    image.src = asset.sourceUrl;
+  }, [asset]);
+
+  return <canvas ref={canvasRef} className={compact ? styles.assetThumbnail : styles.assetImagePreview} aria-label={asset.id} />;
+}
+
+function OriginalAssetDialog({ asset, onClose }: { asset: DebugImageAssetDescriptor; onClose(): void }) {
+  const src = asset.kind === 'frame' ? asset.sourceUrl : asset.url;
+  return (
+    <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
+      <div className={styles.assetDialog} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <strong>{asset.id}</strong>
+          <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+        </div>
+        {src ? <img className={styles.originalAssetImage} src={src} alt={asset.id} /> : <p className={styles.empty}>Keine URL vorhanden.</p>}
+      </div>
+    </div>
   );
 }
 

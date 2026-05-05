@@ -98,6 +98,42 @@ export interface DebugNodePropsMessage {
   sentAt: number;
 }
 
+export interface DebugAssetRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface DebugImageAssetDescriptor {
+  id: string;
+  kind: 'image' | 'frame';
+  textureKey: string;
+  url?: string;
+  width: number;
+  height: number;
+  frameKey?: string;
+  sourceImageId?: string;
+  sourceUrl?: string;
+  rect?: DebugAssetRect;
+}
+
+export interface DebugImageAnimationDescriptor {
+  id: string;
+  kind: 'animation';
+  frameIds: string[];
+  fps: number;
+  loop: boolean;
+}
+
+export interface DebugAssetListMessage {
+  type: 'asset:list';
+  sessionId: string;
+  images: DebugImageAssetDescriptor[];
+  animations: DebugImageAnimationDescriptor[];
+  sentAt: number;
+}
+
 export type DebugMessage =
   | DebugHelloMessage
   | DebugPingMessage
@@ -107,4 +143,5 @@ export type DebugMessage =
   | DebugNodeTreeMessage
   | DebugNodeDeltaMessage
   | DebugNodeSelectMessage
-  | DebugNodePropsMessage;
+  | DebugNodePropsMessage
+  | DebugAssetListMessage;

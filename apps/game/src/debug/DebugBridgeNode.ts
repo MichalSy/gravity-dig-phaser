@@ -12,6 +12,8 @@ export class DebugBridgeNode extends GameNode {
   private ctx?: NodeContext;
   private lastTree?: DebugNodeTreeSnapshot;
   private treeCheckElapsedMs = 0;
+  private assetCheckElapsedMs = 0;
+  private lastAssetSignature = '';
   private readonly nodeIds = new WeakMap<GameNode, string>();
   private readonly nodesById = new Map<string, GameNode>();
   private nextNodeId = 1;
@@ -38,6 +40,12 @@ export class DebugBridgeNode extends GameNode {
       this.sendSelectedNodeProps();
     }
 
+    this.assetCheckElapsedMs += deltaMs;
+    if (this.assetCheckElapsedMs >= 500) {
+      this.assetCheckElapsedMs = 0;
+      this.sendAssetListIfChanged();
+    }
+
     this.treeCheckElapsedMs += deltaMs;
     if (this.treeCheckElapsedMs < 250) return;
 
@@ -53,6 +61,7 @@ export class DebugBridgeNode extends GameNode {
     this.socket = undefined;
     this.ctx = undefined;
     this.lastTree = undefined;
+    this.lastAssetSignature = '';
     this.selectedNodeId = undefined;
     this.nodesById.clear();
   }
@@ -65,6 +74,7 @@ export class DebugBridgeNode extends GameNode {
     socket.addEventListener('open', () => {
       this.reconnectAttempts = 0;
       this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId });
+      this.sendAssetList();
       this.sendTreeSnapshot();
       console.info('[Gravity Dig Debug] connected', this.config);
     });
@@ -95,6 +105,34 @@ export class DebugBridgeNode extends GameNode {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     }
+  }
+
+  private sendAssetList(): void {
+    if (!this.ctx) return;
+    const images = this.ctx.assets.listDebugImages();
+    const animations = this.ctx.assets.listDebugAnimations();
+    this.lastAssetSignature = this.createAssetSignature(images, animations);
+    this.send({
+      type: 'asset:list',
+      sessionId: this.config.sessionId,
+      images,
+      animations,
+      sentAt: Date.now(),
+    });
+  }
+
+  private sendAssetListIfChanged(): void {
+    if (!this.ctx || this.socket?.readyState !== WebSocket.OPEN) return;
+    const images = this.ctx.assets.listDebugImages();
+    const animations = this.ctx.assets.listDebugAnimations();
+    const signature = this.createAssetSignature(images, animations);
+    if (signature === this.lastAssetSignature) return;
+    this.lastAssetSignature = signature;
+    this.send({ type: 'asset:list', sessionId: this.config.sessionId, images, animations, sentAt: Date.now() });
+  }
+
+  private createAssetSignature(images: { id: string }[], animations: { id: string }[]): string {
+    return `${images.length}:${animations.length}:${images.at(-1)?.id ?? ''}:${animations.at(-1)?.id ?? ''}`;
   }
 
   private sendTreeSnapshot(): void {
