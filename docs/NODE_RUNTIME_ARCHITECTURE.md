@@ -195,10 +195,11 @@ Current gameplay nodes mounted under `GameplayRootNode`:
 - `HudStateNode` — current HUD view model for UI rendering
 - `LevelNode` — level data lifecycle plus tile/collision query facade
 - `CameraZoomNode` — camera zoom sync
-- `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow; owns `playerImage` as an `ImageNode`
+- `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow
+- `PlayerNode` — player entity subtree (`playerController`, `playerPresentation`, `playerImage`)
 - `PlayerControllerNode` — player input to movement/physics; no world reset or debug toggles
 - `MiningToolNode` — mining input, laser, targeting, tile damage, crack overlays, block break handling
-- `PlayerPresentationNode` — animation, facing, footsteps
+- `PlayerPresentationNode` — animation, facing, footsteps; drives `playerImage`
 - `RunRecoveryNode` — energy recovery while not mining
 - `HudNode` — writes the HUD view model into `HudStateNode`
 - `ShipDockNode` — ship prompt and cargo return interaction

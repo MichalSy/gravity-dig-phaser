@@ -6,6 +6,7 @@ export * from './LevelGeneratorManagerNode';
 export * from './LevelNode';
 export * from './MiningToolNode';
 export * from './PlayerControllerNode';
+export * from './PlayerNode';
 export * from './PlayerPresentationNode';
 export * from './PlayerStateManagerNode';
 export * from './RunRecoveryNode';

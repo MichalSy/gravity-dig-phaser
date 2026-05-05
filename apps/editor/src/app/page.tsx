@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, RefreshCw, RotateCcw } from 'lucide-react';
+import { ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
 import type { DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -266,6 +266,7 @@ function NodeTreeItem({
         className={`${styles.nodeRow} ${!node.active ? styles.inactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}
         onClick={() => onSelectNode(node.id)}
       >
+        {isImageNode(node) && <ImageIcon className={styles.nodeIcon} size={14} />}
         <span className={styles.nodeName}>{node.name}</span>
         <span className={styles.nodeMeta}>{node.className}</span>
         {!node.active && <span className={styles.nodeFlag}>inactive</span>}
@@ -274,6 +275,12 @@ function NodeTreeItem({
       {node.children.length > 0 && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />}
     </li>
   );
+}
+
+function isImageNode(node: DebugNodeDescriptor): boolean {
+  const className = node.className.toLowerCase();
+  const name = node.name.toLowerCase();
+  return className.includes('imagenode') || name.includes('image');
 }
 
 function Inspector({ node, debugProps }: { node: DebugNodeDescriptor; debugProps?: DebugNodePropsMessage }) {

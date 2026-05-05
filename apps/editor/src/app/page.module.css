@@ -163,6 +163,7 @@
 .nodeRow:hover { background: rgba(14, 165, 233, 0.12); border-color: rgba(125, 211, 252, 0.18); }
 .selectedNode { background: rgba(14, 165, 233, 0.2); border-color: rgba(125, 211, 252, 0.42); }
 .inactiveNode { opacity: 0.56; }
+.nodeIcon { flex: 0 0 auto; color: #facc15; filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.28)); }
 .nodeName { color: #e0f2fe; font-size: 13px; font-weight: 800; }
 .nodeMeta { color: #7dd3fc; font-size: 11px; opacity: 0.86; }
 .nodeFlag {

@@ -8,8 +8,7 @@ import {
   HudNode,
   LevelNode,
   MiningToolNode,
-  PlayerControllerNode,
-  PlayerPresentationNode,
+  PlayerNode,
   RunRecoveryNode,
   ShipDockNode,
 } from '../../game/nodes';
@@ -23,9 +22,8 @@ export class GameplayRootNode extends NodeRoot {
     this.addChild(new LevelNode());
     this.addChild(new CameraZoomNode());
     this.addChild(new GameWorldNode());
-    this.addChild(new PlayerControllerNode());
+    this.addChild(new PlayerNode());
     this.addChild(new MiningToolNode());
-    this.addChild(new PlayerPresentationNode());
     this.addChild(new HudNode());
     this.addChild(new RunRecoveryNode());
     this.addChild(new ShipDockNode());
