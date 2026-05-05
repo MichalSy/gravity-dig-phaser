@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage, DebugNodeTransform } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -449,7 +449,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} debugProps={selectedNodeProps} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} debugProps={selectedNodeProps} assets={imageAssets} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -738,7 +738,24 @@ function isImageNode(node: DebugNodeDescriptor): boolean {
   return className.includes('imagenode') || name.includes('image');
 }
 
-function Inspector({ node, debugProps }: { node: DebugNodeDescriptor; debugProps?: DebugNodePropsMessage }) {
+function Inspector({
+  node,
+  debugProps,
+  assets,
+  onSelectAsset,
+}: {
+  node: DebugNodeDescriptor;
+  debugProps?: DebugNodePropsMessage;
+  assets: DebugImageAssetDescriptor[];
+  onSelectAsset(id: string): void;
+}) {
+  const props = debugProps?.props;
+  const assetId = typeof props?.assetId === 'string' ? props.assetId : undefined;
+  const frameKey = typeof props?.frameKey === 'string' ? props.frameKey : undefined;
+  const textureKey = typeof props?.textureKey === 'string' ? props.textureKey : undefined;
+  const frameAsset = assetId ? assets.find((asset) => asset.id === assetId) : undefined;
+  const textureAsset = textureKey ? assets.find((asset) => asset.id === textureKey) : undefined;
+
   return (
     <div className={styles.inspector}>
       <div>
@@ -759,12 +776,21 @@ function Inspector({ node, debugProps }: { node: DebugNodeDescriptor; debugProps
         <FragmentRow name="order" value={node.order} />
         <FragmentRow name="index" value={node.index} />
         <FragmentRow name="children" value={node.children.length} />
+        <FragmentRow name="parentAnchor" value={props?.parentAnchor ?? null} />
       </InspectorSection>
       <TransformSection title="Local Transform" transform={debugProps?.localTransform} editable />
       <TransformSection title="World Transform" transform={debugProps?.worldTransform} />
       <BoundsSection bounds={debugProps?.worldBounds ?? debugProps?.bounds} />
+      {(assetId || textureKey || frameKey) && (
+        <InspectorSection title="Image Asset">
+          <AssetLinkRow name="assetId" value={assetId ?? null} assetId={frameAsset?.id} onSelectAsset={onSelectAsset} />
+          <AssetLinkRow name="textureKey" value={textureKey ?? null} assetId={textureAsset?.id} onSelectAsset={onSelectAsset} />
+          <AssetLinkRow name="frameKey" value={frameKey ?? null} assetId={frameAsset?.id} onSelectAsset={onSelectAsset} />
+          <FragmentRow name="assetKind" value={props?.assetKind ?? null} />
+        </InspectorSection>
+      )}
       <InspectorSection title="Exposed Props">
-        {debugProps ? Object.entries(debugProps.props).map(([key, value]) => (
+        {debugProps ? filteredExposedProps(debugProps.props).map(([key, value]) => (
           <FragmentRow key={key} name={key} value={value} />
         )) : <FragmentRow name="status" value="Warte auf Node-Debugdaten..." />}
       </InspectorSection>
@@ -773,12 +799,65 @@ function Inspector({ node, debugProps }: { node: DebugNodeDescriptor; debugProps
 }
 
 function InspectorSection({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(true);
   return (
     <section className={styles.inspectorSection}>
-      <label>{title}</label>
-      <div className={styles.inspectorGrid}>{children}</div>
+      <button type="button" className={styles.inspectorSectionHeader} onClick={() => setOpen((current) => !current)} aria-expanded={open}>
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span>{title}</span>
+      </button>
+      {open && <div className={styles.inspectorGrid}>{children}</div>}
     </section>
   );
+}
+
+function AssetLinkRow({ name, value, assetId, onSelectAsset }: { name: string; value: string | number | boolean | null; assetId?: string; onSelectAsset(id: string): void }) {
+  return (
+    <>
+      <span>{name}</span>
+      <strong className={styles.inlineValueWithAction}>
+        <span>{value === null ? 'null' : String(value)}</span>
+        {assetId && (
+          <button type="button" className={styles.inlineIconButton} title="Im Asset Explorer auswählen" aria-label={`${assetId} im Asset Explorer auswählen`} onClick={() => onSelectAsset(assetId)}>
+            <Search size={13} />
+          </button>
+        )}
+      </strong>
+    </>
+  );
+}
+
+
+const exposedPropDuplicates = new Set([
+  'active',
+  'visible',
+  'order',
+  'sizeMode',
+  'boundsMode',
+  'debugScrollFactor',
+  'parentAnchor',
+  'localX',
+  'localY',
+  'localWidth',
+  'localHeight',
+  'originX',
+  'originY',
+  'rotation',
+  'worldX',
+  'worldY',
+  'worldRotation',
+  'contentX',
+  'contentY',
+  'contentWidth',
+  'contentHeight',
+  'assetId',
+  'assetKind',
+  'textureKey',
+  'frameKey',
+]);
+
+function filteredExposedProps(props: Record<string, string | number | boolean | null>): [string, string | number | boolean | null][] {
+  return Object.entries(props).filter(([key]) => !exposedPropDuplicates.has(key));
 }
 
 function TransformSection({ title, transform, editable = false }: { title: string; transform?: DebugNodeTransform; editable?: boolean }) {

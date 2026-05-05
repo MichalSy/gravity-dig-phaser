@@ -686,3 +686,52 @@
   background: rgba(125, 211, 252, 0.72);
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.42);
 }
+
+.inspectorSectionHeader {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+}
+
+.inspectorSectionHeader:hover { color: #e0f2fe; }
+
+.inlineValueWithAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inlineValueWithAction span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inlineIconButton {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 7px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #bae6fd;
+  padding: 0;
+}
+
+.inlineIconButton:hover {
+  border-color: rgba(125, 211, 252, 0.62);
+  background: rgba(14, 165, 233, 0.24);
+  color: #e0f2fe;
+}

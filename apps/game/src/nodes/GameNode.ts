@@ -281,6 +281,23 @@ export abstract class GameNode {
     );
   }
 
+  getWorldParentAnchorPosition(): PointLike | undefined {
+    const parent = this.parent;
+    if (!parent) return undefined;
+
+    const parentPosition = parent.getWorldPosition();
+    const parentScale = parent.getWorldScale();
+    const parentRotation = parent.getWorldRotation();
+    const parentAnchorOffset = parent.getLocalAnchorOffset();
+    const childParentAnchorOffset = this.getParentAnchorOffset();
+    return rotatePoint(
+      (childParentAnchorOffset.x - parentAnchorOffset.x) * parentScale.x,
+      (childParentAnchorOffset.y - parentAnchorOffset.y) * parentScale.y,
+      parentRotation,
+      parentPosition,
+    );
+  }
+
   worldToLocalPosition(worldPosition: PointLike): PointLike {
     const parent = this.parent;
     if (!parent) return { ...worldPosition };
