@@ -1,0 +1,57 @@
+import Phaser from 'phaser';
+import { loadMenuAssets } from '../assets/AssetLoader';
+import { LevelGeneratorManagerNode } from '../game/LevelNodes';
+import { PlayerStateManagerNode } from '../game/PlayerStateManagerNode';
+import { NodeRuntime, NodeScene } from '../nodes';
+import { GameplayRootNode, LoadingNode, MenuNode } from '../app/nodes';
+
+export class AppScene extends Phaser.Scene {
+  private appRuntime!: NodeRuntime;
+  private appRoot!: NodeScene;
+  private menuNode!: MenuNode;
+  private loadingNode!: LoadingNode;
+  private gameplayMounted = false;
+
+  constructor() {
+    super('app');
+  }
+
+  preload(): void {
+    loadMenuAssets(this);
+  }
+
+  create(): void {
+    this.input.addPointer(3);
+    this.cameras.main.setBackgroundColor('#050816');
+
+    this.appRuntime = new NodeRuntime({ phaserScene: this });
+    this.appRoot = this.appRuntime.addScene(new NodeScene({ sceneName: 'app' }));
+    this.menuNode = this.appRoot.addChild(new MenuNode(() => this.startGame()));
+    this.loadingNode = this.appRoot.addChild(new LoadingNode(() => this.mountGameplay()));
+
+    this.appRuntime.init();
+    this.appRuntime.resolve();
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.appRuntime.destroy();
+    });
+  }
+
+  update(_time: number, deltaMs: number): void {
+    this.appRuntime.update(deltaMs);
+  }
+
+  private startGame(): void {
+    this.menuNode.close();
+    this.loadingNode.start();
+  }
+
+  private mountGameplay(): void {
+    if (this.gameplayMounted) return;
+
+    this.gameplayMounted = true;
+    this.appRuntime.addPersistentNode(new PlayerStateManagerNode());
+    this.appRuntime.addPersistentNode(new LevelGeneratorManagerNode());
+    this.appRoot.addChild(new GameplayRootNode());
+  }
+}

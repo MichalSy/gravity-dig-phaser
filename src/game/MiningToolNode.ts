@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { PLAYER_SIZE, TILE_SIZE } from '../config/gameConfig';
 import { GameNode, type NodeContext } from '../nodes';
-import type { UIScene } from '../scenes/UIScene';
+import type { GameplayUiScene } from '../ui/GameplayUiScene';
 import { tileKey } from '../utils/tileMath';
 import type { GameWorldNode } from './nodes/GameWorldNode';
 import { isResourceTile, type TileCell, type TileType } from './level';
@@ -14,7 +14,7 @@ import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 export interface MiningToolInput {
   playerX: number;
   playerY: number;
-  uiScene: UIScene;
+  uiScene: GameplayUiScene;
   activePointer: Phaser.Input.Pointer;
   camera: Phaser.Cameras.Scene2D.Camera;
   inputBlocked: boolean;
@@ -33,7 +33,7 @@ export class MiningToolNode extends GameNode {
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private laserSound?: Phaser.Sound.BaseSound;
   private readonly crackOverlays = new Map<string, Phaser.GameObjects.Image>();
-  override readonly dependencies = ['level', 'world', 'playerController', 'playerState'] as const;
+  override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'ui.gameplay'] as const;
   readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
@@ -191,7 +191,7 @@ export class MiningToolNode extends GameNode {
     return {
       playerX: this.world.player.x,
       playerY: this.world.player.y,
-      uiScene: this.phaserScene.scene.get('ui') as UIScene,
+      uiScene: this.requireNode<GameplayUiScene>('ui.gameplay'),
       activePointer: this.phaserScene.input.activePointer,
       camera: this.phaserScene.cameras.main,
       inputBlocked: this.playerController.inputBlocked,

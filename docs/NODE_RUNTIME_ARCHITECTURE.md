@@ -4,16 +4,17 @@ Gravity Dig uses Phaser for rendering and a small node runtime for gameplay orch
 
 ## Core Rule
 
-`GameScene` is only a shell:
+`AppScene` is the only Phaser scene and only acts as an engine adapter:
 
-- preload game assets
-- launch `UIScene`
-- build/register runtime nodes
+- preload menu assets
+- create the app runtime/root nodes
+- dynamically load gameplay assets when the menu requests start
+- mount gameplay/UI nodes after assets are ready
 - tick the runtime in `update()`
 
 ```ts
 update(_time: number, deltaMs: number): void {
-  this.gameRuntime.update(deltaMs);
+  this.appRuntime.update(deltaMs);
 }
 ```
 
@@ -54,7 +55,7 @@ Each `GameNode` supports:
    - remove listeners
    - destroy Phaser objects owned by the node
 
-`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by scene nodes in `order`.
+`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by root node trees in `order`.
 
 ## Dependencies
 
@@ -140,7 +141,7 @@ Gameplay node files live in:
 src/game/nodes/
 ```
 
-Current scene-bound gameplay nodes:
+Current gameplay nodes mounted under `GameplayRootNode`:
 
 - `LevelNode` — level data, tilemaps, collision queries, tile clearing
 - `CameraZoomNode` — debug zoom state and camera zoom sync
@@ -150,7 +151,7 @@ Current scene-bound gameplay nodes:
 - `PlayerPresentationNode` — animation, facing, footsteps
 - `CollisionDebugNode` — collision debug graphics
 - `RunRecoveryNode` — energy recovery while not mining
-- `HudNode` — HUD view model emission
+- `HudNode` — writes the HUD view model into `GameplayUiScene`
 - `ShipDockNode` — ship prompt and cargo return interaction
 - `AutoSaveNode` — periodic active-run save
 
@@ -168,14 +169,14 @@ Persistent nodes:
 5. Resolve other nodes in `resolve()`.
 6. Put simulation and Phaser sync in `update()`.
 7. Export from `src/game/nodes/index.ts`.
-8. Register in `GameScene.create()`.
-9. Add/adjust Playwright smoke coverage if the node affects gameplay.
+8. Register in `src/app/nodes/GameplayRootNode.ts`.
+9. Add/adjust smoke coverage if the node affects gameplay.
 
 ## Things Not To Do
 
-- Do not put gameplay logic back into `GameScene`.
+- Do not put gameplay logic into `AppScene`.
 - Do not add node `render()` hooks for normal Phaser object updates.
 - Do not hide runtime state in unrelated private fields when it belongs in node data.
 - Do not introduce new raw string gameplay events in node code; use `GAME_EVENTS`.
 - Do not store save-game state in node data.
-- Do not modify the Developer Dialog for runtime architecture changes unless explicitly requested.
+- Do not add more Phaser scenes for app/game/UI state; model them as runtime nodes unless Phaser lifecycle isolation is genuinely required.

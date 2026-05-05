@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { loadMenuAssets } from '../assets/AssetLoader';
+import { GameNode, type NodeContext } from '../../nodes';
 
 type MenuAction = 'start' | 'options';
 
@@ -32,31 +32,34 @@ const SELECTOR_GAP = 14;
 const SELECTOR_SCALE = 0.7;
 const LABEL_FONT_SIZE = 27;
 const VERSION_FONT_SIZE = 16;
+const MENU_DEPTH = 2000;
 
-export class MenuScene extends Phaser.Scene {
-  private background!: Phaser.GameObjects.Image;
-  private selector!: Phaser.GameObjects.Triangle;
-  private versionLabel!: Phaser.GameObjects.Text;
+export class MenuNode extends GameNode {
+  private phaserScene!: Phaser.Scene;
+  private background?: Phaser.GameObjects.Image;
+  private selector?: Phaser.GameObjects.Triangle;
+  private versionLabel?: Phaser.GameObjects.Text;
   private buttons: MenuButton[] = [];
   private activeIndex = 0;
 
-  constructor() {
-    super('menu');
+  private readonly onStart: () => void;
+
+  constructor(onStart: () => void) {
+    super({ name: 'menu', order: 0 });
+    this.onStart = onStart;
   }
 
-  preload(): void {
-    loadMenuAssets(this);
-  }
-
-  create(): void {
-    this.cameras.main.setBackgroundColor('#000000');
-    this.background = this.add.image(0, 0, 'title-screen').setOrigin(0.5).setDepth(0);
-    this.selector = this.add
+  init(ctx: NodeContext): void {
+    this.phaserScene = ctx.phaserScene;
+    this.phaserScene.cameras.main.setBackgroundColor('#000000');
+    this.background = this.phaserScene.add.image(0, 0, 'title-screen').setOrigin(0.5).setScrollFactor(0).setDepth(MENU_DEPTH);
+    this.selector = this.phaserScene.add
       .triangle(0, 0, 0, 0, SELECTOR_WIDTH, SELECTOR_HEIGHT / 2, 0, SELECTOR_HEIGHT, 0xf2c94c)
       .setOrigin(0.5)
-      .setDepth(6)
+      .setScrollFactor(0)
+      .setDepth(MENU_DEPTH + 6)
       .setStrokeStyle(4, 0x4d260f);
-    this.versionLabel = this.add
+    this.versionLabel = this.phaserScene.add
       .text(0, 0, `v${__APP_VERSION__}`, {
         fontFamily: 'Silkscreen',
         fontSize: `${VERSION_FONT_SIZE}px`,
@@ -66,28 +69,54 @@ export class MenuScene extends Phaser.Scene {
         strokeThickness: 4,
       })
       .setOrigin(1, 1)
-      .setDepth(8)
+      .setScrollFactor(0)
+      .setDepth(MENU_DEPTH + 8)
       .setAlpha(0.82)
       .setResolution(2);
 
     this.buttons = MENU_ITEMS.map((item, index) => this.createMenuButton(item, index));
 
-    this.input.keyboard?.on('keydown-UP', () => this.moveSelection(-1));
-    this.input.keyboard?.on('keydown-W', () => this.moveSelection(-1));
-    this.input.keyboard?.on('keydown-DOWN', () => this.moveSelection(1));
-    this.input.keyboard?.on('keydown-S', () => this.moveSelection(1));
-    this.input.keyboard?.on('keydown-ENTER', () => this.activate(this.buttons[this.activeIndex].item));
-    this.input.keyboard?.on('keydown-SPACE', () => this.activate(this.buttons[this.activeIndex].item));
-    this.scale.on('resize', this.layout, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off('resize', this.layout, this);
-    });
+    this.phaserScene.input.keyboard?.on('keydown-UP', this.moveSelectionUp, this);
+    this.phaserScene.input.keyboard?.on('keydown-W', this.moveSelectionUp, this);
+    this.phaserScene.input.keyboard?.on('keydown-DOWN', this.moveSelectionDown, this);
+    this.phaserScene.input.keyboard?.on('keydown-S', this.moveSelectionDown, this);
+    this.phaserScene.input.keyboard?.on('keydown-ENTER', this.activateCurrent, this);
+    this.phaserScene.input.keyboard?.on('keydown-SPACE', this.activateCurrent, this);
+    this.phaserScene.scale.on('resize', this.layout, this);
     this.layout();
   }
 
+  destroy(): void {
+    this.phaserScene.input.keyboard?.off('keydown-UP', this.moveSelectionUp, this);
+    this.phaserScene.input.keyboard?.off('keydown-W', this.moveSelectionUp, this);
+    this.phaserScene.input.keyboard?.off('keydown-DOWN', this.moveSelectionDown, this);
+    this.phaserScene.input.keyboard?.off('keydown-S', this.moveSelectionDown, this);
+    this.phaserScene.input.keyboard?.off('keydown-ENTER', this.activateCurrent, this);
+    this.phaserScene.input.keyboard?.off('keydown-SPACE', this.activateCurrent, this);
+    this.phaserScene.scale.off('resize', this.layout, this);
+    this.background?.destroy();
+    this.selector?.destroy();
+    this.versionLabel?.destroy();
+    this.background = undefined;
+    this.selector = undefined;
+    this.versionLabel = undefined;
+    for (const button of this.buttons) {
+      button.image.destroy();
+      button.label.destroy();
+    }
+    this.buttons = [];
+  }
+
+  close(): void {
+    if (!this.active) return;
+
+    this.active = false;
+    this.destroy();
+  }
+
   private createMenuButton(item: MenuItem, index: number): MenuButton {
-    const image = this.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setDepth(5);
-    const label = this.add
+    const image = this.phaserScene.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setScrollFactor(0).setDepth(MENU_DEPTH + 5);
+    const label = this.phaserScene.add
       .text(0, 0, item.label, {
         fontFamily: 'Silkscreen',
         fontSize: `${LABEL_FONT_SIZE}px`,
@@ -98,7 +127,8 @@ export class MenuScene extends Phaser.Scene {
         align: 'center',
       })
       .setOrigin(0.5)
-      .setDepth(7)
+      .setScrollFactor(0)
+      .setDepth(MENU_DEPTH + 7)
       .setResolution(2);
 
     if (item.enabled) {
@@ -114,15 +144,15 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private layout(): void {
-    if (!this.background?.active) return;
+    if (!this.background?.active || !this.selector || !this.versionLabel) return;
 
-    const width = this.scale.width;
-    const height = this.scale.height;
+    const width = this.phaserScene.scale.width;
+    const height = this.phaserScene.scale.height;
     const sceneScale = width / this.background.width;
     this.background.setPosition(width / 2, height / 2).setScale(sceneScale);
 
     const buttonScale = sceneScale * MENU_BUTTON_SCALE;
-    const buttonTexture = this.textures.get('menu-button-inactive').getSourceImage();
+    const buttonTexture = this.phaserScene.textures.get('menu-button-inactive').getSourceImage();
     const buttonWidth = buttonTexture.width * buttonScale * MENU_BUTTON_WIDTH_SCALE;
     const buttonHeight = buttonTexture.height * buttonScale;
     const gap = buttonHeight * MENU_BUTTON_GAP;
@@ -168,6 +198,19 @@ export class MenuScene extends Phaser.Scene {
     return screenHeight / 2 + (y - BACKGROUND_HEIGHT / 2) * scale;
   }
 
+  private moveSelectionUp(): void {
+    this.moveSelection(-1);
+  }
+
+  private moveSelectionDown(): void {
+    this.moveSelection(1);
+  }
+
+  private activateCurrent(): void {
+    const button = this.buttons[this.activeIndex];
+    if (button) this.activate(button.item);
+  }
+
   private moveSelection(delta: number): void {
     const enabledIndexes = this.buttons.flatMap((button, index) => (button.item.enabled ? [index] : []));
     const enabledPosition = enabledIndexes.indexOf(this.activeIndex);
@@ -176,26 +219,22 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private setActiveIndex(index: number): void {
-    if (!this.buttons[index]?.item.enabled) {
-      return;
-    }
+    if (!this.buttons[index]?.item.enabled) return;
 
     this.activeIndex = index;
     this.layout();
   }
 
   private activate(item: MenuItem): void {
-    if (!item.enabled) {
-      return;
-    }
+    if (!item.enabled) return;
 
     if (item.action === 'start') {
-      this.scene.start('loading');
+      this.onStart();
       return;
     }
 
     const button = this.buttons[this.activeIndex];
     button.image.setTint(0xfff1a8);
-    this.time.delayedCall(300, () => button.image.clearTint());
+    this.phaserScene.time.delayedCall(300, () => button.image.clearTint());
   }
 }

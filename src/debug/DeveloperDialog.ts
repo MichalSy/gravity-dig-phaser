@@ -280,9 +280,9 @@ export class DeveloperDialog {
     const sceneCount = (scene: AssetScene): number => assets.filter((asset) => asset.scenes.includes(scene)).length;
     const tabs: Array<{ key: GraphicSceneTab; label: string; count: number }> = [
       { key: 'all', label: 'Alle', count: assets.length },
-      { key: 'menu', label: 'MenuScene', count: sceneCount('menu') },
-      { key: 'game', label: 'GameScene', count: sceneCount('game') },
-      { key: 'ui', label: 'UIScene', count: sceneCount('ui') },
+      { key: 'menu', label: 'Menu Nodes', count: sceneCount('menu') },
+      { key: 'game', label: 'Gameplay Nodes', count: sceneCount('game') },
+      { key: 'ui', label: 'UI Nodes', count: sceneCount('ui') },
     ];
     return tabs.filter((tab) => tab.count > 0);
   }

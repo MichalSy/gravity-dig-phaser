@@ -1,39 +1,71 @@
 import Phaser from 'phaser';
-import { loadGameAssets } from '../assets/AssetLoader';
-import { GAME_EVENTS, emitGameEvent, onceGameEvent } from '../game/gameEvents';
+import { loadGameAssets } from '../../assets/AssetLoader';
+import { GAME_EVENTS, emitGameEvent, onceGameEvent } from '../../game/gameEvents';
+import { GameNode, type NodeContext } from '../../nodes';
 
 const MIN_LOADING_MS = 900;
 
-export class LoadingScene extends Phaser.Scene {
+export class LoadingNode extends GameNode {
+  private phaserScene!: Phaser.Scene;
   private overlay?: HTMLDivElement;
   private overlayProgress?: HTMLDivElement;
   private startTime = 0;
   private progress = 0;
-  private waitingForGameReady = false;
+  private loading = false;
 
-  constructor() {
-    super('loading');
+  private readonly mountGameplay: () => void;
+
+  constructor(mountGameplay: () => void) {
+    super({ name: 'loading', order: 5, active: false });
+    this.mountGameplay = mountGameplay;
   }
 
-  preload(): void {
+  init(ctx: NodeContext): void {
+    this.phaserScene = ctx.phaserScene;
+  }
+
+  destroy(): void {
+    this.removeDomOverlay();
+    this.phaserScene.load.off('progress', this.setProgress, this);
+    this.phaserScene.load.off('complete', this.handleAssetsLoaded, this);
+  }
+
+  start(): void {
+    if (this.loading) return;
+
+    this.loading = true;
+    this.active = true;
     this.startTime = performance.now();
     this.createDomOverlay();
-    this.load.on('progress', this.setProgress, this);
-    this.load.once('complete', this.startGameBehindLoadingScreen, this);
-    onceGameEvent(this, GAME_EVENTS.gameReady, this.finishLoading, this);
-    loadGameAssets(this);
-  }
+    this.setProgress(0);
+    onceGameEvent(this.phaserScene, GAME_EVENTS.gameReady, this.finishLoading, this);
 
-  create(): void {
-    if (!this.waitingForGameReady && this.load.totalToLoad === 0) {
-      this.startGameBehindLoadingScreen();
+    if (this.areGameAssetsLoaded()) {
+      this.setProgress(1);
+      this.handleAssetsLoaded();
+      return;
     }
+
+    this.phaserScene.load.on('progress', this.setProgress, this);
+    this.phaserScene.load.once('complete', this.handleAssetsLoaded, this);
+    loadGameAssets(this.phaserScene);
+    this.phaserScene.load.start();
   }
 
   update(): void {
-    if (this.waitingForGameReady) {
-      this.scene.bringToTop('loading');
-    }
+    if (!this.loading || !this.overlay) return;
+    this.overlay.style.zIndex = '2147483647';
+  }
+
+  private areGameAssetsLoaded(): boolean {
+    return this.phaserScene.textures.exists('tiles') && this.phaserScene.cache.json.exists('dev-planet');
+  }
+
+  private handleAssetsLoaded(): void {
+    this.phaserScene.load.off('progress', this.setProgress, this);
+    this.setProgress(1);
+    this.mountGameplay();
+    emitGameEvent(this.phaserScene, GAME_EVENTS.gameReady);
   }
 
   private createDomOverlay(): void {
@@ -135,24 +167,14 @@ export class LoadingScene extends Phaser.Scene {
     if (this.overlayProgress) this.overlayProgress.textContent = `${Math.round(this.progress * 100)}`;
   }
 
-  private startGameBehindLoadingScreen(): void {
-    if (this.waitingForGameReady) return;
-
-    this.waitingForGameReady = true;
-    this.setProgress(1);
-    this.scene.launch('game');
-    this.scene.bringToTop('loading');
-  }
-
   private finishLoading(): void {
-    this.scene.bringToTop('loading');
     const elapsed = performance.now() - this.startTime;
     const remaining = Math.max(0, MIN_LOADING_MS - elapsed);
-    this.time.delayedCall(remaining, () => {
-      this.scene.bringToTop('loading');
+    this.phaserScene.time.delayedCall(remaining, () => {
       this.removeDomOverlay();
-      this.scene.stop('loading');
-      emitGameEvent(this, GAME_EVENTS.loadingComplete);
+      this.loading = false;
+      this.active = false;
+      emitGameEvent(this.phaserScene, GAME_EVENTS.loadingComplete);
     });
   }
 }

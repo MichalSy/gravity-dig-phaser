@@ -1,27 +1,20 @@
-import Phaser from 'phaser';
-import { GameNode, type NodeContext } from '../../nodes';
-import type { UIScene } from '../../scenes/UIScene';
+import { GameNode } from '../../nodes';
+import type { GameplayUiScene } from '../../ui/GameplayUiScene';
 import { buildHudState } from '../gameplayLogic';
-import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 import { MiningToolNode } from '../MiningToolNode';
 import { PlayerStateManagerNode } from '../PlayerStateManagerNode';
 import { CameraZoomNode } from './CameraZoomNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class HudNode extends GameNode {
-  private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
   private miningTool!: MiningToolNode;
   private cameraZoom!: CameraZoomNode;
-  override readonly dependencies = ['world', 'playerState', 'miningTool', 'cameraZoom'] as const;
+  override readonly dependencies = ['world', 'playerState', 'miningTool', 'cameraZoom', 'ui.gameplay'] as const;
 
   constructor() {
     super({ name: 'hud', order: 60 });
-  }
-
-  init(ctx: NodeContext): void {
-    this.phaserScene = ctx.phaserScene;
   }
 
   resolve(): void {
@@ -32,7 +25,7 @@ export class HudNode extends GameNode {
   }
 
   update(): void {
-    emitGameEvent(this.phaserScene, GAME_EVENTS.hudUpdate, buildHudState({
+    this.uiScene.setHudState(buildHudState({
       level: this.world.level,
       inputMode: this.uiScene.getInputMode(),
       playerState: this.playerState,
@@ -41,7 +34,7 @@ export class HudNode extends GameNode {
     }));
   }
 
-  private get uiScene(): UIScene {
-    return this.phaserScene.scene.get('ui') as UIScene;
+  private get uiScene(): GameplayUiScene {
+    return this.requireNode<GameplayUiScene>('ui.gameplay');
   }
 }

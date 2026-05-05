@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GRAVITY, PLAYER_SIZE } from '../config/gameConfig';
 import { GameNode, type NodeContext } from '../nodes';
-import type { UIScene } from '../scenes/UIScene';
+import type { GameplayUiScene } from '../ui/GameplayUiScene';
 import type { GameWorldNode } from './nodes/GameWorldNode';
 import { inputStrength } from './gameplayLogic';
 import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from './gameEvents';
@@ -19,7 +19,7 @@ export class PlayerControllerNode extends GameNode {
   private player?: Phaser.GameObjects.Image;
   private cursors!: CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  override readonly dependencies = ['level', 'world', 'playerState'] as const;
+  override readonly dependencies = ['level', 'world', 'playerState', 'ui.gameplay'] as const;
   readonly data: PlayerControllerData = createPlayerControllerData();
 
   constructor() {
@@ -223,7 +223,7 @@ export class PlayerControllerNode extends GameNode {
   }
 
 
-  private get uiScene(): UIScene {
-    return this.phaserScene.scene.get('ui') as UIScene;
+  private get uiScene(): GameplayUiScene {
+    return this.requireNode<GameplayUiScene>('ui.gameplay');
   }
 }

@@ -36,6 +36,8 @@ const UI_ATLAS = {
   bottomDisplayHeight: 180,
 } as const;
 
+const UI_DEPTH = 1000;
+
 export function hudScaleForWidth(width: number): number {
   return Phaser.Math.Clamp(width / 1280, 0.5, 1);
 }
@@ -56,6 +58,10 @@ export class GameplayUiScene extends NodeScene {
     this.addChild(new DeveloperDialogNode());
     this.addChild(new DebugPanelNode());
     this.addChild(new TouchControlsNode());
+  }
+
+  update(): void {
+    this.updateInputMode();
   }
 
   setHudState(state: HudState): void {
@@ -93,6 +99,22 @@ export class GameplayUiScene extends NodeScene {
   containsControlPointer(pointer: Phaser.Input.Pointer): boolean {
     return this.inputMode === 'touch' && this.requireNode<TouchControlsNode>('ui.touchControls').containsPointer(pointer);
   }
+
+  private updateInputMode(): void {
+    const gamepad = navigator.getGamepads?.().find((pad) => Boolean(pad));
+    if (gamepad) {
+      this.inputMode = 'gamepad';
+    } else if (this.isTouchDevice()) {
+      this.inputMode = 'touch';
+    } else {
+      this.inputMode = 'desktop';
+    }
+  }
+
+  private isTouchDevice(): boolean {
+    const smallTouchViewport = navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 768;
+    return window.matchMedia('(pointer: coarse)').matches || smallTouchViewport;
+  }
 }
 
 class StatusHudNode extends GameNode {
@@ -107,9 +129,9 @@ class StatusHudNode extends GameNode {
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    this.statusFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10);
-    this.hpFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
-    this.fuelFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11);
+    this.statusFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
+    this.hpFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 11);
+    this.fuelFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 11);
   }
 
   update(): void {
@@ -155,13 +177,13 @@ class BottomHudNode extends GameNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     const resolution = Math.max(2, window.devicePixelRatio || 1);
-    this.actionFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.1);
-    this.energyFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(11.2);
+    this.actionFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 11.1);
+    this.energyFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 11.2);
 
     for (let i = 0; i < 4; i += 1) {
-      this.slotFrames.push(this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(10.8).setVisible(false));
-      this.slotItems.push(this.phaserScene.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(12).setVisible(false));
-      this.slotLabels.push(this.phaserScene.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(12).setResolution(resolution));
+      this.slotFrames.push(this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10.8).setVisible(false));
+      this.slotItems.push(this.phaserScene.add.image(0, 0, 'hud-item-rock').setOrigin(0.5, 0.5).setScrollFactor(0).setDepth(UI_DEPTH + 12).setVisible(false));
+      this.slotLabels.push(this.phaserScene.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(UI_DEPTH + 12).setResolution(resolution));
     }
   }
 
@@ -207,7 +229,7 @@ class BottomHudNode extends GameNode {
       const cy = sy + repeatSlotH / 2;
 
       if (isExtraSlot) {
-        frame.setDepth(10.8 + (extraSlotCount - i) * 0.01);
+        frame.setDepth(UI_DEPTH + 10.8 + (extraSlotCount - i) * 0.01);
         placeAtlasRegion(frame, UI_ATLAS.repeatSlot, sx, sy, slotScale);
       } else {
         frame.setVisible(false);
@@ -262,7 +284,7 @@ class RuntimeDebugTextNode extends GameNode {
         lineSpacing: 2,
       })
       .setScrollFactor(0)
-      .setDepth(40)
+      .setDepth(UI_DEPTH + 40)
       .setResolution(Math.max(2, window.devicePixelRatio || 1));
   }
 
@@ -370,7 +392,7 @@ class DebugPanelNode extends GameNode {
       this.requireNode<DeveloperDialogNode>('ui.developerDialog').toggle();
     });
 
-    this.debugPanel = this.phaserScene.add.container(0, 0, [bg, title, this.collisionButton, this.developerButton]).setDepth(40).setScrollFactor(0);
+    this.debugPanel = this.phaserScene.add.container(0, 0, [bg, title, this.collisionButton, this.developerButton]).setDepth(UI_DEPTH + 40).setScrollFactor(0);
   }
 
   update(): void {
@@ -418,7 +440,7 @@ class TouchControlsNode extends GameNode {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(40)
+      .setDepth(UI_DEPTH + 40)
       .setResolution(Math.max(2, window.devicePixelRatio || 1));
 
     this.phaserScene.input.on('pointerdown', this.handlePointerDown, this);
