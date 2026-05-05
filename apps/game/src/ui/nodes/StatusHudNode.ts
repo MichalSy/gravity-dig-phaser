@@ -27,9 +27,7 @@ export class StatusHudNode extends GameNode {
   }
 
   override getDebugBounds(): NodeDebugBounds | undefined {
-    const bounds = this.statusFrameNode.image.getBounds();
-    if (!bounds) return undefined;
-    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, scrollFactor: 0 };
+    return this.statusFrameNode.getDebugBounds();
   }
 
   override getDebugProps(): NodeDebugProps {

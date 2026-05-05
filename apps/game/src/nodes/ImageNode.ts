@@ -5,6 +5,35 @@ import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 export type ImageNodeSyncMode = 'node-to-object' | 'object-to-node';
 
+type CroppableImage = Phaser.GameObjects.Image & {
+  isCropped?: boolean;
+  _crop?: { x: number; y: number; width: number; height: number };
+};
+
+function visibleImageLocalSize(image: Phaser.GameObjects.Image): { width: number; height: number } {
+  const cropImage = image as CroppableImage;
+  const crop = cropImage.isCropped ? cropImage._crop : undefined;
+  const frameWidth = crop?.width ?? image.frame.width;
+  const frameHeight = crop?.height ?? image.frame.height;
+  return { width: frameWidth * Math.abs(image.scaleX), height: frameHeight * Math.abs(image.scaleY) };
+}
+
+function visibleImageWorldBounds(image: Phaser.GameObjects.Image): NodeDebugBounds {
+  const cropImage = image as CroppableImage;
+  const crop = cropImage.isCropped ? cropImage._crop : undefined;
+  const frameWidth = image.frame.width;
+  const frameHeight = image.frame.height;
+  const cropX = crop?.x ?? 0;
+  const cropY = crop?.y ?? 0;
+  const cropWidth = crop?.width ?? frameWidth;
+  const cropHeight = crop?.height ?? frameHeight;
+  const scaleX = image.scaleX;
+  const scaleY = image.scaleY;
+  const left = image.x - image.originX * frameWidth * scaleX + cropX * scaleX;
+  const top = image.y - image.originY * frameHeight * scaleY + cropY * scaleY;
+  return { x: left, y: top, width: cropWidth * Math.abs(scaleX), height: cropHeight * Math.abs(scaleY) };
+}
+
 export interface ImageNodeOptions extends TransformNodeOptions {
   assetId: string;
   flipX?: boolean;
@@ -42,7 +71,7 @@ export class ImageNode extends TransformNode {
       .setFlipX(this.flipX)
       .setVisible(this.visible)
       .setScrollFactor(this.scrollFactor);
-    this.size = { width: this.asset.width * this.scale, height: this.asset.height * this.scale };
+    this.size = visibleImageLocalSize(this.phaserImage);
     this.applyOrigin();
   }
 
@@ -51,11 +80,17 @@ export class ImageNode extends TransformNode {
 
     if (this.syncMode === 'object-to-node') {
       this.position = this.worldToLocalPosition({ x: this.phaserImage.x, y: this.phaserImage.y });
-      this.size = { width: this.phaserImage.displayWidth, height: this.phaserImage.displayHeight };
+      const visibleSize = visibleImageLocalSize(this.phaserImage);
+      const parentScale = this.getParentWorldScale();
+      this.size = {
+        width: parentScale.x === 0 ? visibleSize.width : visibleSize.width / Math.abs(parentScale.x),
+        height: parentScale.y === 0 ? visibleSize.height : visibleSize.height / Math.abs(parentScale.y),
+      };
       this.visible = this.phaserImage.visible;
       this.depth = this.phaserImage.depth;
-      const parentScale = this.getParentWorldScale();
       this.scale = parentScale.x === 0 ? this.phaserImage.scaleX : this.phaserImage.scaleX / parentScale.x;
+      this.scaleX = this.scale;
+      this.scaleY = parentScale.y === 0 ? this.phaserImage.scaleY : this.phaserImage.scaleY / parentScale.y;
       this.rotation = this.phaserImage.rotation - (this.parent?.getWorldRotation() ?? 0);
       this.flipX = this.phaserImage.flipX;
       return;
@@ -83,14 +118,15 @@ export class ImageNode extends TransformNode {
     this.asset = asset;
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;
     this.phaserImage?.setTexture(asset.textureKey, frame);
-    this.size = { width: asset.width * this.scale, height: asset.height * this.scale };
+    if (this.phaserImage) this.size = visibleImageLocalSize(this.phaserImage);
+    else this.size = { width: asset.width * this.scaleX, height: asset.height * this.scaleY };
     this.applyOrigin();
   }
 
   override getDebugBounds(): NodeDebugBounds | undefined {
     if (!this.phaserImage) return super.getDebugBounds();
-    const bounds = this.phaserImage.getBounds();
-    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, scrollFactor: this.scrollFactor };
+    const bounds = visibleImageWorldBounds(this.phaserImage);
+    return { ...bounds, scrollFactor: this.scrollFactor };
   }
 
   override getDebugProps(): NodeDebugProps {
@@ -104,6 +140,10 @@ export class ImageNode extends TransformNode {
       scale: this.scale,
       localScaleX: this.getLocalScale().x,
       localScaleY: this.getLocalScale().y,
+      displayWidth: this.phaserImage ? visibleImageLocalSize(this.phaserImage).width : null,
+      displayHeight: this.phaserImage ? visibleImageLocalSize(this.phaserImage).height : null,
+      cropWidth: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.width ?? null : null,
+      cropHeight: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.height ?? null : null,
       flipX: this.flipX,
       scrollFactor: this.scrollFactor,
     };

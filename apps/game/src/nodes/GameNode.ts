@@ -24,6 +24,8 @@ export type NodeDebugBounds = DebugNodeBounds;
 
 export type NodeDebugProps = Record<string, string | number | boolean | null>;
 
+export type NodeSizeMode = 'explicit' | 'content';
+
 export interface GameNodeOptions {
   name?: string;
   className?: string;
@@ -35,6 +37,7 @@ export interface GameNodeOptions {
   anchor?: Anchor;
   origin?: Partial<PointLike>;
   rotation?: number;
+  sizeMode?: NodeSizeMode;
 }
 
 export abstract class GameNode {
@@ -48,6 +51,7 @@ export abstract class GameNode {
   anchor: Anchor;
   origin: PointLike;
   rotation: number;
+  sizeMode: NodeSizeMode;
   parent?: GameNode;
   readonly dependencies: readonly string[] = [];
 
@@ -68,6 +72,7 @@ export abstract class GameNode {
     const defaultOrigin = anchorOrigin(this.anchor);
     this.origin = { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y };
     this.rotation = options.rotation ?? 0;
+    this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
   }
 
   get children(): readonly GameNode[] {
@@ -113,6 +118,7 @@ export abstract class GameNode {
   init(_ctx: NodeContext): void {}
   resolve(_ctx: NodeContext): void {}
   update(_deltaMs: number): void {}
+  afterChildrenUpdated(): void {}
   destroy(): void {}
 
   initTree(ctx: NodeContext): void {
@@ -141,6 +147,8 @@ export abstract class GameNode {
 
     this.update(deltaMs);
     for (const child of this.sortedChildren()) child.updateTree(deltaMs);
+    this.updateContentSizeFromChildren();
+    this.afterChildrenUpdated();
   }
 
   destroyTree(): void {
@@ -186,6 +194,44 @@ export abstract class GameNode {
 
   getWorldRotation(): number {
     return (this.parent?.getWorldRotation() ?? 0) + this.rotation;
+  }
+
+  getBoundsInParentSpace(): NodeDebugBounds | undefined {
+    if (this.size.width <= 0 || this.size.height <= 0) return undefined;
+
+    const left = -this.origin.x * this.size.width;
+    const top = -this.origin.y * this.size.height;
+    const right = left + this.size.width;
+    const bottom = top + this.size.height;
+    const corners = [
+      rotatePoint(left, top, this.rotation, this.position),
+      rotatePoint(right, top, this.rotation, this.position),
+      rotatePoint(right, bottom, this.rotation, this.position),
+      rotatePoint(left, bottom, this.rotation, this.position),
+    ];
+    const xs = corners.map((corner) => corner.x);
+    const ys = corners.map((corner) => corner.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const maxX = Math.max(...xs);
+    const maxY = Math.max(...ys);
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  updateContentSizeFromChildren(): void {
+    if (this.sizeMode !== 'content' || this.children.length === 0) return;
+
+    const childBounds = this.children
+      .filter((child) => child.visible)
+      .map((child) => child.getBoundsInParentSpace())
+      .filter((bounds): bounds is NodeDebugBounds => Boolean(bounds));
+    if (childBounds.length === 0) return;
+
+    const minX = Math.min(0, ...childBounds.map((bounds) => bounds.x));
+    const minY = Math.min(0, ...childBounds.map((bounds) => bounds.y));
+    const maxX = Math.max(0, ...childBounds.map((bounds) => bounds.x + bounds.width));
+    const maxY = Math.max(0, ...childBounds.map((bounds) => bounds.y + bounds.height));
+    this.size = { width: maxX - minX, height: maxY - minY };
   }
 
   getWorldPosition(): PointLike {
@@ -285,6 +331,7 @@ export abstract class GameNode {
       active: this.active,
       visible: this.visible,
       order: this.order,
+      sizeMode: this.sizeMode,
       localX: this.position.x,
       localY: this.position.y,
       localWidth: this.size.width,
