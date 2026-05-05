@@ -36,6 +36,7 @@ export interface GameNodeOptions {
   position?: Partial<PointLike>;
   size?: Partial<SizeLike>;
   anchor?: Anchor;
+  parentAnchor?: Anchor;
   origin?: Partial<PointLike>;
   rotation?: number;
   sizeMode?: NodeSizeMode;
@@ -51,6 +52,7 @@ export abstract class GameNode {
   position: PointLike;
   size: SizeLike;
   anchor: Anchor;
+  parentAnchor: Anchor;
   origin: PointLike;
   rotation: number;
   sizeMode: NodeSizeMode;
@@ -73,6 +75,7 @@ export abstract class GameNode {
     this.position = { x: options.position?.x ?? 0, y: options.position?.y ?? 0 };
     this.size = { width: options.size?.width ?? 0, height: options.size?.height ?? 0 };
     this.anchor = options.anchor ?? 'top-left';
+    this.parentAnchor = options.parentAnchor ?? 'top-left';
     const defaultOrigin = anchorOrigin(this.anchor);
     this.origin = { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y };
     this.rotation = options.rotation ?? 0;
@@ -171,6 +174,16 @@ export abstract class GameNode {
     return anchorOffset(this.anchor, this.size);
   }
 
+  getParentAnchorOffset(): PointLike {
+    if (!this.parent) return { x: 0, y: 0 };
+    return anchorOffset(this.parentAnchor, this.parent.size);
+  }
+
+  getPositionInParent(): PointLike {
+    const parentAnchorOffset = this.getParentAnchorOffset();
+    return { x: parentAnchorOffset.x + this.position.x, y: parentAnchorOffset.y + this.position.y };
+  }
+
   getLocalOriginOffset(): PointLike {
     return { x: this.origin.x * this.size.width, y: this.origin.y * this.size.height };
   }
@@ -212,10 +225,10 @@ export abstract class GameNode {
     const right = (localBounds.x + localBounds.width) * localScale.x;
     const bottom = (localBounds.y + localBounds.height) * localScale.y;
     const corners = [
-      rotatePoint(left, top, this.rotation, this.position),
-      rotatePoint(right, top, this.rotation, this.position),
-      rotatePoint(right, bottom, this.rotation, this.position),
-      rotatePoint(left, bottom, this.rotation, this.position),
+      rotatePoint(left, top, this.rotation, this.getPositionInParent()),
+      rotatePoint(right, top, this.rotation, this.getPositionInParent()),
+      rotatePoint(right, bottom, this.rotation, this.getPositionInParent()),
+      rotatePoint(left, bottom, this.rotation, this.getPositionInParent()),
     ];
     const xs = corners.map((corner) => corner.x);
     const ys = corners.map((corner) => corner.y);
@@ -252,7 +265,8 @@ export abstract class GameNode {
     const parentPosition = parent.getWorldPosition();
     const parentScale = parent.getWorldScale();
     const parentRotation = parent.getWorldRotation();
-    return rotatePoint(this.position.x * parentScale.x, this.position.y * parentScale.y, parentRotation, parentPosition);
+    const positionInParent = this.getPositionInParent();
+    return rotatePoint(positionInParent.x * parentScale.x, positionInParent.y * parentScale.y, parentRotation, parentPosition);
   }
 
   worldToLocalPosition(worldPosition: PointLike): PointLike {
@@ -350,6 +364,7 @@ export abstract class GameNode {
       order: this.order,
       sizeMode: this.sizeMode,
       boundsMode: this.boundsMode,
+      parentAnchor: this.parent ? this.parentAnchor : null,
       localX: this.position.x,
       localY: this.position.y,
       localWidth: this.size.width,
