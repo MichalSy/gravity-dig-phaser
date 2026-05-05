@@ -324,23 +324,27 @@ function AssetDetails({ asset, onOpenOriginal }: { asset?: DebugImageAssetDescri
 
   return (
     <aside className={styles.assetDetails}>
-      <div className={styles.assetPreviewLarge}>
+      <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenOriginal(asset.id)} aria-label={`${asset.id} groß anzeigen`}>
         <AssetPreview asset={asset} />
-      </div>
-      <button type="button" className={styles.button} onClick={() => onOpenOriginal(asset.id)}>
-        <ExternalLink size={16} /> Original anzeigen
+        <span className={styles.assetPreviewHint}>Klick für Großansicht</span>
       </button>
-      <div className={styles.inspectorGrid}>
-        <FragmentRow name="id" value={asset.id} />
-        <FragmentRow name="kind" value={asset.kind} />
-        <FragmentRow name="textureKey" value={asset.textureKey} />
-        <FragmentRow name="width" value={asset.width} />
-        <FragmentRow name="height" value={asset.height} />
-        <FragmentRow name="url" value={asset.url ?? null} />
-        <FragmentRow name="frameKey" value={asset.frameKey ?? null} />
-        <FragmentRow name="sourceImageId" value={asset.sourceImageId ?? null} />
-        <FragmentRow name="sourceUrl" value={asset.sourceUrl ?? null} />
-        <FragmentRow name="rect" value={asset.rect ? `${asset.rect.x},${asset.rect.y} ${asset.rect.width}×${asset.rect.height}` : null} />
+      <div className={styles.assetMetaPanel}>
+        <div className={styles.assetMetaHeader}>
+          <strong>{asset.id}</strong>
+          <span>{asset.kind} · {asset.width}×{asset.height}</span>
+        </div>
+        <div className={styles.assetMetaGrid}>
+          <FragmentRow name="id" value={asset.id} />
+          <FragmentRow name="kind" value={asset.kind} />
+          <FragmentRow name="textureKey" value={asset.textureKey} />
+          <FragmentRow name="width" value={asset.width} />
+          <FragmentRow name="height" value={asset.height} />
+          <FragmentRow name="url" value={asset.url ?? null} />
+          <FragmentRow name="frameKey" value={asset.frameKey ?? null} />
+          <FragmentRow name="sourceImageId" value={asset.sourceImageId ?? null} />
+          <FragmentRow name="sourceUrl" value={asset.sourceUrl ?? null} />
+          <FragmentRow name="rect" value={asset.rect ? `${asset.rect.x},${asset.rect.y} ${asset.rect.width}×${asset.rect.height}` : null} />
+        </div>
       </div>
     </aside>
   );
