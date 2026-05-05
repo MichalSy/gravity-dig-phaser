@@ -83,7 +83,15 @@
   text-transform: uppercase;
 }
 
-.panelHeader span {
+.panelHeaderMeta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.panelHeaderMeta span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -91,6 +99,19 @@
   color: #94a3b8;
   font-size: 12px;
 }
+
+.headerButton {
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 7px;
+  padding: 4px 7px;
+  background: rgba(30, 41, 59, 0.86);
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.headerButton:hover { background: rgba(14, 165, 233, 0.18); border-color: rgba(125, 211, 252, 0.42); }
 
 .panelBody {
   min-height: 0;
@@ -150,19 +171,46 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   min-height: 30px;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 5px 8px;
+  padding: 2px 4px;
   background: transparent;
   color: inherit;
-  text-align: left;
 }
 
 .nodeRow:hover { background: rgba(14, 165, 233, 0.12); border-color: rgba(125, 211, 252, 0.18); }
 .selectedNode { background: rgba(14, 165, 233, 0.2); border-color: rgba(125, 211, 252, 0.42); }
 .inactiveNode { opacity: 0.56; }
+.expandButton {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  padding: 0;
+}
+.expandButton:not(:disabled):hover { background: rgba(148, 163, 184, 0.14); color: #e0f2fe; }
+.expandButton:disabled { opacity: 0.38; }
+.expandSpacer { width: 14px; height: 14px; display: block; }
+.nodeContent {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  border: 0;
+  padding: 3px 4px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
 .nodeIcon { flex: 0 0 auto; color: #facc15; filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.28)); }
 .nodeName { color: #e0f2fe; font-size: 13px; font-weight: 800; }
 .nodeMeta { color: #7dd3fc; font-size: 11px; opacity: 0.86; }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
 import type { DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -41,6 +41,7 @@ export default function Home() {
   const [gameCount, setGameCount] = useState(0);
   const [treeRoots, setTreeRoots] = useState<DebugNodeDescriptor[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
   const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
@@ -102,6 +103,7 @@ export default function Home() {
 
       if (message.type === 'node:tree') {
         setTreeRoots(message.roots);
+        setExpandedNodeIds(new Set(collectNodeIds(message.roots)));
         setSelectedNodeId((current) => current ?? message.roots[0]?.id);
         setLastEvent(`Node Tree geladen: ${countNodes(message.roots)} Nodes`);
         return;
@@ -110,6 +112,7 @@ export default function Home() {
       if (message.type === 'node:delta') {
         setTreeRoots((current) => {
           const next = applyNodeDeltas(current, message.deltas);
+          setExpandedNodeIds((expanded) => reconcileExpandedNodeIds(expanded, next, message.deltas));
           setSelectedNodeId((selected) => (selected && findNode(next, selected) ? selected : next[0]?.id));
           return next;
         });
@@ -151,11 +154,29 @@ export default function Home() {
   function newSession(): void {
     setTreeRoots([]);
     setSelectedNodeId(undefined);
+    setExpandedNodeIds(new Set());
     setSelectedNodeProps(undefined);
     setGameCount(0);
     setLastEvent('Neue Session bereit.');
     setSessionId(createSessionId());
     setGameFrameKey((current) => current + 1);
+  }
+
+  function expandAllNodes(): void {
+    setExpandedNodeIds(new Set(collectNodeIds(treeRoots)));
+  }
+
+  function collapseAllNodes(): void {
+    setExpandedNodeIds(new Set());
+  }
+
+  function toggleNodeExpanded(nodeId: string): void {
+    setExpandedNodeIds((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
   }
 
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
@@ -187,10 +208,13 @@ export default function Home() {
 
       <section className={styles.workbench}>
         <aside className={styles.panel}>
-          <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`} />
+          <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`}>
+            <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
+            <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
+          </PanelHeader>
           <div className={styles.panelBody}>
             {treeRoots.length > 0 ? (
-              <NodeTree nodes={treeRoots} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />
+              <NodeTree nodes={treeRoots} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={setSelectedNodeId} onToggleNode={toggleNodeExpanded} />
             ) : (
               <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
             )}
@@ -223,11 +247,14 @@ export default function Home() {
   );
 }
 
-function PanelHeader({ title, meta }: { title: string; meta: string }) {
+function PanelHeader({ title, meta, children }: { title: string; meta: string; children?: ReactNode }) {
   return (
     <div className={styles.panelHeader}>
       <h2>{title}</h2>
-      <span>{meta}</span>
+      <div className={styles.panelHeaderMeta}>
+        <span>{meta}</span>
+        {children}
+      </div>
     </div>
   );
 }
@@ -235,16 +262,20 @@ function PanelHeader({ title, meta }: { title: string; meta: string }) {
 function NodeTree({
   nodes,
   selectedNodeId,
+  expandedNodeIds,
   onSelectNode,
+  onToggleNode,
 }: {
   nodes: DebugNodeDescriptor[];
   selectedNodeId?: string;
+  expandedNodeIds: ReadonlySet<string>;
   onSelectNode(id: string): void;
+  onToggleNode(id: string): void;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />
       ))}
     </ol>
   );
@@ -253,26 +284,40 @@ function NodeTree({
 function NodeTreeItem({
   node,
   selectedNodeId,
+  expandedNodeIds,
   onSelectNode,
+  onToggleNode,
 }: {
   node: DebugNodeDescriptor;
   selectedNodeId?: string;
+  expandedNodeIds: ReadonlySet<string>;
   onSelectNode(id: string): void;
+  onToggleNode(id: string): void;
 }) {
+  const hasChildren = node.children.length > 0;
+  const isExpanded = expandedNodeIds.has(node.id);
+
   return (
     <li className={styles.treeItem}>
-      <button
-        type="button"
-        className={`${styles.nodeRow} ${!node.active ? styles.inactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}
-        onClick={() => onSelectNode(node.id)}
-      >
-        {isImageNode(node) && <ImageIcon className={styles.nodeIcon} size={14} />}
-        <span className={styles.nodeName}>{node.name}</span>
-        <span className={styles.nodeMeta}>{node.className}</span>
-        {!node.active && <span className={styles.nodeFlag}>inactive</span>}
-        {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
-      </button>
-      {node.children.length > 0 && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} onSelectNode={onSelectNode} />}
+      <div className={`${styles.nodeRow} ${!node.active ? styles.inactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
+        <button
+          type="button"
+          className={styles.expandButton}
+          disabled={!hasChildren}
+          aria-label={hasChildren ? (isExpanded ? `${node.name} einklappen` : `${node.name} aufklappen`) : undefined}
+          onClick={() => onToggleNode(node.id)}
+        >
+          {hasChildren ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span className={styles.expandSpacer} />}
+        </button>
+        <button type="button" className={styles.nodeContent} onClick={() => onSelectNode(node.id)}>
+          {isImageNode(node) && <ImageIcon className={styles.nodeIcon} size={14} />}
+          <span className={styles.nodeName}>{node.name}</span>
+          <span className={styles.nodeMeta}>{node.className}</span>
+          {!node.active && <span className={styles.nodeFlag}>inactive</span>}
+          {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
+        </button>
+      </div>
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />}
     </li>
   );
 }
@@ -351,6 +396,22 @@ function parseDebugMessage(data: unknown): DebugMessage | undefined {
 
 function countNodes(nodes: DebugNodeDescriptor[]): number {
   return nodes.reduce((count, node) => count + 1 + countNodes(node.children), 0);
+}
+
+function collectNodeIds(nodes: DebugNodeDescriptor[]): string[] {
+  return nodes.flatMap((node) => [node.id, ...collectNodeIds(node.children)]);
+}
+
+function reconcileExpandedNodeIds(expanded: ReadonlySet<string>, roots: DebugNodeDescriptor[], deltas: DebugNodeDelta[]): Set<string> {
+  if (expanded.size === 0) return new Set();
+  const existingIds = new Set(collectNodeIds(roots));
+  const next = new Set([...expanded].filter((id) => existingIds.has(id)));
+
+  for (const delta of deltas) {
+    if (delta.kind === 'added' && delta.node) next.add(delta.id);
+  }
+
+  return next;
 }
 
 function applyNodeDeltas(roots: DebugNodeDescriptor[], deltas: DebugNodeDelta[]): DebugNodeDescriptor[] {
