@@ -265,8 +265,14 @@ export abstract class GameNode {
     const parentPosition = parent.getWorldPosition();
     const parentScale = parent.getWorldScale();
     const parentRotation = parent.getWorldRotation();
+    const parentAnchorOffset = parent.getLocalAnchorOffset();
     const positionInParent = this.getPositionInParent();
-    return rotatePoint(positionInParent.x * parentScale.x, positionInParent.y * parentScale.y, parentRotation, parentPosition);
+    return rotatePoint(
+      (positionInParent.x - parentAnchorOffset.x) * parentScale.x,
+      (positionInParent.y - parentAnchorOffset.y) * parentScale.y,
+      parentRotation,
+      parentPosition,
+    );
   }
 
   worldToLocalPosition(worldPosition: PointLike): PointLike {

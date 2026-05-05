@@ -58,14 +58,14 @@ export class BottomHudNode extends GameNode {
     const margin = 10 * scale;
     const frameWidth = (UI_ATLAS.bottomHud.w + layout.extraSlotCount * UI_ATLAS.repeatSlotStep) * layout.atlasScale;
     const frameHeight = UI_ATLAS.bottomHud.h * layout.atlasScale;
-    const worldAnchorX = viewportWidth / 2;
-    const worldAnchorY = viewportHeight - margin;
+    const frameX = layout.x;
+    const frameY = layout.dockY;
 
     this.position = { x: 0, y: -margin };
     this.size = { width: frameWidth, height: frameHeight };
 
-    this.placeRegionNode(this.actionFrameNode, layout.x - worldAnchorX, layout.dockY - worldAnchorY, layout.atlasScale);
-    this.placeBarNode(this.energyFillNode, UI_ATLAS.energyBar, layout.energy.x - worldAnchorX, layout.energy.y - worldAnchorY, layout.energy.w, layout.energy.h, layout.energyPct);
+    this.placeRegionNode(this.actionFrameNode, 0, 0, layout.atlasScale);
+    this.placeBarNode(this.energyFillNode, UI_ATLAS.energyBar, layout.energy.x - frameX, layout.energy.y - frameY, layout.energy.w, layout.energy.h, layout.energyPct);
 
     for (let i = 0; i < this.slotLabels.length; i += 1) {
       const label = this.slotLabels[i];
@@ -76,13 +76,13 @@ export class BottomHudNode extends GameNode {
 
       if (slotLayout.isExtraSlot) {
         this.slotFrameNodes[i].depth = UI_DEPTH + slotLayout.frameDepth;
-        this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - worldAnchorX, slotLayout.frameY - worldAnchorY, layout.slotScale);
+        this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale);
       } else {
         this.slotFrameNodes[i].visible = false;
         frame.setVisible(false);
       }
 
-      this.slotItemNodes[i].position = { x: slotLayout.itemX - worldAnchorX, y: slotLayout.itemY - worldAnchorY };
+      this.slotItemNodes[i].position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
       this.slotItemNodes[i].size = { width: slotLayout.itemSize, height: slotLayout.itemSize };
       this.slotItemNodes[i].scaleX = slotLayout.itemSize / item.frame.width;
       this.slotItemNodes[i].scaleY = slotLayout.itemSize / item.frame.height;
