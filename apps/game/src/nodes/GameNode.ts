@@ -25,6 +25,7 @@ export type NodeDebugBounds = DebugNodeBounds;
 export type NodeDebugProps = Record<string, string | number | boolean | null>;
 
 export type NodeSizeMode = 'explicit' | 'content';
+export type NodeBoundsMode = 'content' | 'none';
 
 export interface GameNodeOptions {
   name?: string;
@@ -38,6 +39,7 @@ export interface GameNodeOptions {
   origin?: Partial<PointLike>;
   rotation?: number;
   sizeMode?: NodeSizeMode;
+  boundsMode?: NodeBoundsMode;
 }
 
 export abstract class GameNode {
@@ -52,10 +54,12 @@ export abstract class GameNode {
   origin: PointLike;
   rotation: number;
   sizeMode: NodeSizeMode;
+  boundsMode: NodeBoundsMode;
   parent?: GameNode;
   readonly dependencies: readonly string[] = [];
 
   private readonly childNodes: GameNode[] = [];
+  private contentBounds?: NodeDebugBounds;
   private nodeContext?: NodeContext;
   private initialized = false;
   private resolved = false;
@@ -73,6 +77,7 @@ export abstract class GameNode {
     this.origin = { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y };
     this.rotation = options.rotation ?? 0;
     this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
+    this.boundsMode = options.boundsMode ?? 'content';
   }
 
   get children(): readonly GameNode[] {
@@ -197,12 +202,15 @@ export abstract class GameNode {
   }
 
   getBoundsInParentSpace(): NodeDebugBounds | undefined {
-    if (this.size.width <= 0 || this.size.height <= 0) return undefined;
+    if (this.boundsMode === 'none') return undefined;
+    const localBounds = this.getLocalContentBounds();
+    if (!localBounds) return undefined;
 
-    const left = -this.origin.x * this.size.width;
-    const top = -this.origin.y * this.size.height;
-    const right = left + this.size.width;
-    const bottom = top + this.size.height;
+    const localScale = this.getLocalScale();
+    const left = localBounds.x * localScale.x;
+    const top = localBounds.y * localScale.y;
+    const right = (localBounds.x + localBounds.width) * localScale.x;
+    const bottom = (localBounds.y + localBounds.height) * localScale.y;
     const corners = [
       rotatePoint(left, top, this.rotation, this.position),
       rotatePoint(right, top, this.rotation, this.position),
@@ -231,6 +239,7 @@ export abstract class GameNode {
     const minY = Math.min(0, ...childBounds.map((bounds) => bounds.y));
     const maxX = Math.max(0, ...childBounds.map((bounds) => bounds.x + bounds.width));
     const maxY = Math.max(0, ...childBounds.map((bounds) => bounds.y + bounds.height));
+    this.contentBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
     this.size = { width: maxX - minX, height: maxY - minY };
   }
 
@@ -297,15 +306,20 @@ export abstract class GameNode {
   }
 
   getWorldBounds(): NodeDebugBounds | undefined {
-    if (this.size.width <= 0 || this.size.height <= 0) return undefined;
+    if (this.boundsMode === 'none') return undefined;
+    const localBounds = this.getLocalContentBounds();
+    if (!localBounds) return undefined;
 
     const worldPosition = this.getWorldPosition();
     const parentScale = this.getParentWorldScale();
+    const localScale = this.getLocalScale();
     const rotation = this.getWorldRotation();
-    const left = -this.origin.x * this.size.width * parentScale.x;
-    const top = -this.origin.y * this.size.height * parentScale.y;
-    const right = left + this.size.width * parentScale.x;
-    const bottom = top + this.size.height * parentScale.y;
+    const scaleX = parentScale.x * localScale.x;
+    const scaleY = parentScale.y * localScale.y;
+    const left = localBounds.x * scaleX;
+    const top = localBounds.y * scaleY;
+    const right = (localBounds.x + localBounds.width) * scaleX;
+    const bottom = (localBounds.y + localBounds.height) * scaleY;
     const corners: [DebugNodePoint, DebugNodePoint, DebugNodePoint, DebugNodePoint] = [
       rotatePoint(left, top, rotation, worldPosition),
       rotatePoint(right, top, rotation, worldPosition),
@@ -327,11 +341,13 @@ export abstract class GameNode {
 
   getDebugProps(): NodeDebugProps {
     const world = this.getWorldTransform();
+    const contentBounds = this.getLocalContentBounds();
     return {
       active: this.active,
       visible: this.visible,
       order: this.order,
       sizeMode: this.sizeMode,
+      boundsMode: this.boundsMode,
       localX: this.position.x,
       localY: this.position.y,
       localWidth: this.size.width,
@@ -342,6 +358,10 @@ export abstract class GameNode {
       worldX: world.x,
       worldY: world.y,
       worldRotation: world.rotation,
+      contentX: contentBounds?.x ?? null,
+      contentY: contentBounds?.y ?? null,
+      contentWidth: contentBounds?.width ?? null,
+      contentHeight: contentBounds?.height ?? null,
     };
   }
 
@@ -377,5 +397,16 @@ export abstract class GameNode {
   private sortedChildren(): readonly GameNode[] {
     this.sortChildren();
     return this.childNodes;
+  }
+
+  private getLocalContentBounds(): NodeDebugBounds | undefined {
+    if (this.contentBounds && this.contentBounds.width > 0 && this.contentBounds.height > 0) return this.contentBounds;
+    if (this.size.width <= 0 || this.size.height <= 0) return undefined;
+    return {
+      x: -this.origin.x * this.size.width,
+      y: -this.origin.y * this.size.height,
+      width: this.size.width,
+      height: this.size.height,
+    };
   }
 }

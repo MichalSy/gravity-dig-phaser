@@ -9,7 +9,7 @@ export class GameplayUiRootNode extends NodeRoot {
   private inputState!: GameplayInputNode;
 
   constructor() {
-    super({ rootName: 'ui.gameplay', order: 100, className: 'GameplayUiRootNode' });
+    super({ rootName: 'ui.gameplay', order: 100, className: 'GameplayUiRootNode', sizeMode: 'content', boundsMode: 'content' });
     this.addChild(new StatusHudNode());
     this.addChild(new BottomHudNode());
     this.addChild(new TouchControlsNode());

@@ -8,7 +8,13 @@ export class NodeRoot extends GameNode {
   readonly rootName: string;
 
   constructor(options: NodeRootOptions) {
-    super({ ...options, name: options.name ?? options.rootName, className: options.className ?? 'NodeRoot' });
+    super({
+      ...options,
+      name: options.name ?? options.rootName,
+      className: options.className ?? 'NodeRoot',
+      sizeMode: options.sizeMode ?? 'explicit',
+      boundsMode: options.boundsMode ?? 'none',
+    });
     this.rootName = options.rootName;
   }
 }

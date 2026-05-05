@@ -11,12 +11,24 @@ interface Client {
   socket: WebSocket;
 }
 
+interface SessionCache {
+  assetList?: DebugMessage;
+  nodeTree?: DebugMessage;
+  nodeProps: Map<string, DebugMessage>;
+}
+
 const sessions = new Map<string, Set<Client>>();
 const clients = new Map<WebSocket, Client>();
+const sessionCaches = new Map<string, SessionCache>();
 const port = Number(process.env.PORT ?? 80);
 
 const app = new Hono();
 app.get('/health', (c) => c.json({ ok: true, service: 'gravity-dig-debug-relay' }));
+app.get('/sessions', (c) => c.json([...sessions.entries()].map(([sessionId, peers]) => ({
+  sessionId,
+  games: [...peers].filter((client) => client.role === 'game').length,
+  editors: [...peers].filter((client) => client.role === 'editor').length,
+}))));
 app.get('/', (c) => c.text('Gravity Dig debug relay is running. Connect via WebSocket at /debug.'));
 
 const server = createServer(async (req, res) => {
@@ -49,6 +61,7 @@ function handleMessage(socket: WebSocket, raw: string): void {
 
   const client = clients.get(socket);
   if (!client) return;
+  updateSessionCache(client.sessionId, message);
   broadcast(client.sessionId, message, socket);
 }
 
@@ -65,6 +78,7 @@ function registerClient(socket: WebSocket, hello: DebugHelloMessage): void {
   peers.add(client);
   sessions.set(client.sessionId, peers);
   publishStatus(client.sessionId);
+  if (client.role === 'editor') sendCachedSnapshot(client);
 }
 
 function removeClient(socket: WebSocket): void {
@@ -73,8 +87,10 @@ function removeClient(socket: WebSocket): void {
   clients.delete(socket);
   const peers = sessions.get(client.sessionId);
   peers?.delete(client);
-  if (!peers || peers.size === 0) sessions.delete(client.sessionId);
-  else publishStatus(client.sessionId);
+  if (!peers || peers.size === 0) {
+    sessions.delete(client.sessionId);
+    sessionCaches.delete(client.sessionId);
+  } else publishStatus(client.sessionId);
 }
 
 function publishStatus(sessionId: string): void {
@@ -86,6 +102,22 @@ function publishStatus(sessionId: string): void {
     editors: [...peers].filter((client) => client.role === 'editor').length,
   };
   broadcast(sessionId, status);
+}
+
+function sendCachedSnapshot(client: Client): void {
+  const cache = sessionCaches.get(client.sessionId);
+  if (!cache) return;
+  if (cache.assetList) send(client.socket, cache.assetList);
+  if (cache.nodeTree) send(client.socket, cache.nodeTree);
+  for (const props of cache.nodeProps.values()) send(client.socket, props);
+}
+
+function updateSessionCache(sessionId: string, message: DebugMessage): void {
+  const cache = sessionCaches.get(sessionId) ?? { nodeProps: new Map<string, DebugMessage>() } satisfies SessionCache;
+  if (message.type === 'asset:list') cache.assetList = message;
+  if (message.type === 'node:tree') cache.nodeTree = message;
+  if (message.type === 'node:props') cache.nodeProps.set(message.nodeId, message);
+  sessionCaches.set(sessionId, cache);
 }
 
 function broadcast(sessionId: string, message: DebugMessage, except?: WebSocket): void {
