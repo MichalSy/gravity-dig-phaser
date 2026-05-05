@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
-import { GameNode, ImageNode, type NodeContext, type NodeDebugProps } from '../../nodes';
+import { GameNode, ImageNode, TextNode, type NodeContext, type NodeDebugProps } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import { hudScaleForWidth, TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
@@ -11,7 +11,7 @@ export class BottomHudNode extends GameNode {
   private readonly energyFillNode: ImageNode;
   private readonly slotFrameNodes: ImageNode[] = [];
   private readonly slotItemNodes: ImageNode[] = [];
-  private readonly slotLabels: Phaser.GameObjects.Text[] = [];
+  private readonly slotLabelNodes: TextNode[] = [];
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
@@ -22,16 +22,14 @@ export class BottomHudNode extends GameNode {
     for (let i = 0; i < 4; i += 1) {
       this.slotFrameNodes.push(this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 })));
       this.slotItemNodes.push(this.addChild(new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 })));
+      this.slotLabelNodes.push(this.addChild(new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 })));
     }
   }
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     const resolution = Math.max(2, window.devicePixelRatio || 1);
-
-    for (let i = 0; i < 4; i += 1) {
-      this.slotLabels.push(this.phaserScene.add.text(0, 0, '', TEXT.value).setOrigin(1, 1).setScrollFactor(0).setDepth(UI_DEPTH + 12).setResolution(resolution));
-    }
+    for (const labelNode of this.slotLabelNodes) labelNode.resolution = resolution;
   }
 
   resolve(): void {
@@ -67,8 +65,8 @@ export class BottomHudNode extends GameNode {
     this.placeRegionNode(this.actionFrameNode, 0, 0, layout.atlasScale);
     this.placeBarNode(this.energyFillNode, UI_ATLAS.energyBar, layout.energy.x - frameX, layout.energy.y - frameY, layout.energy.w, layout.energy.h, layout.energyPct);
 
-    for (let i = 0; i < this.slotLabels.length; i += 1) {
-      const label = this.slotLabels[i];
+    for (let i = 0; i < this.slotLabelNodes.length; i += 1) {
+      const labelNode = this.slotLabelNodes[i];
       const item = this.slotItemNodes[i].image;
       const slot = state.cargo.slots[i];
       const slotLayout = computeBottomHudSlotLayout(layout, state, i);
@@ -83,13 +81,12 @@ export class BottomHudNode extends GameNode {
       this.slotItemNodes[i].visible = slotLayout.hasItem;
       item.setVisible(slotLayout.hasItem);
 
-      label.setVisible(slotLayout.hasItem);
-      if (slotLayout.hasItem) {
-        label
-          .setText(`x${slot?.quantity ?? 0}`)
-          .setPosition(slotLayout.labelX, slotLayout.labelY)
-          .setScale(slotLayout.labelScale);
-      }
+      labelNode.visible = slotLayout.hasItem;
+      labelNode.text = `x${slot?.quantity ?? 0}`;
+      labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+      labelNode.scale = slotLayout.labelScale;
+      labelNode.scaleX = slotLayout.labelScale;
+      labelNode.scaleY = slotLayout.labelScale;
     }
   }
 
@@ -114,8 +111,4 @@ export class BottomHudNode extends GameNode {
     node.image.setCrop(0, 0, cropWidth, frame.h).setVisible(safePct > 0);
   }
 
-  destroy(): void {
-    for (const object of this.slotLabels) object.destroy();
-    this.slotLabels.length = 0;
-  }
 }
