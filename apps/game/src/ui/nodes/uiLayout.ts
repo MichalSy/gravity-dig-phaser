@@ -41,23 +41,22 @@ export function bottomHudDisplayHeight(width: number): number {
   return UI_ATLAS.bottomDisplayHeight * hudScaleForWidth(width);
 }
 
-export function placeAtlasRegion(
+export function placeFrameRegion(
   image: Phaser.GameObjects.Image,
-  source: { x: number; y: number; w: number; h: number },
   x: number,
   y: number,
   scale: number,
 ): void {
   image
-    .setPosition(x - source.x * scale, y - source.y * scale)
-    .setCrop(source.x, source.y, source.w, source.h)
+    .setPosition(x, y)
+    .setCrop()
     .setScale(scale)
     .setVisible(true);
 }
 
-export function placeAtlasBar(
+export function placeFrameBar(
   bar: Phaser.GameObjects.Image,
-  source: { x: number; y: number; w: number; h: number },
+  frame: { w: number; h: number },
   x: number,
   y: number,
   width: number,
@@ -65,13 +64,13 @@ export function placeAtlasBar(
   pct: number,
 ): void {
   const safePct = Phaser.Math.Clamp(pct, 0, 1);
-  const cropWidth = Math.max(1, Math.round(source.w * safePct));
-  const scaleX = width / source.w;
-  const scaleY = height / source.h;
+  const cropWidth = Math.max(1, Math.round(frame.w * safePct));
+  const scaleX = width / frame.w;
+  const scaleY = height / frame.h;
 
   bar
-    .setPosition(x - source.x * scaleX, y - source.y * scaleY)
-    .setCrop(source.x, source.y, cropWidth, source.h)
+    .setPosition(x, y)
+    .setCrop(0, 0, cropWidth, frame.h)
     .setScale(scaleX, scaleY)
     .setVisible(safePct > 0);
 }

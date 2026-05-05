@@ -20,17 +20,7 @@ const GAME_STATIC_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = [
   { key: 'drill-tunnel-bg', path: '/assets/ships/drill_tunnel_bg.webp' },
   { key: 'laser-dot', path: '/assets/effects/laser_beam.webp' },
   { key: 'hud-hp-fuel-atlas', path: '/assets/ui/hud/hud_hp_fuel_atlas.webp', meta: true },
-  { key: 'hud-status-frame', path: '/assets/ui/hud/hud_status_frame.webp' },
-  { key: 'hud-action-frame', path: '/assets/ui/hud/hud_action_frame.webp' },
-  { key: 'hud-bar-red', path: '/assets/ui/hud/hud_bar_red.webp' },
-  { key: 'hud-bar-orange', path: '/assets/ui/hud/hud_bar_orange.webp' },
-  { key: 'hud-bar-cyan', path: '/assets/ui/hud/hud_bar_cyan.webp' },
-  { key: 'hud-slot-active-empty', path: '/assets/ui/hud/hud_slot_active_empty.webp' },
-  { key: 'hud-slot-locked', path: '/assets/ui/hud/hud_slot_locked.webp' },
-  { key: 'hud-lock-icon', path: '/assets/ui/hud/hud_lock_icon.webp' },
   { key: 'hud-item-rock', path: '/assets/ui/hud/hud_item_rock.webp' },
-  { key: 'hud-icon-hp', path: '/assets/ui/hud/hud_icon_hp.webp' },
-  { key: 'hud-icon-fuel', path: '/assets/ui/hud/hud_icon_fuel.webp' },
 ];
 
 const GAME_CRACK_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = Array.from({ length: 4 }, (_, index) => ({

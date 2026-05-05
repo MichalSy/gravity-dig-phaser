@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
 import { GameNode, ImageNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
-import { placeAtlasBar, placeAtlasRegion, TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
+import { placeFrameBar, placeFrameRegion, TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
 export class BottomHudNode extends GameNode {
   private phaserScene!: Phaser.Scene;
@@ -16,11 +16,11 @@ export class BottomHudNode extends GameNode {
 
   constructor() {
     super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode' });
-    this.actionFrameNode = this.addChild(new ImageNode({ name: 'ui.actionFrame', assetId: 'hud-hp-fuel-atlas', order: 0, depth: UI_DEPTH + 11.1, scrollFactor: 0, syncMode: 'object-to-node' }));
-    this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0, syncMode: 'object-to-node' }));
+    this.actionFrameNode = this.addChild(new ImageNode({ name: 'ui.actionFrame', assetId: 'hud-hp-fuel-atlas#bottomHud', order: 0, depth: UI_DEPTH + 11.1, scrollFactor: 0, syncMode: 'object-to-node' }));
+    this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas#energyBar', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0, syncMode: 'object-to-node' }));
 
     for (let i = 0; i < 4; i += 1) {
-      this.slotFrameNodes.push(this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0, syncMode: 'object-to-node' })));
+      this.slotFrameNodes.push(this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0, syncMode: 'object-to-node' })));
       this.slotItemNodes.push(this.addChild(new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0, syncMode: 'object-to-node' })));
     }
   }
@@ -57,16 +57,8 @@ export class BottomHudNode extends GameNode {
 
     const layout = computeBottomHudLayout(this.phaserScene.scale.width, this.phaserScene.scale.height, state);
 
-    placeAtlasRegion(this.actionFrameNode.image, UI_ATLAS.bottomHud, layout.x, layout.dockY, layout.atlasScale);
-    placeAtlasBar(
-      this.energyFillNode.image,
-      UI_ATLAS.energyBar,
-      layout.energy.x,
-      layout.energy.y,
-      layout.energy.w,
-      layout.energy.h,
-      layout.energyPct,
-    );
+    placeFrameRegion(this.actionFrameNode.image, layout.x, layout.dockY, layout.atlasScale);
+    placeFrameBar(this.energyFillNode.image, UI_ATLAS.energyBar, layout.energy.x, layout.energy.y, layout.energy.w, layout.energy.h, layout.energyPct);
 
     for (let i = 0; i < this.slotLabels.length; i += 1) {
       const label = this.slotLabels[i];
@@ -77,7 +69,7 @@ export class BottomHudNode extends GameNode {
 
       if (slotLayout.isExtraSlot) {
         frame.setDepth(UI_DEPTH + slotLayout.frameDepth);
-        placeAtlasRegion(frame, UI_ATLAS.repeatSlot, slotLayout.frameX, slotLayout.frameY, layout.slotScale);
+        placeFrameRegion(frame, slotLayout.frameX, slotLayout.frameY, layout.slotScale);
       } else {
         frame.setVisible(false);
       }
