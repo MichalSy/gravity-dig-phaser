@@ -86,7 +86,7 @@ function serializeNode(
     id,
     parentId,
     name: node.debugName(),
-    className: node.constructor.name,
+    className: node.name ?? node.constructor.name,
     active: node.active,
     visible: node.visible,
     order: node.order,
