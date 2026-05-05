@@ -12,7 +12,7 @@ export class StatusHudNode extends GameNode {
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
-    super({ name: 'ui.statusHud', order: 0, className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit' });
+    super({ name: 'ui.statusHud', order: 0, className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
     this.statusFrameNode = this.addChild(new ImageNode({ name: 'ui.statusFrame', assetId: 'hud-hp-fuel-atlas#topHud', order: 0, depth: UI_DEPTH + 10, scrollFactor: 0 }));
     this.hpFillNode = this.addChild(new ImageNode({ name: 'ui.hpFill', assetId: 'hud-hp-fuel-atlas#hpBar', order: 10, depth: UI_DEPTH + 11, scrollFactor: 0 }));
     this.fuelFillNode = this.addChild(new ImageNode({ name: 'ui.fuelFill', assetId: 'hud-hp-fuel-atlas#fuelBar', order: 20, depth: UI_DEPTH + 11, scrollFactor: 0 }));

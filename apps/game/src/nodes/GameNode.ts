@@ -41,6 +41,7 @@ export interface GameNodeOptions {
   rotation?: number;
   sizeMode?: NodeSizeMode;
   boundsMode?: NodeBoundsMode;
+  debugScrollFactor?: number;
 }
 
 export abstract class GameNode {
@@ -57,6 +58,7 @@ export abstract class GameNode {
   rotation: number;
   sizeMode: NodeSizeMode;
   boundsMode: NodeBoundsMode;
+  debugScrollFactor?: number;
   parent?: GameNode;
   readonly dependencies: readonly string[] = [];
 
@@ -81,6 +83,7 @@ export abstract class GameNode {
     this.rotation = options.rotation ?? 0;
     this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
     this.boundsMode = options.boundsMode ?? 'content';
+    this.debugScrollFactor = options.debugScrollFactor;
   }
 
   get children(): readonly GameNode[] {
@@ -236,7 +239,7 @@ export abstract class GameNode {
     const minY = Math.min(...ys);
     const maxX = Math.max(...xs);
     const maxY = Math.max(...ys);
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor: localBounds.scrollFactor ?? this.debugScrollFactor };
   }
 
   updateContentSizeFromChildren(): void {
@@ -354,7 +357,7 @@ export abstract class GameNode {
     const minY = Math.min(...ys);
     const maxX = Math.max(...xs);
     const maxY = Math.max(...ys);
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor: localBounds.scrollFactor, corners };
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor: localBounds.scrollFactor ?? this.debugScrollFactor, corners };
   }
 
   getDebugBounds(): NodeDebugBounds | undefined {
@@ -370,6 +373,7 @@ export abstract class GameNode {
       order: this.order,
       sizeMode: this.sizeMode,
       boundsMode: this.boundsMode,
+      debugScrollFactor: this.debugScrollFactor ?? null,
       parentAnchor: this.parent ? this.parentAnchor : null,
       localX: this.position.x,
       localY: this.position.y,
@@ -430,6 +434,7 @@ export abstract class GameNode {
       y: -this.origin.y * this.size.height,
       width: this.size.width,
       height: this.size.height,
+      scrollFactor: this.debugScrollFactor,
     };
   }
 }

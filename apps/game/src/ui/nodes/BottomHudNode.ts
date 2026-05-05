@@ -15,7 +15,7 @@ export class BottomHudNode extends GameNode {
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
-    super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode', anchor: 'bottom-center', parentAnchor: 'bottom-center', sizeMode: 'explicit' });
+    super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode', parentAnchor: 'bottom-center', sizeMode: 'explicit', debugScrollFactor: 0 });
     this.actionFrameNode = this.addChild(new ImageNode({ name: 'ui.actionFrame', assetId: 'hud-hp-fuel-atlas#bottomHud', order: 0, depth: UI_DEPTH + 11.1, scrollFactor: 0 }));
     this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas#energyBar', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0 }));
 
@@ -61,7 +61,7 @@ export class BottomHudNode extends GameNode {
     const frameX = layout.x;
     const frameY = layout.dockY;
 
-    this.position = { x: 0, y: -margin };
+    this.position = { x: -frameWidth / 2, y: -frameHeight - margin };
     this.size = { width: frameWidth, height: frameHeight };
 
     this.placeRegionNode(this.actionFrameNode, 0, 0, layout.atlasScale);
