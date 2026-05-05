@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
@@ -35,6 +35,59 @@ function buildDebugGameUrl(sessionId: string): string {
   return url.toString();
 }
 
+const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
+
+interface EditorLayoutState {
+  hierarchyWidth: number;
+  inspectorWidth: number;
+  assetExplorerHeight: number;
+  assetSplitPercent: number;
+}
+
+const defaultLayoutState: EditorLayoutState = {
+  hierarchyWidth: 448,
+  inspectorWidth: 340,
+  assetExplorerHeight: 380,
+  assetSplitPercent: 58,
+};
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function applyLayoutToDocument(layout: EditorLayoutState): void {
+  if (typeof document === 'undefined') return;
+  const style = document.documentElement.style;
+  style.setProperty('--hierarchy-width', `${layout.hierarchyWidth}px`);
+  style.setProperty('--inspector-width', `${layout.inspectorWidth}px`);
+  style.setProperty('--asset-explorer-height', `${layout.assetExplorerHeight}px`);
+  style.setProperty('--asset-list-fr', `${layout.assetSplitPercent}fr`);
+  style.setProperty('--asset-detail-fr', `${100 - layout.assetSplitPercent}fr`);
+}
+
+function persistLayout(layout: EditorLayoutState): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
+  applyLayoutToDocument(layout);
+}
+
+function readStoredLayout(): EditorLayoutState {
+  if (typeof window === 'undefined') return defaultLayoutState;
+  try {
+    const raw = window.localStorage.getItem(layoutStorageKey);
+    if (!raw) return defaultLayoutState;
+    const parsed = JSON.parse(raw) as Partial<EditorLayoutState>;
+    return {
+      hierarchyWidth: clamp(parsed.hierarchyWidth ?? defaultLayoutState.hierarchyWidth, 320, 640),
+      inspectorWidth: clamp(parsed.inspectorWidth ?? defaultLayoutState.inspectorWidth, 280, 560),
+      assetExplorerHeight: clamp(parsed.assetExplorerHeight ?? defaultLayoutState.assetExplorerHeight, 240, 560),
+      assetSplitPercent: clamp(parsed.assetSplitPercent ?? defaultLayoutState.assetSplitPercent, 35, 72),
+    };
+  } catch {
+    return defaultLayoutState;
+  }
+}
+
 export default function Home() {
   const [sessionId, setSessionId] = useState('');
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -49,8 +102,12 @@ export default function Home() {
   const [originalAssetId, setOriginalAssetId] = useState<string | undefined>();
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
+  const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
+  const workbenchRef = useRef<HTMLElement | null>(null);
+  const viewportPanelRef = useRef<HTMLElement | null>(null);
+  const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
   const debugGameUrl = useMemo(() => (sessionId ? buildDebugGameUrl(sessionId) : ''), [sessionId]);
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
@@ -67,6 +124,15 @@ export default function Home() {
 
   useEffect(() => {
     setSessionId(createSessionId());
+    const storedLayout = readStoredLayout();
+    setLayout(storedLayout);
+    applyLayoutToDocument(storedLayout);
+    const restoreTimer = window.setTimeout(() => {
+      const latestLayout = readStoredLayout();
+      setLayout(latestLayout);
+      applyLayoutToDocument(latestLayout);
+    }, 0);
+    return () => window.clearTimeout(restoreTimer);
   }, []);
 
   useEffect(() => {
@@ -203,6 +269,71 @@ export default function Home() {
     });
   }
 
+  function startColumnResize(edge: 'left' | 'right', event: ReactPointerEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startLayout = readStoredLayout();
+    const workbenchWidth = workbenchRef.current?.getBoundingClientRect().width ?? window.innerWidth;
+    const maxSideWidth = Math.max(320, Math.min(700, workbenchWidth - 620));
+
+    function onPointerMove(moveEvent: PointerEvent): void {
+      const deltaX = moveEvent.clientX - startX;
+      setLayout((current) => {
+        const next = {
+          ...current,
+          hierarchyWidth: edge === 'left' ? clamp(startLayout.hierarchyWidth + deltaX, 320, maxSideWidth) : current.hierarchyWidth,
+          inspectorWidth: edge === 'right' ? clamp(startLayout.inspectorWidth - deltaX, 280, maxSideWidth) : current.inspectorWidth,
+        };
+        persistLayout(next);
+        return next;
+      });
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', () => window.removeEventListener('pointermove', onPointerMove), { once: true });
+  }
+
+  function startAssetHeightResize(event: ReactPointerEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = readStoredLayout().assetExplorerHeight;
+    const panelHeight = viewportPanelRef.current?.getBoundingClientRect().height ?? window.innerHeight;
+    const maxHeight = Math.max(260, panelHeight - 260);
+
+    function onPointerMove(moveEvent: PointerEvent): void {
+      setLayout((current) => {
+        const next = {
+          ...current,
+          assetExplorerHeight: clamp(startHeight - (moveEvent.clientY - startY), 240, maxHeight),
+        };
+        persistLayout(next);
+        return next;
+      });
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', () => window.removeEventListener('pointermove', onPointerMove), { once: true });
+  }
+
+  function startAssetSplitResize(event: ReactPointerEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    const bodyRect = assetExplorerBodyRef.current?.getBoundingClientRect();
+    if (!bodyRect) return;
+    const { left, width } = bodyRect;
+
+    function onPointerMove(moveEvent: PointerEvent): void {
+      const percent = ((moveEvent.clientX - left) / width) * 100;
+      setLayout((current) => {
+        const next = { ...current, assetSplitPercent: clamp(percent, 35, 72) };
+        persistLayout(next);
+        return next;
+      });
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', () => window.removeEventListener('pointermove', onPointerMove), { once: true });
+  }
+
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
   const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
 
@@ -230,7 +361,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className={styles.workbench}>
+      <section ref={workbenchRef} className={styles.workbench}>
         <aside className={styles.panel}>
           <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`}>
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
@@ -245,7 +376,9 @@ export default function Home() {
           </div>
         </aside>
 
-        <section className={styles.viewportPanel}>
+        <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
+
+        <section ref={viewportPanelRef} className={styles.viewportPanel}>
           <PanelHeader title="Game" meta={lastEvent} />
           <div className={styles.viewportBody}>
             <div className={styles.frameStage}>
@@ -258,6 +391,7 @@ export default function Home() {
               />
             </div>
           </div>
+          <div className={styles.rowResizer} role="separator" aria-orientation="horizontal" aria-label="Asset Explorer Höhe ändern" onPointerDown={startAssetHeightResize} />
           <AssetExplorer
             assets={imageAssets}
             animations={animations}
@@ -265,8 +399,12 @@ export default function Home() {
             selectedAsset={selectedAsset}
             onSelectAsset={setSelectedAssetId}
             onOpenOriginal={setOriginalAssetId}
+            bodyRef={assetExplorerBodyRef}
+            onStartSplitResize={startAssetSplitResize}
           />
         </section>
+
+        <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
 
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
@@ -287,6 +425,8 @@ function AssetExplorer({
   selectedAsset,
   onSelectAsset,
   onOpenOriginal,
+  bodyRef,
+  onStartSplitResize,
 }: {
   assets: DebugImageAssetDescriptor[];
   animations: DebugImageAnimationDescriptor[];
@@ -294,11 +434,13 @@ function AssetExplorer({
   selectedAsset?: DebugImageAssetDescriptor;
   onSelectAsset(id: string): void;
   onOpenOriginal(id: string): void;
+  bodyRef: RefObject<HTMLDivElement | null>;
+  onStartSplitResize(event: ReactPointerEvent<HTMLDivElement>): void;
 }) {
   return (
     <section className={styles.assetExplorer}>
       <PanelHeader title="Asset Explorer" meta={`${assets.length} Images · ${animations.length} Animations`} />
-      <div className={styles.assetExplorerBody}>
+      <div ref={bodyRef} className={styles.assetExplorerBody}>
         <div className={styles.assetGrid}>
           {assets.length > 0 ? assets.map((asset) => (
             <button
@@ -313,6 +455,7 @@ function AssetExplorer({
             </button>
           )) : <p className={styles.empty}>Noch keine ImageAssets vom Game empfangen.</p>}
         </div>
+        <div className={styles.assetSplitResizer} role="separator" aria-orientation="vertical" aria-label="Asset Details Breite ändern" onPointerDown={onStartSplitResize} />
         <AssetDetails asset={selectedAsset} onOpenOriginal={onOpenOriginal} />
       </div>
     </section>
