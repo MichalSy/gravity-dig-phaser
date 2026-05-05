@@ -65,12 +65,15 @@ The C# gameplay code is treated as reference only; Phaser/TypeScript is the cano
 src/
 ├── main.ts                 # Phaser bootstrap only
 ├── config/gameConfig.ts    # Tunables and dimensions
-├── controls/               # Mobile/desktop input helpers
+├── controls/               # Mobile/desktop control widgets
+├── input/                  # Input intent builders
+├── app/loading/            # Loading overlay view
 ├── app/nodes/              # App roots/state/menu/loading nodes
-├── game/level.ts           # Deterministic world generation + level types
+├── game/level/             # Deterministic world generation pipeline + level types
 ├── game/nodes/             # Gameplay/save/level runtime nodes
 ├── player/                 # Profile, run state, inventory, upgrades, perks, savegame
 ├── scenes/AppScene.ts      # Single Phaser scene adapter
+├── ui/layout/              # Pure UI layout calculations
 ├── ui/nodes/               # HUD/debug/touch-control nodes
 └── utils/                  # Small pure helpers
 ```
@@ -81,7 +84,7 @@ Rules:
 - New runtime behavior belongs in one node per file; avoid multi-node catch-all files.
 - Player progress/state belongs in `src/player/`, not directly in `AppScene`.
 - Engine-facing orchestration stays in `scenes/AppScene.ts`; app/game/UI flow belongs in runtime nodes.
-- Pure logic stays independent from Phaser where practical.
+- Pure/domain logic lives outside nodes where practical: level pipeline, input intents, UI layout.
 - Assets/configs stay in `public/` so they are deployable as static files.
 
 ## Development

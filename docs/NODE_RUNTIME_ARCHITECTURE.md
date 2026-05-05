@@ -115,10 +115,13 @@ This keeps event names and payloads typed. Existing external emitters may still 
 
 ## Pure Logic
 
-Reusable decision logic lives in:
+Reusable decision logic lives outside the node classes:
 
 ```txt
-src/game/gameplayLogic.ts
+src/game/gameplayLogic.ts      # gameplay decisions and view-model builders
+src/game/level/                # deterministic level generation pipeline
+src/input/gameplayIntents.ts   # player/mining input intent builders
+src/ui/layout/                 # pure UI layout calculations
 ```
 
 Current examples:
@@ -129,24 +132,30 @@ Current examples:
 - `isAtShipDock(...)`
 - `spawnToWorld(...)`
 - `worldBoundsForLevel(...)`
-- `inputStrength(...)`
+- `buildPlayerInputIntent(...)`
+- `buildMiningInputIntent(...)`
+- `computeBottomHudLayout(...)`
 
-Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function and let the node orchestrate it.
+Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function or focused view/helper module and let the node orchestrate it.
 
 ## Node Layout
 
 Every runtime node lives in its own file. Root nodes compose child nodes; large multi-node files are intentionally avoided.
 
 ```txt
+src/app/loading/     # loading overlay view
 src/app/nodes/       # app roots/state/menu/loading
+src/game/level/      # level generation domain pipeline
 src/game/nodes/      # gameplay/runtime/save nodes
+src/input/           # input intent builders
+src/ui/layout/       # UI layout calculators
 src/ui/nodes/        # HUD, debug panel, touch controls
 src/nodes/           # node runtime primitives
 ```
 
 Current gameplay nodes mounted under `GameplayRootNode`:
 
-- `GameplayInputNode` — input mode, touch vectors, menu/input blocking state
+- `GameplayInputNode` — input mode, keyboard/touch/gamepad intent source
 - `HudStateNode` — current HUD view model for UI rendering
 - `LevelNode` — level data, tilemaps, collision queries, tile clearing
 - `CameraZoomNode` — debug zoom state and camera zoom sync

@@ -11,27 +11,17 @@ import { LevelNode } from './LevelNode';
 import { PlayerControllerNode } from './PlayerControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
-export interface MiningToolInput {
-  playerX: number;
-  playerY: number;
-  inputState: GameplayInputNode;
-  activePointer: Phaser.Input.Pointer;
-  camera: Phaser.Cameras.Scene2D.Camera;
-  inputBlocked: boolean;
-  getGamepad(): Gamepad | undefined;
-  axis(gamepad: Gamepad | undefined, index: number): number;
-  button(gamepad: Gamepad | undefined, index: number): boolean;
-}
-
 export class MiningToolNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private world!: GameWorldNode;
   private playerController!: PlayerControllerNode;
   private playerState!: PlayerStateManagerNode;
+  private gameplayInput!: GameplayInputNode;
   private laser!: Phaser.GameObjects.Graphics;
   private targetMarker!: Phaser.GameObjects.Rectangle;
   private laserSound?: Phaser.Sound.BaseSound;
+  private miningPressed = false;
   private readonly crackOverlays = new Map<string, Phaser.GameObjects.Image>();
   override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'gameplayInput'] as const;
   readonly data: MiningToolData = createMiningToolData();
@@ -57,6 +47,7 @@ export class MiningToolNode extends GameNode {
     this.world = this.requireNode<GameWorldNode>('world');
     this.playerController = this.requireNode<PlayerControllerNode>('playerController');
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
   }
 
   destroy(): void {
@@ -80,6 +71,7 @@ export class MiningToolNode extends GameNode {
 
   stopFiring(): void {
     this.data.target = undefined;
+    this.miningPressed = false;
     this.laser?.clear();
     this.targetMarker?.setVisible(false);
     this.setLaserSound(false);
@@ -89,10 +81,20 @@ export class MiningToolNode extends GameNode {
     this.updateMining(deltaMs / 1000);
   }
 
-  updateMining(deltaSeconds: number, input = this.getMiningInput()): void {
-    const aimWorld = this.getAimWorldPoint(input);
-    const target = this.findFirstMineableTile(aimWorld, input);
-    const firing = this.isMiningPressed(input);
+  updateMining(deltaSeconds: number): void {
+    const origin = this.getLaserOrigin();
+    const intent = this.gameplayInput.getMiningIntent({
+      playerX: this.world.player.x,
+      playerY: this.world.player.y + PLAYER_SIZE.h * 0.18,
+      inputBlocked: this.playerController.inputBlocked,
+      miningRange: this.playerState.stats.miningRange,
+      gamepadAim: this.data.gamepadAim,
+      laserOrigin: origin,
+    });
+    const aimWorld = this.getAimWorldPoint(intent.aimWorld);
+    const target = this.findFirstMineableTile(aimWorld, origin);
+    const firing = intent.miningPressed;
+    this.miningPressed = firing;
 
     this.laser.clear();
     this.targetMarker.setVisible(false);
@@ -103,7 +105,6 @@ export class MiningToolNode extends GameNode {
       return;
     }
 
-    const origin = this.getLaserOrigin(input);
     this.targetMarker.setPosition(target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2).setVisible(true);
     this.laser.lineStyle(firing ? 4 : 2, firing ? 0xf43f5e : 0xfb7185, firing ? 0.95 : 0.5);
     this.laser.lineBetween(origin.x, origin.y, target.x * TILE_SIZE + TILE_SIZE / 2, target.y * TILE_SIZE + TILE_SIZE / 2);
@@ -125,49 +126,16 @@ export class MiningToolNode extends GameNode {
     }
   }
 
-  getAimWorldPoint(input = this.getMiningInput()): Phaser.Math.Vector2 {
-    const origin = this.getLaserOrigin(input);
+  isMiningPressed(): boolean {
+    return this.miningPressed;
+  }
 
-    if (input.inputState.getInputMode() === 'gamepad') {
-      const gamepad = input.getGamepad();
-      const aimX = gamepad ? input.axis(gamepad, 2) : 0;
-      const aimY = gamepad ? input.axis(gamepad, 3) : 0;
-      if (Math.hypot(aimX, aimY) > 0.22) this.data.gamepadAim.set(aimX, aimY).normalize();
-      this.data.currentAimWorld.set(
-        origin.x + this.data.gamepadAim.x * this.playerState.stats.miningRange,
-        origin.y + this.data.gamepadAim.y * this.playerState.stats.miningRange,
-      );
-      return this.data.currentAimWorld;
-    }
-
-    if (input.inputState.isAiming()) {
-      const aim = input.inputState.getAimVector();
-      this.data.currentAimWorld.set(
-        origin.x + aim.x * this.playerState.stats.miningRange,
-        origin.y + aim.y * this.playerState.stats.miningRange,
-      );
-      return this.data.currentAimWorld;
-    }
-
-    if (input.inputState.getInputMode() === 'desktop') {
-      this.data.currentAimWorld.copy(input.activePointer.positionToCamera(input.camera) as Phaser.Math.Vector2);
-    }
+  getAimWorldPoint(aimWorld?: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    if (aimWorld) this.data.currentAimWorld.copy(aimWorld);
     return this.data.currentAimWorld;
   }
 
-  isMiningPressed(input = this.getMiningInput()): boolean {
-    if (input.inputBlocked) return false;
-    const mode = input.inputState.getInputMode();
-    if (mode === 'touch') return input.inputState.isAiming();
-    if (mode === 'gamepad') {
-      const gamepad = input.getGamepad();
-      return input.button(gamepad, 7) || input.button(gamepad, 5);
-    }
-    return input.activePointer.isDown;
-  }
-
-  private findFirstMineableTile(aimWorld: Phaser.Math.Vector2, input: MiningToolInput): TileCell | undefined {
-    const origin = this.getLaserOrigin(input);
+  private findFirstMineableTile(aimWorld: Phaser.Math.Vector2, origin: Phaser.Math.Vector2): TileCell | undefined {
     const dir = aimWorld.clone().subtract(origin);
     if (dir.lengthSq() <= 1) return undefined;
     dir.normalize();
@@ -183,22 +151,8 @@ export class MiningToolNode extends GameNode {
     return undefined;
   }
 
-  private getLaserOrigin(input: MiningToolInput): Phaser.Math.Vector2 {
-    return this.data.laserOrigin.set(input.playerX, input.playerY + PLAYER_SIZE.h * 0.18);
-  }
-
-  private getMiningInput(): MiningToolInput {
-    return {
-      playerX: this.world.player.x,
-      playerY: this.world.player.y,
-      inputState: this.requireNode<GameplayInputNode>('gameplayInput'),
-      activePointer: this.phaserScene.input.activePointer,
-      camera: this.phaserScene.cameras.main,
-      inputBlocked: this.playerController.inputBlocked,
-      getGamepad: () => this.playerController.getGamepad(),
-      axis: (gamepad, index) => this.playerController.axis(gamepad, index),
-      button: (gamepad, index) => this.playerController.button(gamepad, index),
-    };
+  private getLaserOrigin(): Phaser.Math.Vector2 {
+    return this.data.laserOrigin.set(this.world.player.x, this.world.player.y + PLAYER_SIZE.h * 0.18);
   }
 
   private setLaserSound(active: boolean): void {

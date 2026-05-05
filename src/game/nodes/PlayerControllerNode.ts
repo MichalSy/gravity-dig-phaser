@@ -2,23 +2,19 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { GRAVITY, PLAYER_SIZE } from '../../config/gameConfig';
 import { GameNode, type NodeContext } from '../../nodes';
-import { inputStrength } from '../gameplayLogic';
 import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createPlayerControllerData, type PlayerControllerData } from '../nodeData';
 import type { GameWorldNode } from './GameWorldNode';
 import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
-type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
-
 export class PlayerControllerNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
+  private gameplayInput!: GameplayInputNode;
   private player?: Phaser.GameObjects.Image;
-  private cursors!: CursorKeys;
-  private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   override readonly dependencies = ['level', 'world', 'playerState', 'gameplayInput'] as const;
   readonly data: PlayerControllerData = createPlayerControllerData();
 
@@ -28,10 +24,6 @@ export class PlayerControllerNode extends GameNode {
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    if (!this.phaserScene.input.keyboard) throw new Error('Keyboard input unavailable');
-
-    this.cursors = this.phaserScene.input.keyboard.createCursorKeys();
-    this.keys = this.phaserScene.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
     onGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuOpened, this.blockInput, this);
     onGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuClosed, this.unblockInput, this);
   }
@@ -40,6 +32,7 @@ export class PlayerControllerNode extends GameNode {
     this.levelNode = this.requireNode<LevelNode>('level');
     this.world = this.requireNode<GameWorldNode>('world');
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
   }
 
   destroy(): void {
@@ -95,20 +88,6 @@ export class PlayerControllerNode extends GameNode {
     return this.data.inputBlocked;
   }
 
-  getGamepad(): Gamepad | undefined {
-    return navigator.getGamepads?.().find((pad): pad is Gamepad => Boolean(pad)) ?? undefined;
-  }
-
-  axis(gamepad: Gamepad | undefined, index: number): number {
-    const value = gamepad?.axes[index] ?? 0;
-    return Math.abs(value) < 0.18 ? 0 : value;
-  }
-
-  button(gamepad: Gamepad | undefined, index: number): boolean {
-    const button = gamepad?.buttons[index];
-    return Boolean(button?.pressed || (button?.value ?? 0) > 0.35);
-  }
-
   private handleInput(deltaSeconds: number): void {
     if (this.data.inputBlocked) {
       this.data.velocity.x = 0;
@@ -117,52 +96,31 @@ export class PlayerControllerNode extends GameNode {
       return;
     }
 
-    const mode = this.inputState.getInputMode();
-    const joy = this.inputState.getMoveVector();
-    const gamepad = mode === 'gamepad' ? this.getGamepad() : undefined;
-    const gamepadX = gamepad ? this.axis(gamepad, 0) : 0;
-    const gamepadY = gamepad ? this.axis(gamepad, 1) : 0;
-    const desktop = mode === 'desktop';
-    const touch = mode === 'touch';
-    const gamepadMode = mode === 'gamepad';
+    const intent = this.gameplayInput.getPlayerIntent({ previousJumpHeld: this.data.jumpHeld });
 
-    const left = (desktop && (this.cursors.left?.isDown || this.keys.A.isDown)) || (touch && joy.x < -0.22) || (gamepadMode && gamepadX < -0.22);
-    const right = (desktop && (this.cursors.right?.isDown || this.keys.D.isDown)) || (touch && joy.x > 0.22) || (gamepadMode && gamepadX > 0.22);
-    const joyUp = touch && joy.y < -0.56;
-    const joyDown = touch && joy.y > 0.56;
-    const gamepadUp = gamepadMode && (gamepadY < -0.56 || this.button(gamepad, 0));
-    const gamepadDown = gamepadMode && gamepadY > 0.56;
-    const up = (desktop && (this.cursors.up?.isDown || this.keys.W.isDown || this.keys.SPACE.isDown)) || joyUp || gamepadUp;
-    const down = (desktop && (this.cursors.down?.isDown || this.keys.S.isDown)) || joyDown || gamepadDown;
+    this.data.velocity.x = intent.moveX * this.playerState.stats.moveSpeed;
 
-    this.data.velocity.x = 0;
-    if (left) this.data.velocity.x -= this.playerState.stats.moveSpeed * inputStrength(mode, joy.x, gamepadX);
-    if (right) this.data.velocity.x += this.playerState.stats.moveSpeed * inputStrength(mode, joy.x, gamepadX);
-
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.G)) {
+    if (intent.gravityTogglePressed) {
       this.data.gravityEnabled = !this.data.gravityEnabled;
       this.data.velocity.y = 0;
     }
 
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.R)) {
+    if (intent.resetPressed) {
       this.world.createLevel(`gravity-dig-phaser-${Date.now()}`, false);
       return;
     }
 
-    if (desktop && Phaser.Input.Keyboard.JustDown(this.keys.E)) {
+    if (intent.interactPressed) {
       emitGameEvent(this.phaserScene, GAME_EVENTS.shipReturnCargo);
     }
 
-    if (up && !this.data.gravityEnabled) this.data.velocity.y = -this.playerState.stats.moveSpeed;
-    if (down && !this.data.gravityEnabled) this.data.velocity.y = this.playerState.stats.moveSpeed;
-    if (!up && !down && !this.data.gravityEnabled) this.data.velocity.y = 0;
+    if (intent.up && !this.data.gravityEnabled) this.data.velocity.y = -this.playerState.stats.moveSpeed;
+    if (intent.down && !this.data.gravityEnabled) this.data.velocity.y = this.playerState.stats.moveSpeed;
+    if (!intent.up && !intent.down && !this.data.gravityEnabled) this.data.velocity.y = 0;
 
-    const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(this.keys.SPACE) || Phaser.Input.Keyboard.JustDown(this.keys.W));
-    const touchJump = joyUp && !this.data.jumpHeld;
-    const gamepadJump = gamepadMode && this.button(gamepad, 0) && !this.data.jumpHeld;
-    this.data.jumpHeld = joyUp || (gamepadMode && this.button(gamepad, 0));
+    this.data.jumpHeld = intent.jumpHeld;
 
-    if (keyboardJump || touchJump || gamepadJump) {
+    if (intent.jumpPressed) {
       if (this.data.grounded || this.data.coyoteTimerSeconds > 0) {
         this.jump();
       } else {
@@ -221,8 +179,4 @@ export class PlayerControllerNode extends GameNode {
     }
   }
 
-
-  private get inputState(): GameplayInputNode {
-    return this.requireNode<GameplayInputNode>('gameplayInput');
-  }
 }

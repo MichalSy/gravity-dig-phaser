@@ -14,12 +14,6 @@ export const SHIP_DOCK_CENTER_X = -3 * TILE_SIZE;
 export const SHIP_DOCK_CENTER_Y = 2 * TILE_SIZE;
 export const SHIP_DOCK_RADIUS = TILE_SIZE * 2.35;
 
-export function inputStrength(mode: InputMode, touchAxis: number, gamepadAxis: number): number {
-  if (mode === 'touch') return Math.max(0.45, Math.abs(touchAxis));
-  if (mode === 'gamepad') return Math.max(0.45, Math.abs(gamepadAxis));
-  return 1;
-}
-
 export interface PlayerAnimationState {
   facing: 'east' | 'west';
   textureKey: string;
