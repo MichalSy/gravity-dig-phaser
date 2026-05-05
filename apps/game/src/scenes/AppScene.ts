@@ -3,6 +3,7 @@ import { loadMenuAssets } from '../assets/AssetLoader';
 import { LevelGeneratorManagerNode, PlayerStateManagerNode } from '../game/nodes';
 import { NodeRoot, NodeRuntime } from '../nodes';
 import { GameplayRootNode, LoadingNode, MenuNode } from '../app/nodes';
+import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
 
 export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
@@ -24,6 +25,9 @@ export class AppScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
 
     this.appRuntime = new NodeRuntime({ phaserScene: this });
+    const debugConfig = readDebugConnectionConfig();
+    if (debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(debugConfig));
+
     this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'app' }));
     this.menuNode = this.appRoot.addChild(new MenuNode(() => this.startGame()));
     this.loadingNode = this.appRoot.addChild(new LoadingNode(() => this.mountGameplay()));

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@gravity-dig/debug-protocol": "*",
     "phaser": "^4.1.0"
   },
   "devDependencies": {

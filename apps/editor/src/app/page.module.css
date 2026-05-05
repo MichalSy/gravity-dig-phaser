@@ -42,6 +42,16 @@
 }
 .button:disabled { opacity: 0.48; cursor: not-allowed; }
 .secondary { background: rgba(71, 85, 105, 0.78); }
+.linkBox {
+  overflow-wrap: anywhere;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(8, 47, 73, 0.36);
+  color: #bae6fd;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+}
 .badge { padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; }
 .disconnected { background: rgba(239, 68, 68, 0.18); color: #fecaca; }
 .connecting { background: rgba(245, 158, 11, 0.18); color: #fde68a; }

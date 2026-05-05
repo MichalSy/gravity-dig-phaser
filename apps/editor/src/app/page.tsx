@@ -1,11 +1,14 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Cable, Send, Unplug } from 'lucide-react';
+import { Cable, Copy, ExternalLink, RefreshCw, Send, Unplug } from 'lucide-react';
 import type { DebugMessage } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
-const DEFAULT_SESSION_ID = 'local-dev';
+function createSessionId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `debug-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 function defaultRelayUrl(): string {
   const configured = process.env.NEXT_PUBLIC_DEBUG_RELAY_URL;
@@ -16,15 +19,34 @@ function defaultRelayUrl(): string {
     : 'ws://localhost:8787/debug';
 }
 
+function defaultGameUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_GAME_URL;
+  if (configured) return configured;
+  if (typeof window === 'undefined') return 'http://localhost:5173';
+  return window.location.protocol === 'https:'
+    ? 'https://gravity-dig-phaser.sytko.de'
+    : 'http://localhost:5173';
+}
+
+function buildDebugGameUrl(gameUrl: string, relayUrl: string, sessionId: string): string {
+  const url = new URL(gameUrl);
+  url.searchParams.set('debug', '1');
+  url.searchParams.set('debugSession', sessionId);
+  url.searchParams.set('debugRelay', relayUrl);
+  return url.toString();
+}
+
 export default function Home() {
   const [relayUrl, setRelayUrl] = useState(defaultRelayUrl);
-  const [sessionId, setSessionId] = useState(DEFAULT_SESSION_ID);
+  const [gameUrl, setGameUrl] = useState(defaultGameUrl);
+  const [sessionId, setSessionId] = useState(createSessionId);
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [text, setText] = useState('Hallo vom Debug Editor');
   const [messages, setMessages] = useState<string[]>([]);
   const socketRef = useRef<WebSocket | null>(null);
   const canSend = status === 'connected';
   const statusLabel = useMemo(() => ({ disconnected: 'Getrennt', connecting: 'Verbinde...', connected: 'Verbunden' })[status], [status]);
+  const debugGameUrl = useMemo(() => buildDebugGameUrl(gameUrl, relayUrl, sessionId), [gameUrl, relayUrl, sessionId]);
 
   function log(line: string): void {
     setMessages((current) => [`${new Date().toLocaleTimeString()} ${line}`, ...current].slice(0, 80));
@@ -59,6 +81,22 @@ export default function Home() {
     setStatus('disconnected');
   }
 
+  function refreshSession(): void {
+    disconnect();
+    setSessionId(createSessionId());
+    log('Neue Debug Session erzeugt');
+  }
+
+  function openGame(): void {
+    window.open(debugGameUrl, '_blank', 'noopener,noreferrer');
+    log(`Game gestartet: ${debugGameUrl}`);
+  }
+
+  async function copyGameLink(): Promise<void> {
+    await navigator.clipboard.writeText(debugGameUrl);
+    log('Game-Link kopiert');
+  }
+
   function sendMessage(): void {
     const socket = socketRef.current;
     if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -83,13 +121,28 @@ export default function Home() {
           <input className={styles.input} value={relayUrl} onChange={(event) => setRelayUrl(event.target.value)} />
         </label>
         <label className={styles.field}>
-          Session ID
+          Game URL
+          <input className={styles.input} value={gameUrl} onChange={(event) => setGameUrl(event.target.value)} />
+        </label>
+        <label className={styles.field}>
+          Debug Session
           <input className={styles.input} value={sessionId} onChange={(event) => setSessionId(event.target.value)} />
         </label>
 
         <div className={styles.actions}>
-          <button className={styles.button} onClick={connect}><Cable size={18} /> Verbinden</button>
+          <button className={styles.button} onClick={connect}><Cable size={18} /> Editor verbinden</button>
           <button onClick={disconnect} className={`${styles.button} ${styles.secondary}`}><Unplug size={18} /> Trennen</button>
+          <button onClick={refreshSession} className={`${styles.button} ${styles.secondary}`}><RefreshCw size={18} /> Neue Session</button>
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <h2 className={styles.sectionTitle}>Game Pairing</h2>
+        <p className={styles.copy}>Starte das Game mit Debug-Modus und derselben Session-ID. Damit koppeln sich genau dieser Editor und diese Game-Instanz.</p>
+        <div className={styles.linkBox}>{debugGameUrl}</div>
+        <div className={styles.actions}>
+          <button className={styles.button} onClick={openGame}><ExternalLink size={18} /> Game mit Debug starten</button>
+          <button className={`${styles.button} ${styles.secondary}`} onClick={copyGameLink}><Copy size={18} /> Link kopieren</button>
         </div>
       </section>
 

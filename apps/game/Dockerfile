@@ -2,11 +2,13 @@ FROM node:25-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 COPY apps/game/package.json apps/game/package.json
+COPY packages/debug-protocol/package.json packages/debug-protocol/package.json
 RUN npm ci
+COPY packages/debug-protocol packages/debug-protocol
 COPY apps/game apps/game
 ARG VITE_APP_VERSION=0.0.0
 ENV VITE_APP_VERSION=$VITE_APP_VERSION
-RUN npm run build -w apps/game
+RUN npm run build -w packages/debug-protocol && npm run build -w apps/game
 
 FROM nginx:alpine
 COPY apps/game/nginx.conf /etc/nginx/conf.d/default.conf
