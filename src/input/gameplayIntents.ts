@@ -3,12 +3,8 @@ import type { InputMode } from '../ui/HudState';
 
 export interface PlayerInputIntent {
   moveX: number;
-  up: boolean;
-  down: boolean;
   jumpPressed: boolean;
   jumpHeld: boolean;
-  gravityTogglePressed: boolean;
-  resetPressed: boolean;
   interactPressed: boolean;
 }
 
@@ -18,18 +14,24 @@ export interface MiningInputIntent {
   aimWorld?: Phaser.Math.Vector2;
 }
 
-export interface PlayerInputIntentSource {
+interface SharedInputSource {
   mode: InputMode;
   moveVector: Phaser.Math.Vector2;
   cursors: Phaser.Types.Input.Keyboard.CursorKeys;
   keys: Record<string, Phaser.Input.Keyboard.Key>;
   gamepad?: Gamepad;
-  previousJumpHeld: boolean;
   activePointer: Phaser.Input.Pointer;
   camera: Phaser.Cameras.Scene2D.Camera;
   aimVector: Phaser.Math.Vector2;
   touchAiming: boolean;
   inputBlocked: boolean;
+}
+
+export interface PlayerInputIntentSource extends SharedInputSource {
+  previousJumpHeld: boolean;
+}
+
+export interface MiningInputIntentSource extends SharedInputSource {
   miningRange: number;
   laserOrigin: Phaser.Math.Vector2;
   gamepadAim: Phaser.Math.Vector2;
@@ -45,15 +47,11 @@ export function buildPlayerInputIntent(source: PlayerInputIntentSource): PlayerI
   const left = (desktop && (source.cursors.left?.isDown || source.keys.A.isDown)) || (touch && source.moveVector.x < -0.22) || (gamepadMode && gamepadX < -0.22);
   const right = (desktop && (source.cursors.right?.isDown || source.keys.D.isDown)) || (touch && source.moveVector.x > 0.22) || (gamepadMode && gamepadX > 0.22);
   const joyUp = touch && source.moveVector.y < -0.56;
-  const joyDown = touch && source.moveVector.y > 0.56;
   const gamepadJumpHeld = gamepadMode && button(source.gamepad, 0);
-  const gamepadUp = gamepadMode && (gamepadY < -0.56 || gamepadJumpHeld);
-  const gamepadDown = gamepadMode && gamepadY > 0.56;
-  const up = (desktop && (source.cursors.up?.isDown || source.keys.W.isDown || source.keys.SPACE.isDown)) || joyUp || gamepadUp;
-  const down = (desktop && (source.cursors.down?.isDown || source.keys.S.isDown)) || joyDown || gamepadDown;
+  const up = desktop && (source.cursors.up?.isDown || source.keys.W.isDown || source.keys.SPACE.isDown);
   const keyboardJump = desktop && (Phaser.Input.Keyboard.JustDown(source.keys.SPACE) || Phaser.Input.Keyboard.JustDown(source.keys.W));
   const touchJump = joyUp && !source.previousJumpHeld;
-  const gamepadJump = gamepadMode && gamepadJumpHeld && !source.previousJumpHeld;
+  const gamepadJump = gamepadJumpHeld && !source.previousJumpHeld;
 
   const moveStrength = source.mode === 'touch'
     ? Math.max(0.45, Math.abs(source.moveVector.x))
@@ -63,17 +61,13 @@ export function buildPlayerInputIntent(source: PlayerInputIntentSource): PlayerI
 
   return {
     moveX: ((left ? -1 : 0) + (right ? 1 : 0)) * moveStrength,
-    up,
-    down,
     jumpPressed: keyboardJump || touchJump || gamepadJump,
-    jumpHeld: joyUp || gamepadJumpHeld,
-    gravityTogglePressed: desktop && Phaser.Input.Keyboard.JustDown(source.keys.G),
-    resetPressed: desktop && Phaser.Input.Keyboard.JustDown(source.keys.R),
+    jumpHeld: joyUp || up || gamepadJumpHeld || (gamepadMode && gamepadY < -0.56),
     interactPressed: desktop && Phaser.Input.Keyboard.JustDown(source.keys.E),
   };
 }
 
-export function buildMiningInputIntent(source: PlayerInputIntentSource): MiningInputIntent {
+export function buildMiningInputIntent(source: MiningInputIntentSource): MiningInputIntent {
   if (source.inputBlocked) return { aiming: false, miningPressed: false };
 
   if (source.mode === 'touch') {

@@ -17,7 +17,6 @@ export function computePlayerAnimationState(args: {
   aimX?: number;
   previousFacing: 'east' | 'west';
   velocity: Phaser.Math.Vector2;
-  gravityEnabled: boolean;
   grounded: boolean;
   walkFrame: number;
 }): PlayerAnimationState {
@@ -28,8 +27,8 @@ export function computePlayerAnimationState(args: {
     facing = args.velocity.x > 0 ? 'east' : 'west';
   }
 
-  const airborne = args.gravityEnabled && !args.grounded;
-  const moving = Math.abs(args.velocity.x) > 1 || (!args.gravityEnabled && Math.abs(args.velocity.y) > 1);
+  const airborne = !args.grounded;
+  const moving = Math.abs(args.velocity.x) > 1;
   const prefix = airborne ? 'player-jump' : moving ? 'player-walk' : 'player-idle';
   const frame = airborne ? (args.velocity.y < 0 ? 0 : 1) : args.walkFrame % (moving ? 6 : 4);
 
@@ -37,7 +36,7 @@ export function computePlayerAnimationState(args: {
     facing,
     textureKey: `${prefix}-${frame}`,
     flipX: facing === 'west',
-    footstepFrame: !airborne && moving && args.grounded && (frame === 1 || frame === 4) ? frame : undefined,
+    footstepFrame: !airborne && moving && (frame === 1 || frame === 4) ? frame : undefined,
   };
 }
 

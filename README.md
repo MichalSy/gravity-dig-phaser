@@ -22,8 +22,6 @@ Controls:
 - `W` / `Space`: jump
 - Left mouse button: laser mine a block in range
 - `E` near the ship: secure/sell run cargo and refill suit energy
-- `G`: toggle gravity debug mode
-- `R`: regenerate world with a new seed
 
 Implemented:
 

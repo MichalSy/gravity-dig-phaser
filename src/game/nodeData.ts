@@ -62,7 +62,6 @@ export interface PlayerControllerData {
   coyoteTimerSeconds: number;
   jumpBufferTimerSeconds: number;
   jumpHeld: boolean;
-  gravityEnabled: boolean;
   inputBlocked: boolean;
 }
 
@@ -73,7 +72,6 @@ export function createPlayerControllerData(): PlayerControllerData {
     coyoteTimerSeconds: 0,
     jumpBufferTimerSeconds: 0,
     jumpHeld: false,
-    gravityEnabled: true,
     inputBlocked: false,
   };
 }

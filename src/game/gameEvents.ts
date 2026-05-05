@@ -5,14 +5,14 @@ export const GAME_EVENTS = {
   gameplayMenuOpened: 'gameplay-menu:opened',
   gameplayMenuClosed: 'gameplay-menu:closed',
   worldLevelCreated: 'world:level-created',
-  shipReturnCargo: 'ship:return-cargo',
+  playerInteractRequested: 'player:interact-requested',
 } as const;
 
 export interface GameEventPayloads {
   [GAME_EVENTS.gameplayMenuOpened]: void;
   [GAME_EVENTS.gameplayMenuClosed]: void;
   [GAME_EVENTS.worldLevelCreated]: LevelData;
-  [GAME_EVENTS.shipReturnCargo]: void;
+  [GAME_EVENTS.playerInteractRequested]: void;
 }
 
 type EventName = keyof GameEventPayloads;

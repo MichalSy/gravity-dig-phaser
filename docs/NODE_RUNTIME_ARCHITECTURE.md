@@ -106,7 +106,7 @@ src/game/gameEvents.ts
 Use:
 
 ```ts
-emitGameEvent(scene, GAME_EVENTS.shipReturnCargo);
+emitGameEvent(scene, GAME_EVENTS.playerInteractRequested);
 onGameEvent(scene, GAME_EVENTS.worldLevelCreated, handler, this);
 offGameEvent(scene, GAME_EVENTS.worldLevelCreated, handler, this);
 ```
@@ -119,7 +119,7 @@ Reusable decision logic lives outside the node classes:
 
 ```txt
 src/game/gameplayLogic.ts      # gameplay decisions and view-model builders
-src/game/level/                # deterministic level generation pipeline
+src/game/level/                # deterministic level generation, tilemap view, collision helpers
 src/game/mining/               # mining targeting, damage, and laser view
 src/game/physics/              # movement/physics helpers
 src/game/world/                # world geometry and decoration/player view factories
@@ -140,6 +140,8 @@ Current examples:
 - `stepPlayerPhysics(...)`
 - `findFirstMineableTile(...)`
 - `worldBoundsForLevel(...)`
+- `LevelTilemapView.draw(...)`
+- `collidesBox(...)`
 
 Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function or focused view/helper module and let the node orchestrate it.
 
@@ -151,7 +153,7 @@ Every runtime node lives in its own file. Root nodes compose child nodes; large 
 src/app/loading/     # loading overlay view
 src/app/menu/        # menu view/config/layout
 src/app/nodes/       # app roots/state/menu/loading
-src/game/level/      # level generation domain pipeline
+src/game/level/      # level generation, tilemap view, collision helpers
 src/game/mining/     # mining targeting, damage, laser view
 src/game/nodes/      # gameplay/runtime/save nodes
 src/game/physics/    # physics helpers
@@ -166,10 +168,10 @@ Current gameplay nodes mounted under `GameplayRootNode`:
 
 - `GameplayInputNode` — input mode, keyboard/touch/gamepad intent source
 - `HudStateNode` — current HUD view model for UI rendering
-- `LevelNode` — level data, tilemaps, collision queries, tile clearing
-- `CameraZoomNode` — debug zoom state and camera zoom sync
+- `LevelNode` — level data lifecycle plus tile/collision query facade
+- `CameraZoomNode` — camera zoom sync
 - `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow
-- `PlayerControllerNode` — player input, movement, physics, collision stepping
+- `PlayerControllerNode` — player input to movement/physics; no world reset or debug toggles
 - `MiningToolNode` — mining input, laser, targeting, tile damage, crack overlays, block break handling
 - `PlayerPresentationNode` — animation, facing, footsteps
 - `RunRecoveryNode` — energy recovery while not mining

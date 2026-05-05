@@ -1,20 +1,14 @@
-import Phaser from 'phaser';
-import { TILE_SIZE } from '../../config/gameConfig';
 import { GameNode, type NodeContext } from '../../nodes';
-import { backwallFrameForTile, atlasFrameForTile, tileKey, worldToTile } from '../../utils/tileMath';
+import { tileKey } from '../../utils/tileMath';
 import type { LevelData, TileCell } from '../level';
+import { collidesBox, getCellAtWorld } from '../level/levelCollision';
+import { LevelTilemapView } from '../level/LevelTilemapView';
 import { LevelGeneratorManagerNode } from './LevelGeneratorManagerNode';
 
 export class LevelNode extends GameNode {
   private levelGenerator!: LevelGeneratorManagerNode;
-  private phaserScene!: Phaser.Scene;
+  private tilemapView!: LevelTilemapView;
   private currentLevel?: LevelData;
-  private tilemap?: Phaser.Tilemaps.Tilemap;
-  private tileLayer?: Phaser.Tilemaps.TilemapLayer;
-  private backwallTilemap?: Phaser.Tilemaps.Tilemap;
-  private backwallLayer?: Phaser.Tilemaps.TilemapLayer;
-  private mapOffsetXValue = 0;
-  private mapOffsetYValue = 0;
   override readonly dependencies = ['levelGenerator'] as const;
 
   constructor() {
@@ -22,7 +16,7 @@ export class LevelNode extends GameNode {
   }
 
   init(ctx: NodeContext): void {
-    this.phaserScene = ctx.phaserScene;
+    this.tilemapView = new LevelTilemapView(ctx.phaserScene);
   }
 
   resolve(): void {
@@ -30,7 +24,7 @@ export class LevelNode extends GameNode {
   }
 
   destroy(): void {
-    this.destroyTilemaps();
+    this.tilemapView?.destroy();
   }
 
   get level(): LevelData {
@@ -39,17 +33,16 @@ export class LevelNode extends GameNode {
   }
 
   get mapOffsetX(): number {
-    return this.mapOffsetXValue;
+    return this.tilemapView.offsetX;
   }
 
   get mapOffsetY(): number {
-    return this.mapOffsetYValue;
+    return this.tilemapView.offsetY;
   }
 
   generate(seed: number | string, difficultyLevel = 1): LevelData {
-    this.destroyTilemaps();
     this.currentLevel = this.levelGenerator.generateLevel(seed, difficultyLevel);
-    this.drawTiles(this.currentLevel);
+    this.tilemapView.draw(this.currentLevel);
     return this.currentLevel;
   }
 
@@ -58,94 +51,17 @@ export class LevelNode extends GameNode {
   }
 
   getCellAtWorld(worldX: number, worldY: number): TileCell | undefined {
-    return this.getCell(worldToTile(worldX), worldToTile(worldY));
-  }
-
-  isSolidAtWorld(worldX: number, worldY: number): boolean {
-    if (this.isBehindShipNozzleWall(worldX, worldY)) return true;
-
-    const cell = this.getCellAtWorld(worldX, worldY);
-    return !!cell && cell.type !== 'air';
-  }
-
-  getBoxProbePoints(centerX: number, centerY: number, width: number, height: number): [number, number][] {
-    const halfW = width / 2;
-    const halfH = height / 2;
-    return [
-      [centerX - halfW, centerY - halfH],
-      [centerX + halfW, centerY - halfH],
-      [centerX - halfW, centerY + halfH],
-      [centerX + halfW, centerY + halfH],
-    ];
+    return getCellAtWorld(this.level, worldX, worldY);
   }
 
   collidesBox(centerX: number, centerY: number, width: number, height: number): boolean {
-    return this.getBoxProbePoints(centerX, centerY, width, height).some(([x, y]) => this.isSolidAtWorld(x, y));
+    return collidesBox(this.level, centerX, centerY, width, height);
   }
 
   clearTile(cell: TileCell): void {
-    const localX = cell.x - this.mapOffsetXValue;
-    const localY = cell.y - this.mapOffsetYValue;
-    this.tilemap?.putTileAt(-1, localX, localY, false, this.tileLayer);
-
+    this.tilemapView.clearTile(cell);
     cell.type = 'air';
     cell.health = 0;
     this.level.resources.delete(tileKey(cell.x, cell.y));
-  }
-
-  private drawTiles(level: LevelData): void {
-    const cells = [...level.tiles.values()];
-    const minX = Math.min(...cells.map((cell) => cell.x));
-    const maxX = Math.max(...cells.map((cell) => cell.x));
-    const minY = Math.min(...cells.map((cell) => cell.y));
-    const maxY = Math.max(...cells.map((cell) => cell.y));
-    const width = maxX - minX + 1;
-    const height = maxY - minY + 1;
-    const data = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
-    const backwallData = Array.from({ length: height }, () => Array.from({ length: width }, () => -1));
-
-    this.mapOffsetXValue = minX;
-    this.mapOffsetYValue = minY;
-
-    for (const cell of cells) {
-      if (cell.type === 'air') continue;
-      const localX = cell.x - minX;
-      const localY = cell.y - minY;
-
-      if (!cell.boundary) {
-        backwallData[localY][localX] = backwallFrameForTile(cell.x, cell.y);
-      }
-      data[localY][localX] = atlasFrameForTile(cell.type, cell.x, cell.y);
-    }
-
-    this.backwallTilemap = this.phaserScene.make.tilemap({ data: backwallData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const backwallTileset = this.backwallTilemap.addTilesetImage('backwall-tiles', 'backwall-tiles', TILE_SIZE, TILE_SIZE, 0, 0);
-    if (!backwallTileset) throw new Error('Failed to create backwall tileset');
-    const backwallLayer = this.backwallTilemap.createLayer(0, backwallTileset, minX * TILE_SIZE, minY * TILE_SIZE);
-    if (!backwallLayer || backwallLayer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
-    this.backwallLayer = backwallLayer.setDepth(0.6).setAlpha(0.88);
-
-    this.tilemap = this.phaserScene.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
-    if (!tileset) throw new Error('Failed to create tileset');
-
-    const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
-    if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
-    this.tileLayer = layer.setDepth(2);
-  }
-
-  private destroyTilemaps(): void {
-    this.tileLayer?.destroy();
-    this.backwallLayer?.destroy();
-    this.tilemap?.destroy();
-    this.backwallTilemap?.destroy();
-    this.tileLayer = undefined;
-    this.backwallLayer = undefined;
-    this.tilemap = undefined;
-    this.backwallTilemap = undefined;
-  }
-
-  private isBehindShipNozzleWall(worldX: number, worldY: number): boolean {
-    return worldX < -8.65 * TILE_SIZE && worldY >= -1.4 * TILE_SIZE && worldY <= 2.95 * TILE_SIZE;
   }
 }

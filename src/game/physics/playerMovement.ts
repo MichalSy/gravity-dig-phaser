@@ -12,7 +12,7 @@ export interface PlayerPhysicsStepArgs {
 
 export function stepPlayerPhysics(args: PlayerPhysicsStepArgs): void {
   const wasGrounded = args.data.grounded;
-  if (args.data.gravityEnabled) args.data.velocity.y += GRAVITY * args.deltaSeconds;
+  args.data.velocity.y += GRAVITY * args.deltaSeconds;
 
   moveAxis(args, args.data.velocity.x * args.deltaSeconds, 0);
   args.data.grounded = false;

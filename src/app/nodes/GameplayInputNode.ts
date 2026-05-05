@@ -41,7 +41,7 @@ export class GameplayInputNode extends GameNode {
     if (!this.phaserScene.input.keyboard) throw new Error('Keyboard input unavailable');
 
     this.cursors = this.phaserScene.input.keyboard.createCursorKeys();
-    this.keys = this.phaserScene.input.keyboard.addKeys('W,A,S,D,SPACE,R,G,E') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = this.phaserScene.input.keyboard.addKeys('W,A,S,D,SPACE,E') as Record<string, Phaser.Input.Keyboard.Key>;
   }
 
   setInputMode(inputMode: InputMode): void {
@@ -105,9 +105,6 @@ export class GameplayInputNode extends GameNode {
       aimVector: this.aimVector,
       touchAiming: this.isAiming(),
       inputBlocked: this.menuOpen,
-      miningRange: 0,
-      laserOrigin: ZERO,
-      gamepadAim: RIGHT,
     });
   }
 
@@ -119,7 +116,6 @@ export class GameplayInputNode extends GameNode {
       cursors: this.cursors,
       keys: this.keys,
       gamepad: this.inputMode === 'gamepad' ? getGamepad() : undefined,
-      previousJumpHeld: false,
       activePointer: this.phaserScene.input.activePointer,
       camera: this.phaserScene.cameras.main,
       aimVector: this.aimVector,

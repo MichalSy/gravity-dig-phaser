@@ -42,7 +42,6 @@ export class PlayerPresentationNode extends GameNode {
       aimX,
       previousFacing: this.data.facing,
       velocity: this.playerController.velocity,
-      gravityEnabled: this.playerController.gravityEnabled,
       grounded: this.playerController.grounded,
       walkFrame: this.data.walkFrame,
     });

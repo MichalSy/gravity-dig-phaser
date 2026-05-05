@@ -21,7 +21,7 @@ export class ShipDockNode extends GameNode {
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    onGameEvent(this.phaserScene, GAME_EVENTS.shipReturnCargo, this.tryReturnCargoToShip, this);
+    onGameEvent(this.phaserScene, GAME_EVENTS.playerInteractRequested, this.tryReturnCargoToShip, this);
     onGameEvent(this.phaserScene, GAME_EVENTS.worldLevelCreated, this.resetPrompt, this);
   }
 
@@ -32,7 +32,7 @@ export class ShipDockNode extends GameNode {
   }
 
   destroy(): void {
-    offGameEvent(this.phaserScene, GAME_EVENTS.shipReturnCargo, this.tryReturnCargoToShip, this);
+    offGameEvent(this.phaserScene, GAME_EVENTS.playerInteractRequested, this.tryReturnCargoToShip, this);
     offGameEvent(this.phaserScene, GAME_EVENTS.worldLevelCreated, this.resetPrompt, this);
     this.shipPrompt?.destroy();
   }
