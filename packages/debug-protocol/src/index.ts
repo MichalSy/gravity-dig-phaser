@@ -33,9 +33,52 @@ export interface DebugRelayStatusMessage {
   editors: number;
 }
 
+export interface DebugNodeDescriptor {
+  id: string;
+  parentId?: string;
+  name: string;
+  className: string;
+  active: boolean;
+  visible: boolean;
+  order: number;
+  index: number;
+  children: DebugNodeDescriptor[];
+}
+
+export interface DebugNodeTreeMessage {
+  type: 'node:tree';
+  sessionId: string;
+  roots: DebugNodeDescriptor[];
+  sentAt: number;
+}
+
+export type DebugNodeDeltaKind = 'added' | 'removed' | 'moved' | 'updated';
+
+export interface DebugNodeDelta {
+  kind: DebugNodeDeltaKind;
+  id: string;
+  parentId?: string;
+  index?: number;
+  node?: DebugNodeDescriptor;
+  previousParentId?: string;
+  previousIndex?: number;
+  active?: boolean;
+  visible?: boolean;
+  order?: number;
+}
+
+export interface DebugNodeDeltaMessage {
+  type: 'node:delta';
+  sessionId: string;
+  deltas: DebugNodeDelta[];
+  sentAt: number;
+}
+
 export type DebugMessage =
   | DebugHelloMessage
   | DebugPingMessage
   | DebugPongMessage
   | DebugTextMessage
-  | DebugRelayStatusMessage;
+  | DebugRelayStatusMessage
+  | DebugNodeTreeMessage
+  | DebugNodeDeltaMessage;

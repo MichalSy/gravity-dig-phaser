@@ -63,9 +63,10 @@ The first debug milestone is intentionally tiny:
 
 1. Start relay: `npm run dev:relay`
 2. Start editor: `npm run dev:editor`
-3. Open editor and connect to `ws://localhost:8787/debug` with a generated `debugSession`.
+3. Open editor; it auto-connects, generates a `debugSession`, and shows a single game-start button.
 4. Use the editor button to open the game with `?debug=1&debugSession=<id>&debugRelay=<relay-url>`.
 5. The game registers as role `game`; the editor registers as role `editor`; matching `debugSession` pairs them through the relay.
+6. The game sends an initial `node:tree` snapshot and later `node:delta` messages for node add/remove/move/active/visible changes.
 
 `?debug=0` disables the persisted game debug connection. The relay exposes `/health` for Kubernetes probes.
 
