@@ -36,7 +36,7 @@ function buildDebugGameUrl(sessionId: string): string {
 }
 
 export default function Home() {
-  const [sessionId, setSessionId] = useState(createSessionId);
+  const [sessionId, setSessionId] = useState('');
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [gameCount, setGameCount] = useState(0);
   const [treeRoots, setTreeRoots] = useState<DebugNodeDescriptor[]>([]);
@@ -46,13 +46,18 @@ export default function Home() {
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
-  const debugGameUrl = useMemo(() => buildDebugGameUrl(sessionId), [sessionId]);
+  const debugGameUrl = useMemo(() => (sessionId ? buildDebugGameUrl(sessionId) : ''), [sessionId]);
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
     [selectedNodeId, treeRoots],
   );
 
   useEffect(() => {
+    setSessionId(createSessionId());
+  }, []);
+
+  useEffect(() => {
+    if (!sessionId) return;
     let disposed = false;
 
     function connect(): void {
@@ -129,12 +134,13 @@ export default function Home() {
 
   useEffect(() => {
     setSelectedNodeProps(undefined);
-    if (socketRef.current?.readyState !== WebSocket.OPEN) return;
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
     const selectMessage: DebugMessage = { type: 'node:select', sessionId, nodeId: selectedNodeId, sentAt: Date.now() };
     socketRef.current.send(JSON.stringify(selectMessage));
   }, [selectedNodeId, sessionId]);
 
   function openGameInTab(): void {
+    if (!debugGameUrl) return;
     window.open(debugGameUrl, '_blank', 'noopener,noreferrer');
   }
 
@@ -199,7 +205,7 @@ export default function Home() {
                 key={`${sessionId}-${gameFrameKey}`}
                 className={styles.gameFrame}
                 title="Gravity Dig Game"
-                src={debugGameUrl}
+                src={debugGameUrl || 'about:blank'}
                 allow="gamepad; fullscreen"
               />
             </div>
