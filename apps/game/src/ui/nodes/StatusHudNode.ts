@@ -1,25 +1,25 @@
 import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
-import { GameNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
+import { GameNode, ImageNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { hudScaleForWidth, placeAtlasBar, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
 export class StatusHudNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private hudState!: HudStateNode;
-  private statusFrame!: Phaser.GameObjects.Image;
-  private hpFill!: Phaser.GameObjects.Image;
-  private fuelFill!: Phaser.GameObjects.Image;
+  private readonly statusFrameNode: ImageNode;
+  private readonly hpFillNode: ImageNode;
+  private readonly fuelFillNode: ImageNode;
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
     super({ name: 'ui.statusHud', order: 0, className: 'StatusHudNode' });
+    this.statusFrameNode = this.addChild(new ImageNode({ name: 'ui.statusFrame', assetId: 'hud-hp-fuel-atlas', order: 0, depth: UI_DEPTH + 10, scrollFactor: 0, syncMode: 'object-to-node' }));
+    this.hpFillNode = this.addChild(new ImageNode({ name: 'ui.hpFill', assetId: 'hud-hp-fuel-atlas', order: 10, depth: UI_DEPTH + 11, scrollFactor: 0, syncMode: 'object-to-node' }));
+    this.fuelFillNode = this.addChild(new ImageNode({ name: 'ui.fuelFill', assetId: 'hud-hp-fuel-atlas', order: 20, depth: UI_DEPTH + 11, scrollFactor: 0, syncMode: 'object-to-node' }));
   }
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    this.statusFrame = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 10);
-    this.hpFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 11);
-    this.fuelFill = this.phaserScene.add.image(0, 0, 'hud-hp-fuel-atlas').setOrigin(0, 0).setScrollFactor(0).setDepth(UI_DEPTH + 11);
   }
 
   resolve(): void {
@@ -27,7 +27,7 @@ export class StatusHudNode extends GameNode {
   }
 
   override getDebugBounds(): NodeDebugBounds | undefined {
-    const bounds = this.statusFrame?.getBounds();
+    const bounds = this.statusFrameNode.image.getBounds();
     if (!bounds) return undefined;
     return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height, scrollFactor: 0 };
   }
@@ -52,19 +52,13 @@ export class StatusHudNode extends GameNode {
     const pctHp = Phaser.Math.Clamp(state.health.current / state.health.max, 0, 1);
     const pctFuel = Phaser.Math.Clamp(state.fuel.current / state.fuel.max, 0, 1);
 
-    this.statusFrame
+    this.statusFrameNode.image
       .setPosition(x - UI_ATLAS.topHud.x * atlasScale, y - UI_ATLAS.topHud.y * atlasScale)
       .setCrop(UI_ATLAS.topHud.x, UI_ATLAS.topHud.y, UI_ATLAS.topHud.w, UI_ATLAS.topHud.h)
       .setScale(atlasScale)
       .setVisible(true);
 
-    placeAtlasBar(this.hpFill, UI_ATLAS.hpBar, x + UI_ATLAS.hpSlot.x * atlasScale, y + UI_ATLAS.hpSlot.y * atlasScale, UI_ATLAS.hpSlot.w * atlasScale, UI_ATLAS.hpSlot.h * atlasScale, pctHp);
-    placeAtlasBar(this.fuelFill, UI_ATLAS.fuelBar, x + UI_ATLAS.fuelSlot.x * atlasScale, y + UI_ATLAS.fuelSlot.y * atlasScale, UI_ATLAS.fuelSlot.w * atlasScale, UI_ATLAS.fuelSlot.h * atlasScale, pctFuel);
-  }
-
-  destroy(): void {
-    this.statusFrame?.destroy();
-    this.hpFill?.destroy();
-    this.fuelFill?.destroy();
+    placeAtlasBar(this.hpFillNode.image, UI_ATLAS.hpBar, x + UI_ATLAS.hpSlot.x * atlasScale, y + UI_ATLAS.hpSlot.y * atlasScale, UI_ATLAS.hpSlot.w * atlasScale, UI_ATLAS.hpSlot.h * atlasScale, pctHp);
+    placeAtlasBar(this.fuelFillNode.image, UI_ATLAS.fuelBar, x + UI_ATLAS.fuelSlot.x * atlasScale, y + UI_ATLAS.fuelSlot.y * atlasScale, UI_ATLAS.fuelSlot.w * atlasScale, UI_ATLAS.fuelSlot.h * atlasScale, pctFuel);
   }
 }
