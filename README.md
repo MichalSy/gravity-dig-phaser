@@ -1,18 +1,17 @@
-# Gravity Dig Phaser
+# Gravity Dig Monorepo
 
-Phaser + TypeScript is now the target stack for Gravity Dig.
+Gravity Dig is a TypeScript monorepo with three deployable apps:
 
-This repo started as a minimal web spike and now contains the migrated baseline from the old Godot and Unity experiments:
+- `apps/game` - Phaser + Vite game client
+- `apps/editor` - Next.js/React debug editor
+- `apps/relay` - small Node.js WebSocket debug relay
+- `packages/debug-protocol` - shared debug message types
 
-- Godot level generation concepts ported to TypeScript
-- Godot/Unity tile, UI, ship, effect and character assets copied into `public/assets/`
-- Planet configs copied into `public/config/planets/`
-- Original design and migration docs archived under `docs/`
-- Web-first deployment via Docker/nginx, GHCR, GitOps and ArgoCD
+Live targets:
 
-Live demo:
-
-`https://gravity-dig-phaser.sytko.de`
+- Game: `https://gravity-dig-phaser.sytko.de`
+- Debug editor: `https://gravity-dig-debug.sytko.de`
+- Debug relay: `wss://gravity-dig-relay.sytko.de/debug`
 
 ## Current playable state
 
@@ -34,6 +33,41 @@ Implemented:
 - mineable blocks with health and laser feedback
 - centralized player management for profile, run state, inventory, upgrades, perks and local savegames
 
+## Monorepo layout
+
+```text
+apps/
+├── game/                   # Phaser/Vite game
+│   ├── public/             # static game assets/configs
+│   └── src/
+│       ├── main.ts         # Phaser bootstrap only
+│       ├── config/         # tunables and dimensions
+│       ├── controls/       # mobile/desktop control widgets
+│       ├── input/          # input intent builders
+│       ├── app/            # app roots/loading/menu nodes/views
+│       ├── game/           # gameplay runtime/domain code
+│       ├── player/         # profile, run state, inventory, savegame
+│       ├── scenes/         # single Phaser scene adapter
+│       ├── ui/             # HUD/touch-control nodes and layout
+│       └── utils/          # small pure helpers
+├── editor/                 # minimal Next.js debug editor smoke UI
+└── relay/                  # Node.js WebSocket relay at /debug
+
+packages/
+└── debug-protocol/         # shared message/types package
+```
+
+## Debug smoke flow
+
+The first debug milestone is intentionally tiny:
+
+1. Start relay: `npm run dev:relay`
+2. Start editor: `npm run dev:editor`
+3. Open editor and connect to `ws://localhost:8787/debug` with a session id.
+4. A game/debug client using the same session id receives editor messages through the relay.
+
+The relay exposes `/health` for Kubernetes probes.
+
 ## Source migration notes
 
 ### Godot source
@@ -41,71 +75,48 @@ Implemented:
 - Original docs: `docs/godot/`
 - Godot project docs: `docs/godot-project/`
 - Archived README/version: `docs/archive/godot/`
-- Planet configs: `public/config/planets/`
+- Planet configs: `apps/game/public/config/planets/`
 
 ### Unity source
 
 - Archived README/migration plan: `docs/archive/unity/`
-- Authored Unity sprites copied from `unity-project/Assets/Sprites/` into `public/assets/`
-
-Unity did contain useful extra work versus the Godot repo:
-
-- Unity C# ports of `PlayerController`, `LevelGenerator`, `GameManager`, `UIManager`, `HUD`, `TitleScreen`
-- a built WebGL output
-- full character animation frames and rotations
-- the same generated tile/UI/device/icon asset set already organized for engine import
+- Authored Unity sprites copied into `apps/game/public/assets/`
+- Unity `.meta` files are intentionally removed and ignored.
 
 The C# gameplay code is treated as reference only; Phaser/TypeScript is the canonical implementation path from here.
 
-## Architecture
+## Architecture rules
 
-```text
-src/
-├── main.ts                 # Phaser bootstrap only
-├── config/gameConfig.ts    # Tunables and dimensions
-├── controls/               # Mobile/desktop control widgets
-├── input/                  # Input intent builders
-├── app/loading/            # Loading overlay view
-├── app/menu/               # Menu config/layout/view
-├── app/nodes/              # App roots/state/menu/loading nodes
-├── game/level/             # Deterministic world generation pipeline + level types
-├── game/mining/            # Mining targeting, damage, laser view
-├── game/nodes/             # Gameplay/save/level runtime nodes
-├── game/physics/           # Player movement/physics helpers
-├── game/world/             # World geometry and view factories
-├── player/                 # Profile, run state, inventory, upgrades, perks, savegame
-├── scenes/AppScene.ts      # Single Phaser scene adapter
-├── ui/layout/              # Pure UI layout calculations
-├── ui/nodes/               # HUD/touch-control nodes
-└── utils/                  # Small pure helpers
-```
-
-Rules:
-
-- `main.ts` stays thin.
+- `apps/game/src/main.ts` stays thin.
 - New runtime behavior belongs in one node per file; avoid multi-node catch-all files.
-- Player progress/state belongs in `src/player/`, not directly in `AppScene`.
+- Player progress/state belongs in `apps/game/src/player/`, not directly in `AppScene`.
 - Engine-facing orchestration stays in `scenes/AppScene.ts`; app/game/UI flow belongs in runtime nodes.
 - Pure/domain logic lives outside nodes where practical: level pipeline, input intents, physics, mining, world geometry, UI layout.
-- Assets/configs stay in `public/` so they are deployable as static files.
+- Assets/configs stay in `apps/game/public/` so they are deployable as static files.
 
 ## Development
 
 ```bash
 npm install
-npm run dev
+npm run dev:game
+npm run dev:editor
+npm run dev:relay
 npm run build
 ```
 
 ## Deployment
 
-GitHub Actions builds a Docker image to GHCR:
+GitHub Actions builds three GHCR images:
 
-`ghcr.io/michalsy/gravity-dig-phaser.aikogame`
+- `ghcr.io/michalsy/gravity-dig-phaser.aikogame`
+- `ghcr.io/michalsy/gravity-dig-phaser.debug-editor`
+- `ghcr.io/michalsy/gravity-dig-phaser.debug-relay`
 
-GitOps/ArgoCD deploy target:
+GitOps/ArgoCD apps:
 
-`https://gravity-dig-phaser.sytko.de`
+- `gravity-dig-phaser`
+- `gravity-dig-editor`
+- `gravity-dig-relay`
 
 ## Player Management
 

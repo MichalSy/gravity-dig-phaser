@@ -1,19 +1,20 @@
 {
-  "name": "gravity-dig-phaser",
+  "name": "gravity-dig-monorepo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
-  "devDependencies": {
-    "@types/node": "^25.6.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.0.10"
-  },
-  "dependencies": {
-    "phaser": "^4.1.0"
+    "dev:game": "npm run dev -w apps/game",
+    "dev:editor": "npm run dev -w apps/editor",
+    "dev:relay": "npm run dev -w apps/relay",
+    "build": "npm run build:protocol && npm run build:game && npm run build:relay && npm run build:editor",
+    "build:protocol": "npm run build -w packages/debug-protocol",
+    "build:game": "npm run build -w apps/game",
+    "build:editor": "npm run build -w apps/editor",
+    "build:relay": "npm run build -w apps/relay"
   }
 }
