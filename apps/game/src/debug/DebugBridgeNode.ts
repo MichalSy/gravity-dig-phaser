@@ -206,6 +206,9 @@ export class DebugBridgeNode extends GameNode {
       sessionId: this.config.sessionId,
       nodeId: this.selectedNodeId,
       bounds: node.getDebugBounds(),
+      localTransform: node.getLocalTransform(),
+      worldTransform: node.getWorldTransform(),
+      worldBounds: node.getWorldBounds(),
       props: node.getDebugProps(),
       sentAt: Date.now(),
     });

@@ -33,10 +33,12 @@ export class ImageNode extends TransformNode {
   init(ctx: NodeContext): void {
     this.asset = ctx.assets.image(this.assetId);
     const frame = isFrameAsset(this.asset) ? this.asset.frameKey : undefined;
+    const worldPosition = this.getWorldPosition();
+    const worldScale = this.getWorldScale();
     this.phaserImage = ctx.phaserScene.add
-      .image(this.position.x, this.position.y, this.asset.textureKey, frame)
+      .image(worldPosition.x, worldPosition.y, this.asset.textureKey, frame)
       .setDepth(this.depth)
-      .setScale(this.scale)
+      .setScale(worldScale.x, worldScale.y)
       .setFlipX(this.flipX)
       .setVisible(this.visible)
       .setScrollFactor(this.scrollFactor);
@@ -48,19 +50,24 @@ export class ImageNode extends TransformNode {
     if (!this.phaserImage) return;
 
     if (this.syncMode === 'object-to-node') {
-      this.position = { x: this.phaserImage.x, y: this.phaserImage.y };
+      this.position = this.worldToLocalPosition({ x: this.phaserImage.x, y: this.phaserImage.y });
       this.size = { width: this.phaserImage.displayWidth, height: this.phaserImage.displayHeight };
       this.visible = this.phaserImage.visible;
       this.depth = this.phaserImage.depth;
-      this.scale = this.phaserImage.scaleX;
+      const parentScale = this.getParentWorldScale();
+      this.scale = parentScale.x === 0 ? this.phaserImage.scaleX : this.phaserImage.scaleX / parentScale.x;
+      this.rotation = this.phaserImage.rotation - (this.parent?.getWorldRotation() ?? 0);
       this.flipX = this.phaserImage.flipX;
       return;
     }
 
+    const worldPosition = this.getWorldPosition();
+    const worldScale = this.getWorldScale();
     this.phaserImage
-      .setPosition(this.position.x, this.position.y)
+      .setPosition(worldPosition.x, worldPosition.y)
       .setDepth(this.depth)
-      .setScale(this.scale)
+      .setRotation(this.getWorldRotation())
+      .setScale(worldScale.x, worldScale.y)
       .setFlipX(this.flipX)
       .setVisible(this.visible)
       .setScrollFactor(this.scrollFactor);
@@ -95,6 +102,8 @@ export class ImageNode extends TransformNode {
       frameKey: isFrameAsset(this.asset) ? this.asset.frameKey : null,
       depth: this.depth,
       scale: this.scale,
+      localScaleX: this.getLocalScale().x,
+      localScaleY: this.getLocalScale().y,
       flipX: this.flipX,
       scrollFactor: this.scrollFactor,
     };
@@ -102,8 +111,6 @@ export class ImageNode extends TransformNode {
 
   private applyOrigin(): void {
     if (!this.phaserImage) return;
-    const originX = this.anchor.endsWith('center') || this.anchor === 'center' ? 0.5 : this.anchor.endsWith('right') ? 1 : 0;
-    const originY = this.anchor.startsWith('center') || this.anchor === 'center' ? 0.5 : this.anchor.startsWith('bottom') ? 1 : 0;
-    this.phaserImage.setOrigin(originX, originY);
+    this.phaserImage.setOrigin(this.origin.x, this.origin.y);
   }
 }

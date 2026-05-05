@@ -17,4 +17,8 @@ export abstract class TransformNode extends GameNode {
     this.scale = options.scale ?? 1;
     this.scrollFactor = options.scrollFactor ?? 1;
   }
+
+  override getLocalScale(): { x: number; y: number } {
+    return { x: this.scale, y: this.scale };
+  }
 }

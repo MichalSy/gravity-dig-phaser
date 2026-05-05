@@ -229,9 +229,15 @@
   gap: 14px;
 }
 
-.inspector > div {
+.inspector > div,
+.inspectorSection {
   display: grid;
   gap: 5px;
+}
+
+.inspectorSection {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  padding-top: 11px;
 }
 
 .inspector label, .inspectorGrid span {

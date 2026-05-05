@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage, DebugNodeTransform } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function createSessionId(): string {
@@ -69,6 +69,19 @@ function persistLayout(layout: EditorLayoutState): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(layoutStorageKey, JSON.stringify(layout));
   applyLayoutToDocument(layout);
+}
+
+function createResizeShield(cursor: string): HTMLDivElement | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const shield = document.createElement('div');
+  shield.style.position = 'fixed';
+  shield.style.inset = '0';
+  shield.style.zIndex = '2147483647';
+  shield.style.cursor = cursor;
+  shield.style.userSelect = 'none';
+  shield.style.touchAction = 'none';
+  document.body.appendChild(shield);
+  return shield;
 }
 
 function readStoredLayout(): EditorLayoutState {
@@ -271,6 +284,8 @@ export default function Home() {
 
   function startColumnResize(edge: 'left' | 'right', event: ReactPointerEvent<HTMLDivElement>): void {
     event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const shield = createResizeShield('col-resize');
     const startX = event.clientX;
     const startLayout = readStoredLayout();
     const workbenchWidth = workbenchRef.current?.getBoundingClientRect().width ?? window.innerWidth;
@@ -289,12 +304,20 @@ export default function Home() {
       });
     }
 
+    function stopResize(): void {
+      window.removeEventListener('pointermove', onPointerMove);
+      shield?.remove();
+    }
+
     window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', () => window.removeEventListener('pointermove', onPointerMove), { once: true });
+    window.addEventListener('pointerup', stopResize, { once: true });
+    window.addEventListener('pointercancel', stopResize, { once: true });
   }
 
   function startAssetHeightResize(event: ReactPointerEvent<HTMLDivElement>): void {
     event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const shield = createResizeShield('row-resize');
     const startY = event.clientY;
     const startHeight = readStoredLayout().assetExplorerHeight;
     const panelHeight = viewportPanelRef.current?.getBoundingClientRect().height ?? window.innerHeight;
@@ -311,14 +334,25 @@ export default function Home() {
       });
     }
 
+    function stopResize(): void {
+      window.removeEventListener('pointermove', onPointerMove);
+      shield?.remove();
+    }
+
     window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', () => window.removeEventListener('pointermove', onPointerMove), { once: true });
+    window.addEventListener('pointerup', stopResize, { once: true });
+    window.addEventListener('pointercancel', stopResize, { once: true });
   }
 
   function startAssetSplitResize(event: ReactPointerEvent<HTMLDivElement>): void {
     event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const shield = createResizeShield('col-resize');
     const bodyRect = assetExplorerBodyRef.current?.getBoundingClientRect();
-    if (!bodyRect) return;
+    if (!bodyRect) {
+      shield?.remove();
+      return;
+    }
     const { left, width } = bodyRect;
 
     function onPointerMove(moveEvent: PointerEvent): void {
@@ -330,8 +364,14 @@ export default function Home() {
       });
     }
 
+    function stopResize(): void {
+      window.removeEventListener('pointermove', onPointerMove);
+      shield?.remove();
+    }
+
     window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', () => window.removeEventListener('pointermove', onPointerMove), { once: true });
+    window.addEventListener('pointerup', stopResize, { once: true });
+    window.addEventListener('pointercancel', stopResize, { once: true });
   }
 
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
@@ -633,37 +673,77 @@ function Inspector({ node, debugProps }: { node: DebugNodeDescriptor; debugProps
         <label>ID</label>
         <code>{node.id}</code>
       </div>
-      <div className={styles.inspectorGrid}>
-        <span>Active</span>
-        <strong>{node.active ? 'true' : 'false'}</strong>
-        <span>Visible</span>
-        <strong>{node.visible ? 'true' : 'false'}</strong>
-        <span>Order</span>
-        <strong>{node.order}</strong>
-        <span>Index</span>
-        <strong>{node.index}</strong>
-        <span>Children</span>
-        <strong>{node.children.length}</strong>
-      </div>
-      <div>
-        <label>Debug Bounds</label>
-        <code>{debugProps?.bounds ? `${Math.round(debugProps.bounds.x)}, ${Math.round(debugProps.bounds.y)} · ${Math.round(debugProps.bounds.width)}×${Math.round(debugProps.bounds.height)}` : 'Keine Bounds exposed'}</code>
-      </div>
-      <div>
-        <label>Exposed Props</label>
-        <div className={styles.inspectorGrid}>
-          {debugProps ? Object.entries(debugProps.props).map(([key, value]) => (
-            <FragmentRow key={key} name={key} value={value} />
-          )) : (
-            <>
-              <span>Status</span>
-              <strong>Warte auf Node-Debugdaten...</strong>
-            </>
-          )}
-        </div>
-      </div>
+      <InspectorSection title="Node">
+        <FragmentRow name="active" value={node.active} />
+        <FragmentRow name="visible" value={node.visible} />
+        <FragmentRow name="order" value={node.order} />
+        <FragmentRow name="index" value={node.index} />
+        <FragmentRow name="children" value={node.children.length} />
+      </InspectorSection>
+      <TransformSection title="Local Transform" transform={debugProps?.localTransform} editable />
+      <TransformSection title="World Transform" transform={debugProps?.worldTransform} />
+      <BoundsSection bounds={debugProps?.worldBounds ?? debugProps?.bounds} />
+      <InspectorSection title="Exposed Props">
+        {debugProps ? Object.entries(debugProps.props).map(([key, value]) => (
+          <FragmentRow key={key} name={key} value={value} />
+        )) : <FragmentRow name="status" value="Warte auf Node-Debugdaten..." />}
+      </InspectorSection>
     </div>
   );
+}
+
+function InspectorSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className={styles.inspectorSection}>
+      <label>{title}</label>
+      <div className={styles.inspectorGrid}>{children}</div>
+    </section>
+  );
+}
+
+function TransformSection({ title, transform, editable = false }: { title: string; transform?: DebugNodeTransform; editable?: boolean }) {
+  return (
+    <InspectorSection title={`${title}${editable ? ' · editierbar' : ' · read-only'}`}>
+      {transform ? (
+        <>
+          <FragmentRow name="x" value={formatNumber(transform.x)} />
+          <FragmentRow name="y" value={formatNumber(transform.y)} />
+          <FragmentRow name="width" value={formatNumber(transform.width)} />
+          <FragmentRow name="height" value={formatNumber(transform.height)} />
+          <FragmentRow name="originX" value={formatNumber(transform.originX, 3)} />
+          <FragmentRow name="originY" value={formatNumber(transform.originY, 3)} />
+          <FragmentRow name="rotation" value={`${formatNumber(radToDeg(transform.rotation), 2)}°`} />
+          <FragmentRow name="scaleX" value={formatNumber(transform.scaleX, 3)} />
+          <FragmentRow name="scaleY" value={formatNumber(transform.scaleY, 3)} />
+        </>
+      ) : <FragmentRow name="status" value="Warte auf Transform-Daten..." />}
+    </InspectorSection>
+  );
+}
+
+function BoundsSection({ bounds }: { bounds?: DebugNodeBounds }) {
+  return (
+    <InspectorSection title="World Bounds · read-only">
+      {bounds ? (
+        <>
+          <FragmentRow name="x" value={formatNumber(bounds.x)} />
+          <FragmentRow name="y" value={formatNumber(bounds.y)} />
+          <FragmentRow name="width" value={formatNumber(bounds.width)} />
+          <FragmentRow name="height" value={formatNumber(bounds.height)} />
+          {bounds.corners && <FragmentRow name="corners" value={bounds.corners.map((corner) => `${formatNumber(corner.x)},${formatNumber(corner.y)}`).join(' · ')} />}
+        </>
+      ) : <FragmentRow name="status" value="Keine Bounds exposed" />}
+    </InspectorSection>
+  );
+}
+
+function formatNumber(value: number, fractionDigits = 1): string {
+  if (!Number.isFinite(value)) return String(value);
+  return Number.isInteger(value) ? String(value) : value.toFixed(fractionDigits);
+}
+
+function radToDeg(radians: number): number {
+  return radians * 180 / Math.PI;
 }
 
 function FragmentRow({ name, value }: { name: string; value: string | number | boolean | null }) {

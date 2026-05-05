@@ -81,12 +81,30 @@ export interface DebugNodeSelectMessage {
   sentAt: number;
 }
 
+export interface DebugNodePoint {
+  x: number;
+  y: number;
+}
+
+export interface DebugNodeTransform {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  originX: number;
+  originY: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
+}
+
 export interface DebugNodeBounds {
   x: number;
   y: number;
   width: number;
   height: number;
   scrollFactor?: number;
+  corners?: [DebugNodePoint, DebugNodePoint, DebugNodePoint, DebugNodePoint];
 }
 
 export interface DebugNodePropsMessage {
@@ -94,6 +112,9 @@ export interface DebugNodePropsMessage {
   sessionId: string;
   nodeId: string;
   bounds?: DebugNodeBounds;
+  localTransform?: DebugNodeTransform;
+  worldTransform?: DebugNodeTransform;
+  worldBounds?: DebugNodeBounds;
   props: Record<string, string | number | boolean | null>;
   sentAt: number;
 }
