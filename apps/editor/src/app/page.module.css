@@ -230,19 +230,31 @@
 }
 
 .inspectorHeaderCard {
-  position: relative;
   display: grid;
-  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
   border: 1px solid rgba(125, 211, 252, 0.16);
   border-radius: 12px;
   padding: 12px;
   background: rgba(2, 6, 23, 0.32);
 }
 
+.inspectorNodeName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspectorHeaderRight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
 .inspectorClassTag {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   border: 1px solid rgba(125, 211, 252, 0.22);
   border-radius: 999px;
   padding: 3px 7px;
@@ -250,12 +262,6 @@
   color: #7dd3fc;
   font-size: 10px;
   font-weight: 900;
-}
-
-.inspectorHeaderActions {
-  display: flex;
-  gap: 7px;
-  margin-top: 4px;
 }
 
 .inspectorIconButton {
@@ -273,6 +279,12 @@
   border-color: rgba(125, 211, 252, 0.44);
   background: rgba(14, 165, 233, 0.16);
   color: #e0f2fe;
+}
+
+.inspectorIconButtonOff {
+  border-color: rgba(248, 113, 113, 0.34);
+  background: rgba(127, 29, 29, 0.18);
+  color: #fca5a5;
 }
 
 .inspector > div,

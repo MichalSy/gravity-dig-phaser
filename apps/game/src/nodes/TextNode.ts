@@ -80,6 +80,10 @@ export class TextNode extends TransformNode {
     this.phaserText = undefined;
   }
 
+  protected override onEffectiveActiveChanged(active: boolean): void {
+    this.phaserText?.setVisible(active && this.visible);
+  }
+
   setText(text: string): void {
     this.text = text;
     this.phaserText?.setText(text);

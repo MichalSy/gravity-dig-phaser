@@ -127,6 +127,10 @@ export class ImageNode extends TransformNode {
     this.phaserImage = undefined;
   }
 
+  protected override onEffectiveActiveChanged(active: boolean): void {
+    this.phaserImage?.setVisible(active && this.visible);
+  }
+
   setAsset(asset: RenderableImageAsset): void {
     this.asset = asset;
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;

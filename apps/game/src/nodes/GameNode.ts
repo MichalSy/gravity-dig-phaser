@@ -178,7 +178,7 @@ export abstract class GameNode {
   }
 
   updateTree(deltaMs: number): void {
-    if (!this.active) return;
+    if (!this.isEffectivelyActive()) return;
 
     this.update(deltaMs);
     for (const child of this.sortedChildren()) child.updateTree(deltaMs);
@@ -224,6 +224,22 @@ export abstract class GameNode {
   getLocalScale(): PointLike {
     return { x: 1, y: 1 };
   }
+
+  isEffectivelyActive(): boolean {
+    let node: GameNode | undefined = this;
+    while (node) {
+      if (!node.active) return false;
+      node = node.parent;
+    }
+    return true;
+  }
+
+  protected refreshSubtreeActiveState(): void {
+    this.onEffectiveActiveChanged(this.isEffectivelyActive());
+    for (const child of this.children) child.refreshSubtreeActiveState();
+  }
+
+  protected onEffectiveActiveChanged(_active: boolean): void {}
 
   getParentWorldScale(): PointLike {
     return this.parent?.getWorldScale() ?? { x: 1, y: 1 };
@@ -460,11 +476,14 @@ export abstract class GameNode {
     switch (key) {
       case 'active':
         if (typeof value !== 'boolean') return false;
+        if (this.active === value) return true;
         this.active = value;
+        this.refreshSubtreeActiveState();
         return true;
       case 'visible':
         if (typeof value !== 'boolean') return false;
         this.visible = value;
+        this.refreshSubtreeActiveState();
         return true;
       case 'order':
         if (typeof value !== 'number') return false;

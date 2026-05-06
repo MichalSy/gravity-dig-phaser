@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink, Eye, EyeOff, Image as ImageIcon, Power, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Eye, EyeOff, Image as ImageIcon, Power, PowerOff, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -800,14 +800,13 @@ function Inspector({
   return (
     <div className={styles.inspector}>
       <div className={styles.inspectorHeaderCard}>
-        <span className={styles.inspectorClassTag}>{node.className}</span>
-        <label>Name</label>
-        <strong>{node.name}</strong>
-        <div className={styles.inspectorHeaderActions}>
-          <button type="button" className={styles.inspectorIconButton} title={node.active ? 'Node deaktivieren' : 'Node aktivieren'} aria-label={node.active ? 'Node deaktivieren' : 'Node aktivieren'} onClick={() => onPatch(node, { active: !node.active })}>
-            <Power size={15} />
+        <strong className={styles.inspectorNodeName}>{node.name}</strong>
+        <div className={styles.inspectorHeaderRight}>
+          <span className={styles.inspectorClassTag}>{node.className}</span>
+          <button type="button" className={`${styles.inspectorIconButton} ${!node.active ? styles.inspectorIconButtonOff : ''}`} title={node.active ? 'Node deaktivieren' : 'Node aktivieren'} aria-label={node.active ? 'Node deaktivieren' : 'Node aktivieren'} onClick={() => onPatch(node, { active: !node.active })}>
+            {node.active ? <Power size={15} /> : <PowerOff size={15} />}
           </button>
-          <button type="button" className={styles.inspectorIconButton} title={node.visible ? 'Node verstecken' : 'Node anzeigen'} aria-label={node.visible ? 'Node verstecken' : 'Node anzeigen'} onClick={() => onPatch(node, { visible: !node.visible })}>
+          <button type="button" className={`${styles.inspectorIconButton} ${!node.visible ? styles.inspectorIconButtonOff : ''}`} title={node.visible ? 'Node verstecken' : 'Node anzeigen'} aria-label={node.visible ? 'Node verstecken' : 'Node anzeigen'} onClick={() => onPatch(node, { visible: !node.visible })}>
             {node.visible ? <Eye size={15} /> : <EyeOff size={15} />}
           </button>
         </div>

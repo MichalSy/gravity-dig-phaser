@@ -120,23 +120,27 @@ export class BottomHudNode extends GameNode {
       const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
       const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
       const slotItemNode = this.slotItemNodes[i];
-      if (i !== 1) slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
-      slotItemNode.size = { width: itemWidth, height: itemHeight };
-      slotItemNode.scaleX = itemWidth / item.frame.width;
-      slotItemNode.scaleY = itemHeight / item.frame.height;
-      slotItemNode.visible = slotLayout.hasItem;
-      item.setVisible(slotItemNode.visible);
+      if (slotItemNode.isEffectivelyActive()) {
+        if (i !== 1) slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
+        slotItemNode.size = { width: itemWidth, height: itemHeight };
+        slotItemNode.scaleX = itemWidth / item.frame.width;
+        slotItemNode.scaleY = itemHeight / item.frame.height;
+        slotItemNode.visible = slotLayout.hasItem;
+        item.setVisible(slotItemNode.visible);
+      }
 
       const labelParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
       const labelParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
       const labelScaleX = slotLayout.labelScale / Math.max(labelParentScaleX, Number.EPSILON);
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
-      labelNode.visible = slotLayout.hasItem;
-      labelNode.text = `x${slot?.quantity ?? 0}`;
-      if (i !== 1) labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
-      labelNode.scale = labelScaleX;
-      labelNode.scaleX = labelScaleX;
-      labelNode.scaleY = labelScaleY;
+      if (labelNode.isEffectivelyActive()) {
+        labelNode.visible = slotLayout.hasItem;
+        labelNode.text = `x${slot?.quantity ?? 0}`;
+        if (i !== 1) labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+        labelNode.scale = labelScaleX;
+        labelNode.scaleX = labelScaleX;
+        labelNode.scaleY = labelScaleY;
+      }
     }
   }
 
@@ -161,6 +165,7 @@ export class BottomHudNode extends GameNode {
   }
 
   private placeRegionNode(node: ImageNode, x: number, y: number, scale: number, visible = true): void {
+    if (!node.isEffectivelyActive()) return;
     node.position = { x, y };
     node.scale = scale;
     node.scaleX = scale;
@@ -171,6 +176,7 @@ export class BottomHudNode extends GameNode {
   }
 
   private placeBarNode(node: ImageNode, frame: { w: number; h: number }, x: number, y: number, width: number, height: number, pct: number): void {
+    if (!node.isEffectivelyActive()) return;
     const safePct = Phaser.Math.Clamp(pct, 0, 1);
     const cropWidth = Math.max(1, Math.round(frame.w * safePct));
     node.position = { x, y };

@@ -65,7 +65,7 @@ export abstract class TransformNode extends GameNode {
       originX: this.origin.x,
       originY: this.origin.y,
       depth: this.depth,
-      visible: this.visible,
+      visible: this.isEffectivelyActive() && this.visible,
       scrollFactor: this.scrollFactor,
     };
   }
