@@ -70,6 +70,12 @@ export class AppScene extends Phaser.Scene {
     this.appRuntime.addPersistentNode(new PlayerStateManagerNode());
     this.appRuntime.addPersistentNode(new LevelGeneratorManagerNode());
     this.mountGameplayScenes();
+    this.unmountStartupNodes();
+  }
+
+  private unmountStartupNodes(): void {
+    this.appRoot.removeChild(this.menuNode);
+    this.appRoot.removeChild(this.loadingNode);
   }
 
   private mountGameplayScenes(): void {

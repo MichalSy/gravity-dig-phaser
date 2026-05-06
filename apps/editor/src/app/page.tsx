@@ -112,6 +112,7 @@ export default function Home() {
   const [treeRoots, setTreeRoots] = useState<DebugNodeDescriptor[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
+  const [persistentManagersOpen, setPersistentManagersOpen] = useState(false);
   const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
   const [nodeDefinitions, setNodeDefinitions] = useState<Map<string, DebugSceneNodeDefinition>>(() => new Map());
   const [patchStatus, setPatchStatus] = useState('');
@@ -285,6 +286,7 @@ export default function Home() {
     setTreeRoots([]);
     setSelectedNodeId(undefined);
     setExpandedNodeIds(new Set());
+    setPersistentManagersOpen(false);
     setSelectedNodeProps(undefined);
     setImageAssets([]);
     setAnimations([]);
@@ -297,10 +299,12 @@ export default function Home() {
   }
 
   function expandAllNodes(): void {
+    setPersistentManagersOpen(true);
     setExpandedNodeIds(new Set(collectNodeIds(treeRoots)));
   }
 
   function collapseAllNodes(): void {
+    setPersistentManagersOpen(false);
     setExpandedNodeIds(new Set());
   }
 
@@ -452,7 +456,15 @@ export default function Home() {
           </PanelHeader>
           <div className={styles.panelBody}>
             {treeRoots.length > 0 ? (
-              <NodeTree nodes={treeRoots} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={setSelectedNodeId} onToggleNode={toggleNodeExpanded} />
+              <HierarchyTree
+                roots={treeRoots}
+                selectedNodeId={selectedNodeId}
+                expandedNodeIds={expandedNodeIds}
+                persistentManagersOpen={persistentManagersOpen}
+                onSelectNode={setSelectedNodeId}
+                onToggleNode={toggleNodeExpanded}
+                onTogglePersistentManagers={() => setPersistentManagersOpen((current) => !current)}
+              />
             ) : (
               <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
             )}
@@ -708,6 +720,51 @@ function PanelHeader({ title, meta, children }: { title: string; meta: string; c
         <span>{meta}</span>
         {children}
       </div>
+    </div>
+  );
+}
+
+function HierarchyTree({
+  roots,
+  selectedNodeId,
+  expandedNodeIds,
+  persistentManagersOpen,
+  onSelectNode,
+  onToggleNode,
+  onTogglePersistentManagers,
+}: {
+  roots: DebugNodeDescriptor[];
+  selectedNodeId?: string;
+  expandedNodeIds: ReadonlySet<string>;
+  persistentManagersOpen: boolean;
+  onSelectNode(id: string): void;
+  onToggleNode(id: string): void;
+  onTogglePersistentManagers(): void;
+}) {
+  const { persistentManagers, scenes } = splitHierarchyRoots(roots);
+
+  return (
+    <div className={styles.hierarchyGroups}>
+      {persistentManagers.length > 0 && (
+        <section className={styles.hierarchyGroup}>
+          <button type="button" className={styles.hierarchyGroupHeader} onClick={onTogglePersistentManagers} aria-expanded={persistentManagersOpen}>
+            {persistentManagersOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <Boxes size={13} />
+            <span>Persistent Managers</span>
+            <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
+          </button>
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />}
+        </section>
+      )}
+
+      <section className={styles.hierarchyGroup}>
+        <div className={styles.hierarchyGroupHeaderStatic}>
+          <Layers size={13} />
+          <span>Scenes</span>
+          <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
+        </div>
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />
+      </section>
     </div>
   );
 }
@@ -1407,6 +1464,14 @@ function hasInactiveAncestor(nodes: DebugNodeDescriptor[], node: DebugNodeDescri
 
 function countNodes(nodes: DebugNodeDescriptor[]): number {
   return nodes.reduce((count, node) => count + 1 + countNodes(node.children), 0);
+}
+
+function splitHierarchyRoots(roots: DebugNodeDescriptor[]): { persistentManagers: DebugNodeDescriptor[]; scenes: DebugNodeDescriptor[] } {
+  const appRoot = roots.find(isAppRootNode);
+  return {
+    persistentManagers: roots.filter((node) => !isAppRootNode(node)),
+    scenes: appRoot?.children ?? [],
+  };
 }
 
 function collectNodeIds(nodes: DebugNodeDescriptor[]): string[] {
