@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
 import { GameNode, ImageNode, TextNode, type NodeContext, type NodeDebugProps } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
-import { hudScaleForWidth, TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
+import { TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
 export class BottomHudNode extends GameNode {
   private phaserScene!: Phaser.Scene;
@@ -15,7 +15,7 @@ export class BottomHudNode extends GameNode {
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
-    super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode', parentAnchor: 'bottom-center', sizeMode: 'explicit', debugScrollFactor: 0 });
+    super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode', anchor: 'bottom-left', parentAnchor: 'bottom-center', sizeMode: 'explicit', debugScrollFactor: 0 });
     this.actionFrameNode = this.addChild(new ImageNode({ name: 'ui.actionFrame', assetId: 'hud-hp-fuel-atlas#bottomHud', order: 0, depth: UI_DEPTH + 11.1, scrollFactor: 0 }));
     this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas#energyBar', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0 }));
 
@@ -55,14 +55,12 @@ export class BottomHudNode extends GameNode {
     const viewportWidth = this.phaserScene.scale.width;
     const viewportHeight = this.phaserScene.scale.height;
     const layout = computeBottomHudLayout(viewportWidth, viewportHeight, state);
-    const scale = hudScaleForWidth(viewportWidth);
-    const margin = 10 * scale;
     const frameWidth = (UI_ATLAS.bottomHud.w + layout.extraSlotCount * UI_ATLAS.repeatSlotStep) * layout.atlasScale;
     const frameHeight = UI_ATLAS.bottomHud.h * layout.atlasScale;
     const frameX = layout.x;
     const frameY = layout.dockY;
 
-    this.position = { x: -frameWidth / 2, y: -frameHeight - margin };
+    this.position = { x: -frameWidth / 2, y: 0 };
     this.size = { width: frameWidth, height: frameHeight };
 
     this.placeRegionNode(this.actionFrameNode, 0, 0, layout.atlasScale);
