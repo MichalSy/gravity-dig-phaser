@@ -6,6 +6,8 @@ export * from './TransformNode';
 export * from './ImageNode';
 export * from './TextNode';
 export * from './AnimatedImageNode';
+export * from './CollisionRectNode';
+export * from './SceneNode';
 export * from './DisplayNodeFactory';
 export * from './NodeRuntime';
 export * from './NodeRoot';

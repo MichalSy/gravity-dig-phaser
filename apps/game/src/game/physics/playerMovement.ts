@@ -1,9 +1,8 @@
-import type Phaser from 'phaser';
 import { GRAVITY, PLAYER_SIZE } from '../../config/gameConfig';
 import type { PlayerControllerData } from '../nodeData';
 
 export interface PlayerPhysicsStepArgs {
-  player: Phaser.GameObjects.Image;
+  player: { x: number; y: number; setPosition(x: number, y: number): unknown };
   data: PlayerControllerData;
   deltaSeconds: number;
   collidesBox(x: number, y: number, width: number, height: number): boolean;

@@ -69,7 +69,6 @@ export class PlayerAnimatorNode extends GameNode {
     this.data.animationId = animation.animationId;
     this.playerImage.play(animation.animationId);
     this.playerImage.flipX = animation.flipX;
-    player.setFlipX(animation.flipX);
 
     this.updateFootstep(animation.footstepActive);
   }

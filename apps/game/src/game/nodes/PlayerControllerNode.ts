@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
-import { GameNode, type NodeContext } from '../../nodes';
+import { CollisionRectNode, GameNode, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createPlayerControllerData, type PlayerControllerData } from '../nodeData';
 import { stepPlayerPhysics } from '../physics/playerMovement';
@@ -12,7 +12,7 @@ export class PlayerControllerNode extends GameNode {
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
-  private player?: Phaser.GameObjects.Image;
+  private player?: CollisionRectNode;
   override readonly dependencies = ['level', 'playerState', 'gameplayInput'] as const;
   readonly data: PlayerControllerData = createPlayerControllerData();
 
@@ -37,7 +37,7 @@ export class PlayerControllerNode extends GameNode {
     offGameEvent(this.phaserScene, GAME_EVENTS.gameplayMenuClosed, this.unblockInput, this);
   }
 
-  setPlayer(player: Phaser.GameObjects.Image): void {
+  setPlayer(player: CollisionRectNode): void {
     this.player = player;
     this.resetMotion();
   }

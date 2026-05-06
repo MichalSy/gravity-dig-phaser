@@ -1,13 +1,11 @@
 import { GameplayInputNode, HudStateNode } from '../../app/nodes';
-import Phaser from 'phaser';
-import { NodeRoot, type NodeContext } from '../../nodes';
+import { SceneNode, type NodeContext } from '../../nodes';
 import type { InputMode } from '../HudState';
 import { BottomHudNode } from './BottomHudNode';
 import { StatusHudNode } from './StatusHudNode';
 import { TouchControlsNode } from './TouchControlsNode';
 
-export class GameplayUiRootNode extends NodeRoot {
-  private phaserScene!: Phaser.Scene;
+export class GameplayUiRootNode extends SceneNode {
   private inputState!: GameplayInputNode;
 
   constructor() {
@@ -19,17 +17,16 @@ export class GameplayUiRootNode extends NodeRoot {
 
   override readonly dependencies = ['gameplayInput', 'hudState'] as const;
 
-  init(ctx: NodeContext): void {
-    this.phaserScene = ctx.phaserScene;
-    this.size = { width: this.phaserScene.scale.width, height: this.phaserScene.scale.height };
+  override init(ctx: NodeContext): void {
+    super.init(ctx);
   }
 
   resolve(): void {
     this.inputState = this.requireNode<GameplayInputNode>('gameplayInput');
   }
 
-  update(): void {
-    this.size = { width: this.phaserScene.scale.width, height: this.phaserScene.scale.height };
+  override update(): void {
+    super.update();
     this.inputState.setInputMode(this.detectInputMode());
   }
 

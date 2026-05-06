@@ -1,6 +1,6 @@
 import { GameplayInputNode } from './GameplayInputNode';
 import { HudStateNode } from './HudStateNode';
-import { NodeRoot } from '../../nodes';
+import { SceneNode } from '../../nodes';
 import {
   AutoSaveNode,
   CameraZoomNode,
@@ -14,7 +14,7 @@ import {
 } from '../../game/nodes';
 import { GameplayUiRootNode } from '../../ui/nodes';
 
-export class GameplayRootNode extends NodeRoot {
+export class GameplayRootNode extends SceneNode {
   constructor() {
     super({ rootName: 'gameplay', order: 20, className: 'GameplayRootNode' });
     this.addChild(new GameplayInputNode());
