@@ -22,9 +22,10 @@ export class BottomHudNode extends GameNode {
     for (let i = 0; i < 4; i += 1) {
       const slotFrameNode = this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 }));
       const slotItemNode = new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', parentAnchor: i === 1 ? 'center' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
+      const slotLabelNode = new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', parentAnchor: i === 1 ? 'bottom-right' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
       this.slotFrameNodes.push(slotFrameNode);
       this.slotItemNodes.push(i === 1 ? slotFrameNode.addChild(slotItemNode) : this.addChild(slotItemNode));
-      this.slotLabelNodes.push(this.addChild(new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 })));
+      this.slotLabelNodes.push(i === 1 ? slotFrameNode.addChild(slotLabelNode) : this.addChild(slotLabelNode));
     }
   }
 
@@ -87,12 +88,16 @@ export class BottomHudNode extends GameNode {
       this.slotItemNodes[i].visible = slotLayout.hasItem;
       item.setVisible(slotLayout.hasItem);
 
+      const labelParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
+      const labelParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
+      const labelScaleX = slotLayout.labelScale / Math.max(labelParentScaleX, Number.EPSILON);
+      const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
       labelNode.visible = slotLayout.hasItem;
       labelNode.text = `x${slot?.quantity ?? 0}`;
-      labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
-      labelNode.scale = slotLayout.labelScale;
-      labelNode.scaleX = slotLayout.labelScale;
-      labelNode.scaleY = slotLayout.labelScale;
+      labelNode.position = i === 1 ? { x: -15, y: -15 } : { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+      labelNode.scale = labelScaleX;
+      labelNode.scaleX = labelScaleX;
+      labelNode.scaleY = labelScaleY;
     }
   }
 
