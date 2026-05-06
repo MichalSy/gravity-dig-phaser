@@ -166,6 +166,10 @@
 
 .panelBody > .treeList { padding-left: 0; border-left: 0; }
 .treeItem { margin: 4px 0; }
+.treeItem > .treeList {
+  margin-left: 14px;
+}
+
 
 .nodeRow {
   width: 100%;
