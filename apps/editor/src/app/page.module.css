@@ -275,10 +275,15 @@
   color: #bae6fd;
 }
 
-.inspectorIconButton:hover {
+.inspectorIconButton:hover:not(:disabled) {
   border-color: rgba(125, 211, 252, 0.44);
   background: rgba(14, 165, 233, 0.16);
   color: #e0f2fe;
+}
+
+.inspectorIconButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .inspectorIconButtonOff {
@@ -827,4 +832,26 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
+}
+
+.dragNumberInput {
+  cursor: ew-resize;
+  user-select: none;
+}
+
+.dragNumberInput:focus:not([readonly]) {
+  cursor: text;
+}
+
+.rotationEditor {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 8px;
+}
+
+.rotationSlider {
+  width: 100%;
+  accent-color: #38bdf8;
 }

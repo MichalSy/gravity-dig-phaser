@@ -145,6 +145,10 @@ export default function Home() {
     () => (selectedNode?.guid ? nodeDefinitions.get(selectedNode.guid) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
     [nodeDefinitions, selectedNode],
   );
+  const selectedNodeHasInactiveParent = useMemo(
+    () => selectedNode ? hasInactiveAncestor(treeRoots, selectedNode) : false,
+    [selectedNode, treeRoots],
+  );
 
   useEffect(() => {
     setSessionId(createSessionId());
@@ -488,7 +492,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} definition={selectedNodeDefinition} debugProps={selectedNodeProps} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -784,6 +788,7 @@ function isTextNode(node: DebugNodeDescriptor): boolean {
 
 function Inspector({
   node,
+  parentInactive,
   definition,
   debugProps,
   assets,
@@ -791,6 +796,7 @@ function Inspector({
   onSelectAsset,
 }: {
   node: DebugNodeDescriptor;
+  parentInactive: boolean;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
   assets: DebugImageAssetDescriptor[];
@@ -803,8 +809,8 @@ function Inspector({
         <strong className={styles.inspectorNodeName}>{node.name}</strong>
         <div className={styles.inspectorHeaderRight}>
           <span className={styles.inspectorClassTag}>{node.className}</span>
-          <button type="button" className={`${styles.inspectorIconButton} ${!node.active ? styles.inspectorIconButtonOff : ''}`} title={node.active ? 'Node deaktivieren' : 'Node aktivieren'} aria-label={node.active ? 'Node deaktivieren' : 'Node aktivieren'} onClick={() => onPatch(node, { active: !node.active })}>
-            {node.active ? <Power size={15} /> : <PowerOff size={15} />}
+          <button type="button" className={`${styles.inspectorIconButton} ${(!node.active || parentInactive) ? styles.inspectorIconButtonOff : ''}`} disabled={parentInactive} title={parentInactive ? 'Parent ist inactive' : node.active ? 'Node deaktivieren' : 'Node aktivieren'} aria-label={parentInactive ? 'Parent ist inactive' : node.active ? 'Node deaktivieren' : 'Node aktivieren'} onClick={() => onPatch(node, { active: !node.active })}>
+            {node.active && !parentInactive ? <Power size={15} /> : <PowerOff size={15} />}
           </button>
           <button type="button" className={`${styles.inspectorIconButton} ${!node.visible ? styles.inspectorIconButtonOff : ''}`} title={node.visible ? 'Node verstecken' : 'Node anzeigen'} aria-label={node.visible ? 'Node verstecken' : 'Node anzeigen'} onClick={() => onPatch(node, { visible: !node.visible })}>
             {node.visible ? <Eye size={15} /> : <EyeOff size={15} />}
@@ -958,10 +964,23 @@ function EditablePropRow({
   }
 
   if (prop.type === 'Number') {
+    if (name === 'rotation') {
+      const radians = parseFiniteNumber(draft) ?? 0;
+      const degrees = radiansToDegrees(radians);
+      return (
+        <>
+          <span>{label}</span>
+          <div className={styles.rotationEditor}>
+            <input className={styles.rotationSlider} type="range" min={-360} max={360} step={1} value={clamp(degrees, -360, 360)} disabled={prop.readOnly} onChange={(event) => scheduleCommit(degreesToRadians(Number(event.currentTarget.value)))} onBlur={() => commit()} />
+            <DragNumberInput value={degrees} min={-360} max={360} step={1} suffix="°" disabled={prop.readOnly} onChange={(next) => scheduleCommit(degreesToRadians(next))} onCommit={(next) => commit(degreesToRadians(next))} />
+          </div>
+        </>
+      );
+    }
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="number" value={numberInputValue(draft)} min={prop.min} max={prop.max} step={prop.step ?? 1} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit(event.currentTarget.value)} onBlur={() => commit()} />
+        <DragNumberInput value={parseFiniteNumber(draft) ?? 0} min={prop.min} max={prop.max} step={prop.step ?? 1} disabled={prop.readOnly} onChange={scheduleCommit} onCommit={(next) => commit(next)} />
       </>
     );
   }
@@ -1012,8 +1031,8 @@ function EditablePropRow({
             </select>
           )}
           <div className={styles.vectorEditor}>
-            <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
-            <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
+            <DragNumberInput value={parseFiniteNumber(point.x) ?? 0} min={prop.min ?? (prop.type === 'Scale' ? 0 : undefined)} max={prop.max ?? (prop.type === 'Scale' ? 5 : undefined)} step={prop.step ?? (prop.type === 'Position' ? 1 : 0.01)} integer={prop.type === 'Position'} disabled={prop.readOnly} onChange={(next) => scheduleCommit({ x: next, y: point.y })} onCommit={(next) => commit({ x: next, y: point.y }, { keepEditing: true })} />
+            <DragNumberInput value={parseFiniteNumber(point.y) ?? 0} min={prop.min ?? (prop.type === 'Scale' ? 0 : undefined)} max={prop.max ?? (prop.type === 'Scale' ? 5 : undefined)} step={prop.step ?? (prop.type === 'Position' ? 1 : 0.01)} integer={prop.type === 'Position'} disabled={prop.readOnly} onChange={(next) => scheduleCommit({ x: point.x, y: next })} onCommit={(next) => commit({ x: point.x, y: next }, { keepEditing: true })} />
           </div>
         </div>
       </>
@@ -1036,6 +1055,112 @@ function EditablePropRow({
   return <FragmentRow name={label} value="Unsupported" />;
 }
 
+
+
+function degreesToRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+function radiansToDegrees(radians: number): number {
+  return (radians * 180) / Math.PI;
+}
+
+function DragNumberInput({
+  value,
+  min,
+  max,
+  step,
+  suffix = '',
+  integer = false,
+  disabled = false,
+  onChange,
+  onCommit,
+}: {
+  value: number;
+  min?: number;
+  max?: number;
+  step: number;
+  suffix?: string;
+  integer?: boolean;
+  disabled?: boolean;
+  onChange(value: number): void;
+  onCommit(value: number): void;
+}) {
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    if (!editMode) setDraft(formatEditableNumber(value, suffix));
+  }, [editMode, suffix, value]);
+
+  function normalize(next: number): number {
+    const clamped = clamp(next, min ?? -Number.MAX_SAFE_INTEGER, max ?? Number.MAX_SAFE_INTEGER);
+    return integer ? Math.round(clamped) : Number(clamped.toFixed(4));
+  }
+
+  function startDrag(event: ReactPointerEvent<HTMLInputElement>): void {
+    if (disabled || editMode || event.button !== 0) return;
+    event.preventDefault();
+    const input = event.currentTarget;
+    input.setPointerCapture?.(event.pointerId);
+    const startX = event.clientX;
+    const startValue = value;
+    let latest = value;
+
+    function onMove(moveEvent: PointerEvent): void {
+      latest = normalize(startValue + (moveEvent.clientX - startX) * step);
+      onChange(latest);
+    }
+
+    function onEnd(): void {
+      window.removeEventListener('pointermove', onMove);
+      onCommit(latest);
+    }
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd, { once: true });
+    window.addEventListener('pointercancel', onEnd, { once: true });
+  }
+
+  function commitText(): void {
+    const parsed = parseFiniteNumber(draft.replace(suffix, ''));
+    setEditMode(false);
+    if (parsed !== undefined) onCommit(normalize(parsed));
+  }
+
+  return (
+    <input
+      className={`${styles.editorInput} ${styles.dragNumberInput}`}
+      type="text"
+      value={editMode ? draft : formatEditableNumber(value, suffix)}
+      disabled={disabled}
+      readOnly={!editMode}
+      title={editMode ? 'Enter bestätigt' : 'Ziehen zum Ändern, Doppelklick zum Tippen'}
+      onPointerDown={startDrag}
+      onDoubleClick={(event) => {
+        setEditMode(true);
+        setDraft(formatPlainNumber(value));
+        window.setTimeout(() => event.currentTarget.select(), 0);
+      }}
+      onChange={(event) => setDraft(event.currentTarget.value)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          commitText();
+          event.currentTarget.blur();
+        }
+      }}
+      onBlur={commitText}
+    />
+  );
+}
+
+function formatPlainNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
+}
+
+function formatEditableNumber(value: number, suffix: string): string {
+  return `${formatPlainNumber(value)}${suffix}`;
+}
 
 const originPresets = [
   { id: 'top-left', label: 'Top Left', x: 0, y: 0 },
@@ -1247,6 +1372,21 @@ function parseDebugMessage(data: unknown): DebugMessage | undefined {
   } catch {
     return undefined;
   }
+}
+
+
+function findParentNode(nodes: DebugNodeDescriptor[], child: DebugNodeDescriptor): DebugNodeDescriptor | undefined {
+  if (!child.parentId) return undefined;
+  return findNode(nodes, child.parentId);
+}
+
+function hasInactiveAncestor(nodes: DebugNodeDescriptor[], node: DebugNodeDescriptor): boolean {
+  let parent = findParentNode(nodes, node);
+  while (parent) {
+    if (!parent.active) return true;
+    parent = findParentNode(nodes, parent);
+  }
+  return false;
 }
 
 function countNodes(nodes: DebugNodeDescriptor[]): number {

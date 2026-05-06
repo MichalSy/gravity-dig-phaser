@@ -8,6 +8,7 @@ interface FlatNodeSnapshot {
   name: string;
   className: string;
   active: boolean;
+  effectiveActive: boolean;
   visible: boolean;
   order: number;
   index: number;
@@ -58,7 +59,7 @@ export function diffDebugNodeTrees(previous: DebugNodeTreeSnapshot, next: DebugN
       });
     }
 
-    if (previousNode.active !== nextNode.active || previousNode.visible !== nextNode.visible) {
+    if (previousNode.active !== nextNode.active || previousNode.effectiveActive !== nextNode.effectiveActive || previousNode.visible !== nextNode.visible) {
       deltas.push({
         kind: 'updated',
         id,
@@ -90,6 +91,7 @@ function serializeNode(
     name: node.debugName(),
     className: node.debugClassName(),
     active: node.active,
+    effectiveActive: node.isEffectivelyActive(),
     visible: node.visible,
     order: node.order,
     index,
@@ -103,6 +105,7 @@ function serializeNode(
     name: descriptor.name,
     className: descriptor.className,
     active: descriptor.active,
+    effectiveActive: descriptor.effectiveActive ?? descriptor.active,
     visible: descriptor.visible,
     order: descriptor.order,
     index: descriptor.index,

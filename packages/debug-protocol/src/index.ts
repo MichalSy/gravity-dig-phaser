@@ -111,6 +111,7 @@ export interface DebugNodeDescriptor {
   name: string;
   className: string;
   active: boolean;
+  effectiveActive?: boolean;
   visible: boolean;
   order: number;
   index: number;

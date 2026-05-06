@@ -239,6 +239,13 @@ export abstract class GameNode {
     for (const child of this.children) child.refreshSubtreeActiveState();
   }
 
+  protected setActiveCascade(active: boolean): void {
+    this.active = active;
+    if (!active) {
+      for (const child of this.children) child.setActiveCascade(false);
+    }
+  }
+
   protected onEffectiveActiveChanged(_active: boolean): void {}
 
   getParentWorldScale(): PointLike {
@@ -477,7 +484,7 @@ export abstract class GameNode {
       case 'active':
         if (typeof value !== 'boolean') return false;
         if (this.active === value) return true;
-        this.active = value;
+        this.setActiveCascade(value);
         this.refreshSubtreeActiveState();
         return true;
       case 'visible':
