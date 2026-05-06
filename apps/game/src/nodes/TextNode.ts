@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { anchorOrigin } from './Anchor';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
@@ -32,10 +33,11 @@ export class TextNode extends TransformNode {
   protected phaserText?: Phaser.GameObjects.Text;
 
   constructor(options: TextNodeOptions = {}) {
+    const defaultOrigin = anchorOrigin('top-left');
     super({
       ...options,
       className: options.className ?? 'TextNode',
-      origin: { x: options.origin?.x ?? 0, y: options.origin?.y ?? 0 },
+      origin: { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y },
     });
     this.text = options.text ?? '';
     this.style = options.style;

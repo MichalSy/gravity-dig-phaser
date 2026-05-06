@@ -21,7 +21,7 @@ export class BottomHudNode extends GameNode {
 
     for (let i = 0; i < 4; i += 1) {
       const slotFrameNode = this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 }));
-      const slotItemNode = new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', parentAnchor: i === 1 ? 'center' : 'top-left', origin: i === 1 ? { x: 0.5, y: 0.5 } : undefined, visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
+      const slotItemNode = new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', parentAnchor: i === 1 ? 'center' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
       this.slotFrameNodes.push(slotFrameNode);
       this.slotItemNodes.push(i === 1 ? slotFrameNode.addChild(slotItemNode) : this.addChild(slotItemNode));
       this.slotLabelNodes.push(this.addChild(new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 })));
