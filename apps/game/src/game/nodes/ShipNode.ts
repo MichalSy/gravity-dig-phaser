@@ -27,8 +27,6 @@ export class ShipNode extends TransformNode {
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    this.shipImage = this.requireNode<ImageNode>('ShipImage');
-    this.promptText = this.requireNode<TextNode>('ShipPrompt');
     onGameEvent(this.phaserScene, GAME_EVENTS.playerInteractRequested, this.tryReturnCargoToShip, this);
     onGameEvent(this.phaserScene, GAME_EVENTS.worldLevelCreated, this.resetPrompt, this);
   }
@@ -36,6 +34,8 @@ export class ShipNode extends TransformNode {
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.shipImage = this.requireNode<ImageNode>('ShipImage');
+    this.promptText = this.requireNode<TextNode>('ShipPrompt');
     this.layoutShipImage();
     this.resetPrompt();
   }

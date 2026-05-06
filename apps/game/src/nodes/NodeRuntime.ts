@@ -56,7 +56,6 @@ export class NodeRuntime {
 
     if (this.initialized) {
       this.mountSubtree(node, this.ctx);
-      if (this.resolved) node.resolveTree(this.ctx);
     }
 
     return node;
@@ -78,7 +77,6 @@ export class NodeRuntime {
 
     if (this.initialized) {
       this.mountSubtree(root, this.ctx);
-      if (this.resolved) root.resolveTree(this.ctx);
     }
 
     return root;
@@ -107,6 +105,8 @@ export class NodeRuntime {
     for (const node of this.persistentNodeList) node.resolveTree(this.ctx);
     for (const root of this.rootNodes) root.resolveTree(this.ctx);
     this.resolved = true;
+    for (const node of this.persistentNodeList) node.afterResolvedTree(this.ctx);
+    for (const root of this.rootNodes) root.afterResolvedTree(this.ctx);
   }
 
   update(deltaMs: number): void {
@@ -150,7 +150,10 @@ export class NodeRuntime {
 
   mountSubtree(node: GameNode, ctx = this.ctx): void {
     node.initTree(ctx);
-    if (this.resolved) node.resolveTree(ctx);
+    if (!this.resolved) return;
+
+    node.resolveTree(ctx);
+    node.afterResolvedTree(ctx);
   }
 
   private applySceneObjectHierarchy(): void {

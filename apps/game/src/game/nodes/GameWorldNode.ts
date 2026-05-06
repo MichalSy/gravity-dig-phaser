@@ -33,7 +33,10 @@ export class GameWorldNode extends GameNode {
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.playerNode = this.requireNode<PlayerNode>('Player');
     this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
-    this.createLevel();
+  }
+
+  afterResolved(): void {
+    if (!this.data.level) this.createLevel();
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {

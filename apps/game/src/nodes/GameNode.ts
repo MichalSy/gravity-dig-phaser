@@ -140,6 +140,7 @@ export abstract class GameNode {
 
   init(_ctx: NodeContext): void {}
   resolve(_ctx: NodeContext): void {}
+  afterResolved(_ctx: NodeContext): void {}
   update(_deltaMs: number): void {}
   afterChildrenUpdated(): void {}
   destroy(): void {}
@@ -163,6 +164,13 @@ export abstract class GameNode {
     this.resolved = true;
 
     for (const child of this.children) child.resolveTree(ctx);
+  }
+
+  afterResolvedTree(ctx: NodeContext): void {
+    if (!this.resolved) return;
+
+    this.afterResolved(ctx);
+    for (const child of this.children) child.afterResolvedTree(ctx);
   }
 
   updateTree(deltaMs: number): void {
