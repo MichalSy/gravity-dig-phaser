@@ -14,10 +14,6 @@ permissions:
   contents: read
   packages: write
 
-concurrency:
-  group: gravity-dig-image-build
-  cancel-in-progress: false
-
 env:
   REGISTRY: ghcr.io
   BASE_VERSION: "1.0"
@@ -90,4 +86,11 @@ jobs:
           sed -i 's|newTag: ".*"|newTag: "'"$VERSION"'"|g' "apps/${GITOPS_APP}/kustomization.yaml"
           git add "apps/${GITOPS_APP}/kustomization.yaml"
           git commit -m "chore: update ${GITOPS_APP} to ${VERSION}" || echo "No changes"
-          git push
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            git pull --rebase origin main
+          done
+          echo "Failed to push gitops-config after retries" >&2
+          exit 1
