@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink, Eye, EyeOff, Image as ImageIcon, Power, PowerOff, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
+import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -748,11 +748,13 @@ function NodeTreeItem({
   onToggleNode(id: string): void;
 }) {
   const hasChildren = node.children.length > 0;
-  const isExpanded = expandedNodeIds.has(node.id);
+  const effectiveActive = isEffectivelyActive(node);
+  const isExpanded = effectiveActive && expandedNodeIds.has(node.id);
+  const NodeIcon = iconForNode(node);
 
   return (
     <li className={styles.treeItem}>
-      <div className={`${styles.nodeRow} ${!node.active ? styles.inactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
+      <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
         <button
           type="button"
           className={styles.expandButton}
@@ -763,11 +765,11 @@ function NodeTreeItem({
           {hasChildren ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span className={styles.expandSpacer} />}
         </button>
         <button type="button" className={styles.nodeContent} onClick={() => onSelectNode(node.id)}>
-          {isImageNode(node) && <ImageIcon className={styles.nodeIcon} size={14} />}
-          {isTextNode(node) && <TypeIcon className={styles.nodeIcon} size={14} />}
+          <NodeIcon className={styles.nodeIcon} size={14} />
           <span className={styles.nodeName}>{node.name}</span>
           <span className={styles.nodeMeta}>{node.className}</span>
           {!node.active && <span className={styles.nodeFlag}>inactive</span>}
+          {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
         </button>
       </div>
@@ -776,14 +778,21 @@ function NodeTreeItem({
   );
 }
 
-function isImageNode(node: DebugNodeDescriptor): boolean {
+function iconForNode(node: DebugNodeDescriptor) {
   const className = node.className.toLowerCase();
   const name = node.name.toLowerCase();
-  return className.includes('imagenode') || name.includes('image');
-}
 
-function isTextNode(node: DebugNodeDescriptor): boolean {
-  return node.className.toLowerCase().includes('textnode');
+  if (className.includes('scenenode')) return Layers;
+  if (className.includes('collisionrectnode')) return Square;
+  if (className.includes('animatedimagenode')) return Frame;
+  if (className.includes('imagenode') || name.includes('image')) return ImageIcon;
+  if (className.includes('textnode')) return TypeIcon;
+  if (className.includes('input')) return Gamepad2;
+  if (className.includes('mining')) return Crosshair;
+  if (className.includes('touch')) return MousePointer2;
+  if (className.includes('hud') || name.includes('hud') || name.startsWith('ui.')) return Boxes;
+  if (className.includes('node')) return Box;
+  return Box;
 }
 
 function Inspector({
@@ -1397,15 +1406,26 @@ function collectNodeIds(nodes: DebugNodeDescriptor[]): string[] {
   return nodes.flatMap((node) => [node.id, ...collectNodeIds(node.children)]);
 }
 
+function removeInactiveNodeIds(expanded: Set<string>, nodes: DebugNodeDescriptor[]): void {
+  for (const node of nodes) {
+    if (!isEffectivelyActive(node)) expanded.delete(node.id);
+    removeInactiveNodeIds(expanded, node.children);
+  }
+}
+
+function isEffectivelyActive(node: DebugNodeDescriptor): boolean {
+  return node.effectiveActive ?? node.active;
+}
+
 function reconcileExpandedNodeIds(expanded: ReadonlySet<string>, roots: DebugNodeDescriptor[], deltas: DebugNodeDelta[]): Set<string> {
-  if (expanded.size === 0) return new Set();
   const existingIds = new Set(collectNodeIds(roots));
   const next = new Set([...expanded].filter((id) => existingIds.has(id)));
 
   for (const delta of deltas) {
-    if (delta.kind === 'added' && delta.node) next.add(delta.id);
+    if (delta.kind === 'added' && delta.node && isEffectivelyActive(delta.node)) next.add(delta.id);
   }
 
+  removeInactiveNodeIds(next, roots);
   return next;
 }
 
