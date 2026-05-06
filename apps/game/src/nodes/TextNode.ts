@@ -133,7 +133,7 @@ export class TextNode extends TransformNode {
   private updateSizeFromText(): void {
     if (!this.phaserText) return;
     const size = textLocalSize(this.phaserText);
-    this.size = { width: size.width * Math.abs(this.scaleX), height: size.height * Math.abs(this.scaleY) };
+    this.size = size;
   }
 }
 

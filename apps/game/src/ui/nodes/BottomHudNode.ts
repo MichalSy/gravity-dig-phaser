@@ -101,7 +101,7 @@ export class BottomHudNode extends GameNode {
     node.scale = scale;
     node.scaleX = scale;
     node.scaleY = scale;
-    node.size = { width: node.image.frame.width * Math.abs(scale), height: node.image.frame.height * Math.abs(scale) };
+    node.size = { width: node.image.frame.width, height: node.image.frame.height };
     node.visible = visible;
     node.image.setCrop().setVisible(visible);
   }

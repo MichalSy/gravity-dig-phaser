@@ -15,7 +15,12 @@ function visibleImageLocalSize(image: Phaser.GameObjects.Image): { width: number
   const crop = cropImage.isCropped ? cropImage._crop : undefined;
   const frameWidth = crop?.width ?? image.frame.width;
   const frameHeight = crop?.height ?? image.frame.height;
-  return { width: frameWidth * Math.abs(image.scaleX), height: frameHeight * Math.abs(image.scaleY) };
+  return { width: frameWidth, height: frameHeight };
+}
+
+function visibleImageDisplaySize(image: Phaser.GameObjects.Image): { width: number; height: number } {
+  const size = visibleImageLocalSize(image);
+  return { width: size.width * Math.abs(image.scaleX), height: size.height * Math.abs(image.scaleY) };
 }
 
 
@@ -98,10 +103,7 @@ export class ImageNode extends TransformNode {
       this.position = this.worldToLocalPosition({ x: this.phaserImage.x, y: this.phaserImage.y });
       const visibleSize = visibleImageLocalSize(this.phaserImage);
       const parentScale = this.getParentWorldScale();
-      this.size = {
-        width: parentScale.x === 0 ? visibleSize.width : visibleSize.width / Math.abs(parentScale.x),
-        height: parentScale.y === 0 ? visibleSize.height : visibleSize.height / Math.abs(parentScale.y),
-      };
+      this.size = visibleSize;
       this.visible = this.phaserImage.visible;
       this.depth = this.phaserImage.depth;
       this.scale = parentScale.x === 0 ? this.phaserImage.scaleX : this.phaserImage.scaleX / parentScale.x;
@@ -135,7 +137,7 @@ export class ImageNode extends TransformNode {
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;
     this.phaserImage?.setTexture(asset.textureKey, frame);
     if (this.phaserImage) this.size = visibleImageLocalSize(this.phaserImage);
-    else this.size = { width: asset.width * this.scaleX, height: asset.height * this.scaleY };
+    else this.size = { width: asset.width, height: asset.height };
     this.applyOrigin();
   }
 
@@ -165,8 +167,8 @@ export class ImageNode extends TransformNode {
       scale: this.scale,
       localScaleX: this.getLocalScale().x,
       localScaleY: this.getLocalScale().y,
-      displayWidth: this.phaserImage ? visibleImageLocalSize(this.phaserImage).width : null,
-      displayHeight: this.phaserImage ? visibleImageLocalSize(this.phaserImage).height : null,
+      displayWidth: this.phaserImage ? visibleImageDisplaySize(this.phaserImage).width : null,
+      displayHeight: this.phaserImage ? visibleImageDisplaySize(this.phaserImage).height : null,
       cropWidth: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.width ?? null : null,
       cropHeight: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.height ?? null : null,
       flipX: this.flipX,
