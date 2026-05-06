@@ -36,6 +36,9 @@ export class ShipNode extends TransformNode {
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.shipImage = this.requireNode<ImageNode>('ShipImage');
     this.promptText = this.requireNode<TextNode>('ShipPrompt');
+  }
+
+  afterResolved(): void {
     this.layoutShipImage();
     this.resetPrompt();
   }

@@ -40,6 +40,9 @@ export class TouchControlsNode extends GameNode {
 
   resolve(): void {
     this.inputState = this.requireNode<GameplayInputNode>('GameplayInput');
+  }
+
+  afterResolved(): void {
     this.inputState.setControlPointerResolver((pointer) => this.containsPointer(pointer));
   }
 

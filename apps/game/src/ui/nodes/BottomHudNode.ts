@@ -45,6 +45,10 @@ export class BottomHudNode extends TransformNode {
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
     this.resolveChildNodes();
+  }
+
+  afterResolved(): void {
+    this.configureSlotLabels();
     this.markHudComputedPropsReadOnly();
   }
 
@@ -120,17 +124,22 @@ export class BottomHudNode extends TransformNode {
     this.slotFrameNodes.length = 0;
     this.slotItemNodes.length = 0;
     this.slotLabelNodes.length = 0;
-    const resolution = Math.max(2, window.devicePixelRatio || 1);
 
     for (let i = 0; i < 4; i += 1) {
       const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotFrame${i}`);
       const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotItem${i}`);
       const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `UI.SlotLabel${i}`);
-      slotLabelNode.style = TEXT.value;
-      slotLabelNode.resolution = resolution;
       this.slotFrameNodes.push(slotFrameNode);
       this.slotItemNodes.push(slotItemNode);
       this.slotLabelNodes.push(slotLabelNode);
+    }
+  }
+
+  private configureSlotLabels(): void {
+    const resolution = Math.max(2, window.devicePixelRatio || 1);
+    for (const labelNode of this.slotLabelNodes) {
+      labelNode.setStyle(TEXT.value);
+      labelNode.resolution = resolution;
     }
   }
 
