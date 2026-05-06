@@ -20,7 +20,7 @@ export class BottomHudNode extends GameNode {
     this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas#energyBar', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0 }));
 
     for (let i = 0; i < 4; i += 1) {
-      const slotFrameNode = this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 }));
+      const slotFrameNode = this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, anchor: i === 1 ? 'center-left' : 'top-left', parentAnchor: i === 1 ? 'center-left' : 'top-left', visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 }));
       const slotItemNode = new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', parentAnchor: i === 1 ? 'center' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
       const slotLabelNode = new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', parentAnchor: i === 1 ? 'bottom-right' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
       this.slotFrameNodes.push(slotFrameNode);
@@ -75,7 +75,7 @@ export class BottomHudNode extends GameNode {
       const slotLayout = computeBottomHudSlotLayout(layout, state, i);
 
       this.slotFrameNodes[i].depth = UI_DEPTH + slotLayout.frameDepth;
-      this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
+      this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, i === 1 ? 0 : slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
 
       const itemParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
       const itemParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
@@ -94,7 +94,7 @@ export class BottomHudNode extends GameNode {
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
       labelNode.visible = slotLayout.hasItem;
       labelNode.text = `x${slot?.quantity ?? 0}`;
-      labelNode.position = i === 1 ? { x: -15, y: -15 } : { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+      labelNode.position = i === 1 ? { x: -50, y: -50 } : { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
       labelNode.scale = labelScaleX;
       labelNode.scaleX = labelScaleX;
       labelNode.scaleY = labelScaleY;
