@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameNode, ImageNode } from '../../nodes';
+import { AnimatedImageNode, GameNode } from '../../nodes';
 import { PlayerControllerNode } from './PlayerControllerNode';
 import { PlayerPresentationNode } from './PlayerPresentationNode';
 
@@ -9,9 +9,10 @@ export class PlayerNode extends GameNode {
     this.addChild(new PlayerControllerNode());
     this.addChild(new PlayerPresentationNode());
     this.addChild(
-      new ImageNode({
+      new AnimatedImageNode({
         name: 'playerImage',
-        assetId: 'player-idle-0',
+        animationSetId: 'character',
+        animationId: 'idle.east',
         order: 50,
         origin: { x: 0.5, y: 0.5 },
         depth: 20,
@@ -32,7 +33,7 @@ export class PlayerNode extends GameNode {
     return this.image;
   }
 
-  private get imageNode(): ImageNode {
-    return this.requireNode<ImageNode>('playerImage');
+  private get imageNode(): AnimatedImageNode {
+    return this.requireNode<AnimatedImageNode>('playerImage');
   }
 }

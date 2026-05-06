@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { AssetCatalog, type ImageAssetDefinition } from '../assets/AssetCatalog';
+import type { AnimationSetDefinition } from '../assets/animationSetMeta';
 import { GameNode, type NodeContext } from './GameNode';
 import { NodeRoot } from './NodeRoot';
 
@@ -41,6 +42,10 @@ export class NodeRuntime {
 
   registerImageAssets(definitions: readonly ImageAssetDefinition[]): void {
     this.assetCatalog.registerImages(definitions);
+  }
+
+  registerAnimationSets(definitions: readonly AnimationSetDefinition[]): void {
+    this.assetCatalog.registerAnimationSets(definitions);
   }
 
   addPersistentNode<T extends GameNode>(node: T): T {

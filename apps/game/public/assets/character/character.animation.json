@@ -1,0 +1,38 @@
+{
+  "schema": "animation-set",
+  "version": 1,
+  "id": "character",
+  "defaultAnimation": "idle.east",
+  "animations": {
+    "idle.east": {
+      "fps": 6,
+      "loop": true,
+      "frames": [
+        { "asset": "player-idle-0" },
+        { "asset": "player-idle-1" },
+        { "asset": "player-idle-2" },
+        { "asset": "player-idle-3" }
+      ]
+    },
+    "walk.east": {
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        { "asset": "player-walk-0" },
+        { "asset": "player-walk-1" },
+        { "asset": "player-walk-2" },
+        { "asset": "player-walk-3" },
+        { "asset": "player-walk-4" },
+        { "asset": "player-walk-5" }
+      ]
+    },
+    "jump.east": {
+      "fps": 8,
+      "loop": false,
+      "frames": [
+        { "asset": "player-jump-0" },
+        { "asset": "player-jump-1" }
+      ]
+    }
+  }
+}

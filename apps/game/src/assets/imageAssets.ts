@@ -34,10 +34,17 @@ export interface FrameAsset {
 
 export type RenderableImageAsset = ImageAsset | FrameAsset;
 
+export interface ImageAnimationFrameAsset {
+  asset: RenderableImageAsset;
+  durationMs?: number;
+}
+
 export interface ImageAnimationAsset {
   kind: typeof ImageAssetKind.Animation;
   id: string;
-  frames: RenderableImageAsset[];
+  setId?: string;
+  animationId?: string;
+  frames: ImageAnimationFrameAsset[];
   fps: number;
   loop: boolean;
 }

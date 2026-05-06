@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor } from '@gravity-dig/debug-protocol';
 import { ImageAssetKind, isFrameAsset, type FrameAsset, type ImageAnimationAsset, type RenderableImageAsset } from './imageAssets';
+import { animationSetMetaKey, type AnimationSetDefinition, type AnimationSetMeta } from './animationSetMeta';
 import { imageAtlasMetaKey, type ImageAtlasMeta } from './imageAtlasMeta';
 
 export interface ImageAssetDefinition {
@@ -26,6 +27,10 @@ export class AssetCatalog {
 
   registerImages(definitions: readonly ImageAssetDefinition[]): void {
     for (const definition of definitions) this.registerImage(definition);
+  }
+
+  registerAnimationSets(definitions: readonly AnimationSetDefinition[]): void {
+    for (const definition of definitions) this.registerAnimationSet(definition);
   }
 
   image(id: string): RenderableImageAsset {
@@ -77,7 +82,7 @@ export class AssetCatalog {
     return [...this.animations.values()].map((animation) => ({
       id: animation.id,
       kind: animation.kind,
-      frameIds: animation.frames.map((frame) => frame.id),
+      frameIds: animation.frames.map((frame) => frame.asset.id),
       fps: animation.fps,
       loop: animation.loop,
     }));
@@ -125,8 +130,31 @@ export class AssetCatalog {
       this.animations.set(id, {
         kind: ImageAssetKind.Animation,
         id,
-        frames: animation.frames.map((frameKey) => this.image(`${definition.key}#${frameKey}`)),
+        setId: definition.key,
+        animationId: animationKey,
+        frames: animation.frames.map((frameKey) => ({ asset: this.image(`${definition.key}#${frameKey}`) })),
         fps: animation.fps,
+        loop: animation.loop ?? true,
+      });
+    }
+  }
+
+  private registerAnimationSet(definition: AnimationSetDefinition): void {
+    const meta = this.scene.cache.json.get(animationSetMetaKey(definition.key)) as AnimationSetMeta | undefined;
+    if (!meta) return;
+    if (meta.schema !== 'animation-set' || meta.version !== 1) {
+      throw new Error(`Animation set '${definition.key}' uses unsupported schema/version`);
+    }
+
+    for (const [animationKey, animation] of Object.entries(meta.animations)) {
+      const id = `${meta.id}.${animationKey}`;
+      this.animations.set(id, {
+        kind: ImageAssetKind.Animation,
+        id,
+        setId: meta.id,
+        animationId: animationKey,
+        frames: animation.frames.map((frame) => ({ asset: this.image(frame.asset), durationMs: frame.durationMs })),
+        fps: animation.fps ?? 1,
         loop: animation.loop ?? true,
       });
     }

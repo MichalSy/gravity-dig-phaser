@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { ImageAssetDefinition } from './AssetCatalog';
+import { animationSetMetaKey, type AnimationSetDefinition } from './animationSetMeta';
 import { imageAtlasMetaKey, imageAtlasMetaPath } from './imageAtlasMeta';
 
 const ASSET_VERSION = Date.now().toString(36);
@@ -49,6 +50,10 @@ export const GAME_GRAPHIC_ASSETS: readonly GraphicAssetDefinition[] = [
   ...GAME_PLAYER_GRAPHIC_ASSETS,
 ];
 
+export const GAME_ANIMATION_SETS: readonly AnimationSetDefinition[] = [
+  { key: 'character', path: '/assets/character/character.animation.json' },
+];
+
 function versioned(path: string): string {
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}v=${ASSET_VERSION}`;
@@ -63,6 +68,10 @@ function loadImageAsset(load: Phaser.Loader.LoaderPlugin, asset: GraphicAssetDef
   if (asset.meta) load.json(imageAtlasMetaKey(asset.key), versioned(imageAtlasMetaPath(asset.path)));
 }
 
+function loadAnimationSet(load: Phaser.Loader.LoaderPlugin, set: AnimationSetDefinition): void {
+  load.json(animationSetMetaKey(set.key), versioned(set.path));
+}
+
 export function loadMenuAssets(scene: Phaser.Scene): void {
   for (const asset of MENU_GRAPHIC_ASSETS) loadImageAsset(scene.load, asset);
 }
@@ -71,6 +80,7 @@ export function loadGameAssets(scene: Phaser.Scene): void {
   const { load } = scene;
 
   for (const asset of GAME_GRAPHIC_ASSETS) loadImageAsset(load, asset);
+  for (const set of GAME_ANIMATION_SETS) loadAnimationSet(load, set);
 
   load.audio('laser-loop', versioned('/assets/sfx/laser-loop.wav'));
   load.audio('block-break-dirt', versioned('/assets/sfx/block-break-dirt.wav'));
