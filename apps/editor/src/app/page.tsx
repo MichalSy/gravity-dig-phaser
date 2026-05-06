@@ -792,13 +792,6 @@ function Inspector({
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
   onSelectAsset(id: string): void;
 }) {
-  const props = debugProps?.props;
-  const assetId = typeof props?.assetId === 'string' ? props.assetId : undefined;
-  const frameKey = typeof props?.frameKey === 'string' ? props.frameKey : undefined;
-  const textureKey = typeof props?.textureKey === 'string' ? props.textureKey : undefined;
-  const frameAsset = assetId ? assets.find((asset) => asset.id === assetId) : undefined;
-  const textureAsset = textureKey ? assets.find((asset) => asset.id === textureKey) : undefined;
-
   return (
     <div className={styles.inspector}>
       <div>
@@ -819,36 +812,17 @@ function Inspector({
           <code>{node.guid}</code>
         </div>
       )}
-      <InspectorSection title="Node">
-        <FragmentRow name="active" value={node.active} />
-        <FragmentRow name="visible" value={node.visible} />
-        <FragmentRow name="order" value={node.order} />
+      <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} patchStatus={patchStatus} onPatch={onPatch} />
+      <InspectorSection title="Debug · read-only">
         <FragmentRow name="index" value={node.index} />
         <FragmentRow name="children" value={node.children.length} />
-        <FragmentRow name="parentAnchor" value={props?.parentAnchor ?? null} />
-      </InspectorSection>
-      <TransformSection title="Local Transform" transform={debugProps?.localTransform} editable />
-      <TransformSection title="World Transform" transform={debugProps?.worldTransform} />
-      <BoundsSection bounds={debugProps?.worldBounds ?? debugProps?.bounds} />
-      <EditablePropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} patchStatus={patchStatus} onPatch={onPatch} />
-      {(assetId || textureKey || frameKey) && (
-        <InspectorSection title="Image Asset">
-          <AssetLinkRow name="assetId" value={assetId ?? null} assetId={frameAsset?.id} onSelectAsset={onSelectAsset} />
-          <AssetLinkRow name="textureKey" value={textureKey ?? null} assetId={textureAsset?.id} onSelectAsset={onSelectAsset} />
-          <AssetLinkRow name="frameKey" value={frameKey ?? null} assetId={frameAsset?.id} onSelectAsset={onSelectAsset} />
-          <FragmentRow name="assetKind" value={props?.assetKind ?? null} />
-        </InspectorSection>
-      )}
-      <InspectorSection title="Exposed Props">
-        {debugProps ? filteredExposedProps(debugProps.props).map(([key, value]) => (
-          <FragmentRow key={key} name={key} value={value} />
-        )) : <FragmentRow name="status" value="Warte auf Node-Debugdaten..." />}
+        <FragmentRow name="worldBounds" value={formatBounds(debugProps?.worldBounds ?? debugProps?.bounds)} />
       </InspectorSection>
     </div>
   );
 }
 
-function EditablePropsSection({
+function ExposedPropsSection({
   node,
   definition,
   debugProps,
@@ -874,20 +848,26 @@ function EditablePropsSection({
     onPatch(node, { [key]: value });
   }
 
+  const groups = definition?.exposedPropGroups ?? (definition?.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : undefined);
+
   return (
-    <InspectorSection title="Editable Node Props">
-      {definition ? Object.entries(definition.editableProps).map(([key, prop]) => (
-        <EditablePropRow
-          key={key}
-          name={key}
-          prop={prop}
-          value={key in localOverrides ? localOverrides[key] : currentEditablePropValue(key, prop, node, debugProps)}
-          assets={assets}
-          onCommit={(value) => patchProp(key, value)}
-        />
-      )) : <FragmentRow name="status" value="Keine Node-Definition für diesen Node." />}
-      {patchStatus && <FragmentRow name="patch" value={patchStatus} />}
-    </InspectorSection>
+    <>
+      {groups ? groups.map((group) => (
+        <InspectorSection key={group.name} title={group.name}>
+          {Object.entries(group.props).map(([key, prop]) => (
+            <EditablePropRow
+              key={key}
+              name={key}
+              prop={prop}
+              value={key in localOverrides ? localOverrides[key] : currentEditablePropValue(key, prop, node, debugProps)}
+              assets={assets}
+              onCommit={(value) => patchProp(key, value)}
+            />
+          ))}
+        </InspectorSection>
+      )) : <InspectorSection title="Exposed Props"><FragmentRow name="status" value="Keine Node-Definition für diesen Node." /></InspectorSection>}
+      {patchStatus && <InspectorSection title="Patch"><FragmentRow name="status" value={patchStatus} /></InspectorSection>}
+    </>
   );
 }
 
@@ -904,7 +884,7 @@ function EditablePropRow({
   assets: DebugImageAssetDescriptor[];
   onCommit(value: DebugNodePatch[string]): void;
 }) {
-  const label = prop.label ?? name;
+  const label = `${prop.label ?? name}${prop.readOnly ? ' · read-only' : ''}`;
   const [draft, setDraft] = useState<unknown>(value);
   const [editing, setEditing] = useState(false);
 
@@ -913,6 +893,7 @@ function EditablePropRow({
   }, [editing, value]);
 
   function commit(nextValue = draft): void {
+    if (prop.readOnly) return;
     const coerced = coerceEditableValue(prop, nextValue);
     console.log('[Gravity Dig Debug][inspector]', 'commit', { name, prop, draft: nextValue, coerced });
     if (coerced === undefined) return;
@@ -929,7 +910,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorCheckbox} type="checkbox" checked={draft === true} onChange={(event) => commit(event.currentTarget.checked)} />
+        <input className={styles.editorCheckbox} type="checkbox" checked={draft === true} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.checked)} />
       </>
     );
   }
@@ -938,7 +919,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="number" value={numberInputValue(draft)} min={prop.min} max={prop.max} step={prop.step ?? 1} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
+        <input className={styles.editorInput} type="number" value={numberInputValue(draft)} min={prop.min} max={prop.max} step={prop.step ?? 1} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
       </>
     );
   }
@@ -947,7 +928,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="text" value={typeof draft === 'string' ? draft : ''} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
+        <input className={styles.editorInput} type="text" value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
       </>
     );
   }
@@ -956,7 +937,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} onChange={(event) => commit(event.currentTarget.value)}>
+        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.value)}>
           <option value="">Asset wählen</option>
           {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.id}</option>)}
         </select>
@@ -968,7 +949,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} onChange={(event) => commit(event.currentTarget.value)}>
+        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.value)}>
           {(prop.options ?? []).map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       </>
@@ -981,8 +962,8 @@ function EditablePropRow({
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
@@ -994,8 +975,8 @@ function EditablePropRow({
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
@@ -1158,6 +1139,11 @@ function BoundsSection({ bounds }: { bounds?: DebugNodeBounds }) {
       ) : <FragmentRow name="status" value="Keine Bounds exposed" />}
     </InspectorSection>
   );
+}
+
+function formatBounds(bounds?: DebugNodeBounds): string {
+  if (!bounds) return 'Keine Bounds exposed';
+  return `${formatNumber(bounds.x)},${formatNumber(bounds.y)} ${formatNumber(bounds.width)}×${formatNumber(bounds.height)}`;
 }
 
 function formatNumber(value: number, fractionDigits = 1): string {

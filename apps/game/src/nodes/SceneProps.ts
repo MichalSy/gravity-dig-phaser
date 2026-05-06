@@ -1,4 +1,4 @@
-import type { DebugNodePatch, DebugScenePropDefinition, DebugScenePropRecordDefinition, DebugScenePropValue } from '@gravity-dig/debug-protocol';
+import type { DebugNodePatch, DebugScenePropDefinition, DebugScenePropGroup, DebugScenePropRecordDefinition, DebugScenePropValue } from '@gravity-dig/debug-protocol';
 import { ANCHORS, type Anchor, type PointLike, type SizeLike } from './Anchor';
 
 export const SCENE_PROP_RECORDS = {
@@ -36,7 +36,16 @@ export const SCENE_PROP_RECORDS = {
   AssetId: { type: 'AssetId', label: 'Asset', editor: 'asset-picker' },
 } satisfies Record<string, DebugScenePropRecordDefinition>;
 
-export type EditablePropMap = Record<string, DebugScenePropDefinition>;
+export type ExposedPropMap = Record<string, DebugScenePropDefinition>;
+export type ExposedPropGroup = DebugScenePropGroup;
+
+export function exposedPropGroup(name: string, props: ExposedPropMap): ExposedPropGroup {
+  return { name, props };
+}
+
+export function flattenExposedPropGroups(groups: readonly ExposedPropGroup[]): ExposedPropMap {
+  return Object.fromEntries(groups.flatMap((group) => Object.entries(group.props)));
+}
 
 export interface ScenePatchResult {
   applied: DebugNodePatch;

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
-import { GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, type EditablePropMap, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
+import { exposedPropGroup, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, type ExposedPropGroup, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import bottomHudSceneJson from './bottomHud.scene.json';
 import { TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
@@ -24,13 +24,17 @@ const bottomHudNodeRegistry = new SceneNodeFactoryRegistry()
 
 export class BottomHudNode extends GameNode {
   static override readonly sceneType: string = 'BottomHudNode';
-  static override readonly editableProps: EditablePropMap = {
-    active: GameNode.editableProps.active,
-    visible: GameNode.editableProps.visible,
-    order: GameNode.editableProps.order,
-    anchor: GameNode.editableProps.anchor,
-    parentAnchor: GameNode.editableProps.parentAnchor,
-  };
+  static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
+    exposedPropGroup('Node', {
+      active: GameNode.exposedPropGroups[0].props.active,
+      visible: GameNode.exposedPropGroups[0].props.visible,
+      order: GameNode.exposedPropGroups[0].props.order,
+    }),
+    exposedPropGroup('Transform', {
+      anchor: GameNode.exposedPropGroups[1].props.anchor,
+      parentAnchor: GameNode.exposedPropGroups[1].props.parentAnchor,
+    }),
+  ];
 
   private phaserScene!: Phaser.Scene;
   private hudState!: HudStateNode;
@@ -62,6 +66,8 @@ export class BottomHudNode extends GameNode {
       this.slotItemNodes.push(slotItemNode);
       this.slotLabelNodes.push(slotLabelNode);
     }
+
+    this.markHudComputedPropsReadOnly();
   }
 
   init(ctx: NodeContext): void {
@@ -116,23 +122,43 @@ export class BottomHudNode extends GameNode {
       const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
       const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
       const slotItemNode = this.slotItemNodes[i];
-      if (i !== 1 && !slotItemNode.hasScenePropOverride('position')) slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
-      if (!slotItemNode.hasScenePropOverride('size')) slotItemNode.size = { width: itemWidth, height: itemHeight };
-      if (!slotItemNode.hasScenePropOverride('scaleX')) slotItemNode.scaleX = itemWidth / item.frame.width;
-      if (!slotItemNode.hasScenePropOverride('scaleY')) slotItemNode.scaleY = itemHeight / item.frame.height;
-      if (!slotItemNode.hasScenePropOverride('visible')) slotItemNode.visible = slotLayout.hasItem;
+      if (i !== 1) slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
+      slotItemNode.size = { width: itemWidth, height: itemHeight };
+      slotItemNode.scaleX = itemWidth / item.frame.width;
+      slotItemNode.scaleY = itemHeight / item.frame.height;
+      slotItemNode.visible = slotLayout.hasItem;
       item.setVisible(slotItemNode.visible);
 
       const labelParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
       const labelParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
       const labelScaleX = slotLayout.labelScale / Math.max(labelParentScaleX, Number.EPSILON);
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
-      if (!labelNode.hasScenePropOverride('visible')) labelNode.visible = slotLayout.hasItem;
-      if (!labelNode.hasScenePropOverride('text')) labelNode.text = `x${slot?.quantity ?? 0}`;
-      if (i !== 1 && !labelNode.hasScenePropOverride('position')) labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
-      if (!labelNode.hasScenePropOverride('scale')) labelNode.scale = labelScaleX;
-      if (!labelNode.hasScenePropOverride('scaleX')) labelNode.scaleX = labelScaleX;
-      if (!labelNode.hasScenePropOverride('scaleY')) labelNode.scaleY = labelScaleY;
+      labelNode.visible = slotLayout.hasItem;
+      labelNode.text = `x${slot?.quantity ?? 0}`;
+      if (i !== 1) labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+      labelNode.scale = labelScaleX;
+      labelNode.scaleX = labelScaleX;
+      labelNode.scaleY = labelScaleY;
+    }
+  }
+
+  private markHudComputedPropsReadOnly(): void {
+    const computedByHudLayout = 'computed by BottomHudNode.update';
+    for (const node of [this.actionFrameNode, this.energyFillNode]) {
+      for (const prop of ['position', 'size', 'scale', 'scaleX', 'scaleY', 'visible']) node.markExposedPropReadOnly(prop, computedByHudLayout);
+    }
+    for (let i = 0; i < this.slotFrameNodes.length; i += 1) {
+      const frameNode = this.slotFrameNodes[i];
+      for (const prop of ['size', 'scale', 'scaleX', 'scaleY', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
+      if (i !== 1) frameNode.markExposedPropReadOnly('position', computedByHudLayout);
+
+      const itemNode = this.slotItemNodes[i];
+      for (const prop of ['size', 'scale', 'scaleX', 'scaleY', 'visible']) itemNode.markExposedPropReadOnly(prop, computedByHudLayout);
+      if (i !== 1) itemNode.markExposedPropReadOnly('position', computedByHudLayout);
+
+      const labelNode = this.slotLabelNodes[i];
+      for (const prop of ['visible', 'text', 'scale', 'scaleX', 'scaleY']) labelNode.markExposedPropReadOnly(prop, computedByHudLayout);
+      if (i !== 1) labelNode.markExposedPropReadOnly('position', computedByHudLayout);
     }
   }
 

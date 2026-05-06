@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
-import { propAssetId, propBoolean, type EditablePropMap } from './SceneProps';
+import { exposedPropGroup, propAssetId, propBoolean, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 export type ImageNodeSyncMode = 'node-to-object' | 'object-to-node';
@@ -65,11 +65,13 @@ export interface ImageNodeOptions extends TransformNodeOptions {
 
 export class ImageNode extends TransformNode {
   static override readonly sceneType: string = 'ImageNode';
-  static override readonly editableProps: EditablePropMap = {
-    ...TransformNode.editableProps,
-    assetId: propAssetId({ label: 'Asset' }),
-    flipX: propBoolean({ label: 'Flip X' }),
-  };
+  static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
+    ...TransformNode.exposedPropGroups,
+    exposedPropGroup('Image', {
+      assetId: propAssetId({ label: 'Asset' }),
+      flipX: propBoolean({ label: 'Flip X' }),
+    }),
+  ];
 
   assetId: string;
   flipX: boolean;

@@ -1,6 +1,6 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { GameNode, type GameNodeOptions } from './GameNode';
-import { propNumber, type EditablePropMap } from './SceneProps';
+import { exposedPropGroup, propNumber, type ExposedPropGroup } from './SceneProps';
 
 export interface TransformNodeOptions extends GameNodeOptions {
   depth?: number;
@@ -12,14 +12,16 @@ export interface TransformNodeOptions extends GameNodeOptions {
 
 export abstract class TransformNode extends GameNode {
   static override readonly sceneType: string = 'TransformNode';
-  static override readonly editableProps: EditablePropMap = {
-    ...GameNode.editableProps,
-    depth: propNumber({ label: 'Depth', step: 0.1 }),
-    scale: propNumber({ label: 'Scale', step: 0.01 }),
-    scaleX: propNumber({ label: 'Scale X', step: 0.01 }),
-    scaleY: propNumber({ label: 'Scale Y', step: 0.01 }),
-    scrollFactor: propNumber({ label: 'Scroll Factor', step: 0.01 }),
-  };
+  static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
+    ...GameNode.exposedPropGroups,
+    exposedPropGroup('Render Transform', {
+      depth: propNumber({ label: 'Depth', step: 0.1 }),
+      scale: propNumber({ label: 'Scale', step: 0.01 }),
+      scaleX: propNumber({ label: 'Scale X', step: 0.01 }),
+      scaleY: propNumber({ label: 'Scale Y', step: 0.01 }),
+      scrollFactor: propNumber({ label: 'Scroll Factor', step: 0.01 }),
+    }),
+  ];
 
   depth: number;
   scale: number;

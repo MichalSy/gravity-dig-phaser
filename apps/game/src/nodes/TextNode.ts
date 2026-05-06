@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { anchorOrigin } from './Anchor';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
-import { propNumber, propString, type EditablePropMap } from './SceneProps';
+import { exposedPropGroup, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 function textLocalSize(text: Phaser.GameObjects.Text): { width: number; height: number } {
@@ -30,11 +30,13 @@ export interface TextNodeOptions extends TransformNodeOptions {
 
 export class TextNode extends TransformNode {
   static override readonly sceneType: string = 'TextNode';
-  static override readonly editableProps: EditablePropMap = {
-    ...TransformNode.editableProps,
-    text: propString({ label: 'Text' }),
-    resolution: propNumber({ label: 'Resolution', min: 1, step: 1 }),
-  };
+  static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
+    ...TransformNode.exposedPropGroups,
+    exposedPropGroup('Text', {
+      text: propString({ label: 'Text' }),
+      resolution: propNumber({ label: 'Resolution', min: 1, step: 1 }),
+    }),
+  ];
 
   text: string;
   style?: Phaser.Types.GameObjects.Text.TextStyle;

@@ -3,7 +3,7 @@ import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransfor
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, anchorOrigin, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
-import { propAnchor, propBoolean, propNumber, propOrigin, propPosition, propSize, type EditablePropMap, type ScenePatchResult, validateScenePropValue } from './SceneProps';
+import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propNumber, propOrigin, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
   if (rotation === 0) return { x: offset.x + x, y: offset.y + y };
@@ -57,17 +57,21 @@ export interface GameNodeOptions {
 export abstract class GameNode {
   static debugLayoutEnabled = false;
   static readonly sceneType: string = 'GameNode';
-  static readonly editableProps: EditablePropMap = {
-    active: propBoolean({ label: 'Active' }),
-    visible: propBoolean({ label: 'Visible' }),
-    order: propNumber({ label: 'Order', step: 1 }),
-    position: propPosition({ label: 'Position', step: 1 }),
-    size: propSize({ label: 'Size', min: 0, step: 1 }),
-    anchor: propAnchor({ label: 'Anchor' }),
-    parentAnchor: propAnchor({ label: 'Parent Anchor' }),
-    origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
-    rotation: propNumber({ label: 'Rotation', step: 0.01 }),
-  };
+  static readonly exposedPropGroups: readonly ExposedPropGroup[] = [
+    exposedPropGroup('Node', {
+      active: propBoolean({ label: 'Active' }),
+      visible: propBoolean({ label: 'Visible' }),
+      order: propNumber({ label: 'Order', step: 1 }),
+    }),
+    exposedPropGroup('Transform', {
+      position: propPosition({ label: 'Position', step: 1 }),
+      size: propSize({ label: 'Size', min: 0, step: 1 }),
+      anchor: propAnchor({ label: 'Anchor' }),
+      parentAnchor: propAnchor({ label: 'Parent Anchor' }),
+      origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
+      rotation: propNumber({ label: 'Rotation', step: 0.01 }),
+    }),
+  ];
 
   readonly guid?: string;
   readonly name?: string;
@@ -89,6 +93,7 @@ export abstract class GameNode {
 
   private readonly childNodes: GameNode[] = [];
   private readonly scenePropOverrides = new Set<string>();
+  private readonly readOnlyExposedProps = new Map<string, string | undefined>();
   private contentBounds?: NodeDebugBounds;
   private nodeContext?: NodeContext;
   private initialized = false;
@@ -416,17 +421,17 @@ export abstract class GameNode {
       guid: id,
       name: this.debugName(),
       typeName: constructor.sceneType,
-      editableProps: constructor.editableProps,
+      exposedPropGroups: this.getExposedPropGroups(),
+      editableProps: this.getFlattenedExposedProps(),
     };
   }
 
   applySceneProps(props: Record<string, unknown>): ScenePatchResult {
-    const constructor = this.constructor as typeof GameNode;
-    const editableProps = constructor.editableProps;
+    const exposedProps = this.getFlattenedExposedProps();
     const result: ScenePatchResult = { applied: {}, rejected: {} };
 
     for (const [key, value] of Object.entries(props)) {
-      const definition = editableProps[key];
+      const definition = exposedProps[key];
       if (!definition) {
         result.rejected[key] = 'Prop ist für diesen Node nicht exposed.';
         continue;
@@ -452,6 +457,26 @@ export abstract class GameNode {
 
   hasScenePropOverride(key: string): boolean {
     return this.scenePropOverrides.has(key);
+  }
+
+  markExposedPropReadOnly(key: string, reason?: string): void {
+    this.readOnlyExposedProps.set(key, reason);
+  }
+
+  private getExposedPropGroups() {
+    const constructor = this.constructor as typeof GameNode;
+    if (this.readOnlyExposedProps.size === 0) return [...constructor.exposedPropGroups];
+    return constructor.exposedPropGroups.map((group) => ({
+      ...group,
+      props: Object.fromEntries(Object.entries(group.props).map(([key, prop]) => [
+        key,
+        this.readOnlyExposedProps.has(key) ? { ...prop, readOnly: true, reason: this.readOnlyExposedProps.get(key) } : prop,
+      ])),
+    }));
+  }
+
+  private getFlattenedExposedProps() {
+    return flattenExposedPropGroups(this.getExposedPropGroups());
   }
 
   protected applySceneProp(key: string, value: DebugNodePatch[string]): boolean {

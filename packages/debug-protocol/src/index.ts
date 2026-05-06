@@ -45,6 +45,7 @@ export interface DebugScenePropDefinition extends DebugSceneNumberConstraints {
   type: DebugScenePropRecordType;
   label?: string;
   readOnly?: boolean;
+  reason?: string;
   options?: readonly string[];
 }
 
@@ -56,11 +57,18 @@ export interface DebugScenePropRecordDefinition {
   options?: readonly string[];
 }
 
+export interface DebugScenePropGroup {
+  name: string;
+  props: Record<string, DebugScenePropDefinition>;
+}
+
 export interface DebugSceneNodeDefinition {
   guid: string;
   name: string;
   typeName: string;
-  editableProps: Record<string, DebugScenePropDefinition>;
+  exposedPropGroups: DebugScenePropGroup[];
+  /** @deprecated use exposedPropGroups */
+  editableProps?: Record<string, DebugScenePropDefinition>;
 }
 
 export interface DebugNodeDefinitionsMessage {
