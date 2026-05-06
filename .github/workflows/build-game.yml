@@ -1,38 +1,35 @@
-name: Build and Push Docker Images
+name: Build and Push Game Image
 
 on:
   push:
     branches: [main, master]
+    paths:
+      - 'apps/game/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-game.yml'
 
 permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: gravity-dig-image-build
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   BASE_VERSION: "1.0"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  COMPONENT: game
+  IMAGE_NAME: gravity-dig-phaser.aikogame
+  DOCKERFILE: apps/game/Dockerfile
+  GITOPS_APP: gravity-dig-phaser
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - component: game
-            image_name: gravity-dig-phaser.aikogame
-            dockerfile: apps/game/Dockerfile
-            gitops_app: gravity-dig-phaser
-          - component: editor
-            image_name: gravity-dig-phaser.debug-editor
-            dockerfile: apps/editor/Dockerfile
-            gitops_app: gravity-dig-editor
-          - component: relay
-            image_name: gravity-dig-phaser.debug-relay
-            dockerfile: apps/relay/Dockerfile
-            gitops_app: gravity-dig-relay
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,7 +38,6 @@ jobs:
         id: version
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_NAME: ${{ matrix.image_name }}
         run: |
           TAGS=$(curl -s -H "Authorization: Bearer $GHCR_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
@@ -68,20 +64,19 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
+          file: ${{ env.DOCKERFILE }}
           push: true
           tags: |
             ${{ steps.version.outputs.full_image }}
             ${{ steps.version.outputs.latest_image }}
           build-args: |
             VITE_APP_VERSION=${{ steps.version.outputs.version }}
-          cache-from: type=gha,scope=${{ matrix.component }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+          cache-from: type=gha,scope=${{ env.COMPONENT }}
+          cache-to: type=gha,mode=max,scope=${{ env.COMPONENT }}
 
       - name: Update gitops-config
         env:
           GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
-          GITOPS_APP: ${{ matrix.gitops_app }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           if [ -z "$GITOPS_TOKEN" ]; then

@@ -1,0 +1,93 @@
+name: Build and Push Relay Image
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/relay/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/build-relay.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: gravity-dig-image-build
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  BASE_VERSION: "1.0"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  COMPONENT: relay
+  IMAGE_NAME: gravity-dig-phaser.debug-relay
+  DOCKERFILE: apps/relay/Dockerfile
+  GITOPS_APP: gravity-dig-relay
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine next version
+        id: version
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAGS=$(curl -s -H "Authorization: Bearer $GHCR_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/users/michalsy/packages/container/${IMAGE_NAME}/versions" | \
+            jq -r '.[].metadata.container.tags[]' 2>/dev/null | grep -E "^${BASE_VERSION}\.[0-9]+$" || true)
+          LAST_PATCH=$(echo "$TAGS" | sed "s/^${BASE_VERSION}\.//" | sort -n | tail -1)
+          if [ -z "$LAST_PATCH" ]; then PATCH=0; else PATCH=$((LAST_PATCH + 1)); fi
+          VERSION="${BASE_VERSION}.${PATCH}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "full_image=${REGISTRY}/michalsy/${IMAGE_NAME}:${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "latest_image=${REGISTRY}/michalsy/${IMAGE_NAME}:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ env.DOCKERFILE }}
+          push: true
+          tags: |
+            ${{ steps.version.outputs.full_image }}
+            ${{ steps.version.outputs.latest_image }}
+          build-args: |
+            VITE_APP_VERSION=${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=${{ env.COMPONENT }}
+          cache-to: type=gha,mode=max,scope=${{ env.COMPONENT }}
+
+      - name: Update gitops-config
+        env:
+          GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "$GITOPS_TOKEN" ]; then
+            echo "GITOPS_TOKEN not set, skipping gitops-config update"
+            exit 0
+          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git clone --depth 1 https://x-access-token:${GITOPS_TOKEN}@github.com/MichalSy/gitops-config.git /tmp/gitops-config
+          cd /tmp/gitops-config
+          sed -i 's|newTag: ".*"|newTag: "'"$VERSION"'"|g' "apps/${GITOPS_APP}/kustomization.yaml"
+          git add "apps/${GITOPS_APP}/kustomization.yaml"
+          git commit -m "chore: update ${GITOPS_APP} to ${VERSION}" || echo "No changes"
+          git push
