@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { AnimatedImageNode, CollisionRectNode, GameNode } from '../../nodes';
 import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { PlayerAnimatorNode } from './PlayerAnimatorNode';
+import { MiningToolNode } from './MiningToolNode';
 
 export class PlayerNode extends GameNode {
   constructor() {
@@ -24,6 +25,7 @@ export class PlayerNode extends GameNode {
       }),
     );
     this.addChild(new PlayerAnimatorNode());
+    this.addChild(new MiningToolNode());
   }
 
   get image(): Phaser.GameObjects.Image {

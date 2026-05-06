@@ -89,7 +89,7 @@ function serializeNode(
     className: node.debugClassName(),
     active: node.active,
     effectiveActive: node.isEffectivelyActive(),
-    visible: node.visible,
+    visible: node.isDebugVisible(),
     index,
     children: node.children.map((child, childIndex) => serializeNode(child, id, childIndex, flatNodes, getNodeId)),
   };

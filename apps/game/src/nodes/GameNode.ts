@@ -3,7 +3,7 @@ import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransfor
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
-import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
+import { exposedPropGroup, flattenExposedPropGroups, propBoolean, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
   if (rotation === 0) return { x: offset.x + x, y: offset.y + y };
@@ -58,12 +58,6 @@ export abstract class GameNode {
   static readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     exposedPropGroup('State', {
       active: propBoolean({ label: 'Active' }),
-      visible: propBoolean({ label: 'Visible' }),
-    }),
-    exposedPropGroup('Layout', {
-      parentAnchor: propAnchor({ label: 'Parent Anchor' }),
-      position: propPosition({ label: 'Position', step: 1 }),
-      size: propSize({ label: 'Size', min: 0, step: 1 }),
     }),
   ];
 
@@ -71,7 +65,6 @@ export abstract class GameNode {
   readonly name?: string;
   private readonly debugClassNameValue: string;
   active: boolean;
-  visible: boolean;
   position: PointLike;
   size: SizeLike;
   parentAnchor: Anchor;
@@ -96,7 +89,6 @@ export abstract class GameNode {
     this.name = options.name;
     this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
-    this.visible = options.visible ?? true;
     this.position = { x: options.position?.x ?? 0, y: options.position?.y ?? 0 };
     this.size = { width: options.size?.width ?? 0, height: options.size?.height ?? 0 };
     this.parentAnchor = options.parentAnchor ?? 'top-left';
@@ -237,6 +229,10 @@ export abstract class GameNode {
 
   protected onEffectiveActiveChanged(_active: boolean): void {}
 
+  isDebugVisible(): boolean {
+    return true;
+  }
+
   getParentWorldScale(): PointLike {
     return this.parent?.getWorldScale() ?? { x: 1, y: 1 };
   }
@@ -281,7 +277,7 @@ export abstract class GameNode {
 
     const includeHidden = GameNode.debugLayoutEnabled;
     const childBounds = this.children
-      .filter((child) => includeHidden || child.visible)
+      .filter((child) => includeHidden || child.isDebugVisible())
       .map((child) => child.getBoundsInParentSpace())
       .filter((bounds): bounds is NodeDebugBounds => Boolean(bounds));
     if (childBounds.length === 0) return;
@@ -476,11 +472,6 @@ export abstract class GameNode {
         this.active = value;
         this.refreshSubtreeActiveState();
         return true;
-      case 'visible':
-        if (typeof value !== 'boolean') return false;
-        this.visible = value;
-        this.refreshSubtreeActiveState();
-        return true;
       case 'position':
         if (!isPointPatchValue(value)) return false;
         this.position = value;
@@ -508,29 +499,8 @@ export abstract class GameNode {
   }
 
   getDebugProps(): NodeDebugProps {
-    const world = this.getWorldTransform();
-    const contentBounds = this.getLocalContentBounds();
     return {
       active: this.active,
-      visible: this.visible,
-      sizeMode: this.sizeMode,
-      boundsMode: this.boundsMode,
-      debugScrollFactor: this.debugScrollFactor ?? null,
-      parentAnchor: this.parent ? this.parentAnchor : null,
-      localX: this.position.x,
-      localY: this.position.y,
-      localWidth: this.size.width,
-      localHeight: this.size.height,
-      originX: this.origin.x,
-      originY: this.origin.y,
-      rotation: this.rotation,
-      worldX: world.x,
-      worldY: world.y,
-      worldRotation: world.rotation,
-      contentX: contentBounds?.x ?? null,
-      contentY: contentBounds?.y ?? null,
-      contentWidth: contentBounds?.width ?? null,
-      contentHeight: contentBounds?.height ?? null,
       scenePropOverrides: this.scenePropOverrides.size > 0 ? [...this.scenePropOverrides].join(',') : null,
     };
   }
@@ -564,7 +534,7 @@ export abstract class GameNode {
     return this.childNodes.flatMap((child) => child.getSceneObjectsInHierarchy());
   }
 
-  private getLocalContentBounds(): NodeDebugBounds | undefined {
+  protected getLocalContentBounds(): NodeDebugBounds | undefined {
     if (this.contentBounds && this.contentBounds.width > 0 && this.contentBounds.height > 0) return this.contentBounds;
     if (this.size.width <= 0 || this.size.height <= 0) return undefined;
     return {

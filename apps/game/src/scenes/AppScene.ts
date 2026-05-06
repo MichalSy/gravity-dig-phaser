@@ -4,7 +4,6 @@ import {
   GameWorldNode,
   LevelGeneratorManagerNode,
   LevelNode,
-  MiningToolNode,
   PlayerNode,
   PlayerStateManagerNode,
   ShipNode,
@@ -81,7 +80,6 @@ export class AppScene extends Phaser.Scene {
     gameplay.addChild(new GameWorldNode());
     gameplay.addChild(new ShipNode());
     gameplay.addChild(new PlayerNode());
-    gameplay.addChild(new MiningToolNode());
     this.appRoot.addChild(gameplay);
 
     const gameplayUi = new SceneNode({ rootName: 'UI.Gameplay', boundsMode: 'content' });

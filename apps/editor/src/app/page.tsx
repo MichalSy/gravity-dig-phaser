@@ -876,6 +876,7 @@ function Inspector({
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
   onSelectAsset(id: string): void;
 }) {
+  const canToggleVisible = Boolean(flattenDefinitionProps(definition).visible);
   return (
     <div className={styles.inspector}>
       <div className={styles.inspectorHeaderCard}>
@@ -885,9 +886,11 @@ function Inspector({
           <button type="button" className={`${styles.inspectorIconButton} ${(!node.active || parentInactive) ? styles.inspectorIconButtonOff : ''}`} disabled={parentInactive} title={parentInactive ? 'Parent ist inactive' : node.active ? 'Node deaktivieren' : 'Node aktivieren'} aria-label={parentInactive ? 'Parent ist inactive' : node.active ? 'Node deaktivieren' : 'Node aktivieren'} onClick={() => onPatch(node, { active: !node.active })}>
             {node.active && !parentInactive ? <Power size={15} /> : <PowerOff size={15} />}
           </button>
-          <button type="button" className={`${styles.inspectorIconButton} ${!node.visible ? styles.inspectorIconButtonOff : ''}`} title={node.visible ? 'Node verstecken' : 'Node anzeigen'} aria-label={node.visible ? 'Node verstecken' : 'Node anzeigen'} onClick={() => onPatch(node, { visible: !node.visible })}>
-            {node.visible ? <Eye size={15} /> : <EyeOff size={15} />}
-          </button>
+          {canToggleVisible && (
+            <button type="button" className={`${styles.inspectorIconButton} ${!node.visible ? styles.inspectorIconButtonOff : ''}`} title={node.visible ? 'Node verstecken' : 'Node anzeigen'} aria-label={node.visible ? 'Node verstecken' : 'Node anzeigen'} onClick={() => onPatch(node, { visible: !node.visible })}>
+              {node.visible ? <Eye size={15} /> : <EyeOff size={15} />}
+            </button>
+          )}
         </div>
       </div>
       <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
@@ -899,6 +902,12 @@ function Inspector({
       </InspectorSection>
     </div>
   );
+}
+
+function flattenDefinitionProps(definition?: DebugSceneNodeDefinition): Record<string, DebugScenePropDefinition> {
+  if (!definition) return {};
+  const groups = definition.exposedPropGroups ?? (definition.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : []);
+  return Object.assign({}, ...groups.map((group) => group.props));
 }
 
 function ExposedPropsSection({

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { exposedPropGroup, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, type ExposedPropGroup, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
+import { exposedPropGroup, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type ExposedPropGroup, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import bottomHudSceneJson from './bottomHud.scene.json';
 import { TEXT, UI_ATLAS } from './uiLayout';
@@ -29,7 +29,7 @@ export class BottomHudNode extends GameNode {
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     exposedPropGroup('State', {
       active: GameNode.exposedPropGroups[0].props.active,
-      visible: GameNode.exposedPropGroups[0].props.visible,
+      visible: TransformNode.exposedPropGroups[1].props.visible,
     }),
     exposedPropGroup('Layout', {
       parentAnchor: GameNode.exposedPropGroups[1].props.parentAnchor,
