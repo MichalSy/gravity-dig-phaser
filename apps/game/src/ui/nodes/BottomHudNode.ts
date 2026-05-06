@@ -115,23 +115,24 @@ export class BottomHudNode extends GameNode {
       const itemParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
       const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
       const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
-      this.slotItemNodes[i].position = i === 1 ? this.slotItemNodes[i].position : { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
-      this.slotItemNodes[i].size = { width: itemWidth, height: itemHeight };
-      this.slotItemNodes[i].scaleX = itemWidth / item.frame.width;
-      this.slotItemNodes[i].scaleY = itemHeight / item.frame.height;
-      this.slotItemNodes[i].visible = slotLayout.hasItem;
-      item.setVisible(slotLayout.hasItem);
+      const slotItemNode = this.slotItemNodes[i];
+      if (i !== 1 && !slotItemNode.hasScenePropOverride('position')) slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
+      if (!slotItemNode.hasScenePropOverride('size')) slotItemNode.size = { width: itemWidth, height: itemHeight };
+      if (!slotItemNode.hasScenePropOverride('scaleX')) slotItemNode.scaleX = itemWidth / item.frame.width;
+      if (!slotItemNode.hasScenePropOverride('scaleY')) slotItemNode.scaleY = itemHeight / item.frame.height;
+      if (!slotItemNode.hasScenePropOverride('visible')) slotItemNode.visible = slotLayout.hasItem;
+      item.setVisible(slotItemNode.visible);
 
       const labelParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
       const labelParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
       const labelScaleX = slotLayout.labelScale / Math.max(labelParentScaleX, Number.EPSILON);
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
-      labelNode.visible = slotLayout.hasItem;
-      labelNode.text = `x${slot?.quantity ?? 0}`;
-      labelNode.position = i === 1 ? labelNode.position : { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
-      labelNode.scale = labelScaleX;
-      labelNode.scaleX = labelScaleX;
-      labelNode.scaleY = labelScaleY;
+      if (!labelNode.hasScenePropOverride('visible')) labelNode.visible = slotLayout.hasItem;
+      if (!labelNode.hasScenePropOverride('text')) labelNode.text = `x${slot?.quantity ?? 0}`;
+      if (i !== 1 && !labelNode.hasScenePropOverride('position')) labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+      if (!labelNode.hasScenePropOverride('scale')) labelNode.scale = labelScaleX;
+      if (!labelNode.hasScenePropOverride('scaleX')) labelNode.scaleX = labelScaleX;
+      if (!labelNode.hasScenePropOverride('scaleY')) labelNode.scaleY = labelScaleY;
     }
   }
 

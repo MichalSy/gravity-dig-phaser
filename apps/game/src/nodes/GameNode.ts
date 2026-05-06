@@ -88,6 +88,7 @@ export abstract class GameNode {
   readonly dependencies: readonly string[] = [];
 
   private readonly childNodes: GameNode[] = [];
+  private readonly scenePropOverrides = new Set<string>();
   private contentBounds?: NodeDebugBounds;
   private nodeContext?: NodeContext;
   private initialized = false;
@@ -442,10 +443,15 @@ export abstract class GameNode {
         continue;
       }
 
+      this.scenePropOverrides.add(key);
       result.applied[key] = validatedValue;
     }
 
     return result;
+  }
+
+  hasScenePropOverride(key: string): boolean {
+    return this.scenePropOverrides.has(key);
   }
 
   protected applySceneProp(key: string, value: DebugNodePatch[string]): boolean {
@@ -518,6 +524,7 @@ export abstract class GameNode {
       contentY: contentBounds?.y ?? null,
       contentWidth: contentBounds?.width ?? null,
       contentHeight: contentBounds?.height ?? null,
+      scenePropOverrides: this.scenePropOverrides.size > 0 ? [...this.scenePropOverrides].join(',') : null,
     };
   }
 
