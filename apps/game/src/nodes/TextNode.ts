@@ -38,6 +38,7 @@ export class TextNode extends TransformNode {
       ...options,
       className: options.className ?? 'TextNode',
       origin: { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y },
+      sizeMode: options.sizeMode ?? 'explicit',
     });
     this.text = options.text ?? '';
     this.style = options.style;

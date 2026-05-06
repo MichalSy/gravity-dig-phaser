@@ -215,12 +215,15 @@ export class DebugBridgeNode extends GameNode {
 
     if (parentAnchor) {
       overlay
-        .lineStyle(1, 0xfacc15, 0.78)
+        .lineStyle(2, 0xfacc15, 0.9)
         .lineBetween(parentAnchor.x, parentAnchor.y, nodeAnchor.x, nodeAnchor.y)
-        .fillStyle(0xfacc15, 1)
-        .fillCircle(parentAnchor.x, parentAnchor.y, 4)
-        .lineStyle(2, 0x020617, 0.9)
-        .strokeCircle(parentAnchor.x, parentAnchor.y, 6);
+        .lineStyle(3, 0xfacc15, 1)
+        .strokeCircle(parentAnchor.x, parentAnchor.y, 11)
+        .lineStyle(1, 0x020617, 0.95)
+        .strokeCircle(parentAnchor.x, parentAnchor.y, 14)
+        .lineStyle(2, 0xfacc15, 0.95)
+        .lineBetween(parentAnchor.x - 15, parentAnchor.y, parentAnchor.x + 15, parentAnchor.y)
+        .lineBetween(parentAnchor.x, parentAnchor.y - 15, parentAnchor.x, parentAnchor.y + 15);
     }
 
     overlay
