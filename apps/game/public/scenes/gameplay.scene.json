@@ -5,24 +5,19 @@
     "children": [
       {
         "name": "Level",
-        "id": "2ed70856-b481-58e1-a75c-db6e48d2fcdd",
-        "guid": "54f36173-6201-5d2d-8091-64b6e7967e54"
+        "id": "2ed70856-b481-58e1-a75c-db6e48d2fcdd"
       },
       {
         "name": "World",
-        "id": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1",
-        "guid": "8b5c35e6-f86c-5466-9a7d-bf045896c9a3"
+        "id": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1"
       },
       {
-        "prefab": "prefabs/ship.prefab.json",
-        "guid": "d029a58a-5ca6-5eae-8ef4-babcdb6629d9"
+        "prefab": "prefabs/ship.prefab.json"
       },
       {
-        "prefab": "prefabs/player.prefab.json",
-        "guid": "ed8675b7-05b6-5f06-99dd-6caaacbfba63"
+        "prefab": "prefabs/player.prefab.json"
       }
     ],
-    "id": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4",
-    "guid": "f37c6a1e-9d13-53f0-9bf5-fa8f969f6648"
+    "id": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
   }
 }

@@ -5,8 +5,7 @@
     "children": [
       {
         "name": "PlayerMovementController",
-        "id": "2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a",
-        "guid": "10eec272-8b13-515a-bf70-1e159f4ac4ac"
+        "id": "2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a"
       },
       {
         "name": "PlayerBody",
@@ -37,25 +36,20 @@
               },
               "scale": 0.9
             },
-            "id": "5a0cd663-64c3-5f02-a579-9915605564be",
-            "guid": "62f5fdc4-bfe6-5da3-aaf4-7bb2c6ce9d91"
+            "id": "5a0cd663-64c3-5f02-a579-9915605564be"
           }
         ],
-        "id": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5",
-        "guid": "2b5e049b-2024-54ee-8910-239a49ab3bcd"
+        "id": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5"
       },
       {
         "name": "PlayerAnimator",
-        "id": "dbfe2289-a994-52dd-88f8-1b680fc914f6",
-        "guid": "ce7bf020-2d91-559c-9e95-549e058ca623"
+        "id": "dbfe2289-a994-52dd-88f8-1b680fc914f6"
       },
       {
         "name": "MiningTool",
-        "id": "4474d3aa-d38e-5ece-bc0c-f5103f507781",
-        "guid": "d2421a2e-dbc3-500b-b86d-b0b483b9f5c9"
+        "id": "4474d3aa-d38e-5ece-bc0c-f5103f507781"
       }
     ],
-    "id": "5eed5534-1ab9-52de-a092-be4f7dab9549",
-    "guid": "971ab469-6170-5fd4-8d91-8ee2aee777c1"
+    "id": "5eed5534-1ab9-52de-a092-be4f7dab9549"
   }
 }
