@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
@@ -859,6 +859,17 @@ function EditablePropsSection({
   patchStatus: string;
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
 }) {
+  const [localOverrides, setLocalOverrides] = useState<DebugNodePatch>({});
+
+  useEffect(() => {
+    setLocalOverrides({});
+  }, [node.id]);
+
+  function patchProp(key: string, value: DebugNodePatch[string]): void {
+    setLocalOverrides((current) => ({ ...current, [key]: value }));
+    onPatch(node, { [key]: value });
+  }
+
   return (
     <InspectorSection title="Editable Node Props">
       {definition ? Object.entries(definition.editableProps).map(([key, prop]) => (
@@ -866,9 +877,9 @@ function EditablePropsSection({
           key={key}
           name={key}
           prop={prop}
-          value={currentEditablePropValue(key, prop, node, debugProps)}
+          value={key in localOverrides ? localOverrides[key] : currentEditablePropValue(key, prop, node, debugProps)}
           assets={assets}
-          onChange={(value) => onPatch(node, { [key]: value })}
+          onCommit={(value) => patchProp(key, value)}
         />
       )) : <FragmentRow name="status" value="Keine Node-Definition für diesen Node." />}
       {patchStatus && <FragmentRow name="patch" value={patchStatus} />}
@@ -881,20 +892,39 @@ function EditablePropRow({
   prop,
   value,
   assets,
-  onChange,
+  onCommit,
 }: {
   name: string;
   prop: DebugScenePropDefinition;
   value: unknown;
   assets: DebugImageAssetDescriptor[];
-  onChange(value: DebugNodePatch[string]): void;
+  onCommit(value: DebugNodePatch[string]): void;
 }) {
   const label = prop.label ?? name;
+  const [draft, setDraft] = useState<unknown>(value);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [editing, value]);
+
+  function commit(nextValue = draft): void {
+    const coerced = coerceEditableValue(prop, nextValue);
+    if (coerced === undefined) return;
+    setDraft(coerced);
+    setEditing(false);
+    onCommit(coerced);
+  }
+
+  function commitOnEnter(event: ReactKeyboardEvent<HTMLInputElement>): void {
+    if (event.key === 'Enter') event.currentTarget.blur();
+  }
+
   if (prop.type === 'Boolean') {
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorCheckbox} type="checkbox" checked={value === true} onChange={(event) => onChange(event.currentTarget.checked)} />
+        <input className={styles.editorCheckbox} type="checkbox" checked={draft === true} onChange={(event) => commit(event.currentTarget.checked)} />
       </>
     );
   }
@@ -903,7 +933,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="number" value={numberInputValue(value)} min={prop.min} max={prop.max} step={prop.step ?? 1} onChange={(event) => onChange(Number(event.currentTarget.value))} />
+        <input className={styles.editorInput} type="number" value={numberInputValue(draft)} min={prop.min} max={prop.max} step={prop.step ?? 1} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
       </>
     );
   }
@@ -912,7 +942,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="text" value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.currentTarget.value)} />
+        <input className={styles.editorInput} type="text" value={typeof draft === 'string' ? draft : ''} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
       </>
     );
   }
@@ -921,7 +951,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <select className={styles.editorInput} value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.currentTarget.value)}>
+        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} onChange={(event) => commit(event.currentTarget.value)}>
           <option value="">Asset wählen</option>
           {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.id}</option>)}
         </select>
@@ -933,7 +963,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <select className={styles.editorInput} value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.currentTarget.value)}>
+        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} onChange={(event) => commit(event.currentTarget.value)}>
           {(prop.options ?? []).map((option) => <option key={option} value={option}>{option}</option>)}
         </select>
       </>
@@ -941,32 +971,56 @@ function EditablePropRow({
   }
 
   if (prop.type === 'Position' || prop.type === 'Origin') {
-    const point = isPointValue(value) ? value : { x: 0, y: 0 };
+    const point = isPointValue(draft) ? draft : { x: 0, y: 0 };
     return (
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onChange={(event) => onChange({ x: Number(event.currentTarget.value), y: point.y })} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onChange={(event) => onChange({ x: point.x, y: Number(event.currentTarget.value) })} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
   }
 
   if (prop.type === 'Size') {
-    const size = isSizeValue(value) ? value : { width: 0, height: 0 };
+    const size = isSizeValue(draft) ? draft : { width: 0, height: 0 };
     return (
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onChange={(event) => onChange({ width: Number(event.currentTarget.value), height: size.height })} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onChange={(event) => onChange({ width: size.width, height: Number(event.currentTarget.value) })} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
   }
 
   return <FragmentRow name={label} value="Unsupported" />;
+}
+
+function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): DebugNodePatch[string] | undefined {
+  if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
+  if (prop.type === 'Boolean') return typeof value === 'boolean' ? value : undefined;
+  if (prop.type === 'Number') return parseFiniteNumber(value);
+  if (prop.type === 'Position' || prop.type === 'Origin') {
+    if (!isPointValue(value)) return undefined;
+    const x = parseFiniteNumber(value.x);
+    const y = parseFiniteNumber(value.y);
+    return x === undefined || y === undefined ? undefined : { x, y };
+  }
+  if (prop.type === 'Size') {
+    if (!isSizeValue(value)) return undefined;
+    const width = parseFiniteNumber(value.width);
+    const height = parseFiniteNumber(value.height);
+    return width === undefined || height === undefined ? undefined : { width, height };
+  }
+  return undefined;
+}
+
+function parseFiniteNumber(value: unknown): number | undefined {
+  const parsed = typeof value === 'number' ? value : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, node: DebugNodeDescriptor, debugProps?: DebugNodePropsMessage): unknown {
