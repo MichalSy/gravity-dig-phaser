@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Eye, EyeOff, Image as ImageIcon, Power, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -803,11 +803,18 @@ function Inspector({
         <span className={styles.inspectorClassTag}>{node.className}</span>
         <label>Name</label>
         <strong>{node.name}</strong>
-        <label>{node.guid ? 'GUID' : 'Runtime ID'}</label>
-        <code>{node.guid ?? node.id}</code>
+        <div className={styles.inspectorHeaderActions}>
+          <button type="button" className={styles.inspectorIconButton} title={node.active ? 'Node deaktivieren' : 'Node aktivieren'} aria-label={node.active ? 'Node deaktivieren' : 'Node aktivieren'} onClick={() => onPatch(node, { active: !node.active })}>
+            <Power size={15} />
+          </button>
+          <button type="button" className={styles.inspectorIconButton} title={node.visible ? 'Node verstecken' : 'Node anzeigen'} aria-label={node.visible ? 'Node verstecken' : 'Node anzeigen'} onClick={() => onPatch(node, { visible: !node.visible })}>
+            {node.visible ? <Eye size={15} /> : <EyeOff size={15} />}
+          </button>
+        </div>
       </div>
       <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
+        <FragmentRow name={node.guid ? 'guid' : 'runtimeId'} value={node.guid ?? node.id} />
         <FragmentRow name="index" value={node.index} />
         <FragmentRow name="children" value={node.children.length} />
         <FragmentRow name="worldBounds" value={formatBounds(debugProps?.worldBounds ?? debugProps?.bounds)} />
@@ -850,7 +857,7 @@ function ExposedPropsSection({
 
   return (
     <>
-      {groups ? groups.map((group) => {
+      {groups ? groups.filter((group) => group.name !== 'State').map((group) => {
         const visibleProps = Object.entries(group.props);
         return (
         <InspectorSection key={group.name} title={group.name}>

@@ -36,8 +36,9 @@ function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObje
   const cropWidth = crop?.width ?? frameWidth;
   const cropHeight = crop?.height ?? frameHeight;
   const anchorPosition = node.getPositionInParent();
-  const left = anchorPosition.x - image.originX * frameWidth * node.scaleX + cropX * node.scaleX;
-  const top = anchorPosition.y - image.originY * frameHeight * node.scaleY + cropY * node.scaleY;
+  const anchorOffset = node.getLocalAnchorOffset();
+  const left = anchorPosition.x - anchorOffset.x * node.scaleX + cropX * node.scaleX;
+  const top = anchorPosition.y - anchorOffset.y * node.scaleY + cropY * node.scaleY;
   return { x: left, y: top, width: cropWidth * Math.abs(node.scaleX), height: cropHeight * Math.abs(node.scaleY), scrollFactor: node.scrollFactor };
 }
 
@@ -94,10 +95,10 @@ export class ImageNode extends TransformNode {
   init(ctx: NodeContext): void {
     this.asset = ctx.assets.image(this.assetId);
     const frame = isFrameAsset(this.asset) ? this.asset.frameKey : undefined;
-    const worldPosition = this.getWorldPosition();
+    const renderOriginPosition = this.getWorldRenderOriginPosition();
     const worldScale = this.getWorldScale();
     this.phaserImage = ctx.phaserScene.add
-      .image(worldPosition.x, worldPosition.y, this.asset.textureKey, frame)
+      .image(renderOriginPosition.x, renderOriginPosition.y, this.asset.textureKey, frame)
       .setDepth(this.depth)
       .setScale(worldScale.x, worldScale.y)
       .setFlipX(this.flipX)
@@ -125,10 +126,10 @@ export class ImageNode extends TransformNode {
       return;
     }
 
-    const worldPosition = this.getWorldPosition();
+    const renderOriginPosition = this.getWorldRenderOriginPosition();
     const worldScale = this.getWorldScale();
     this.phaserImage
-      .setPosition(worldPosition.x, worldPosition.y)
+      .setPosition(renderOriginPosition.x, renderOriginPosition.y)
       .setDepth(this.depth)
       .setRotation(this.getWorldRotation())
       .setScale(worldScale.x, worldScale.y)

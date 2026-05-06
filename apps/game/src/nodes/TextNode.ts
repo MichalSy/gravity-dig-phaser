@@ -12,8 +12,9 @@ function textLocalSize(text: Phaser.GameObjects.Text): { width: number; height: 
 function textBoundsInParentSpace(node: TextNode, text: Phaser.GameObjects.Text): NodeDebugBounds {
   const size = textLocalSize(text);
   const anchorPosition = node.getPositionInParent();
-  const left = anchorPosition.x - text.originX * size.width * node.scaleX;
-  const top = anchorPosition.y - text.originY * size.height * node.scaleY;
+  const anchorOffset = node.getLocalAnchorOffset();
+  const left = anchorPosition.x - anchorOffset.x * node.scaleX;
+  const top = anchorPosition.y - anchorOffset.y * node.scaleY;
   return { x: left, y: top, width: size.width * Math.abs(node.scaleX), height: size.height * Math.abs(node.scaleY), scrollFactor: node.scrollFactor };
 }
 
@@ -62,10 +63,10 @@ export class TextNode extends TransformNode {
   }
 
   init(ctx: NodeContext): void {
-    const worldPosition = this.getWorldPosition();
+    const renderOriginPosition = this.getWorldRenderOriginPosition();
     const worldScale = this.getWorldScale();
     this.phaserText = ctx.phaserScene.add
-      .text(worldPosition.x, worldPosition.y, this.text, this.style)
+      .text(renderOriginPosition.x, renderOriginPosition.y, this.text, this.style)
       .setDepth(this.depth)
       .setScale(worldScale.x, worldScale.y)
       .setVisible(this.visible)
@@ -78,11 +79,11 @@ export class TextNode extends TransformNode {
   update(): void {
     if (!this.phaserText) return;
 
-    const worldPosition = this.getWorldPosition();
+    const renderOriginPosition = this.getWorldRenderOriginPosition();
     const worldScale = this.getWorldScale();
     this.phaserText
       .setText(this.text)
-      .setPosition(worldPosition.x, worldPosition.y)
+      .setPosition(renderOriginPosition.x, renderOriginPosition.y)
       .setDepth(this.depth)
       .setRotation(this.getWorldRotation())
       .setScale(worldScale.x, worldScale.y)
