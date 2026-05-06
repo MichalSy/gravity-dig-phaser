@@ -32,6 +32,15 @@ export const SCENE_PROP_RECORDS = {
       y: { type: 'Number', label: 'Y', min: 0, max: 1, step: 0.01 },
     },
   },
+  Scale: {
+    type: 'Scale',
+    label: 'Scale',
+    editor: 'xy',
+    fields: {
+      x: { type: 'Number', label: 'X', step: 0.01 },
+      y: { type: 'Number', label: 'Y', step: 0.01 },
+    },
+  },
   Anchor: { type: 'Anchor', label: 'Anchor', editor: 'anchor-grid', options: ANCHORS },
   AssetId: { type: 'AssetId', label: 'Asset', editor: 'asset-picker' },
 } satisfies Record<string, DebugScenePropRecordDefinition>;
@@ -76,9 +85,12 @@ export function propOrigin(options: Omit<DebugScenePropDefinition, 'type'> = {})
   return { type: 'Origin', ...options };
 }
 
-export function propAnchor(options: Omit<DebugScenePropDefinition, 'type' | 'options'> & { allowCustom?: boolean } = {}): DebugScenePropDefinition {
-  const { allowCustom = false, ...definitionOptions } = options;
-  return { type: 'Anchor', options: allowCustom ? ANCHORS : ANCHORS.filter((anchor) => anchor !== 'custom'), ...definitionOptions };
+export function propAnchor(options: Omit<DebugScenePropDefinition, 'type' | 'options'> = {}): DebugScenePropDefinition {
+  return { type: 'Anchor', options: ANCHORS, ...options };
+}
+
+export function propScale(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
+  return { type: 'Scale', ...options };
 }
 
 export function propAssetId(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
@@ -100,6 +112,7 @@ export function validateScenePropValue(definition: DebugScenePropDefinition, val
       return isAnchor(value, definition.options) ? value : undefined;
     case 'Position':
     case 'Origin':
+    case 'Scale':
       return isPointLike(value) ? { x: clampNumber(value.x, definition), y: clampNumber(value.y, definition) } : undefined;
     case 'Size':
       return isSizeLike(value) ? { width: Math.max(0, clampNumber(value.width, definition)), height: Math.max(0, clampNumber(value.height, definition)) } : undefined;

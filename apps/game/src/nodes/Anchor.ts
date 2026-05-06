@@ -8,11 +8,9 @@ export const ANCHORS = [
   'bottom-left',
   'bottom-center',
   'bottom-right',
-  'custom',
 ] as const;
 
 export type Anchor = typeof ANCHORS[number];
-export type FixedAnchor = Exclude<Anchor, 'custom'>;
 
 export interface SizeLike {
   width: number;
@@ -44,8 +42,6 @@ export function anchorOrigin(anchor: Anchor): PointLike {
       return { x: 0.5, y: 1 };
     case 'bottom-right':
       return { x: 1, y: 1 };
-    case 'custom':
-      return { x: 0, y: 0 };
   }
 }
 

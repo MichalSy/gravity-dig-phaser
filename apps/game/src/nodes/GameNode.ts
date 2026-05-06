@@ -3,7 +3,7 @@ import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransfor
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, anchorOrigin, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
-import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propNumber, propOrigin, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
+import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propNumber, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
   if (rotation === 0) return { x: offset.x + x, y: offset.y + y };
@@ -64,12 +64,10 @@ export abstract class GameNode {
       order: propNumber({ label: 'Order', step: 1 }),
     }),
     exposedPropGroup('Transform', {
+      parentAnchor: propAnchor({ label: 'Parent Anchor' }),
+      anchor: propAnchor({ label: 'Anchor' }),
       position: propPosition({ label: 'Position', step: 1 }),
       size: propSize({ label: 'Size', min: 0, step: 1 }),
-      anchor: propAnchor({ label: 'Anchor', allowCustom: true }),
-      parentAnchor: propAnchor({ label: 'Parent Anchor' }),
-      origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
-      rotation: propNumber({ label: 'Rotation', step: 0.01 }),
     }),
   ];
 
@@ -111,7 +109,7 @@ export abstract class GameNode {
     this.anchor = options.anchor ?? 'top-left';
     this.parentAnchor = options.parentAnchor ?? 'top-left';
     const defaultOrigin = anchorOrigin(this.anchor);
-    this.origin = this.anchor === 'custom' ? { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y } : defaultOrigin;
+    this.origin = { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y };
     this.rotation = options.rotation ?? 0;
     this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
     this.boundsMode = options.boundsMode ?? 'content';
@@ -206,7 +204,7 @@ export abstract class GameNode {
   }
 
   getLocalAnchorOffset(): PointLike {
-    return this.anchor === 'custom' ? this.getLocalOriginOffset() : anchorOffset(this.anchor, this.size);
+    return anchorOffset(this.anchor, this.size);
   }
 
   getParentAnchorOffset(): PointLike {
@@ -502,12 +500,10 @@ export abstract class GameNode {
         this.size = value;
         this.sizeMode = 'explicit';
         return true;
-      case 'anchor': {
+      case 'anchor':
         if (typeof value !== 'string') return false;
         this.anchor = value as Anchor;
-        if (this.anchor !== 'custom') this.origin = anchorOrigin(this.anchor);
         return true;
-      }
       case 'parentAnchor':
         if (typeof value !== 'string') return false;
         this.parentAnchor = value as Anchor;

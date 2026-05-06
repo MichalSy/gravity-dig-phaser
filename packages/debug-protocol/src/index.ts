@@ -33,7 +33,7 @@ export interface DebugRelayStatusMessage {
   editors: number;
 }
 
-export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Anchor' | 'AssetId';
+export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Scale' | 'Anchor' | 'AssetId';
 
 export interface DebugSceneNumberConstraints {
   min?: number;

@@ -1,6 +1,6 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { GameNode, type GameNodeOptions } from './GameNode';
-import { exposedPropGroup, propNumber, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propNumber, propScale, type ExposedPropGroup } from './SceneProps';
 
 export interface TransformNodeOptions extends GameNodeOptions {
   depth?: number;
@@ -16,10 +16,12 @@ export abstract class TransformNode extends GameNode {
     ...GameNode.exposedPropGroups,
     exposedPropGroup('Render Transform', {
       depth: propNumber({ label: 'Depth', step: 0.1 }),
-      scale: propNumber({ label: 'Scale', step: 0.01 }),
-      scaleX: propNumber({ label: 'Scale X', step: 0.01 }),
-      scaleY: propNumber({ label: 'Scale Y', step: 0.01 }),
       scrollFactor: propNumber({ label: 'Scroll Factor', step: 0.01 }),
+    }),
+    exposedPropGroup('Render Pivot', {
+      rotation: GameNode.exposedPropGroups[1].props.rotation,
+      scale: propScale({ label: 'Scale', step: 0.01 }),
+      origin: GameNode.exposedPropGroups[1].props.origin,
     }),
   ];
 
@@ -49,10 +51,10 @@ export abstract class TransformNode extends GameNode {
         this.depth = value;
         return true;
       case 'scale':
-        if (typeof value !== 'number') return false;
-        this.scale = value;
-        this.scaleX = value;
-        this.scaleY = value;
+        if (typeof value !== 'object' || value === null || !('x' in value) || !('y' in value) || typeof value.x !== 'number' || typeof value.y !== 'number') return false;
+        this.scale = value.x === value.y ? value.x : 1;
+        this.scaleX = value.x;
+        this.scaleY = value.y;
         return true;
       case 'scaleX':
         if (typeof value !== 'number') return false;

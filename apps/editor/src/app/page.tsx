@@ -862,12 +862,11 @@ function ExposedPropsSection({
   }
 
   const groups = definition?.exposedPropGroups ?? (definition?.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : undefined);
-  const currentAnchor = localOverrides.anchor ?? currentEditablePropValue('anchor', { type: 'Anchor' }, node, debugProps);
 
   return (
     <>
       {groups ? groups.map((group) => {
-        const visibleProps = Object.entries(group.props).filter(([key]) => key !== 'origin' || currentAnchor === 'custom');
+        const visibleProps = Object.entries(group.props);
         return (
         <InspectorSection key={group.name} title={group.name}>
           {visibleProps.map(([key, prop]) => (
@@ -1009,14 +1008,14 @@ function EditablePropRow({
     );
   }
 
-  if (prop.type === 'Position' || prop.type === 'Origin') {
+  if (prop.type === 'Position' || prop.type === 'Origin' || prop.type === 'Scale') {
     const point = isPointValue(draft) ? draft : { x: 0, y: 0 };
     return (
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
@@ -1042,7 +1041,7 @@ function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): De
   if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
   if (prop.type === 'Boolean') return typeof value === 'boolean' ? value : undefined;
   if (prop.type === 'Number') return parseFiniteNumber(value);
-  if (prop.type === 'Position' || prop.type === 'Origin') {
+  if (prop.type === 'Position' || prop.type === 'Origin' || prop.type === 'Scale') {
     if (!isPointValue(value)) return undefined;
     const x = parseFiniteNumber(value.x);
     const y = parseFiniteNumber(value.y);
@@ -1074,7 +1073,7 @@ function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, n
   if (key === 'rotation') return local?.rotation;
   if (key === 'scaleX') return local?.scaleX;
   if (key === 'scaleY') return local?.scaleY;
-  if (key === 'scale') return typeof props?.scale === 'number' ? props.scale : local?.scaleX;
+  if (key === 'scale') return local ? { x: local.scaleX, y: local.scaleY } : undefined;
   if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'String' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
   return props?.[key];
 }
