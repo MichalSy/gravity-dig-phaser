@@ -30,16 +30,12 @@ export class DebugBridgeNode extends GameNode {
     GameNode.debugLayoutEnabled = true;
     this.ctx = ctx;
     this.overlay = ctx.phaserScene.add.graphics().setDepth(100_000).setVisible(false);
+    ctx.phaserScene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterSceneUpdate, this);
     this.connect();
   }
 
   update(deltaMs: number): void {
-    this.drawSelectedNodeOverlay();
     this.propsElapsedMs += deltaMs;
-    if (this.propsElapsedMs >= 100) {
-      this.propsElapsedMs = 0;
-      this.sendSelectedNodeProps();
-    }
 
     this.assetCheckElapsedMs += deltaMs;
     if (this.assetCheckElapsedMs >= 500) {
@@ -57,6 +53,7 @@ export class DebugBridgeNode extends GameNode {
   destroy(): void {
     GameNode.debugLayoutEnabled = false;
     this.clearReconnectTimer();
+    this.ctx?.phaserScene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterSceneUpdate, this);
     this.overlay?.destroy();
     this.overlay = undefined;
     this.socket?.close();
@@ -66,6 +63,14 @@ export class DebugBridgeNode extends GameNode {
     this.lastAssetSignature = '';
     this.selectedNodeId = undefined;
     this.nodesById.clear();
+  }
+
+  private afterSceneUpdate(): void {
+    this.drawSelectedNodeOverlay();
+    if (this.propsElapsedMs < 100) return;
+
+    this.propsElapsedMs = 0;
+    this.sendSelectedNodeProps();
   }
 
   private connect(): void {
@@ -92,8 +97,6 @@ export class DebugBridgeNode extends GameNode {
       if (message.type === 'node:select') {
         this.selectedNodeId = message.nodeId;
         this.propsElapsedMs = 100;
-        this.drawSelectedNodeOverlay();
-        this.sendSelectedNodeProps();
       }
     });
 
