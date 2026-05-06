@@ -860,7 +860,7 @@ function EditablePropsSection({
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
 }) {
   return (
-    <InspectorSection title="Editable Scene Props">
+    <InspectorSection title="Editable Node Props">
       {definition ? Object.entries(definition.editableProps).map(([key, prop]) => (
         <EditablePropRow
           key={key}

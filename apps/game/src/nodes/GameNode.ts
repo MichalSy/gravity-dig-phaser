@@ -408,11 +408,11 @@ export abstract class GameNode {
     return this.getWorldBounds();
   }
 
-  getSceneDefinition(): DebugSceneNodeDefinition | undefined {
-    if (!this.guid) return undefined;
+  getSceneDefinition(id = this.guid): DebugSceneNodeDefinition | undefined {
+    if (!id) return undefined;
     const constructor = this.constructor as typeof GameNode;
     return {
-      guid: this.guid,
+      guid: id,
       name: this.debugName(),
       typeName: constructor.sceneType,
       editableProps: constructor.editableProps,

@@ -159,7 +159,8 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private collectNodeDefinitions(node: GameNode): NonNullable<ReturnType<GameNode['getSceneDefinition']>>[] {
-    const definition = node.getSceneDefinition();
+    const nodeId = this.getStableNodeId(node);
+    const definition = node.getSceneDefinition(node.guid ?? nodeId);
     return [definition, ...node.children.flatMap((child) => this.collectNodeDefinitions(child))].filter((item) => item !== undefined);
   }
 
@@ -168,6 +169,7 @@ export class DebugBridgeNode extends GameNode {
 
     const snapshot = captureDebugNodeTree(this.ctx.runtime, (node) => this.getStableNodeId(node), this);
     this.lastTree = snapshot;
+    this.sendNodeDefinitions();
     this.send({ type: 'node:tree', sessionId: this.config.sessionId, roots: snapshot.roots, sentAt: Date.now() });
   }
 
@@ -183,7 +185,10 @@ export class DebugBridgeNode extends GameNode {
 
     const deltas = diffDebugNodeTrees(this.lastTree, nextTree);
     this.lastTree = nextTree;
-    if (deltas.length > 0) this.send({ type: 'node:delta', sessionId: this.config.sessionId, deltas, sentAt: Date.now() });
+    if (deltas.length > 0) {
+      this.sendNodeDefinitions();
+      this.send({ type: 'node:delta', sessionId: this.config.sessionId, deltas, sentAt: Date.now() });
+    }
   }
 
   private getStableNodeId(node: GameNode): string {
