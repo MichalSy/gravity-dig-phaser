@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { exposedPropGroup, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type ExposedPropGroup, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
+import { exposedPropGroup, flattenExposedPropGroups, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type SceneFileJson, type TransformNodeOptions } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import bottomHudSceneJson from './bottomHud.scene.json';
 import { TEXT, UI_ATLAS } from './uiLayout';
@@ -24,15 +24,18 @@ const bottomHudNodeRegistry = new SceneNodeFactoryRegistry()
   .registerText('1e1504a9-96f5-45b2-be68-c69eed3bdb1c')
   .registerText('80bd70f5-c17b-4058-8b77-2acfc2087e53');
 
-export class BottomHudNode extends GameNode {
+const gameNodeProps = flattenExposedPropGroups(GameNode.exposedPropGroups);
+const transformNodeProps = flattenExposedPropGroups(TransformNode.exposedPropGroups);
+
+export class BottomHudNode extends TransformNode {
   static override readonly sceneType: string = 'BottomHudNode';
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     exposedPropGroup('State', {
-      active: GameNode.exposedPropGroups[0].props.active,
-      visible: TransformNode.exposedPropGroups[1].props.visible,
+      active: gameNodeProps.active,
+      visible: transformNodeProps.visible,
     }),
     exposedPropGroup('Layout', {
-      parentAnchor: GameNode.exposedPropGroups[1].props.parentAnchor,
+      parentAnchor: transformNodeProps.parentAnchor,
     }),
   ];
 
@@ -48,7 +51,7 @@ export class BottomHudNode extends GameNode {
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
   constructor() {
-    super({ guid: bottomHudScene.root.id, name: bottomHudScene.root.name, className: 'BottomHudNode', sizeMode: 'explicit', debugScrollFactor: 0, ...(bottomHudScene.root.props as GameNodeOptions | undefined) });
+    super({ guid: bottomHudScene.root.id, name: bottomHudScene.root.name, className: 'BottomHudNode', sizeMode: 'explicit', debugScrollFactor: 0, ...(bottomHudScene.root.props as TransformNodeOptions | undefined) });
 
     const nodesByName = new Map<string, GameNode>();
     for (const childDefinition of bottomHudScene.root.children ?? []) {
