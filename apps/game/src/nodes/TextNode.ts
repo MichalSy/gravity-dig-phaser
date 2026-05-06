@@ -63,15 +63,8 @@ export class TextNode extends TransformNode {
   }
 
   init(ctx: NodeContext): void {
-    const renderOriginPosition = this.getWorldRenderOriginPosition();
-    const worldScale = this.getWorldScale();
-    this.phaserText = ctx.phaserScene.add
-      .text(renderOriginPosition.x, renderOriginPosition.y, this.text, this.style)
-      .setDepth(this.depth)
-      .setScale(worldScale.x, worldScale.y)
-      .setVisible(this.visible)
-      .setScrollFactor(this.scrollFactor)
-      .setOrigin(this.origin.x, this.origin.y);
+    this.phaserText = ctx.phaserScene.add.text(0, 0, this.text, this.style);
+    this.applyTransformTo(this.phaserText);
     if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
     this.updateSizeFromText();
   }
@@ -79,17 +72,8 @@ export class TextNode extends TransformNode {
   update(): void {
     if (!this.phaserText) return;
 
-    const renderOriginPosition = this.getWorldRenderOriginPosition();
-    const worldScale = this.getWorldScale();
-    this.phaserText
-      .setText(this.text)
-      .setPosition(renderOriginPosition.x, renderOriginPosition.y)
-      .setDepth(this.depth)
-      .setRotation(this.getWorldRotation())
-      .setScale(worldScale.x, worldScale.y)
-      .setVisible(this.visible)
-      .setScrollFactor(this.scrollFactor)
-      .setOrigin(this.origin.x, this.origin.y);
+    this.phaserText.setText(this.text);
+    this.applyTransformTo(this.phaserText);
     if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
     this.updateSizeFromText();
   }

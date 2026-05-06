@@ -95,17 +95,10 @@ export class ImageNode extends TransformNode {
   init(ctx: NodeContext): void {
     this.asset = ctx.assets.image(this.assetId);
     const frame = isFrameAsset(this.asset) ? this.asset.frameKey : undefined;
-    const renderOriginPosition = this.getWorldRenderOriginPosition();
-    const worldScale = this.getWorldScale();
-    this.phaserImage = ctx.phaserScene.add
-      .image(renderOriginPosition.x, renderOriginPosition.y, this.asset.textureKey, frame)
-      .setDepth(this.depth)
-      .setScale(worldScale.x, worldScale.y)
-      .setFlipX(this.flipX)
-      .setVisible(this.visible)
-      .setScrollFactor(this.scrollFactor);
+    this.size = { width: this.asset.width, height: this.asset.height };
+    this.phaserImage = ctx.phaserScene.add.image(0, 0, this.asset.textureKey, frame).setFlipX(this.flipX);
     this.size = visibleImageLocalSize(this.phaserImage);
-    this.applyOrigin();
+    this.applyTransformTo(this.phaserImage);
   }
 
   update(_deltaMs?: number): void {
@@ -126,17 +119,7 @@ export class ImageNode extends TransformNode {
       return;
     }
 
-    const renderOriginPosition = this.getWorldRenderOriginPosition();
-    const worldScale = this.getWorldScale();
-    this.phaserImage
-      .setPosition(renderOriginPosition.x, renderOriginPosition.y)
-      .setDepth(this.depth)
-      .setRotation(this.getWorldRotation())
-      .setScale(worldScale.x, worldScale.y)
-      .setFlipX(this.flipX)
-      .setVisible(this.visible)
-      .setScrollFactor(this.scrollFactor);
-    this.applyOrigin();
+    this.applyTransformTo(this.phaserImage).setFlipX(this.flipX);
   }
 
   destroy(): void {
@@ -148,9 +131,12 @@ export class ImageNode extends TransformNode {
     this.asset = asset;
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;
     this.phaserImage?.setTexture(asset.textureKey, frame);
-    if (this.phaserImage) this.size = visibleImageLocalSize(this.phaserImage);
-    else this.size = { width: asset.width, height: asset.height };
-    this.applyOrigin();
+    if (this.phaserImage) {
+      this.size = visibleImageLocalSize(this.phaserImage);
+      this.applyTransformTo(this.phaserImage);
+    } else {
+      this.size = { width: asset.width, height: asset.height };
+    }
   }
 
   override getBoundsInParentSpace(): NodeDebugBounds | undefined {
@@ -205,8 +191,4 @@ export class ImageNode extends TransformNode {
     }
   }
 
-  private applyOrigin(): void {
-    if (!this.phaserImage) return;
-    this.phaserImage.setOrigin(this.origin.x, this.origin.y);
-  }
 }

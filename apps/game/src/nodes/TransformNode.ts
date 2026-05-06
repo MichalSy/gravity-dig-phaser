@@ -1,3 +1,4 @@
+import type Phaser from 'phaser';
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { GameNode, type GameNodeOptions } from './GameNode';
 import { exposedPropGroup, propNumber, propOrigin, propScale, type ExposedPropGroup } from './SceneProps';
@@ -38,6 +39,52 @@ export abstract class TransformNode extends GameNode {
 
   override getLocalScale(): { x: number; y: number } {
     return { x: this.scaleX, y: this.scaleY };
+  }
+
+
+  getRenderOriginWorldPosition(): { x: number; y: number } {
+    return this.getWorldRenderOriginPosition();
+  }
+
+  getPhaserTransform(): {
+    x: number;
+    y: number;
+    rotation: number;
+    scaleX: number;
+    scaleY: number;
+    originX: number;
+    originY: number;
+    depth: number;
+    visible: boolean;
+    scrollFactor: number;
+  } {
+    const position = this.getRenderOriginWorldPosition();
+    const scale = this.getWorldScale();
+    return {
+      x: position.x,
+      y: position.y,
+      rotation: this.getWorldRotation(),
+      scaleX: scale.x,
+      scaleY: scale.y,
+      originX: this.origin.x,
+      originY: this.origin.y,
+      depth: this.depth,
+      visible: this.visible,
+      scrollFactor: this.scrollFactor,
+    };
+  }
+
+  applyTransformTo<T extends Phaser.GameObjects.Components.Transform & Phaser.GameObjects.Components.Origin & Phaser.GameObjects.Components.Depth & Phaser.GameObjects.Components.Visible & Phaser.GameObjects.Components.ScrollFactor>(object: T): T {
+    const transform = this.getPhaserTransform();
+    object
+      .setOrigin(transform.originX, transform.originY)
+      .setPosition(transform.x, transform.y)
+      .setRotation(transform.rotation)
+      .setScale(transform.scaleX, transform.scaleY)
+      .setDepth(transform.depth)
+      .setVisible(transform.visible)
+      .setScrollFactor(transform.scrollFactor);
+    return object;
   }
 
   protected override applySceneProp(key: string, value: DebugNodePatch[string]): boolean {
