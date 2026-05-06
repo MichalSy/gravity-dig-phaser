@@ -65,6 +65,7 @@ export class MiningToolNode extends GameNode {
   stopFiring(): void {
     this.data.target = undefined;
     this.miningPressed = false;
+    this.playerState?.setMiningActive(false);
     this.laserView?.clear();
   }
 
@@ -91,6 +92,7 @@ export class MiningToolNode extends GameNode {
     });
     const firing = intent.miningPressed;
     this.miningPressed = firing;
+    this.playerState.setMiningActive(firing);
     this.data.target = target;
     this.laserView.clear();
 

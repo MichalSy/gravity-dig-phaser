@@ -15,8 +15,10 @@ export interface CargoReturnResult {
 
 export class PlayerStateManagerNode extends GameNode {
   private saveGameState!: SaveGame;
-  private activeRunState!: RunState;
+  private activeRunState?: RunState;
   private effectivePlayerStats!: EffectivePlayerStats;
+  private saveTimerMs = 0;
+  private miningActive = false;
 
   constructor() {
     super({ name: 'PlayerState', className: 'PlayerStateManagerNode' });
@@ -32,6 +34,7 @@ export class PlayerStateManagerNode extends GameNode {
   }
 
   get run(): RunState {
+    if (!this.activeRunState) throw new Error('No active run has been started');
     return this.activeRunState;
   }
 
@@ -51,33 +54,51 @@ export class PlayerStateManagerNode extends GameNode {
     this.activeRunState = activeRun
       ? normalizeRunState(activeRun, this.effectivePlayerStats)
       : createRunState(planetId, seed, this.effectivePlayerStats);
+    this.saveTimerMs = 0;
+    this.miningActive = false;
     this.saveActiveRun();
     return this.activeRunState;
   }
 
+  update(deltaMs: number): void {
+    if (!this.activeRunState) return;
+
+    if (!this.miningActive) this.recoverEnergy(deltaMs / 1000);
+
+    this.saveTimerMs += deltaMs;
+    if (this.saveTimerMs < 1000) return;
+
+    this.saveTimerMs = 0;
+    this.saveActiveRun();
+  }
+
+  setMiningActive(active: boolean): void {
+    this.miningActive = active;
+  }
+
   hasMiningEnergy(): boolean {
-    return this.activeRunState.energy > 0;
+    return this.run.energy > 0;
   }
 
   consumeMiningEnergy(deltaSeconds: number): void {
-    this.activeRunState.energy = Math.max(0, this.activeRunState.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
+    this.run.energy = Math.max(0, this.run.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
   }
 
   recoverEnergy(deltaSeconds: number): void {
-    this.activeRunState.energy = Math.min(
+    this.run.energy = Math.min(
       this.effectivePlayerStats.maxEnergy,
-      this.activeRunState.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds,
+      this.run.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds,
     );
   }
 
   refillEnergy(): void {
-    this.activeRunState.energy = this.effectivePlayerStats.maxEnergy;
+    this.run.energy = this.effectivePlayerStats.maxEnergy;
     this.saveActiveRun();
   }
 
   recordMinedTile(tileType: TileType): void {
     if (isResourceItem(tileType)) {
-      addItem(this.activeRunState.cargo, tileType as ItemId, 1);
+      addItem(this.run.cargo, tileType as ItemId, 1);
       this.saveGameState.profile.stats.resourcesMined += 1;
     }
 
@@ -86,11 +107,11 @@ export class PlayerStateManagerNode extends GameNode {
   }
 
   hasCargo(): boolean {
-    return this.activeRunState.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    return this.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
   }
 
   returnCargoToShip(): CargoReturnResult {
-    const cargo = this.activeRunState.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    const cargo = this.run.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
     if (cargo.length === 0) {
       this.refillEnergy();
       return { message: 'Schiffsdock: Energie aufgefüllt', transferred: 0, credits: 0 };
@@ -117,6 +138,7 @@ export class PlayerStateManagerNode extends GameNode {
   }
 
   saveActiveRun(): void {
+    if (!this.activeRunState) return;
     this.saveGameState.activeRun = this.activeRunState;
     saveGame(this.saveGameState);
   }

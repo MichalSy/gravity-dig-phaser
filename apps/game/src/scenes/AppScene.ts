@@ -1,14 +1,12 @@
 import Phaser from 'phaser';
 import { loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import {
-  AutoSaveNode,
   GameWorldNode,
   LevelGeneratorManagerNode,
   LevelNode,
   MiningToolNode,
   PlayerNode,
   PlayerStateManagerNode,
-  RunRecoveryNode,
   ShipNode,
 } from '../game/nodes';
 import { NodeRoot, NodeRuntime, SceneNode } from '../nodes';
@@ -84,8 +82,6 @@ export class AppScene extends Phaser.Scene {
     gameplay.addChild(new ShipNode());
     gameplay.addChild(new PlayerNode());
     gameplay.addChild(new MiningToolNode());
-    gameplay.addChild(new RunRecoveryNode());
-    gameplay.addChild(new AutoSaveNode());
     this.appRoot.addChild(gameplay);
 
     const gameplayUi = new SceneNode({ rootName: 'UI.Gameplay', boundsMode: 'content' });

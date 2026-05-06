@@ -38,13 +38,6 @@ export function createShipData(): ShipData {
   return { lastMessage: '', lastMessageTimerMs: 0 };
 }
 
-export interface AutoSaveData {
-  saveTimerMs: number;
-}
-
-export function createAutoSaveData(): AutoSaveData {
-  return { saveTimerMs: 0 };
-}
 
 export interface PlayerMovementControllerData {
   velocity: Phaser.Math.Vector2;
