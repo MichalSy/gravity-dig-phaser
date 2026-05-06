@@ -37,9 +37,9 @@ export class GameWorldNode extends GameNode {
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
-    const [sky, tunnel, ship, coreOuter, coreInner] = this.data.sceneObjects;
+    const [sky, tunnel, coreOuter, coreInner] = this.data.sceneObjects;
     const [backwall, foreground] = this.levelNode?.getSceneObjects() ?? [];
-    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ship].filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
+    return [sky, backwall, tunnel, foreground, coreOuter, coreInner].filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
   }
 
   destroy(): void {

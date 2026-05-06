@@ -19,7 +19,6 @@ export class WorldView {
     return [
       this.createBackground(level),
       this.createStartTunnelBackground(),
-      this.createShip(),
       ...this.createCoreMarker(level),
     ];
   }
@@ -44,17 +43,6 @@ export class WorldView {
       .image(tunnelLeftX + tunnelWidth / 2, tunnelTopY + tunnelHeight / 2, 'drill-tunnel-bg')
       .setOrigin(0.5)
             .setDisplaySize(tunnelWidth, tunnelHeight)
-      .setAlpha(0.96);
-  }
-
-  private createShip(): Phaser.GameObjects.Image {
-    const shipBottomY = TILE_SIZE * 3;
-    const shipCenterX = -3 * TILE_SIZE;
-
-    return this.scene.add
-      .image(shipCenterX, shipBottomY, 'ship')
-      .setOrigin(0.5, 1)
-            .setDisplaySize(TILE_SIZE * 5.71, TILE_SIZE * 3.5)
       .setAlpha(0.96);
   }
 

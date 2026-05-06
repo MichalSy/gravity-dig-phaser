@@ -1,22 +1,51 @@
 import Phaser from 'phaser';
-import { PLAYER_SIZE } from '../../config/gameConfig';
-import { GameNode, type NodeContext } from '../../nodes';
+import { TILE_SIZE } from '../../config/gameConfig';
+import { ImageNode, TextNode, TransformNode, type NodeContext } from '../../nodes';
 import { buildShipDockPrompt, isAtShipDock, playerPromptY } from '../gameplayLogic';
 import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
-import { createShipDockData, type ShipDockData } from '../nodeData';
-import { PlayerStateManagerNode } from './PlayerStateManagerNode';
+import { createShipData, type ShipData } from '../nodeData';
+import { SHIP_DOCK_CENTER_X } from '../world/worldGeometry';
 import { GameWorldNode } from './GameWorldNode';
+import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
-export class ShipDockNode extends GameNode {
+const SHIP_BOTTOM_Y = TILE_SIZE * 3;
+const SHIP_DISPLAY_WIDTH = TILE_SIZE * 5.71;
+const SHIP_DISPLAY_HEIGHT = TILE_SIZE * 3.5;
+
+export class ShipNode extends TransformNode {
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
-  private shipPrompt?: Phaser.GameObjects.Text;
+  private readonly shipImage: ImageNode;
+  private readonly promptText: TextNode;
   override readonly dependencies = ['World', 'PlayerState'] as const;
-  readonly data: ShipDockData = createShipDockData();
+  readonly data: ShipData = createShipData();
 
   constructor() {
-    super({ name: 'ShipDock', className: 'ShipDockNode' });
+    super({ name: 'Ship', className: 'ShipNode', position: { x: SHIP_DOCK_CENTER_X, y: SHIP_BOTTOM_Y }, sizeMode: 'explicit' });
+    this.size = { width: SHIP_DISPLAY_WIDTH, height: SHIP_DISPLAY_HEIGHT };
+    this.origin = { x: 0.5, y: 1 };
+
+    this.shipImage = this.addChild(new ImageNode({
+      name: 'ShipImage',
+      assetId: 'ship',
+      parentAnchor: 'bottom-center',
+      origin: { x: 0.5, y: 1 },
+    }));
+    this.promptText = this.addChild(new TextNode({
+      name: 'ShipPrompt',
+      text: '',
+      origin: { x: 0.5, y: 1 },
+      style: {
+        fontFamily: 'Arial, sans-serif',
+        fontSize: '18px',
+        fontStyle: '900',
+        color: '#e0f2fe',
+        backgroundColor: 'rgba(2,6,23,0.72)',
+        padding: { x: 10, y: 6 },
+      },
+      visible: false,
+    }));
   }
 
   init(ctx: NodeContext): void {
@@ -28,20 +57,19 @@ export class ShipDockNode extends GameNode {
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.layoutShipImage();
     this.resetPrompt();
   }
 
   destroy(): void {
     offGameEvent(this.phaserScene, GAME_EVENTS.playerInteractRequested, this.tryReturnCargoToShip, this);
     offGameEvent(this.phaserScene, GAME_EVENTS.worldLevelCreated, this.resetPrompt, this);
-    this.shipPrompt?.destroy();
   }
 
   update(deltaMs: number): void {
-    if (!this.shipPrompt) this.resetPrompt();
-    if (!this.shipPrompt) return;
-
+    this.layoutShipImage();
     this.data.lastMessageTimerMs = Math.max(0, this.data.lastMessageTimerMs - deltaMs);
+
     const player = this.world.player;
     const atDock = isAtShipDock(player.x, player.y);
     const hasCargo = this.playerState.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
@@ -52,30 +80,22 @@ export class ShipDockNode extends GameNode {
       overrideMessage: this.data.lastMessageTimerMs > 0 ? this.data.lastMessage : undefined,
     });
 
-    this.shipPrompt
-      .setText(message)
-      .setPosition(player.x, playerPromptY(player.y))
-      .setVisible(Boolean(message));
+    this.promptText.text = message;
+    this.promptText.position = this.promptText.worldToLocalPosition({ x: player.x, y: playerPromptY(player.y) });
+    this.promptText.visible = Boolean(message);
   }
 
-  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
-    return this.shipPrompt ? [this.shipPrompt] : [];
+  private layoutShipImage(): void {
+    const frame = this.shipImage.image.frame;
+    this.shipImage.scaleX = SHIP_DISPLAY_WIDTH / frame.width;
+    this.shipImage.scaleY = SHIP_DISPLAY_HEIGHT / frame.height;
   }
 
   private resetPrompt(): void {
-    if (!this.world) return;
-    this.shipPrompt?.destroy();
-    this.shipPrompt = this.phaserScene.add
-      .text(this.world.player.x, this.world.player.y - PLAYER_SIZE.h, '', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '18px',
-        fontStyle: '900',
-        color: '#e0f2fe',
-        backgroundColor: 'rgba(2,6,23,0.72)',
-        padding: { x: 10, y: 6 },
-      })
-      .setOrigin(0.5, 1)
-            .setVisible(false);
+    this.data.lastMessage = '';
+    this.data.lastMessageTimerMs = 0;
+    this.promptText.text = '';
+    this.promptText.visible = false;
   }
 
   private tryReturnCargoToShip(): void {

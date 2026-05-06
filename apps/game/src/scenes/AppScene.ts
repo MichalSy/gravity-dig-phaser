@@ -9,7 +9,7 @@ import {
   PlayerNode,
   PlayerStateManagerNode,
   RunRecoveryNode,
-  ShipDockNode,
+  ShipNode,
 } from '../game/nodes';
 import { NodeRoot, NodeRuntime, SceneNode } from '../nodes';
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
@@ -81,10 +81,10 @@ export class AppScene extends Phaser.Scene {
     const gameplay = new SceneNode({ rootName: 'Gameplay' });
     gameplay.addChild(new LevelNode());
     gameplay.addChild(new GameWorldNode());
+    gameplay.addChild(new ShipNode());
     gameplay.addChild(new PlayerNode());
     gameplay.addChild(new MiningToolNode());
     gameplay.addChild(new RunRecoveryNode());
-    gameplay.addChild(new ShipDockNode());
     gameplay.addChild(new AutoSaveNode());
     this.appRoot.addChild(gameplay);
 

@@ -8,4 +8,4 @@ export * from './PlayerNode';
 export * from './PlayerAnimatorNode';
 export * from './PlayerStateManagerNode';
 export * from './RunRecoveryNode';
-export * from './ShipDockNode';
+export * from './ShipNode';

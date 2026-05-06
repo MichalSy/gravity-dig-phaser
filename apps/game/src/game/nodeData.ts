@@ -29,12 +29,12 @@ export function createPlayerAnimatorData(): PlayerAnimatorData {
   };
 }
 
-export interface ShipDockData {
+export interface ShipData {
   lastMessage: string;
   lastMessageTimerMs: number;
 }
 
-export function createShipDockData(): ShipDockData {
+export function createShipData(): ShipData {
   return { lastMessage: '', lastMessageTimerMs: 0 };
 }
 
