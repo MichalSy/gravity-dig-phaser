@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { HudStateNode } from '../../app/nodes';
+import { GameplayInputNode } from '../../app/nodes';
+import { buildHudState } from '../../game/gameplayLogic';
+import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { exposedPropGroup, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, type ExposedPropGroup, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import bottomHudSceneJson from './bottomHud.scene.json';
@@ -35,13 +37,15 @@ export class BottomHudNode extends GameNode {
   ];
 
   private phaserScene!: Phaser.Scene;
-  private hudState!: HudStateNode;
+  private world!: GameWorldNode;
+  private playerState!: PlayerStateManagerNode;
+  private gameplayInput!: GameplayInputNode;
   private readonly actionFrameNode: ImageNode;
   private readonly energyFillNode: ImageNode;
   private readonly slotFrameNodes: ImageNode[] = [];
   private readonly slotItemNodes: ImageNode[] = [];
   private readonly slotLabelNodes: TextNode[] = [];
-  override readonly dependencies = ['HudState'] as const;
+  override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
   constructor() {
     super({ guid: bottomHudScene.root.id, name: bottomHudScene.root.name, className: 'BottomHudNode', sizeMode: 'explicit', debugScrollFactor: 0, ...(bottomHudScene.root.props as GameNodeOptions | undefined) });
@@ -75,11 +79,13 @@ export class BottomHudNode extends GameNode {
   }
 
   resolve(): void {
-    this.hudState = this.requireNode<HudStateNode>('HudState');
+    this.world = this.requireNode<GameWorldNode>('World');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
   }
 
   override getDebugProps(): NodeDebugProps {
-    const state = this.hudState?.getState();
+    const state = this.getHudState();
     return {
       ...super.getDebugProps(),
       energy: state ? Math.round(state.energy.current) : null,
@@ -88,8 +94,7 @@ export class BottomHudNode extends GameNode {
   }
 
   update(): void {
-    const state = this.hudState.getState();
-    if (!state) return;
+    const state = this.getHudState();
 
     const viewportWidth = this.phaserScene.scale.width;
     const viewportHeight = this.phaserScene.scale.height;
@@ -142,6 +147,14 @@ export class BottomHudNode extends GameNode {
         labelNode.scaleY = labelScaleY;
       }
     }
+  }
+
+  private getHudState() {
+    return buildHudState({
+      level: this.world.level,
+      inputMode: this.gameplayInput.getInputMode(),
+      playerState: this.playerState,
+    });
   }
 
   private markHudComputedPropsReadOnly(): void {

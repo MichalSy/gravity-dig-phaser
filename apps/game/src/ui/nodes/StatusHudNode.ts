@@ -1,15 +1,19 @@
 import Phaser from 'phaser';
-import { HudStateNode } from '../../app/nodes';
+import { GameplayInputNode } from '../../app/nodes';
+import { buildHudState } from '../../game/gameplayLogic';
+import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { GameNode, ImageNode, type NodeContext, type NodeDebugProps } from '../../nodes';
 import { hudScaleForWidth, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
 export class StatusHudNode extends GameNode {
   private phaserScene!: Phaser.Scene;
-  private hudState!: HudStateNode;
+  private world!: GameWorldNode;
+  private playerState!: PlayerStateManagerNode;
+  private gameplayInput!: GameplayInputNode;
   private readonly statusFrameNode: ImageNode;
   private readonly hpFillNode: ImageNode;
   private readonly fuelFillNode: ImageNode;
-  override readonly dependencies = ['HudState'] as const;
+  override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
   constructor() {
     super({ name: 'UI.StatusHud', order: 0, className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
@@ -23,11 +27,13 @@ export class StatusHudNode extends GameNode {
   }
 
   resolve(): void {
-    this.hudState = this.requireNode<HudStateNode>('HudState');
+    this.world = this.requireNode<GameWorldNode>('World');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
   }
 
   override getDebugProps(): NodeDebugProps {
-    const state = this.hudState?.getState();
+    const state = this.getHudState();
     return {
       ...super.getDebugProps(),
       hp: state ? Math.round(state.health.current) : null,
@@ -36,8 +42,7 @@ export class StatusHudNode extends GameNode {
   }
 
   update(): void {
-    const state = this.hudState.getState();
-    if (!state) return;
+    const state = this.getHudState();
 
     const scale = hudScaleForWidth(this.phaserScene.scale.width);
     const atlasScale = (UI_ATLAS.topDisplayWidth * scale) / UI_ATLAS.topHud.w;
@@ -50,6 +55,14 @@ export class StatusHudNode extends GameNode {
     this.placeRegionNode(this.statusFrameNode, 0, 0, atlasScale);
     this.placeBarNode(this.hpFillNode, UI_ATLAS.hpBar, UI_ATLAS.hpSlot.x * atlasScale, UI_ATLAS.hpSlot.y * atlasScale, UI_ATLAS.hpSlot.w * atlasScale, UI_ATLAS.hpSlot.h * atlasScale, pctHp);
     this.placeBarNode(this.fuelFillNode, UI_ATLAS.fuelBar, UI_ATLAS.fuelSlot.x * atlasScale, UI_ATLAS.fuelSlot.y * atlasScale, UI_ATLAS.fuelSlot.w * atlasScale, UI_ATLAS.fuelSlot.h * atlasScale, pctFuel);
+  }
+
+  private getHudState() {
+    return buildHudState({
+      level: this.world.level,
+      inputMode: this.gameplayInput.getInputMode(),
+      playerState: this.playerState,
+    });
   }
 
   private placeRegionNode(node: ImageNode, x: number, y: number, scale: number): void {

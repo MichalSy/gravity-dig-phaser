@@ -3,7 +3,6 @@ import { loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import {
   AutoSaveNode,
   GameWorldNode,
-  HudNode,
   LevelGeneratorManagerNode,
   LevelNode,
   MiningToolNode,
@@ -13,7 +12,7 @@ import {
   ShipDockNode,
 } from '../game/nodes';
 import { NodeRoot, NodeRuntime, SceneNode } from '../nodes';
-import { GameplayInputNode, HudStateNode, LoadingNode, MenuNode } from '../app/nodes';
+import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
 
@@ -80,12 +79,10 @@ export class AppScene extends Phaser.Scene {
 
   private mountGameplayScenes(): void {
     const gameplay = new SceneNode({ rootName: 'Gameplay', order: 20 });
-    gameplay.addChild(new HudStateNode());
     gameplay.addChild(new LevelNode());
     gameplay.addChild(new GameWorldNode());
     gameplay.addChild(new PlayerNode());
     gameplay.addChild(new MiningToolNode());
-    gameplay.addChild(new HudNode());
     gameplay.addChild(new RunRecoveryNode());
     gameplay.addChild(new ShipDockNode());
     gameplay.addChild(new AutoSaveNode());

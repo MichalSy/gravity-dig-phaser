@@ -1,6 +1,5 @@
 export * from './AutoSaveNode';
 export * from './GameWorldNode';
-export * from './HudNode';
 export * from './LevelGeneratorManagerNode';
 export * from './LevelNode';
 export * from './MiningToolNode';
