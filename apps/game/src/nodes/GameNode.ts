@@ -1,14 +1,23 @@
 import type Phaser from 'phaser';
-import type { DebugNodeBounds, DebugNodePoint, DebugNodeTransform } from '@gravity-dig/debug-protocol';
+import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransform, DebugSceneNodeDefinition } from '@gravity-dig/debug-protocol';
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, anchorOrigin, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
+import { propAnchor, propBoolean, propNumber, propOrigin, propPosition, propSize, type EditablePropMap, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
   if (rotation === 0) return { x: offset.x + x, y: offset.y + y };
   const cos = Math.cos(rotation);
   const sin = Math.sin(rotation);
   return { x: offset.x + x * cos - y * sin, y: offset.y + x * sin + y * cos };
+}
+
+function isPointPatchValue(value: DebugNodePatch[string]): value is PointLike {
+  return typeof value === 'object' && value !== null && 'x' in value && 'y' in value;
+}
+
+function isSizePatchValue(value: DebugNodePatch[string]): value is SizeLike {
+  return typeof value === 'object' && value !== null && 'width' in value && 'height' in value;
 }
 
 export interface NodeContext {
@@ -28,6 +37,7 @@ export type NodeSizeMode = 'explicit' | 'content';
 export type NodeBoundsMode = 'content' | 'none';
 
 export interface GameNodeOptions {
+  guid?: string;
   name?: string;
   className?: string;
   active?: boolean;
@@ -46,7 +56,20 @@ export interface GameNodeOptions {
 
 export abstract class GameNode {
   static debugLayoutEnabled = false;
+  static readonly sceneType: string = 'GameNode';
+  static readonly editableProps: EditablePropMap = {
+    active: propBoolean({ label: 'Active' }),
+    visible: propBoolean({ label: 'Visible' }),
+    order: propNumber({ label: 'Order', step: 1 }),
+    position: propPosition({ label: 'Position', step: 1 }),
+    size: propSize({ label: 'Size', min: 0, step: 1 }),
+    anchor: propAnchor({ label: 'Anchor' }),
+    parentAnchor: propAnchor({ label: 'Parent Anchor' }),
+    origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
+    rotation: propNumber({ label: 'Rotation', step: 0.01 }),
+  };
 
+  readonly guid?: string;
   readonly name?: string;
   private readonly debugClassNameValue: string;
   active: boolean;
@@ -71,6 +94,7 @@ export abstract class GameNode {
   private resolved = false;
 
   protected constructor(options: GameNodeOptions = {}) {
+    this.guid = options.guid;
     this.name = options.name;
     this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
@@ -384,6 +408,90 @@ export abstract class GameNode {
     return this.getWorldBounds();
   }
 
+  getSceneDefinition(): DebugSceneNodeDefinition | undefined {
+    if (!this.guid) return undefined;
+    const constructor = this.constructor as typeof GameNode;
+    return {
+      guid: this.guid,
+      name: this.debugName(),
+      typeName: constructor.sceneType,
+      editableProps: constructor.editableProps,
+    };
+  }
+
+  applySceneProps(props: Record<string, unknown>): ScenePatchResult {
+    const constructor = this.constructor as typeof GameNode;
+    const editableProps = constructor.editableProps;
+    const result: ScenePatchResult = { applied: {}, rejected: {} };
+
+    for (const [key, value] of Object.entries(props)) {
+      const definition = editableProps[key];
+      if (!definition) {
+        result.rejected[key] = 'Prop ist für diesen Node nicht exposed.';
+        continue;
+      }
+
+      const validatedValue = validateScenePropValue(definition, value);
+      if (validatedValue === undefined) {
+        result.rejected[key] = 'Ungültiger Wert für Prop-Typ.';
+        continue;
+      }
+
+      if (!this.applySceneProp(key, validatedValue)) {
+        result.rejected[key] = 'Prop konnte nicht angewendet werden.';
+        continue;
+      }
+
+      result.applied[key] = validatedValue;
+    }
+
+    return result;
+  }
+
+  protected applySceneProp(key: string, value: DebugNodePatch[string]): boolean {
+    switch (key) {
+      case 'active':
+        if (typeof value !== 'boolean') return false;
+        this.active = value;
+        return true;
+      case 'visible':
+        if (typeof value !== 'boolean') return false;
+        this.visible = value;
+        return true;
+      case 'order':
+        if (typeof value !== 'number') return false;
+        this.order = value;
+        return true;
+      case 'position':
+        if (!isPointPatchValue(value)) return false;
+        this.position = value;
+        return true;
+      case 'size':
+        if (!isSizePatchValue(value)) return false;
+        this.size = value;
+        this.sizeMode = 'explicit';
+        return true;
+      case 'anchor':
+        if (typeof value !== 'string') return false;
+        this.anchor = value as Anchor;
+        return true;
+      case 'parentAnchor':
+        if (typeof value !== 'string') return false;
+        this.parentAnchor = value as Anchor;
+        return true;
+      case 'origin':
+        if (!isPointPatchValue(value)) return false;
+        this.origin = value;
+        return true;
+      case 'rotation':
+        if (typeof value !== 'number') return false;
+        this.rotation = value;
+        return true;
+      default:
+        return false;
+    }
+  }
+
   getDebugProps(): NodeDebugProps {
     const world = this.getWorldTransform();
     const contentBounds = this.getLocalContentBounds();
@@ -394,6 +502,7 @@ export abstract class GameNode {
       sizeMode: this.sizeMode,
       boundsMode: this.boundsMode,
       debugScrollFactor: this.debugScrollFactor ?? null,
+      anchor: this.anchor,
       parentAnchor: this.parent ? this.parentAnchor : null,
       localX: this.position.x,
       localY: this.position.y,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage, DebugNodeTransform } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function createSessionId(): string {
@@ -109,6 +109,8 @@ export default function Home() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
   const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
+  const [nodeDefinitions, setNodeDefinitions] = useState<Map<string, DebugSceneNodeDefinition>>(() => new Map());
+  const [patchStatus, setPatchStatus] = useState('');
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
@@ -133,6 +135,10 @@ export default function Home() {
   const originalAsset = useMemo(
     () => (originalAssetId ? imageAssets.find((asset) => asset.id === originalAssetId) : undefined),
     [imageAssets, originalAssetId],
+  );
+  const selectedNodeDefinition = useMemo(
+    () => (selectedNode?.guid ? nodeDefinitions.get(selectedNode.guid) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
+    [nodeDefinitions, selectedNode],
   );
 
   useEffect(() => {
@@ -192,6 +198,12 @@ export default function Home() {
         return;
       }
 
+      if (message.type === 'node:definitions') {
+        setNodeDefinitions(new Map(message.nodes.map((node) => [node.guid, node])));
+        setLastEvent(`Node-Definitionen geladen: ${message.nodes.length}`);
+        return;
+      }
+
       if (message.type === 'asset:list') {
         setImageAssets(message.images);
         setAnimations(message.animations);
@@ -221,6 +233,11 @@ export default function Home() {
 
       if (message.type === 'node:props') {
         setSelectedNodeProps(message);
+      }
+
+      if (message.type === 'node:patch:ack') {
+        const rejected = Object.entries(message.rejected);
+        setPatchStatus(rejected.length === 0 ? `Patch angewendet: ${Object.keys(message.applied).join(', ')}` : `Patch teilweise abgelehnt: ${rejected.map(([key, value]) => `${key}: ${value}`).join(' · ')}`);
       }
     }
 
@@ -271,6 +288,17 @@ export default function Home() {
 
   function collapseAllNodes(): void {
     setExpandedNodeIds(new Set());
+  }
+
+  function sendNodePatch(node: DebugNodeDescriptor, props: DebugNodePatch): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setPatchStatus('Patch nicht gesendet: Relay nicht verbunden.');
+      return;
+    }
+
+    const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, guid: node.guid, name: node.name, props, sentAt: Date.now() };
+    socketRef.current.send(JSON.stringify(message));
+    setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
   }
 
   function toggleNodeExpanded(nodeId: string): void {
@@ -449,7 +477,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} debugProps={selectedNodeProps} assets={imageAssets} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} definition={selectedNodeDefinition} debugProps={selectedNodeProps} patchStatus={patchStatus} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -745,13 +773,19 @@ function isTextNode(node: DebugNodeDescriptor): boolean {
 
 function Inspector({
   node,
+  definition,
   debugProps,
+  patchStatus,
   assets,
+  onPatch,
   onSelectAsset,
 }: {
   node: DebugNodeDescriptor;
+  definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
+  patchStatus: string;
   assets: DebugImageAssetDescriptor[];
+  onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
   onSelectAsset(id: string): void;
 }) {
   const props = debugProps?.props;
@@ -775,6 +809,12 @@ function Inspector({
         <label>ID</label>
         <code>{node.id}</code>
       </div>
+      {node.guid && (
+        <div>
+          <label>GUID</label>
+          <code>{node.guid}</code>
+        </div>
+      )}
       <InspectorSection title="Node">
         <FragmentRow name="active" value={node.active} />
         <FragmentRow name="visible" value={node.visible} />
@@ -786,6 +826,7 @@ function Inspector({
       <TransformSection title="Local Transform" transform={debugProps?.localTransform} editable />
       <TransformSection title="World Transform" transform={debugProps?.worldTransform} />
       <BoundsSection bounds={debugProps?.worldBounds ?? debugProps?.bounds} />
+      <EditablePropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} patchStatus={patchStatus} onPatch={onPatch} />
       {(assetId || textureKey || frameKey) && (
         <InspectorSection title="Image Asset">
           <AssetLinkRow name="assetId" value={assetId ?? null} assetId={frameAsset?.id} onSelectAsset={onSelectAsset} />
@@ -801,6 +842,160 @@ function Inspector({
       </InspectorSection>
     </div>
   );
+}
+
+function EditablePropsSection({
+  node,
+  definition,
+  debugProps,
+  assets,
+  patchStatus,
+  onPatch,
+}: {
+  node: DebugNodeDescriptor;
+  definition?: DebugSceneNodeDefinition;
+  debugProps?: DebugNodePropsMessage;
+  assets: DebugImageAssetDescriptor[];
+  patchStatus: string;
+  onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
+}) {
+  return (
+    <InspectorSection title="Editable Scene Props">
+      {definition ? Object.entries(definition.editableProps).map(([key, prop]) => (
+        <EditablePropRow
+          key={key}
+          name={key}
+          prop={prop}
+          value={currentEditablePropValue(key, prop, node, debugProps)}
+          assets={assets}
+          onChange={(value) => onPatch(node, { [key]: value })}
+        />
+      )) : <FragmentRow name="status" value="Keine Node-Definition für diesen Node." />}
+      {patchStatus && <FragmentRow name="patch" value={patchStatus} />}
+    </InspectorSection>
+  );
+}
+
+function EditablePropRow({
+  name,
+  prop,
+  value,
+  assets,
+  onChange,
+}: {
+  name: string;
+  prop: DebugScenePropDefinition;
+  value: unknown;
+  assets: DebugImageAssetDescriptor[];
+  onChange(value: DebugNodePatch[string]): void;
+}) {
+  const label = prop.label ?? name;
+  if (prop.type === 'Boolean') {
+    return (
+      <>
+        <span>{label}</span>
+        <input className={styles.editorCheckbox} type="checkbox" checked={value === true} onChange={(event) => onChange(event.currentTarget.checked)} />
+      </>
+    );
+  }
+
+  if (prop.type === 'Number') {
+    return (
+      <>
+        <span>{label}</span>
+        <input className={styles.editorInput} type="number" value={numberInputValue(value)} min={prop.min} max={prop.max} step={prop.step ?? 1} onChange={(event) => onChange(Number(event.currentTarget.value))} />
+      </>
+    );
+  }
+
+  if (prop.type === 'String') {
+    return (
+      <>
+        <span>{label}</span>
+        <input className={styles.editorInput} type="text" value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.currentTarget.value)} />
+      </>
+    );
+  }
+
+  if (prop.type === 'AssetId') {
+    return (
+      <>
+        <span>{label}</span>
+        <select className={styles.editorInput} value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.currentTarget.value)}>
+          <option value="">Asset wählen</option>
+          {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.id}</option>)}
+        </select>
+      </>
+    );
+  }
+
+  if (prop.type === 'Anchor') {
+    return (
+      <>
+        <span>{label}</span>
+        <select className={styles.editorInput} value={typeof value === 'string' ? value : ''} onChange={(event) => onChange(event.currentTarget.value)}>
+          {(prop.options ?? []).map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      </>
+    );
+  }
+
+  if (prop.type === 'Position' || prop.type === 'Origin') {
+    const point = isPointValue(value) ? value : { x: 0, y: 0 };
+    return (
+      <>
+        <span>{label}</span>
+        <div className={styles.vectorEditor}>
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onChange={(event) => onChange({ x: Number(event.currentTarget.value), y: point.y })} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} onChange={(event) => onChange({ x: point.x, y: Number(event.currentTarget.value) })} />
+        </div>
+      </>
+    );
+  }
+
+  if (prop.type === 'Size') {
+    const size = isSizeValue(value) ? value : { width: 0, height: 0 };
+    return (
+      <>
+        <span>{label}</span>
+        <div className={styles.vectorEditor}>
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onChange={(event) => onChange({ width: Number(event.currentTarget.value), height: size.height })} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} onChange={(event) => onChange({ width: size.width, height: Number(event.currentTarget.value) })} />
+        </div>
+      </>
+    );
+  }
+
+  return <FragmentRow name={label} value="Unsupported" />;
+}
+
+function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, node: DebugNodeDescriptor, debugProps?: DebugNodePropsMessage): unknown {
+  const props = debugProps?.props;
+  const local = debugProps?.localTransform;
+  if (key === 'active') return node.active;
+  if (key === 'visible') return node.visible;
+  if (key === 'order') return node.order;
+  if (key === 'position') return local ? { x: local.x, y: local.y } : undefined;
+  if (key === 'size') return local ? { width: local.width, height: local.height } : undefined;
+  if (key === 'origin') return local ? { x: local.originX, y: local.originY } : undefined;
+  if (key === 'rotation') return local?.rotation;
+  if (key === 'scaleX') return local?.scaleX;
+  if (key === 'scaleY') return local?.scaleY;
+  if (key === 'scale') return typeof props?.scale === 'number' ? props.scale : local?.scaleX;
+  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'String' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
+  return props?.[key];
+}
+
+function numberInputValue(value: unknown): string | number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : '';
+}
+
+function isPointValue(value: unknown): value is { x: number; y: number } {
+  return typeof value === 'object' && value !== null && typeof (value as { x: unknown }).x === 'number' && typeof (value as { y: unknown }).y === 'number';
+}
+
+function isSizeValue(value: unknown): value is { width: number; height: number } {
+  return typeof value === 'object' && value !== null && typeof (value as { width: unknown }).width === 'number' && typeof (value as { height: unknown }).height === 'number';
 }
 
 function InspectorSection({ title, children }: { title: string; children: ReactNode }) {

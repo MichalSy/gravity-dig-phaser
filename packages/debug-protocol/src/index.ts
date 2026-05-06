@@ -33,8 +33,72 @@ export interface DebugRelayStatusMessage {
   editors: number;
 }
 
+export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Anchor' | 'AssetId';
+
+export interface DebugSceneNumberConstraints {
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+export interface DebugScenePropDefinition extends DebugSceneNumberConstraints {
+  type: DebugScenePropRecordType;
+  label?: string;
+  readOnly?: boolean;
+  options?: readonly string[];
+}
+
+export interface DebugScenePropRecordDefinition {
+  type: DebugScenePropRecordType;
+  label: string;
+  editor: 'text' | 'number' | 'checkbox' | 'xy' | 'size' | 'anchor-grid' | 'asset-picker';
+  fields?: Record<string, DebugScenePropDefinition>;
+  options?: readonly string[];
+}
+
+export interface DebugSceneNodeDefinition {
+  guid: string;
+  name: string;
+  typeName: string;
+  editableProps: Record<string, DebugScenePropDefinition>;
+}
+
+export interface DebugNodeDefinitionsMessage {
+  type: 'node:definitions';
+  sessionId: string;
+  records: Record<string, DebugScenePropRecordDefinition>;
+  nodes: DebugSceneNodeDefinition[];
+  sentAt: number;
+}
+
+export type DebugScenePropValue = string | number | boolean | null | { x: number; y: number } | { width: number; height: number };
+
+export type DebugNodePatch = Record<string, DebugScenePropValue>;
+
+export interface DebugNodePatchMessage {
+  type: 'node:patch';
+  sessionId: string;
+  nodeId?: string;
+  guid?: string;
+  name?: string;
+  props: DebugNodePatch;
+  sentAt: number;
+}
+
+export interface DebugNodePatchAckMessage {
+  type: 'node:patch:ack';
+  sessionId: string;
+  nodeId?: string;
+  guid?: string;
+  name?: string;
+  applied: DebugNodePatch;
+  rejected: Record<string, string>;
+  sentAt: number;
+}
+
 export interface DebugNodeDescriptor {
   id: string;
+  guid?: string;
   parentId?: string;
   name: string;
   className: string;
@@ -111,6 +175,7 @@ export interface DebugNodePropsMessage {
   type: 'node:props';
   sessionId: string;
   nodeId: string;
+  guid?: string;
   bounds?: DebugNodeBounds;
   localTransform?: DebugNodeTransform;
   worldTransform?: DebugNodeTransform;
@@ -161,8 +226,11 @@ export type DebugMessage =
   | DebugPongMessage
   | DebugTextMessage
   | DebugRelayStatusMessage
+  | DebugNodeDefinitionsMessage
   | DebugNodeTreeMessage
   | DebugNodeDeltaMessage
   | DebugNodeSelectMessage
   | DebugNodePropsMessage
+  | DebugNodePatchMessage
+  | DebugNodePatchAckMessage
   | DebugAssetListMessage;

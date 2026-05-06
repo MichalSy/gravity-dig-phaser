@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "root": {
+    "id": "bb3b713f-d685-44a3-b0cd-95596cbce41b",
+    "name": "ui.bottomHud",
+    "props": {
+      "anchor": "bottom-left",
+      "parentAnchor": "bottom-center",
+      "order": 10,
+      "sizeMode": "explicit",
+      "debugScrollFactor": 0
+    },
+    "children": [
+      {
+        "id": "af9fee4b-158b-4ead-8264-c46e5d7af366",
+        "name": "ui.actionFrame",
+        "props": {
+          "assetId": "hud-hp-fuel-atlas#bottomHud",
+          "order": 0,
+          "depth": 1011.1,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "470d2d11-1ada-4bac-9d20-fde438408424",
+        "name": "ui.energyFill",
+        "props": {
+          "assetId": "hud-hp-fuel-atlas#energyBar",
+          "order": 10,
+          "depth": 1011.2,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "ac806217-66e0-4a83-8ccd-7891b49e9843",
+        "name": "ui.slotFrame0",
+        "props": {
+          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "order": 20,
+          "anchor": "top-left",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1010.8,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "38b37c84-8e23-4916-a9e2-73fddf87e35d",
+        "name": "ui.slotItem0",
+        "props": {
+          "assetId": "hud-item-rock",
+          "order": 30,
+          "anchor": "center",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "966e64da-3cd8-47e0-b74b-9cc28b4bb246",
+        "name": "ui.slotLabel0",
+        "props": {
+          "text": "",
+          "order": 40,
+          "anchor": "bottom-right",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "8f51a2f7-b2a6-4291-8168-87f69cd52fc8",
+        "name": "ui.slotFrame1",
+        "props": {
+          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "order": 21,
+          "anchor": "center-left",
+          "parentAnchor": "center-left",
+          "position": { "x": 0, "y": 0 },
+          "visible": false,
+          "depth": 1010.8,
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "id": "06460d2b-6c62-4d6a-b848-0a7f80df73f1",
+            "name": "ui.slotItem1",
+            "props": {
+              "assetId": "hud-item-rock",
+              "order": 31,
+              "anchor": "center",
+              "parentAnchor": "center",
+              "position": { "x": 0, "y": 0 },
+              "visible": false,
+              "depth": 1012,
+              "scrollFactor": 0
+            }
+          },
+          {
+            "id": "9ba299e0-b2ce-4973-b3d4-38c0faeec8b0",
+            "name": "ui.slotLabel1",
+            "props": {
+              "text": "",
+              "order": 41,
+              "anchor": "bottom-right",
+              "parentAnchor": "bottom-right",
+              "position": { "x": -50, "y": -50 },
+              "visible": false,
+              "depth": 1012,
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "f11d3a50-62c5-46bc-8d38-aef480dac284",
+        "name": "ui.slotFrame2",
+        "props": {
+          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "order": 22,
+          "anchor": "top-left",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1010.8,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "4b54d317-4b8d-46f5-90d6-214358c4d188",
+        "name": "ui.slotItem2",
+        "props": {
+          "assetId": "hud-item-rock",
+          "order": 32,
+          "anchor": "center",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "1e1504a9-96f5-45b2-be68-c69eed3bdb1c",
+        "name": "ui.slotLabel2",
+        "props": {
+          "text": "",
+          "order": 42,
+          "anchor": "bottom-right",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "bd6775ad-9138-4255-bcd9-1b1075cacaf0",
+        "name": "ui.slotFrame3",
+        "props": {
+          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "order": 23,
+          "anchor": "top-left",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1010.8,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "65cd6cb1-6dc7-4937-80af-315cdd92c12e",
+        "name": "ui.slotItem3",
+        "props": {
+          "assetId": "hud-item-rock",
+          "order": 33,
+          "anchor": "center",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "id": "80bd70f5-c17b-4058-8b77-2acfc2087e53",
+        "name": "ui.slotLabel3",
+        "props": {
+          "text": "",
+          "order": 43,
+          "anchor": "bottom-right",
+          "parentAnchor": "top-left",
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0
+        }
+      }
+    ]
+  }
+}

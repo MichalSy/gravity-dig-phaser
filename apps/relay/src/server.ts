@@ -13,6 +13,7 @@ interface Client {
 
 interface SessionCache {
   assetList?: DebugMessage;
+  nodeDefinitions?: DebugMessage;
   nodeTree?: DebugMessage;
   nodeProps: Map<string, DebugMessage>;
 }
@@ -108,6 +109,7 @@ function sendCachedSnapshot(client: Client): void {
   const cache = sessionCaches.get(client.sessionId);
   if (!cache) return;
   if (cache.assetList) send(client.socket, cache.assetList);
+  if (cache.nodeDefinitions) send(client.socket, cache.nodeDefinitions);
   if (cache.nodeTree) send(client.socket, cache.nodeTree);
   for (const props of cache.nodeProps.values()) send(client.socket, props);
 }
@@ -115,6 +117,7 @@ function sendCachedSnapshot(client: Client): void {
 function updateSessionCache(sessionId: string, message: DebugMessage): void {
   const cache = sessionCaches.get(sessionId) ?? { nodeProps: new Map<string, DebugMessage>() } satisfies SessionCache;
   if (message.type === 'asset:list') cache.assetList = message;
+  if (message.type === 'node:definitions') cache.nodeDefinitions = message;
   if (message.type === 'node:tree') cache.nodeTree = message;
   if (message.type === 'node:props') cache.nodeProps.set(message.nodeId, message);
   sessionCaches.set(sessionId, cache);

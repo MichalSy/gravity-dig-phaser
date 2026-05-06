@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
+import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
+import { propAssetId, propBoolean, type EditablePropMap } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 export type ImageNodeSyncMode = 'node-to-object' | 'object-to-node';
@@ -62,6 +64,13 @@ export interface ImageNodeOptions extends TransformNodeOptions {
 }
 
 export class ImageNode extends TransformNode {
+  static override readonly sceneType: string = 'ImageNode';
+  static override readonly editableProps: EditablePropMap = {
+    ...TransformNode.editableProps,
+    assetId: propAssetId({ label: 'Asset' }),
+    flipX: propBoolean({ label: 'Flip X' }),
+  };
+
   assetId: string;
   flipX: boolean;
   protected asset!: RenderableImageAsset;
@@ -174,6 +183,23 @@ export class ImageNode extends TransformNode {
       flipX: this.flipX,
       scrollFactor: this.scrollFactor,
     };
+  }
+
+  protected override applySceneProp(key: string, value: DebugNodePatch[string]): boolean {
+    switch (key) {
+      case 'assetId':
+        if (typeof value !== 'string') return false;
+        this.assetId = value;
+        if (this.isInitialized) this.setAsset(this.assets.image(value));
+        return true;
+      case 'flipX':
+        if (typeof value !== 'boolean') return false;
+        this.flipX = value;
+        this.phaserImage?.setFlipX(value);
+        return true;
+      default:
+        return super.applySceneProp(key, value);
+    }
   }
 
   private applyOrigin(): void {

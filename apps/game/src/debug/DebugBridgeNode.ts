@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import type { DebugMessage } from '@gravity-dig/debug-protocol';
-import { GameNode, type NodeContext } from '../nodes';
+import type { DebugMessage, DebugNodePatchMessage } from '@gravity-dig/debug-protocol';
+import { GameNode, SCENE_PROP_RECORDS, type NodeContext } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
 import { captureDebugNodeTree, diffDebugNodeTrees, type DebugNodeTreeSnapshot } from './debugNodeTree';
 
@@ -16,6 +16,7 @@ export class DebugBridgeNode extends GameNode {
   private lastAssetSignature = '';
   private readonly nodeIds = new WeakMap<GameNode, string>();
   private readonly nodesById = new Map<string, GameNode>();
+  private readonly nodesByGuid = new Map<string, GameNode>();
   private nextNodeId = 1;
   private selectedNodeId?: string;
   private propsElapsedMs = 0;
@@ -63,6 +64,7 @@ export class DebugBridgeNode extends GameNode {
     this.lastAssetSignature = '';
     this.selectedNodeId = undefined;
     this.nodesById.clear();
+    this.nodesByGuid.clear();
   }
 
   private afterSceneUpdate(): void {
@@ -82,6 +84,7 @@ export class DebugBridgeNode extends GameNode {
       this.reconnectAttempts = 0;
       this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId });
       this.sendAssetList();
+      this.sendNodeDefinitions();
       this.sendTreeSnapshot();
       console.info('[Gravity Dig Debug] connected', this.config);
     });
@@ -91,6 +94,7 @@ export class DebugBridgeNode extends GameNode {
       if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
       if (message.type === 'relay:status' && message.editors > 0) {
         this.sendAssetList();
+        this.sendNodeDefinitions();
         this.sendTreeSnapshot();
         this.sendSelectedNodeProps();
       }
@@ -98,6 +102,7 @@ export class DebugBridgeNode extends GameNode {
         this.selectedNodeId = message.nodeId;
         this.propsElapsedMs = 100;
       }
+      if (message.type === 'node:patch') this.applyNodePatch(message);
     });
 
     socket.addEventListener('close', () => {
@@ -145,6 +150,19 @@ export class DebugBridgeNode extends GameNode {
     return `${images.length}:${animations.length}:${images.at(-1)?.id ?? ''}:${animations.at(-1)?.id ?? ''}`;
   }
 
+  private sendNodeDefinitions(): void {
+    if (!this.ctx) return;
+    const nodes = [...this.ctx.runtime.persistentNodes, ...this.ctx.runtime.roots]
+      .flatMap((node) => this.collectNodeDefinitions(node))
+      .filter((definition) => definition !== undefined);
+    this.send({ type: 'node:definitions', sessionId: this.config.sessionId, records: SCENE_PROP_RECORDS, nodes, sentAt: Date.now() });
+  }
+
+  private collectNodeDefinitions(node: GameNode): NonNullable<ReturnType<GameNode['getSceneDefinition']>>[] {
+    const definition = node.getSceneDefinition();
+    return [definition, ...node.children.flatMap((child) => this.collectNodeDefinitions(child))].filter((item) => item !== undefined);
+  }
+
   private sendTreeSnapshot(): void {
     if (!this.ctx) return;
 
@@ -169,6 +187,12 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private getStableNodeId(node: GameNode): string {
+    if (node.guid) {
+      this.nodesById.set(node.guid, node);
+      this.nodesByGuid.set(node.guid, node);
+      return node.guid;
+    }
+
     const existing = this.nodeIds.get(node);
     if (existing) {
       this.nodesById.set(existing, node);
@@ -180,6 +204,46 @@ export class DebugBridgeNode extends GameNode {
     this.nodeIds.set(node, id);
     this.nodesById.set(id, node);
     return id;
+  }
+
+  private applyNodePatch(message: DebugNodePatchMessage): void {
+    const node = this.findPatchTarget(message);
+    if (!node) {
+      this.send({
+        type: 'node:patch:ack',
+        sessionId: this.config.sessionId,
+        nodeId: message.nodeId,
+        guid: message.guid,
+        name: message.name,
+        applied: {},
+        rejected: { target: 'Node nicht gefunden.' },
+        sentAt: Date.now(),
+      });
+      return;
+    }
+
+    const result = node.applySceneProps(message.props);
+    const nodeId = this.getStableNodeId(node);
+    this.selectedNodeId = nodeId;
+    this.send({
+      type: 'node:patch:ack',
+      sessionId: this.config.sessionId,
+      nodeId,
+      guid: node.guid,
+      name: node.debugName(),
+      applied: result.applied,
+      rejected: result.rejected,
+      sentAt: Date.now(),
+    });
+    this.sendSelectedNodeProps();
+    this.sendTreeDeltas();
+  }
+
+  private findPatchTarget(message: DebugNodePatchMessage): GameNode | undefined {
+    if (message.guid) return this.nodesByGuid.get(message.guid) ?? this.nodesById.get(message.guid);
+    if (message.nodeId) return this.nodesById.get(message.nodeId);
+    if (message.name) return this.ctx?.getNode(message.name);
+    return undefined;
   }
 
   private drawSelectedNodeOverlay(): void {
@@ -245,6 +309,7 @@ export class DebugBridgeNode extends GameNode {
       type: 'node:props',
       sessionId: this.config.sessionId,
       nodeId: this.selectedNodeId,
+      guid: node.guid,
       bounds: node.getDebugBounds(),
       localTransform: node.getLocalTransform(),
       worldTransform: node.getWorldTransform(),

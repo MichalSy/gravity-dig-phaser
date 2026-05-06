@@ -1,10 +1,37 @@
 import Phaser from 'phaser';
 import { HudStateNode } from '../../app/nodes';
-import { GameNode, ImageNode, TextNode, type NodeContext, type NodeDebugProps } from '../../nodes';
+import { GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, type EditablePropMap, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
+import bottomHudSceneJson from './bottomHud.scene.json';
 import { TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
 
+const bottomHudScene = bottomHudSceneJson as SceneFileJson;
+const bottomHudNodeRegistry = new SceneNodeFactoryRegistry()
+  .registerImage('af9fee4b-158b-4ead-8264-c46e5d7af366')
+  .registerImage('470d2d11-1ada-4bac-9d20-fde438408424')
+  .registerImage('ac806217-66e0-4a83-8ccd-7891b49e9843')
+  .registerImage('8f51a2f7-b2a6-4291-8168-87f69cd52fc8')
+  .registerImage('f11d3a50-62c5-46bc-8d38-aef480dac284')
+  .registerImage('bd6775ad-9138-4255-bcd9-1b1075cacaf0')
+  .registerImage('38b37c84-8e23-4916-a9e2-73fddf87e35d')
+  .registerImage('06460d2b-6c62-4d6a-b848-0a7f80df73f1')
+  .registerImage('4b54d317-4b8d-46f5-90d6-214358c4d188')
+  .registerImage('65cd6cb1-6dc7-4937-80af-315cdd92c12e')
+  .registerText('966e64da-3cd8-47e0-b74b-9cc28b4bb246')
+  .registerText('9ba299e0-b2ce-4973-b3d4-38c0faeec8b0')
+  .registerText('1e1504a9-96f5-45b2-be68-c69eed3bdb1c')
+  .registerText('80bd70f5-c17b-4058-8b77-2acfc2087e53');
+
 export class BottomHudNode extends GameNode {
+  static override readonly sceneType: string = 'BottomHudNode';
+  static override readonly editableProps: EditablePropMap = {
+    active: GameNode.editableProps.active,
+    visible: GameNode.editableProps.visible,
+    order: GameNode.editableProps.order,
+    anchor: GameNode.editableProps.anchor,
+    parentAnchor: GameNode.editableProps.parentAnchor,
+  };
+
   private phaserScene!: Phaser.Scene;
   private hudState!: HudStateNode;
   private readonly actionFrameNode: ImageNode;
@@ -15,17 +42,25 @@ export class BottomHudNode extends GameNode {
   override readonly dependencies = ['hudState'] as const;
 
   constructor() {
-    super({ name: 'ui.bottomHud', order: 10, className: 'BottomHudNode', anchor: 'bottom-left', parentAnchor: 'bottom-center', sizeMode: 'explicit', debugScrollFactor: 0 });
-    this.actionFrameNode = this.addChild(new ImageNode({ name: 'ui.actionFrame', assetId: 'hud-hp-fuel-atlas#bottomHud', order: 0, depth: UI_DEPTH + 11.1, scrollFactor: 0 }));
-    this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas#energyBar', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0 }));
+    super({ guid: bottomHudScene.root.id, name: bottomHudScene.root.name, className: 'BottomHudNode', sizeMode: 'explicit', debugScrollFactor: 0, ...(bottomHudScene.root.props as GameNodeOptions | undefined) });
+
+    const nodesByName = new Map<string, GameNode>();
+    for (const childDefinition of bottomHudScene.root.children ?? []) {
+      const child = this.addChild(bottomHudNodeRegistry.createTree(childDefinition));
+      collectNodesByName(child, nodesByName);
+    }
+
+    this.actionFrameNode = requireSceneNode<ImageNode>(nodesByName, 'ui.actionFrame');
+    this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'ui.energyFill');
 
     for (let i = 0; i < 4; i += 1) {
-      const slotFrameNode = this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, anchor: i === 1 ? 'center-left' : 'top-left', parentAnchor: i === 1 ? 'center-left' : 'top-left', visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 }));
-      const slotItemNode = new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', parentAnchor: i === 1 ? 'center' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
-      const slotLabelNode = new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', parentAnchor: i === 1 ? 'bottom-right' : 'top-left', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
+      const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `ui.slotFrame${i}`);
+      const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `ui.slotItem${i}`);
+      const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `ui.slotLabel${i}`);
+      slotLabelNode.style = TEXT.value;
       this.slotFrameNodes.push(slotFrameNode);
-      this.slotItemNodes.push(i === 1 ? slotFrameNode.addChild(slotItemNode) : this.addChild(slotItemNode));
-      this.slotLabelNodes.push(i === 1 ? slotFrameNode.addChild(slotLabelNode) : this.addChild(slotLabelNode));
+      this.slotItemNodes.push(slotItemNode);
+      this.slotLabelNodes.push(slotLabelNode);
     }
   }
 
@@ -72,14 +107,15 @@ export class BottomHudNode extends GameNode {
       const slot = state.cargo.slots[i];
       const slotLayout = computeBottomHudSlotLayout(layout, state, i);
 
-      this.slotFrameNodes[i].depth = UI_DEPTH + slotLayout.frameDepth;
-      this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, i === 1 ? 0 : slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
+      const slotFrameNode = this.slotFrameNodes[i];
+      slotFrameNode.depth = UI_DEPTH + slotLayout.frameDepth;
+      this.placeRegionNode(slotFrameNode, slotLayout.frameX - frameX, i === 1 ? slotFrameNode.position.y : slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
 
       const itemParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
       const itemParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
       const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
       const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
-      this.slotItemNodes[i].position = i === 1 ? { x: 0, y: 0 } : { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
+      this.slotItemNodes[i].position = i === 1 ? this.slotItemNodes[i].position : { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
       this.slotItemNodes[i].size = { width: itemWidth, height: itemHeight };
       this.slotItemNodes[i].scaleX = itemWidth / item.frame.width;
       this.slotItemNodes[i].scaleY = itemHeight / item.frame.height;
@@ -92,7 +128,7 @@ export class BottomHudNode extends GameNode {
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
       labelNode.visible = slotLayout.hasItem;
       labelNode.text = `x${slot?.quantity ?? 0}`;
-      labelNode.position = i === 1 ? { x: -50, y: -50 } : { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+      labelNode.position = i === 1 ? labelNode.position : { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
       labelNode.scale = labelScaleX;
       labelNode.scaleX = labelScaleX;
       labelNode.scaleY = labelScaleY;
@@ -120,4 +156,15 @@ export class BottomHudNode extends GameNode {
     node.image.setCrop(0, 0, cropWidth, frame.h).setVisible(safePct > 0);
   }
 
+}
+
+function collectNodesByName(node: GameNode, nodesByName: Map<string, GameNode>): void {
+  if (node.name) nodesByName.set(node.name, node);
+  for (const child of node.children) collectNodesByName(child, nodesByName);
+}
+
+function requireSceneNode<T extends GameNode>(nodesByName: ReadonlyMap<string, GameNode>, name: string): T {
+  const node = nodesByName.get(name);
+  if (!node) throw new Error(`Bottom HUD scene is missing node '${name}'`);
+  return node as T;
 }
