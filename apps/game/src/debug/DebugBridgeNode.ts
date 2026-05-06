@@ -20,6 +20,7 @@ export class DebugBridgeNode extends GameNode {
   private nextNodeId = 1;
   private selectedNodeId?: string;
   private propsElapsedMs = 0;
+  private lastSelectedPropsSignature = '';
   private overlay?: Phaser.GameObjects.Graphics;
 
   constructor(config: DebugConnectionConfig) {
@@ -63,6 +64,7 @@ export class DebugBridgeNode extends GameNode {
     this.lastTree = undefined;
     this.lastAssetSignature = '';
     this.selectedNodeId = undefined;
+    this.lastSelectedPropsSignature = '';
     this.nodesById.clear();
     this.nodesByGuid.clear();
   }
@@ -100,7 +102,8 @@ export class DebugBridgeNode extends GameNode {
       }
       if (message.type === 'node:select') {
         this.selectedNodeId = message.nodeId;
-        this.propsElapsedMs = 100;
+        this.lastSelectedPropsSignature = '';
+        this.sendSelectedNodeProps(true);
       }
       if (message.type === 'node:patch') this.applyNodePatch(message);
     });
@@ -240,7 +243,7 @@ export class DebugBridgeNode extends GameNode {
       rejected: result.rejected,
       sentAt: Date.now(),
     });
-    this.sendSelectedNodeProps();
+    this.sendSelectedNodeProps(true);
     this.sendTreeDeltas();
   }
 
@@ -305,13 +308,13 @@ export class DebugBridgeNode extends GameNode {
       .lineBetween(nodeAnchor.x, nodeAnchor.y - 8, nodeAnchor.x, nodeAnchor.y + 8);
   }
 
-  private sendSelectedNodeProps(): void {
+  private sendSelectedNodeProps(force = false): void {
     if (!this.selectedNodeId || this.socket?.readyState !== WebSocket.OPEN) return;
     const node = this.nodesById.get(this.selectedNodeId);
     if (!node) return;
 
-    this.send({
-      type: 'node:props',
+    const message = {
+      type: 'node:props' as const,
       sessionId: this.config.sessionId,
       nodeId: this.selectedNodeId,
       guid: node.guid,
@@ -321,6 +324,23 @@ export class DebugBridgeNode extends GameNode {
       worldBounds: node.getWorldBounds(),
       props: node.getDebugProps(),
       sentAt: Date.now(),
+    };
+    const signature = this.createSelectedPropsSignature(message);
+    if (!force && signature === this.lastSelectedPropsSignature) return;
+
+    this.lastSelectedPropsSignature = signature;
+    this.send(message);
+  }
+
+  private createSelectedPropsSignature(message: Extract<DebugMessage, { type: 'node:props' }>): string {
+    return JSON.stringify({
+      nodeId: message.nodeId,
+      guid: message.guid,
+      bounds: message.bounds,
+      localTransform: message.localTransform,
+      worldTransform: message.worldTransform,
+      worldBounds: message.worldBounds,
+      props: message.props,
     });
   }
 
