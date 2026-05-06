@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
-import { CollisionRectNode, GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, CollisionRectNode, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createPlayerMovementControllerData, type PlayerMovementControllerData } from '../nodeData';
 import { stepPlayerPhysics } from '../physics/playerMovement';
@@ -8,6 +8,8 @@ import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class PlayerMovementControllerNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.PlayerMovementControllerNode;
+
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
@@ -16,8 +18,8 @@ export class PlayerMovementControllerNode extends GameNode {
   override readonly dependencies = ['Level', 'PlayerState', 'GameplayInput'] as const;
   readonly data: PlayerMovementControllerData = createPlayerMovementControllerData();
 
-  constructor() {
-    super({ name: 'PlayerMovementController', className: 'PlayerMovementControllerNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'PlayerMovementController', className: 'PlayerMovementControllerNode', ...options });
   }
 
   init(ctx: NodeContext): void {

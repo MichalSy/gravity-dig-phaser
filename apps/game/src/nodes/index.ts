@@ -11,3 +11,4 @@ export * from './SceneNode';
 export * from './DisplayNodeFactory';
 export * from './NodeRuntime';
 export * from './NodeRoot';
+export * from './NodeTypeIds';

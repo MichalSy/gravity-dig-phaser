@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { VirtualJoystick } from '../../controls/VirtualJoystick';
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 
 export class TouchControlsNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.TouchControlsNode;
+
   private inputState!: GameplayInputNode;
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
@@ -11,8 +13,8 @@ export class TouchControlsNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   override readonly dependencies = ['GameplayInput'] as const;
 
-  constructor() {
-    super({ name: 'UI.TouchControls', className: 'TouchControlsNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'UI.TouchControls', className: 'TouchControlsNode', ...options });
   }
 
   init(ctx: NodeContext): void {

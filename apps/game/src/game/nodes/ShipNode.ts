@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '../../config/gameConfig';
-import { ImageNode, TextNode, TransformNode, type NodeContext, type TransformNodeOptions } from '../../nodes';
+import { NODE_TYPE_IDS, ImageNode, TextNode, TransformNode, type NodeContext, type TransformNodeOptions } from '../../nodes';
 import { buildShipDockPrompt, isAtShipDock, playerPromptY } from '../gameplayLogic';
 import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createShipData, type ShipData } from '../nodeData';
@@ -13,6 +13,8 @@ const SHIP_DISPLAY_WIDTH = TILE_SIZE * 5.71;
 const SHIP_DISPLAY_HEIGHT = TILE_SIZE * 3.5;
 
 export class ShipNode extends TransformNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.ShipNode;
+
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;

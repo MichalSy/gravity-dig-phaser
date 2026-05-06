@@ -3,7 +3,8 @@ import { TextNode, type TextNodeOptions } from './TextNode';
 import type { GameNode } from './GameNode';
 
 export interface SceneNodeJson {
-  id: string;
+  id?: string;
+  guid?: string;
   name?: string;
   prefab?: string;
   props?: Record<string, unknown>;
@@ -27,6 +28,7 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
     ...base,
     ...override,
     id: base.id,
+    guid: override.guid ?? base.guid,
     prefab: undefined,
     props: { ...(base.props ?? {}), ...(override.props ?? {}) },
     children: override.children ?? base.children,
@@ -48,11 +50,11 @@ export class SceneNodeFactoryRegistry {
   }
 
   registerImage(guid: string): this {
-    return this.register(guid, (definition) => new ImageNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
+    return this.register(guid, (definition) => new ImageNode({ typeId: definition.id, guid: definition.guid, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
   }
 
   registerText(guid: string): this {
-    return this.register(guid, (definition) => new TextNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
+    return this.register(guid, (definition) => new TextNode({ typeId: definition.id, guid: definition.guid, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
   }
 
   createTree(definition: SceneNodeJson): GameNode {
@@ -72,8 +74,9 @@ export class SceneNodeFactoryRegistry {
   }
 
   private resolveFactory(definition: SceneNodeJson): SceneNodeFactory {
+    if (!definition.id) throw new Error(`Scene node '${definition.name ?? definition.guid ?? 'unnamed'}' needs a type id`);
     const factory = this.factories.get(definition.id);
-    if (!factory) throw new Error(`No scene node factory registered for '${definition.id}' (${definition.name ?? 'unnamed'})`);
+    if (!factory) throw new Error(`No scene node factory registered for type id '${definition.id}' (${definition.name ?? 'unnamed'})`);
     return factory;
   }
 }

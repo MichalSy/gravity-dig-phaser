@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { WorldView } from '../world/WorldView';
@@ -10,6 +10,8 @@ import { PlayerNode } from './PlayerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class GameWorldNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.GameWorldNode;
+
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
@@ -19,8 +21,8 @@ export class GameWorldNode extends GameNode {
   override readonly dependencies = ['Level', 'PlayerState', 'Player', 'MiningTool'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
-  constructor() {
-    super({ name: 'World', className: 'GameWorldNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'World', className: 'GameWorldNode', ...options });
   }
 
   init(ctx: NodeContext): void {

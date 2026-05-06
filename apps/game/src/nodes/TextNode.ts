@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
+import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
@@ -29,6 +30,7 @@ export interface TextNodeOptions extends TransformNodeOptions {
 }
 
 export class TextNode extends TransformNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.TextNode;
   static override readonly sceneType: string = 'TextNode';
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...TransformNode.exposedPropGroups,

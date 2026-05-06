@@ -1,9 +1,11 @@
 import type { NodeDebugBounds, NodeDebugProps } from './GameNode';
+import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 export interface CollisionRectNodeOptions extends TransformNodeOptions {}
 
 export class CollisionRectNode extends TransformNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.CollisionRectNode;
   static override readonly sceneType = 'CollisionRectNode';
 
   constructor(options: CollisionRectNodeOptions = {}) {

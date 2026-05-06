@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { buildMiningInputIntent, buildPlayerInputIntent, getGamepad, type MiningInputIntent, type PlayerInputIntent } from '../../input/gameplayIntents';
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type NodeContext } from '../../nodes';
 import type { InputMode } from '../../ui/HudState';
 
 const ZERO = new Phaser.Math.Vector2(0, 0);
@@ -22,6 +22,8 @@ export interface MiningIntentOptions {
 }
 
 export class GameplayInputNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.GameplayInputNode;
+
   private phaserScene!: Phaser.Scene;
   private cursors!: CursorKeys;
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;

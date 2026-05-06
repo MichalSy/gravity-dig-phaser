@@ -28,7 +28,8 @@
             "y": 1
           }
         },
-        "id": "ec1dc6c9-11b5-5766-ab36-55f5abf693d0"
+        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "guid": "ec1dc6c9-11b5-5766-ab36-55f5abf693d0"
       },
       {
         "name": "ShipPrompt",
@@ -51,9 +52,11 @@
           },
           "visible": false
         },
-        "id": "c5b09e65-7e2a-5ab9-9d6d-63e5945612fc"
+        "id": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "guid": "c5b09e65-7e2a-5ab9-9d6d-63e5945612fc"
       }
     ],
-    "id": "cea3d11d-10b3-55ab-acdb-cff58097215b"
+    "id": "f65ba170-e819-5f0c-ada5-b93a4dedd173",
+    "guid": "cea3d11d-10b3-55ab-acdb-cff58097215b"
   }
 }

@@ -3,6 +3,7 @@ import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransfor
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
+import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, flattenExposedPropGroups, propBoolean, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
@@ -37,6 +38,7 @@ export type NodeSizeMode = 'explicit' | 'content';
 export type NodeBoundsMode = 'content' | 'none';
 
 export interface GameNodeOptions {
+  typeId?: string;
   guid?: string;
   name?: string;
   className?: string;
@@ -54,6 +56,7 @@ export interface GameNodeOptions {
 
 export abstract class GameNode {
   static debugLayoutEnabled = false;
+  static readonly nodeTypeId: string = NODE_TYPE_IDS.GameNode;
   static readonly sceneType: string = 'GameNode';
   static readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     exposedPropGroup('State', {
@@ -61,7 +64,8 @@ export abstract class GameNode {
     }),
   ];
 
-  readonly guid?: string;
+  readonly typeId: string;
+  readonly guid: string;
   readonly name?: string;
   private readonly debugClassNameValue: string;
   active: boolean;
@@ -85,7 +89,8 @@ export abstract class GameNode {
   private resolved = false;
 
   protected constructor(options: GameNodeOptions = {}) {
-    this.guid = options.guid;
+    this.typeId = options.typeId ?? getNodeTypeId(this);
+    this.guid = options.guid ?? crypto.randomUUID();
     this.name = options.name;
     this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
@@ -553,4 +558,8 @@ export abstract class GameNode {
       scrollFactor: this.debugScrollFactor,
     };
   }
+}
+
+function getNodeTypeId(node: GameNode): string {
+  return ((node.constructor as typeof GameNode).nodeTypeId) ?? NODE_TYPE_IDS.GameNode;
 }

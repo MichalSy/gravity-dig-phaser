@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
+import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, propAssetId, propBoolean, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
@@ -65,6 +66,7 @@ export interface ImageNodeOptions extends TransformNodeOptions {
 }
 
 export class ImageNode extends TransformNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.ImageNode;
   static override readonly sceneType: string = 'ImageNode';
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...TransformNode.exposedPropGroups,

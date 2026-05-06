@@ -2,10 +2,12 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { ImageNode, TransformNode, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
+import { NODE_TYPE_IDS, ImageNode, TransformNode, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
 import { hudScaleForWidth, UI_ATLAS } from './uiLayout';
 
 export class StatusHudNode extends TransformNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.StatusHudNode;
+
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;

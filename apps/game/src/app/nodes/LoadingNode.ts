@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
 import { LoadingOverlayView } from '../loading/LoadingOverlayView';
 import { GAME_ANIMATION_SETS, GAME_GRAPHIC_ASSETS, loadGameAssets } from '../../assets/AssetLoader';
-import { GameNode, type NodeContext, type NodeRuntime } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext, type NodeRuntime } from '../../nodes';
 
 const MIN_LOADING_MS = 900;
 
 export class LoadingNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.LoadingNode;
+
   private phaserScene!: Phaser.Scene;
   private runtime!: NodeRuntime;
   private readonly overlay = new LoadingOverlayView();
@@ -15,8 +17,8 @@ export class LoadingNode extends GameNode {
 
   private readonly mountGameplay: () => void;
 
-  constructor(mountGameplay: () => void) {
-    super({ name: 'Loading', active: false, className: 'LoadingNode' });
+  constructor(mountGameplay: () => void, options: GameNodeOptions = {}) {
+    super({ name: 'Loading', active: false, className: 'LoadingNode', ...options });
     this.mountGameplay = mountGameplay;
   }
 

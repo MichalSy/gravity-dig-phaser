@@ -1,7 +1,9 @@
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type NodeContext } from '../../nodes';
 import { GravityDigLevelGenerator, type LevelData, type PlanetConfig } from '../level';
 
 export class LevelGeneratorManagerNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.LevelGeneratorManagerNode;
+
   private readonly generator = new GravityDigLevelGenerator();
   private planetConfig!: PlanetConfig;
 

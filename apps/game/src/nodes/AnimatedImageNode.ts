@@ -1,6 +1,7 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import type { ImageAnimationAsset } from '../assets/imageAssets';
 import { type NodeContext, type NodeDebugProps } from './GameNode';
+import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { ImageNode, type ImageNodeOptions } from './ImageNode';
 import { exposedPropGroup, propBoolean, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 
@@ -13,6 +14,7 @@ export interface AnimatedImageNodeOptions extends Omit<ImageNodeOptions, 'assetI
 }
 
 export class AnimatedImageNode extends ImageNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.AnimatedImageNode;
   static override readonly sceneType: string = 'AnimatedImageNode';
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...ImageNode.exposedPropGroups.map((group) => group.name === 'Image'

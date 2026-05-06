@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import { AnimatedImageNode, CollisionRectNode, GameNode } from '../../nodes';
+import { NODE_TYPE_IDS, AnimatedImageNode, CollisionRectNode, GameNode, type GameNodeOptions } from '../../nodes';
 import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 
 export class PlayerNode extends GameNode {
-  constructor() {
-    super({ name: 'Player', className: 'PlayerNode' });
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.PlayerNode;
+
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'Player', className: 'PlayerNode', ...options });
   }
 
   get image(): Phaser.GameObjects.Image {

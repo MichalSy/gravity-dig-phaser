@@ -1,17 +1,19 @@
 import Phaser from 'phaser';
 import { MENU_ITEMS, type MenuItem } from '../menu/menuConfig';
 import { MenuView } from '../menu/MenuView';
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 
 export class MenuNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.MenuNode;
+
   private phaserScene!: Phaser.Scene;
   private view?: MenuView;
   private activeIndex = 0;
 
   private readonly onStart: () => void;
 
-  constructor(onStart: () => void) {
-    super({ name: 'Menu', className: 'MenuNode' });
+  constructor(onStart: () => void, options: GameNodeOptions = {}) {
+    super({ name: 'Menu', className: 'MenuNode', ...options });
     this.onStart = onStart;
   }
 

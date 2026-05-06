@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { PLAYER_SIZE } from '../../config/gameConfig';
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { applyMiningDamage } from '../mining/miningDamage';
 import { MiningLaserView } from '../mining/MiningLaserView';
@@ -14,6 +14,8 @@ import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class MiningToolNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.MiningToolNode;
+
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private world!: GameWorldNode;
@@ -25,8 +27,8 @@ export class MiningToolNode extends GameNode {
   override readonly dependencies = ['Level', 'World', 'PlayerMovementController', 'PlayerState', 'GameplayInput'] as const;
   readonly data: MiningToolData = createMiningToolData();
 
-  constructor() {
-    super({ name: 'MiningTool', className: 'MiningToolNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'MiningTool', className: 'MiningToolNode', ...options });
   }
 
   init(ctx: NodeContext): void {

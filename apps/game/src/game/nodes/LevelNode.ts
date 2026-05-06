@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { tileKey } from '../../utils/tileMath';
 import type { LevelData, TileCell } from '../level';
 import { collidesBox, getCellAtWorld } from '../level/levelCollision';
@@ -7,13 +7,15 @@ import { LevelTilemapView } from '../level/LevelTilemapView';
 import { LevelGeneratorManagerNode } from './LevelGeneratorManagerNode';
 
 export class LevelNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.LevelNode;
+
   private levelGenerator!: LevelGeneratorManagerNode;
   private tilemapView!: LevelTilemapView;
   private currentLevel?: LevelData;
   override readonly dependencies = ['LevelGenerator'] as const;
 
-  constructor() {
-    super({ name: 'Level', className: 'LevelNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'Level', className: 'LevelNode', ...options });
   }
 
   init(ctx: NodeContext): void {

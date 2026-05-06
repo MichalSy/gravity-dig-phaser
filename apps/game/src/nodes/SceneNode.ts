@@ -1,10 +1,13 @@
 import Phaser from 'phaser';
 import { NodeRoot, type NodeRootOptions } from './NodeRoot';
+import { NODE_TYPE_IDS } from './NodeTypeIds';
 import type { NodeContext } from './GameNode';
 
 export interface SceneNodeOptions extends NodeRootOptions {}
 
 export class SceneNode extends NodeRoot {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.SceneNode;
+
   private phaserScene?: Phaser.Scene;
 
   constructor(options: SceneNodeOptions) {

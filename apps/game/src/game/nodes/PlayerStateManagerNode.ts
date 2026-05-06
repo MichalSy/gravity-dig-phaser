@@ -1,5 +1,5 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
-import { exposedPropGroup, GameNode, propNumber, type ExposedPropGroup, type NodeDebugProps } from '../../nodes';
+import { NODE_TYPE_IDS, exposedPropGroup, GameNode, propNumber, type ExposedPropGroup, type NodeDebugProps } from '../../nodes';
 import { ITEM_DEFINITIONS } from '../../player/catalogs/items';
 import { addItem } from '../../player/inventory';
 import { createRunState, normalizeRunState } from '../../player/RunState';
@@ -15,6 +15,8 @@ export interface CargoReturnResult {
 }
 
 export class PlayerStateManagerNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.PlayerStateManagerNode;
+
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...GameNode.exposedPropGroups,
     exposedPropGroup('Run', {

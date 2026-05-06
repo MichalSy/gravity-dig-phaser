@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { AnimatedImageNode, GameNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
+import { NODE_TYPE_IDS, AnimatedImageNode, GameNode, type GameNodeOptions, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerAnimatorData, type PlayerAnimatorData } from '../nodeData';
 import { MiningToolNode } from './MiningToolNode';
@@ -7,6 +7,8 @@ import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class PlayerAnimatorNode extends GameNode {
+  static override readonly nodeTypeId: string = NODE_TYPE_IDS.PlayerAnimatorNode;
+
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerMovementController!: PlayerMovementControllerNode;
@@ -15,8 +17,8 @@ export class PlayerAnimatorNode extends GameNode {
   override readonly dependencies = ['World', 'PlayerMovementController', 'MiningTool', 'PlayerImage'] as const;
   readonly data: PlayerAnimatorData = createPlayerAnimatorData();
 
-  constructor() {
-    super({ name: 'PlayerAnimator', className: 'PlayerAnimatorNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'PlayerAnimator', className: 'PlayerAnimatorNode', ...options });
   }
 
   init(ctx: NodeContext): void {
