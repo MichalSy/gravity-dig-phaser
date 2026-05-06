@@ -21,21 +21,19 @@ export function createGameWorldData(): GameWorldData {
   return { sceneObjects: [] };
 }
 
-export interface PlayerPresentationData {
+export interface PlayerAnimatorData {
   facing: Facing;
-  walkTimerMs: number;
-  walkFrame: number;
+  animationId: string;
   walkSoundIndex: number;
-  lastFootstepFrame: number;
+  footstepTimerMs: number;
 }
 
-export function createPlayerPresentationData(): PlayerPresentationData {
+export function createPlayerAnimatorData(): PlayerAnimatorData {
   return {
     facing: 'east',
-    walkTimerMs: 0,
-    walkFrame: 0,
+    animationId: 'idle.east',
     walkSoundIndex: 0,
-    lastFootstepFrame: -1,
+    footstepTimerMs: 0,
   };
 }
 

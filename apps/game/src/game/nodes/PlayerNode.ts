@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
 import { AnimatedImageNode, GameNode } from '../../nodes';
 import { PlayerControllerNode } from './PlayerControllerNode';
-import { PlayerPresentationNode } from './PlayerPresentationNode';
+import { PlayerAnimatorNode } from './PlayerAnimatorNode';
 
 export class PlayerNode extends GameNode {
   constructor() {
     super({ name: 'player', order: 8, className: 'PlayerNode' });
     this.addChild(new PlayerControllerNode());
-    this.addChild(new PlayerPresentationNode());
+    this.addChild(new PlayerAnimatorNode());
     this.addChild(
       new AnimatedImageNode({
         name: 'playerImage',

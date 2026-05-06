@@ -9,7 +9,7 @@ export interface PlayerAnimationState {
   facing: 'east' | 'west';
   animationId: string;
   flipX: boolean;
-  footstepFrame?: number;
+  footstepActive: boolean;
 }
 
 export function computePlayerAnimationState(args: {
@@ -18,7 +18,6 @@ export function computePlayerAnimationState(args: {
   previousFacing: 'east' | 'west';
   velocity: Phaser.Math.Vector2;
   grounded: boolean;
-  walkFrame: number;
 }): PlayerAnimationState {
   let facing = args.previousFacing;
   if (args.aimX !== undefined && Math.abs(args.aimX - args.playerX) > 10) {
@@ -30,13 +29,12 @@ export function computePlayerAnimationState(args: {
   const airborne = !args.grounded;
   const moving = Math.abs(args.velocity.x) > 1;
   const animationName = airborne ? 'jump' : moving ? 'walk' : 'idle';
-  const frame = airborne ? (args.velocity.y < 0 ? 0 : 1) : args.walkFrame % (moving ? 6 : 4);
 
   return {
     facing,
     animationId: `${animationName}.east`,
     flipX: facing === 'west',
-    footstepFrame: !airborne && moving && (frame === 1 || frame === 4) ? frame : undefined,
+    footstepActive: !airborne && moving,
   };
 }
 

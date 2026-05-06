@@ -1,22 +1,22 @@
 import Phaser from 'phaser';
 import { AnimatedImageNode, GameNode, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computePlayerAnimationState } from '../gameplayLogic';
-import { createPlayerPresentationData, type PlayerPresentationData } from '../nodeData';
+import { createPlayerAnimatorData, type PlayerAnimatorData } from '../nodeData';
 import { MiningToolNode } from './MiningToolNode';
 import { PlayerControllerNode } from './PlayerControllerNode';
 import { GameWorldNode } from './GameWorldNode';
 
-export class PlayerPresentationNode extends GameNode {
+export class PlayerAnimatorNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerController!: PlayerControllerNode;
   private miningTool!: MiningToolNode;
   private playerImage!: AnimatedImageNode;
   override readonly dependencies = ['world', 'playerController', 'miningTool', 'playerImage'] as const;
-  readonly data: PlayerPresentationData = createPlayerPresentationData();
+  readonly data: PlayerAnimatorData = createPlayerAnimatorData();
 
   constructor() {
-    super({ name: 'playerPresentation', order: 30, className: 'PlayerPresentationNode' });
+    super({ name: 'playerAnimator', order: 30, className: 'PlayerAnimatorNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -42,21 +42,15 @@ export class PlayerPresentationNode extends GameNode {
     return {
       ...super.getDebugProps(),
       facing: this.data.facing,
-      walkFrame: this.data.walkFrame,
+      animationId: this.data.animationId,
       x: player?.x ?? null,
       y: player?.y ?? null,
       texture: player?.texture.key ?? null,
     };
   }
 
-  update(deltaMs: number): void {
+  update(): void {
     const player = this.world.player;
-    this.data.walkTimerMs += deltaMs;
-    if (this.data.walkTimerMs > 120) {
-      this.data.walkFrame += 1;
-      this.data.walkTimerMs = 0;
-    }
-
     const aimX = this.miningTool.isMiningPressed() ? this.miningTool.getAimWorldPoint().x : undefined;
     const animation = computePlayerAnimationState({
       playerX: player.x,
@@ -64,20 +58,28 @@ export class PlayerPresentationNode extends GameNode {
       previousFacing: this.data.facing,
       velocity: this.playerController.velocity,
       grounded: this.playerController.grounded,
-      walkFrame: this.data.walkFrame,
     });
 
     this.data.facing = animation.facing;
+    this.data.animationId = animation.animationId;
     this.playerImage.play(animation.animationId);
     this.playerImage.flipX = animation.flipX;
     player.setFlipX(animation.flipX);
 
-    if (animation.footstepFrame !== undefined && animation.footstepFrame !== this.data.lastFootstepFrame) {
-      this.playFootstep();
-      this.data.lastFootstepFrame = animation.footstepFrame;
-    } else if (animation.footstepFrame === undefined) {
-      this.data.lastFootstepFrame = -1;
+    this.updateFootstep(animation.footstepActive);
+  }
+
+  private updateFootstep(active: boolean): void {
+    if (!active) {
+      this.data.footstepTimerMs = 0;
+      return;
     }
+
+    this.data.footstepTimerMs += this.phaserScene.game.loop.delta;
+    if (this.data.footstepTimerMs < 240) return;
+
+    this.data.footstepTimerMs = 0;
+    this.playFootstep();
   }
 
   private playFootstep(): void {

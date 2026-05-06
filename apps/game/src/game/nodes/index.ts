@@ -7,7 +7,7 @@ export * from './LevelNode';
 export * from './MiningToolNode';
 export * from './PlayerControllerNode';
 export * from './PlayerNode';
-export * from './PlayerPresentationNode';
+export * from './PlayerAnimatorNode';
 export * from './PlayerStateManagerNode';
 export * from './RunRecoveryNode';
 export * from './ShipDockNode';
