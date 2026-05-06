@@ -2,27 +2,9 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { exposedPropGroup, flattenExposedPropGroups, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type SceneFileJson, type TransformNodeOptions } from '../../nodes';
+import { collectNodesByName, exposedPropGroup, flattenExposedPropGroups, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
-import bottomHudSceneJson from './bottomHud.scene.json';
 import { TEXT, UI_ATLAS } from './uiLayout';
-
-const bottomHudScene = bottomHudSceneJson as SceneFileJson;
-const bottomHudNodeRegistry = new SceneNodeFactoryRegistry()
-  .registerImage('af9fee4b-158b-4ead-8264-c46e5d7af366')
-  .registerImage('470d2d11-1ada-4bac-9d20-fde438408424')
-  .registerImage('ac806217-66e0-4a83-8ccd-7891b49e9843')
-  .registerImage('8f51a2f7-b2a6-4291-8168-87f69cd52fc8')
-  .registerImage('f11d3a50-62c5-46bc-8d38-aef480dac284')
-  .registerImage('bd6775ad-9138-4255-bcd9-1b1075cacaf0')
-  .registerImage('38b37c84-8e23-4916-a9e2-73fddf87e35d')
-  .registerImage('06460d2b-6c62-4d6a-b848-0a7f80df73f1')
-  .registerImage('4b54d317-4b8d-46f5-90d6-214358c4d188')
-  .registerImage('65cd6cb1-6dc7-4937-80af-315cdd92c12e')
-  .registerText('966e64da-3cd8-47e0-b74b-9cc28b4bb246')
-  .registerText('9ba299e0-b2ce-4973-b3d4-38c0faeec8b0')
-  .registerText('1e1504a9-96f5-45b2-be68-c69eed3bdb1c')
-  .registerText('80bd70f5-c17b-4058-8b77-2acfc2087e53');
 
 const gameNodeProps = flattenExposedPropGroups(GameNode.exposedPropGroups);
 const transformNodeProps = flattenExposedPropGroups(TransformNode.exposedPropGroups);
@@ -43,48 +25,27 @@ export class BottomHudNode extends TransformNode {
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
-  private readonly actionFrameNode: ImageNode;
-  private readonly energyFillNode: ImageNode;
+  private actionFrameNode!: ImageNode;
+  private energyFillNode!: ImageNode;
   private readonly slotFrameNodes: ImageNode[] = [];
   private readonly slotItemNodes: ImageNode[] = [];
   private readonly slotLabelNodes: TextNode[] = [];
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
   constructor() {
-    super({ guid: bottomHudScene.root.id, name: bottomHudScene.root.name, className: 'BottomHudNode', sizeMode: 'explicit', debugScrollFactor: 0, ...(bottomHudScene.root.props as TransformNodeOptions | undefined) });
-
-    const nodesByName = new Map<string, GameNode>();
-    for (const childDefinition of bottomHudScene.root.children ?? []) {
-      const child = this.addChild(bottomHudNodeRegistry.createTree(childDefinition));
-      collectNodesByName(child, nodesByName);
-    }
-
-    this.actionFrameNode = requireSceneNode<ImageNode>(nodesByName, 'UI.ActionFrame');
-    this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'UI.EnergyFill');
-
-    for (let i = 0; i < 4; i += 1) {
-      const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotFrame${i}`);
-      const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotItem${i}`);
-      const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `UI.SlotLabel${i}`);
-      slotLabelNode.style = TEXT.value;
-      this.slotFrameNodes.push(slotFrameNode);
-      this.slotItemNodes.push(slotItemNode);
-      this.slotLabelNodes.push(slotLabelNode);
-    }
-
-    this.markHudComputedPropsReadOnly();
+    super({ name: 'UI.BottomHud', className: 'BottomHudNode', parentAnchor: 'bottom-center', origin: { x: 0, y: 1 }, sizeMode: 'explicit', debugScrollFactor: 0 });
   }
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
-    const resolution = Math.max(2, window.devicePixelRatio || 1);
-    for (const labelNode of this.slotLabelNodes) labelNode.resolution = resolution;
   }
 
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
+    this.resolveChildNodes();
+    this.markHudComputedPropsReadOnly();
   }
 
   override getDebugProps(): NodeDebugProps {
@@ -151,6 +112,28 @@ export class BottomHudNode extends TransformNode {
     }
   }
 
+  private resolveChildNodes(): void {
+    const nodesByName = collectNodesByName(this);
+    this.actionFrameNode = requireSceneNode<ImageNode>(nodesByName, 'UI.ActionFrame');
+    this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'UI.EnergyFill');
+
+    this.slotFrameNodes.length = 0;
+    this.slotItemNodes.length = 0;
+    this.slotLabelNodes.length = 0;
+    const resolution = Math.max(2, window.devicePixelRatio || 1);
+
+    for (let i = 0; i < 4; i += 1) {
+      const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotFrame${i}`);
+      const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotItem${i}`);
+      const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `UI.SlotLabel${i}`);
+      slotLabelNode.style = TEXT.value;
+      slotLabelNode.resolution = resolution;
+      this.slotFrameNodes.push(slotFrameNode);
+      this.slotItemNodes.push(slotItemNode);
+      this.slotLabelNodes.push(slotLabelNode);
+    }
+  }
+
   private getHudState() {
     return buildHudState({
       level: this.world.level,
@@ -198,12 +181,6 @@ export class BottomHudNode extends TransformNode {
     node.visible = safePct > 0;
     node.image.setCrop(0, 0, cropWidth, frame.h).setVisible(safePct > 0);
   }
-
-}
-
-function collectNodesByName(node: GameNode, nodesByName: Map<string, GameNode>): void {
-  if (node.name) nodesByName.set(node.name, node);
-  for (const child of node.children) collectNodesByName(child, nodesByName);
 }
 
 function requireSceneNode<T extends GameNode>(nodesByName: ReadonlyMap<string, GameNode>, name: string): T {

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "root": {
+    "type": "PlayerNode",
+    "name": "Player",
+    "children": [
+      {
+        "type": "PlayerMovementControllerNode",
+        "name": "PlayerMovementController"
+      },
+      {
+        "type": "CollisionRectNode",
+        "name": "PlayerBody",
+        "props": {
+          "size": {
+            "width": 40,
+            "height": 64
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          }
+        },
+        "children": [
+          {
+            "type": "AnimatedImageNode",
+            "name": "PlayerImage",
+            "props": {
+              "animationSetId": "character",
+              "animationId": "idle.east",
+              "parentAnchor": "center",
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scale": 0.9
+            }
+          }
+        ]
+      },
+      {
+        "type": "PlayerAnimatorNode",
+        "name": "PlayerAnimator"
+      },
+      {
+        "type": "MiningToolNode",
+        "name": "MiningTool"
+      }
+    ]
+  }
+}

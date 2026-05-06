@@ -16,36 +16,13 @@ export class ShipNode extends TransformNode {
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
-  private readonly shipImage: ImageNode;
-  private readonly promptText: TextNode;
+  private shipImage!: ImageNode;
+  private promptText!: TextNode;
   override readonly dependencies = ['World', 'PlayerState'] as const;
   readonly data: ShipData = createShipData();
 
   constructor() {
-    super({ name: 'Ship', className: 'ShipNode', position: { x: SHIP_DOCK_CENTER_X, y: SHIP_BOTTOM_Y }, sizeMode: 'explicit' });
-    this.size = { width: SHIP_DISPLAY_WIDTH, height: SHIP_DISPLAY_HEIGHT };
-    this.origin = { x: 0.5, y: 1 };
-
-    this.shipImage = this.addChild(new ImageNode({
-      name: 'ShipImage',
-      assetId: 'ship',
-      parentAnchor: 'bottom-center',
-      origin: { x: 0.5, y: 1 },
-    }));
-    this.promptText = this.addChild(new TextNode({
-      name: 'ShipPrompt',
-      text: '',
-      origin: { x: 0.5, y: 1 },
-      style: {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '18px',
-        fontStyle: '900',
-        color: '#e0f2fe',
-        backgroundColor: 'rgba(2,6,23,0.72)',
-        padding: { x: 10, y: 6 },
-      },
-      visible: false,
-    }));
+    super({ name: 'Ship', className: 'ShipNode', position: { x: SHIP_DOCK_CENTER_X, y: SHIP_BOTTOM_Y }, size: { width: SHIP_DISPLAY_WIDTH, height: SHIP_DISPLAY_HEIGHT }, origin: { x: 0.5, y: 1 }, sizeMode: 'explicit' });
   }
 
   init(ctx: NodeContext): void {
@@ -57,6 +34,8 @@ export class ShipNode extends TransformNode {
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.shipImage = this.requireNode<ImageNode>('ShipImage');
+    this.promptText = this.requireNode<TextNode>('ShipPrompt');
     this.layoutShipImage();
     this.resetPrompt();
   }

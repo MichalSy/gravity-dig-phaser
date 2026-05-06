@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "root": {
+    "type": "SceneNode",
+    "name": "Loading",
+    "children": [
+      {
+        "type": "LoadingNode",
+        "name": "Loading",
+        "props": {
+          "active": false
+        }
+      }
+    ]
+  }
+}

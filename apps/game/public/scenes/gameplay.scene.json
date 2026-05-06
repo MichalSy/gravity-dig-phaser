@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "root": {
+    "type": "SceneNode",
+    "name": "Gameplay",
+    "children": [
+      {
+        "type": "LevelNode",
+        "name": "Level"
+      },
+      {
+        "type": "GameWorldNode",
+        "name": "World"
+      },
+      {
+        "prefab": "prefabs/ship.prefab.json"
+      },
+      {
+        "prefab": "prefabs/player.prefab.json"
+      }
+    ]
+  }
+}

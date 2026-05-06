@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "root": {
+    "type": "SceneNode",
+    "name": "UI.Gameplay",
+    "props": {
+      "boundsMode": "content"
+    },
+    "children": [
+      {
+        "type": "InputModeDetectorNode",
+        "name": "InputModeDetector"
+      },
+      {
+        "prefab": "prefabs/status-hud.prefab.json"
+      },
+      {
+        "prefab": "prefabs/bottom-hud.prefab.json"
+      },
+      {
+        "type": "TouchControlsNode",
+        "name": "UI.TouchControls"
+      }
+    ]
+  }
+}

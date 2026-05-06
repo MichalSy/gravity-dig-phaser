@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "root": {
+    "type": "ShipNode",
+    "name": "Ship",
+    "props": {
+      "position": {
+        "x": -288,
+        "y": 288
+      },
+      "size": {
+        "width": 548.16,
+        "height": 336
+      },
+      "origin": {
+        "x": 0.5,
+        "y": 1
+      },
+      "sizeMode": "explicit"
+    },
+    "children": [
+      {
+        "type": "ImageNode",
+        "name": "ShipImage",
+        "props": {
+          "assetId": "ship",
+          "parentAnchor": "bottom-center",
+          "origin": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      },
+      {
+        "type": "TextNode",
+        "name": "ShipPrompt",
+        "props": {
+          "text": "",
+          "origin": {
+            "x": 0.5,
+            "y": 1
+          },
+          "style": {
+            "fontFamily": "Arial, sans-serif",
+            "fontSize": "18px",
+            "fontStyle": "900",
+            "color": "#e0f2fe",
+            "backgroundColor": "rgba(2,6,23,0.72)",
+            "padding": {
+              "x": 10,
+              "y": 6
+            }
+          },
+          "visible": false
+        }
+      }
+    ]
+  }
+}
