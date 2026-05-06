@@ -76,8 +76,9 @@ export function propOrigin(options: Omit<DebugScenePropDefinition, 'type'> = {})
   return { type: 'Origin', ...options };
 }
 
-export function propAnchor(options: Omit<DebugScenePropDefinition, 'type' | 'options'> = {}): DebugScenePropDefinition {
-  return { type: 'Anchor', options: ANCHORS, ...options };
+export function propAnchor(options: Omit<DebugScenePropDefinition, 'type' | 'options'> & { allowCustom?: boolean } = {}): DebugScenePropDefinition {
+  const { allowCustom = false, ...definitionOptions } = options;
+  return { type: 'Anchor', options: allowCustom ? ANCHORS : ANCHORS.filter((anchor) => anchor !== 'custom'), ...definitionOptions };
 }
 
 export function propAssetId(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
@@ -96,7 +97,7 @@ export function validateScenePropValue(definition: DebugScenePropDefinition, val
     case 'Boolean':
       return typeof value === 'boolean' ? value : undefined;
     case 'Anchor':
-      return isAnchor(value) ? value : undefined;
+      return isAnchor(value, definition.options) ? value : undefined;
     case 'Position':
     case 'Origin':
       return isPointLike(value) ? { x: clampNumber(value.x, definition), y: clampNumber(value.y, definition) } : undefined;
@@ -105,8 +106,8 @@ export function validateScenePropValue(definition: DebugScenePropDefinition, val
   }
 }
 
-export function isAnchor(value: unknown): value is Anchor {
-  return typeof value === 'string' && (ANCHORS as readonly string[]).includes(value);
+export function isAnchor(value: unknown, options: readonly string[] = ANCHORS): value is Anchor {
+  return typeof value === 'string' && options.includes(value);
 }
 
 export function isPointLike(value: unknown): value is PointLike {

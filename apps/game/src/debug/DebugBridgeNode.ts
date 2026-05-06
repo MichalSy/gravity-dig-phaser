@@ -94,7 +94,7 @@ export class DebugBridgeNode extends GameNode {
     socket.addEventListener('message', (event) => {
       const message = this.parseMessage(event.data);
       if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
-      console.log('[Gravity Dig Debug][editor->game]', message.type, message);
+      if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
       if (message.type === 'relay:status' && message.editors > 0) {
         this.sendAssetList();
         this.sendNodeDefinitions();
@@ -122,9 +122,13 @@ export class DebugBridgeNode extends GameNode {
 
   private send(message: DebugMessage): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      console.log('[Gravity Dig Debug][game->editor]', message.type, message);
+      if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
       this.socket.send(JSON.stringify(message));
     }
+  }
+
+  private shouldLogDebugMessage(type: DebugMessage['type']): boolean {
+    return type !== 'node:select' && type !== 'node:props';
   }
 
   private sendAssetList(): void {

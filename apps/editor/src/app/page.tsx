@@ -5,6 +5,10 @@ import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw,
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
+function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
+  return type !== 'node:select' && type !== 'node:props';
+}
+
 function createSessionId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `debug-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -120,6 +124,7 @@ export default function Home() {
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
+  const lastSelectMessageRef = useRef<string>('');
   const workbenchRef = useRef<HTMLElement | null>(null);
   const viewportPanelRef = useRef<HTMLElement | null>(null);
   const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
@@ -175,7 +180,7 @@ export default function Home() {
       socket.addEventListener('message', (event) => {
         const message = parseDebugMessage(event.data);
         if (!message) return;
-        console.log('[Gravity Dig Debug][game->editor]', message.type, message);
+        if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
         handleMessage(message);
       });
 
@@ -255,9 +260,11 @@ export default function Home() {
 
   useEffect(() => {
     setSelectedNodeProps(undefined);
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    if (!selectedNodeId || !sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    const selectSignature = `${sessionId}:${selectedNodeId}`;
+    if (lastSelectMessageRef.current === selectSignature) return;
+    lastSelectMessageRef.current = selectSignature;
     const selectMessage: DebugMessage = { type: 'node:select', sessionId, nodeId: selectedNodeId, sentAt: Date.now() };
-    console.log('[Gravity Dig Debug][editor->game]', selectMessage.type, selectMessage);
     socketRef.current.send(JSON.stringify(selectMessage));
   }, [selectedNodeId, sessionId]);
 
@@ -300,7 +307,7 @@ export default function Home() {
     }
 
     const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, guid: node.guid, name: node.name, props, sentAt: Date.now() };
-    console.log('[Gravity Dig Debug][editor->game]', message.type, message);
+    if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
     socketRef.current.send(JSON.stringify(message));
     setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
   }
@@ -849,12 +856,15 @@ function ExposedPropsSection({
   }
 
   const groups = definition?.exposedPropGroups ?? (definition?.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : undefined);
+  const currentAnchor = localOverrides.anchor ?? currentEditablePropValue('anchor', { type: 'Anchor' }, node, debugProps);
 
   return (
     <>
-      {groups ? groups.map((group) => (
+      {groups ? groups.map((group) => {
+        const visibleProps = Object.entries(group.props).filter(([key]) => key !== 'origin' || currentAnchor === 'custom');
+        return (
         <InspectorSection key={group.name} title={group.name}>
-          {Object.entries(group.props).map(([key, prop]) => (
+          {visibleProps.map(([key, prop]) => (
             <EditablePropRow
               key={key}
               name={key}
@@ -865,7 +875,8 @@ function ExposedPropsSection({
             />
           ))}
         </InspectorSection>
-      )) : <InspectorSection title="Exposed Props"><FragmentRow name="status" value="Keine Node-Definition für diesen Node." /></InspectorSection>}
+        );
+      }) : <InspectorSection title="Exposed Props"><FragmentRow name="status" value="Keine Node-Definition für diesen Node." /></InspectorSection>}
       {patchStatus && <InspectorSection title="Patch"><FragmentRow name="status" value={patchStatus} /></InspectorSection>}
     </>
   );

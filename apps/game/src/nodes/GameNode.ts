@@ -66,7 +66,7 @@ export abstract class GameNode {
     exposedPropGroup('Transform', {
       position: propPosition({ label: 'Position', step: 1 }),
       size: propSize({ label: 'Size', min: 0, step: 1 }),
-      anchor: propAnchor({ label: 'Anchor' }),
+      anchor: propAnchor({ label: 'Anchor', allowCustom: true }),
       parentAnchor: propAnchor({ label: 'Parent Anchor' }),
       origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
       rotation: propNumber({ label: 'Rotation', step: 0.01 }),
@@ -111,7 +111,7 @@ export abstract class GameNode {
     this.anchor = options.anchor ?? 'top-left';
     this.parentAnchor = options.parentAnchor ?? 'top-left';
     const defaultOrigin = anchorOrigin(this.anchor);
-    this.origin = { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y };
+    this.origin = this.anchor === 'custom' ? { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y } : defaultOrigin;
     this.rotation = options.rotation ?? 0;
     this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
     this.boundsMode = options.boundsMode ?? 'content';
@@ -206,7 +206,7 @@ export abstract class GameNode {
   }
 
   getLocalAnchorOffset(): PointLike {
-    return anchorOffset(this.anchor, this.size);
+    return this.anchor === 'custom' ? this.getLocalOriginOffset() : anchorOffset(this.anchor, this.size);
   }
 
   getParentAnchorOffset(): PointLike {
@@ -502,10 +502,12 @@ export abstract class GameNode {
         this.size = value;
         this.sizeMode = 'explicit';
         return true;
-      case 'anchor':
+      case 'anchor': {
         if (typeof value !== 'string') return false;
         this.anchor = value as Anchor;
+        if (this.anchor !== 'custom') this.origin = anchorOrigin(this.anchor);
         return true;
+      }
       case 'parentAnchor':
         if (typeof value !== 'string') return false;
         this.parentAnchor = value as Anchor;
