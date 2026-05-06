@@ -2,7 +2,7 @@
   "version": 1,
   "root": {
     "type": "SceneNode",
-    "name": "Loading",
+    "name": "Scene.Loading",
     "children": [
       {
         "type": "LoadingNode",
