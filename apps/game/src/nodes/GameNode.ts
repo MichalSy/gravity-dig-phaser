@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransform, DebugSceneNodeDefinition } from '@gravity-dig/debug-protocol';
 import type { AssetCatalog } from '../assets/AssetCatalog';
-import { anchorOffset, anchorOrigin, type Anchor, type PointLike, type SizeLike } from './Anchor';
+import { anchorOffset, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
 import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
@@ -45,7 +45,6 @@ export interface GameNodeOptions {
   order?: number;
   position?: Partial<PointLike>;
   size?: Partial<SizeLike>;
-  anchor?: Anchor;
   parentAnchor?: Anchor;
   origin?: Partial<PointLike>;
   rotation?: number;
@@ -64,7 +63,6 @@ export abstract class GameNode {
     }),
     exposedPropGroup('Layout', {
       parentAnchor: propAnchor({ label: 'Parent Anchor' }),
-      anchor: propAnchor({ label: 'Anchor' }),
       position: propPosition({ label: 'Position', step: 1 }),
       size: propSize({ label: 'Size', min: 0, step: 1 }),
     }),
@@ -78,7 +76,6 @@ export abstract class GameNode {
   order: number;
   position: PointLike;
   size: SizeLike;
-  anchor: Anchor;
   parentAnchor: Anchor;
   origin: PointLike;
   rotation: number;
@@ -105,10 +102,8 @@ export abstract class GameNode {
     this.order = options.order ?? 0;
     this.position = { x: options.position?.x ?? 0, y: options.position?.y ?? 0 };
     this.size = { width: options.size?.width ?? 0, height: options.size?.height ?? 0 };
-    this.anchor = options.anchor ?? 'top-left';
     this.parentAnchor = options.parentAnchor ?? 'top-left';
-    const defaultOrigin = anchorOrigin(this.anchor);
-    this.origin = { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y };
+    this.origin = { x: options.origin?.x ?? 0, y: options.origin?.y ?? 0 };
     this.rotation = options.rotation ?? 0;
     this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
     this.boundsMode = options.boundsMode ?? 'content';
@@ -202,13 +197,11 @@ export abstract class GameNode {
     this.resolved = false;
   }
 
-  getLocalAnchorOffset(): PointLike {
-    return anchorOffset(this.anchor, this.size);
-  }
-
   getParentAnchorOffset(): PointLike {
     if (!this.parent) return { x: 0, y: 0 };
-    return anchorOffset(this.parentAnchor, this.parent.size);
+    const parentAnchorOffset = anchorOffset(this.parentAnchor, this.parent.size);
+    const parentOriginOffset = this.parent.getLocalOriginOffset();
+    return { x: parentAnchorOffset.x - parentOriginOffset.x, y: parentAnchorOffset.y - parentOriginOffset.y };
   }
 
   getPositionInParent(): PointLike {
@@ -298,14 +291,8 @@ export abstract class GameNode {
     const parentPosition = parent.getWorldPosition();
     const parentScale = parent.getWorldScale();
     const parentRotation = parent.getWorldRotation();
-    const parentAnchorOffset = parent.getLocalAnchorOffset();
     const positionInParent = this.getPositionInParent();
-    return rotatePoint(
-      (positionInParent.x - parentAnchorOffset.x) * parentScale.x,
-      (positionInParent.y - parentAnchorOffset.y) * parentScale.y,
-      parentRotation,
-      parentPosition,
-    );
+    return rotatePoint(positionInParent.x * parentScale.x, positionInParent.y * parentScale.y, parentRotation, parentPosition);
   }
 
   getWorldParentAnchorPosition(): PointLike | undefined {
@@ -315,14 +302,8 @@ export abstract class GameNode {
     const parentPosition = parent.getWorldPosition();
     const parentScale = parent.getWorldScale();
     const parentRotation = parent.getWorldRotation();
-    const parentAnchorOffset = parent.getLocalAnchorOffset();
     const childParentAnchorOffset = this.getParentAnchorOffset();
-    return rotatePoint(
-      (childParentAnchorOffset.x - parentAnchorOffset.x) * parentScale.x,
-      (childParentAnchorOffset.y - parentAnchorOffset.y) * parentScale.y,
-      parentRotation,
-      parentPosition,
-    );
+    return rotatePoint(childParentAnchorOffset.x * parentScale.x, childParentAnchorOffset.y * parentScale.y, parentRotation, parentPosition);
   }
 
   worldToLocalPosition(worldPosition: PointLike): PointLike {
@@ -335,24 +316,13 @@ export abstract class GameNode {
     const dx = worldPosition.x - parentPosition.x;
     const dy = worldPosition.y - parentPosition.y;
     const unrotated = rotatePoint(dx, dy, parentRotation, { x: 0, y: 0 });
-    return { x: unrotated.x / parentScale.x, y: unrotated.y / parentScale.y };
-  }
-
-  getWorldRenderOriginPosition(): PointLike {
-    const anchorWorldPosition = this.getWorldPosition();
-    const anchorOffset = this.getLocalAnchorOffset();
-    const originOffset = this.getLocalOriginOffset();
-    const worldScale = this.getWorldScale();
-    return rotatePoint(
-      (originOffset.x - anchorOffset.x) * worldScale.x,
-      (originOffset.y - anchorOffset.y) * worldScale.y,
-      this.getWorldRotation(),
-      anchorWorldPosition,
-    );
+    const positionInParent = { x: unrotated.x / parentScale.x, y: unrotated.y / parentScale.y };
+    const parentAnchorOffset = this.getParentAnchorOffset();
+    return { x: positionInParent.x - parentAnchorOffset.x, y: positionInParent.y - parentAnchorOffset.y };
   }
 
   getWorldOrigin(): PointLike {
-    return this.getWorldRenderOriginPosition();
+    return this.getWorldPosition();
   }
 
   getLocalTransform(): DebugNodeTransform {
@@ -509,10 +479,6 @@ export abstract class GameNode {
         this.size = value;
         this.sizeMode = 'explicit';
         return true;
-      case 'anchor':
-        if (typeof value !== 'string') return false;
-        this.anchor = value as Anchor;
-        return true;
       case 'parentAnchor':
         if (typeof value !== 'string') return false;
         this.parentAnchor = value as Anchor;
@@ -540,7 +506,6 @@ export abstract class GameNode {
       sizeMode: this.sizeMode,
       boundsMode: this.boundsMode,
       debugScrollFactor: this.debugScrollFactor ?? null,
-      anchor: this.anchor,
       parentAnchor: this.parent ? this.parentAnchor : null,
       localX: this.position.x,
       localY: this.position.y,

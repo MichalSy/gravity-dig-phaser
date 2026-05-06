@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
-import { anchorOrigin } from './Anchor';
 import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { exposedPropGroup, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
@@ -11,10 +10,10 @@ function textLocalSize(text: Phaser.GameObjects.Text): { width: number; height: 
 
 function textBoundsInParentSpace(node: TextNode, text: Phaser.GameObjects.Text): NodeDebugBounds {
   const size = textLocalSize(text);
-  const anchorPosition = node.getPositionInParent();
-  const anchorOffset = node.getLocalAnchorOffset();
-  const left = anchorPosition.x - anchorOffset.x * node.scaleX;
-  const top = anchorPosition.y - anchorOffset.y * node.scaleY;
+  const originPosition = node.getPositionInParent();
+  const originOffset = node.getLocalOriginOffset();
+  const left = originPosition.x - originOffset.x * node.scaleX;
+  const top = originPosition.y - originOffset.y * node.scaleY;
   return { x: left, y: top, width: size.width * Math.abs(node.scaleX), height: size.height * Math.abs(node.scaleY), scrollFactor: node.scrollFactor };
 }
 
@@ -45,11 +44,9 @@ export class TextNode extends TransformNode {
   protected phaserText?: Phaser.GameObjects.Text;
 
   constructor(options: TextNodeOptions = {}) {
-    const defaultOrigin = anchorOrigin(options.anchor ?? 'top-left');
     super({
       ...options,
       className: options.className ?? 'TextNode',
-      origin: { x: options.origin?.x ?? defaultOrigin.x, y: options.origin?.y ?? defaultOrigin.y },
       sizeMode: options.sizeMode ?? 'explicit',
     });
     this.text = options.text ?? '';

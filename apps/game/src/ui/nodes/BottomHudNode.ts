@@ -31,7 +31,6 @@ export class BottomHudNode extends GameNode {
     }),
     exposedPropGroup('Layout', {
       parentAnchor: GameNode.exposedPropGroups[1].props.parentAnchor,
-      anchor: GameNode.exposedPropGroups[1].props.anchor,
     }),
   ];
 

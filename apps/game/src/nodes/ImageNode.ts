@@ -35,10 +35,10 @@ function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObje
   const cropY = crop?.y ?? 0;
   const cropWidth = crop?.width ?? frameWidth;
   const cropHeight = crop?.height ?? frameHeight;
-  const anchorPosition = node.getPositionInParent();
-  const anchorOffset = node.getLocalAnchorOffset();
-  const left = anchorPosition.x - anchorOffset.x * node.scaleX + cropX * node.scaleX;
-  const top = anchorPosition.y - anchorOffset.y * node.scaleY + cropY * node.scaleY;
+  const originPosition = node.getPositionInParent();
+  const originOffset = node.getLocalOriginOffset();
+  const left = originPosition.x - originOffset.x * node.scaleX + cropX * node.scaleX;
+  const top = originPosition.y - originOffset.y * node.scaleY + cropY * node.scaleY;
   return { x: left, y: top, width: cropWidth * Math.abs(node.scaleX), height: cropHeight * Math.abs(node.scaleY), scrollFactor: node.scrollFactor };
 }
 

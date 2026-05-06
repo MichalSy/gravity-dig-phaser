@@ -42,10 +42,6 @@ export abstract class TransformNode extends GameNode {
   }
 
 
-  getRenderOriginWorldPosition(): { x: number; y: number } {
-    return this.getWorldRenderOriginPosition();
-  }
-
   getPhaserTransform(): {
     x: number;
     y: number;
@@ -58,7 +54,7 @@ export abstract class TransformNode extends GameNode {
     visible: boolean;
     scrollFactor: number;
   } {
-    const position = this.getRenderOriginWorldPosition();
+    const position = this.getWorldPosition();
     const scale = this.getWorldScale();
     return {
       x: position.x,

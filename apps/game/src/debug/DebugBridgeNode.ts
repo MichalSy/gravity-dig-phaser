@@ -282,7 +282,7 @@ export class DebugBridgeNode extends GameNode {
 
     const scrollFactor = bounds.scrollFactor ?? 1;
     const parentAnchor = node.getWorldParentAnchorPosition();
-    const nodeAnchor = node.getWorldPosition();
+    const nodeOrigin = node.getWorldOrigin();
 
     overlay
       .clear()
@@ -296,7 +296,7 @@ export class DebugBridgeNode extends GameNode {
     if (parentAnchor) {
       overlay
         .lineStyle(2, 0xfacc15, 0.9)
-        .lineBetween(parentAnchor.x, parentAnchor.y, nodeAnchor.x, nodeAnchor.y)
+        .lineBetween(parentAnchor.x, parentAnchor.y, nodeOrigin.x, nodeOrigin.y)
         .lineStyle(3, 0xfacc15, 1)
         .strokeCircle(parentAnchor.x, parentAnchor.y, 11)
         .lineStyle(1, 0x020617, 0.95)
@@ -308,12 +308,12 @@ export class DebugBridgeNode extends GameNode {
 
     overlay
       .fillStyle(0xfb7185, 1)
-      .fillCircle(nodeAnchor.x, nodeAnchor.y, 4)
+      .fillCircle(nodeOrigin.x, nodeOrigin.y, 4)
       .lineStyle(2, 0x020617, 0.9)
-      .strokeCircle(nodeAnchor.x, nodeAnchor.y, 6)
+      .strokeCircle(nodeOrigin.x, nodeOrigin.y, 6)
       .lineStyle(1, 0xfb7185, 0.95)
-      .lineBetween(nodeAnchor.x - 8, nodeAnchor.y, nodeAnchor.x + 8, nodeAnchor.y)
-      .lineBetween(nodeAnchor.x, nodeAnchor.y - 8, nodeAnchor.x, nodeAnchor.y + 8);
+      .lineBetween(nodeOrigin.x - 8, nodeOrigin.y, nodeOrigin.x + 8, nodeOrigin.y)
+      .lineBetween(nodeOrigin.x, nodeOrigin.y - 8, nodeOrigin.x, nodeOrigin.y + 8);
   }
 
   private sendSelectedNodeProps(force = false): void {

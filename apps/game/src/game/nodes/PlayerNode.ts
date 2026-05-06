@@ -13,7 +13,7 @@ export class PlayerNode extends GameNode {
         name: 'playerImage',
         assetId: 'player-idle-0',
         order: 50,
-        anchor: 'center',
+        origin: { x: 0.5, y: 0.5 },
         depth: 20,
         scale: 0.9,
         syncMode: 'object-to-node',

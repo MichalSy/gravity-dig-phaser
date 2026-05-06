@@ -804,6 +804,12 @@
   accent-color: #0ea5e9;
 }
 
+.vectorEditorStack {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
 .vectorEditor {
   min-width: 0;
   display: grid;

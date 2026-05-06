@@ -1001,12 +1001,21 @@ function EditablePropRow({
 
   if (prop.type === 'Position' || prop.type === 'Origin' || prop.type === 'Scale') {
     const point = isPointValue(draft) ? draft : { x: 0, y: 0 };
+    const originPreset = prop.type === 'Origin' ? originPresetValue(point) : '';
     return (
       <>
         <span>{label}</span>
-        <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
+        <div className={styles.vectorEditorStack}>
+          {prop.type === 'Origin' && (
+            <select className={styles.editorInput} value={originPreset} disabled={prop.readOnly} onChange={(event) => commit(originPresetPoint(event.currentTarget.value) ?? point)}>
+              <option value="">Custom</option>
+              {originPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+            </select>
+          )}
+          <div className={styles.vectorEditor}>
+            <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
+            <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' || prop.type === 'Scale' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
+          </div>
         </div>
       </>
     );
@@ -1026,6 +1035,31 @@ function EditablePropRow({
   }
 
   return <FragmentRow name={label} value="Unsupported" />;
+}
+
+
+const originPresets = [
+  { id: 'top-left', label: 'Top Left', x: 0, y: 0 },
+  { id: 'top-center', label: 'Top Center', x: 0.5, y: 0 },
+  { id: 'top-right', label: 'Top Right', x: 1, y: 0 },
+  { id: 'center-left', label: 'Center Left', x: 0, y: 0.5 },
+  { id: 'center', label: 'Center', x: 0.5, y: 0.5 },
+  { id: 'center-right', label: 'Center Right', x: 1, y: 0.5 },
+  { id: 'bottom-left', label: 'Bottom Left', x: 0, y: 1 },
+  { id: 'bottom-center', label: 'Bottom Center', x: 0.5, y: 1 },
+  { id: 'bottom-right', label: 'Bottom Right', x: 1, y: 1 },
+] as const;
+
+function originPresetPoint(id: string): { x: number; y: number } | undefined {
+  const preset = originPresets.find((candidate) => candidate.id === id);
+  return preset ? { x: preset.x, y: preset.y } : undefined;
+}
+
+function originPresetValue(point: { x: number | string; y: number | string }): string {
+  const x = parseFiniteNumber(point.x);
+  const y = parseFiniteNumber(point.y);
+  if (x === undefined || y === undefined) return '';
+  return originPresets.find((preset) => Math.abs(preset.x - x) < 0.0001 && Math.abs(preset.y - y) < 0.0001)?.id ?? '';
 }
 
 function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): DebugNodePatch[string] | undefined {
