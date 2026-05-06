@@ -32,7 +32,11 @@ export class TextNode extends TransformNode {
   protected phaserText?: Phaser.GameObjects.Text;
 
   constructor(options: TextNodeOptions = {}) {
-    super({ ...options, className: options.className ?? 'TextNode' });
+    super({
+      ...options,
+      className: options.className ?? 'TextNode',
+      origin: { x: options.origin?.x ?? 0, y: options.origin?.y ?? 0 },
+    });
     this.text = options.text ?? '';
     this.style = options.style;
     this.resolution = options.resolution;

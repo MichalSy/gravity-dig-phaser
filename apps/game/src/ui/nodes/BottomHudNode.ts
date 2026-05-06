@@ -20,8 +20,10 @@ export class BottomHudNode extends GameNode {
     this.energyFillNode = this.addChild(new ImageNode({ name: 'ui.energyFill', assetId: 'hud-hp-fuel-atlas#energyBar', order: 10, depth: UI_DEPTH + 11.2, scrollFactor: 0 }));
 
     for (let i = 0; i < 4; i += 1) {
-      this.slotFrameNodes.push(this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 })));
-      this.slotItemNodes.push(this.addChild(new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 })));
+      const slotFrameNode = this.addChild(new ImageNode({ name: `ui.slotFrame${i}`, assetId: 'hud-hp-fuel-atlas#repeatSlot', order: 20 + i, visible: false, depth: UI_DEPTH + 10.8, scrollFactor: 0 }));
+      const slotItemNode = new ImageNode({ name: `ui.slotItem${i}`, assetId: 'hud-item-rock', order: 30 + i, anchor: 'center', parentAnchor: i === 1 ? 'center' : 'top-left', origin: i === 1 ? { x: 0.5, y: 0.5 } : undefined, visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 });
+      this.slotFrameNodes.push(slotFrameNode);
+      this.slotItemNodes.push(i === 1 ? slotFrameNode.addChild(slotItemNode) : this.addChild(slotItemNode));
       this.slotLabelNodes.push(this.addChild(new TextNode({ name: `ui.slotLabel${i}`, text: '', style: TEXT.value, order: 40 + i, anchor: 'bottom-right', visible: false, depth: UI_DEPTH + 12, scrollFactor: 0 })));
     }
   }
@@ -74,10 +76,14 @@ export class BottomHudNode extends GameNode {
       this.slotFrameNodes[i].depth = UI_DEPTH + slotLayout.frameDepth;
       this.placeRegionNode(this.slotFrameNodes[i], slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
 
-      this.slotItemNodes[i].position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
-      this.slotItemNodes[i].size = { width: slotLayout.itemSize, height: slotLayout.itemSize };
-      this.slotItemNodes[i].scaleX = slotLayout.itemSize / item.frame.width;
-      this.slotItemNodes[i].scaleY = slotLayout.itemSize / item.frame.height;
+      const itemParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
+      const itemParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
+      const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
+      const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
+      this.slotItemNodes[i].position = i === 1 ? { x: 0, y: 0 } : { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
+      this.slotItemNodes[i].size = { width: itemWidth, height: itemHeight };
+      this.slotItemNodes[i].scaleX = itemWidth / item.frame.width;
+      this.slotItemNodes[i].scaleY = itemHeight / item.frame.height;
       this.slotItemNodes[i].visible = slotLayout.hasItem;
       item.setVisible(slotLayout.hasItem);
 

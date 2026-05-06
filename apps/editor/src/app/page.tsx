@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Image as ImageIcon, RefreshCw, RotateCcw, Search, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePropsMessage, DebugNodeTransform } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -721,6 +721,7 @@ function NodeTreeItem({
         </button>
         <button type="button" className={styles.nodeContent} onClick={() => onSelectNode(node.id)}>
           {isImageNode(node) && <ImageIcon className={styles.nodeIcon} size={14} />}
+          {isTextNode(node) && <TypeIcon className={styles.nodeIcon} size={14} />}
           <span className={styles.nodeName}>{node.name}</span>
           <span className={styles.nodeMeta}>{node.className}</span>
           {!node.active && <span className={styles.nodeFlag}>inactive</span>}
@@ -736,6 +737,10 @@ function isImageNode(node: DebugNodeDescriptor): boolean {
   const className = node.className.toLowerCase();
   const name = node.name.toLowerCase();
   return className.includes('imagenode') || name.includes('image');
+}
+
+function isTextNode(node: DebugNodeDescriptor): boolean {
+  return node.className.toLowerCase().includes('textnode');
 }
 
 function Inspector({
