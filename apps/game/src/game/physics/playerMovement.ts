@@ -1,9 +1,9 @@
 import { GRAVITY, PLAYER_SIZE } from '../../config/gameConfig';
-import type { PlayerControllerData } from '../nodeData';
+import type { PlayerMovementControllerData } from '../nodeData';
 
 export interface PlayerPhysicsStepArgs {
   player: { x: number; y: number; setPosition(x: number, y: number): unknown };
-  data: PlayerControllerData;
+  data: PlayerMovementControllerData;
   deltaSeconds: number;
   collidesBox(x: number, y: number, width: number, height: number): boolean;
   jump(): void;

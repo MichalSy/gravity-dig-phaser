@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { AnimatedImageNode, CollisionRectNode, GameNode } from '../../nodes';
-import { PlayerControllerNode } from './PlayerControllerNode';
+import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { PlayerAnimatorNode } from './PlayerAnimatorNode';
 
 export class PlayerNode extends GameNode {
   constructor() {
     super({ name: 'player', order: 8, className: 'PlayerNode' });
-    this.addChild(new PlayerControllerNode());
+    this.addChild(new PlayerMovementControllerNode());
     const body = this.addChild(new CollisionRectNode({
       name: 'playerBody',
       order: 20,
@@ -36,7 +36,7 @@ export class PlayerNode extends GameNode {
   spawnAt(x: number, y: number): Phaser.GameObjects.Image {
     this.bodyNode.setPosition(x, y);
     this.imageNode.update(0);
-    this.requireNode<PlayerControllerNode>('playerController').setPlayer(this.bodyNode);
+    this.requireNode<PlayerMovementControllerNode>('playerMovementController').setPlayer(this.bodyNode);
     return this.image;
   }
 

@@ -10,19 +10,19 @@ import type { TileCell } from '../level';
 import { createMiningToolData, type MiningToolData } from '../nodeData';
 import type { GameWorldNode } from './GameWorldNode';
 import { LevelNode } from './LevelNode';
-import { PlayerControllerNode } from './PlayerControllerNode';
+import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class MiningToolNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private world!: GameWorldNode;
-  private playerController!: PlayerControllerNode;
+  private playerMovementController!: PlayerMovementControllerNode;
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
   private laserView!: MiningLaserView;
   private miningPressed = false;
-  override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'gameplayInput'] as const;
+  override readonly dependencies = ['level', 'world', 'playerMovementController', 'playerState', 'gameplayInput'] as const;
   readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
@@ -39,7 +39,7 @@ export class MiningToolNode extends GameNode {
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('level');
     this.world = this.requireNode<GameWorldNode>('world');
-    this.playerController = this.requireNode<PlayerControllerNode>('playerController');
+    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('playerMovementController');
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
     this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
   }
@@ -73,7 +73,7 @@ export class MiningToolNode extends GameNode {
     const intent = this.gameplayInput.getMiningIntent({
       playerX: this.world.player.x,
       playerY: this.world.player.y + PLAYER_SIZE.h * 0.18,
-      inputBlocked: this.playerController.inputBlocked,
+      inputBlocked: this.playerMovementController.inputBlocked,
       miningRange: this.playerState.stats.miningRange,
       gamepadAim: this.data.gamepadAim,
       laserOrigin: origin,

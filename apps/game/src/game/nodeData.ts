@@ -46,7 +46,7 @@ export function createAutoSaveData(): AutoSaveData {
   return { saveTimerMs: 0 };
 }
 
-export interface PlayerControllerData {
+export interface PlayerMovementControllerData {
   velocity: Phaser.Math.Vector2;
   grounded: boolean;
   coyoteTimerSeconds: number;
@@ -55,7 +55,7 @@ export interface PlayerControllerData {
   inputBlocked: boolean;
 }
 
-export function createPlayerControllerData(): PlayerControllerData {
+export function createPlayerMovementControllerData(): PlayerMovementControllerData {
   return {
     velocity: new Phaser.Math.Vector2(0, 0),
     grounded: false,

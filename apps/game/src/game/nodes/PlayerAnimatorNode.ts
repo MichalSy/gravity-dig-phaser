@@ -3,16 +3,16 @@ import { AnimatedImageNode, GameNode, type NodeContext, type NodeDebugBounds, ty
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerAnimatorData, type PlayerAnimatorData } from '../nodeData';
 import { MiningToolNode } from './MiningToolNode';
-import { PlayerControllerNode } from './PlayerControllerNode';
+import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class PlayerAnimatorNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
-  private playerController!: PlayerControllerNode;
+  private playerMovementController!: PlayerMovementControllerNode;
   private miningTool!: MiningToolNode;
   private playerImage!: AnimatedImageNode;
-  override readonly dependencies = ['world', 'playerController', 'miningTool', 'playerImage'] as const;
+  override readonly dependencies = ['world', 'playerMovementController', 'miningTool', 'playerImage'] as const;
   readonly data: PlayerAnimatorData = createPlayerAnimatorData();
 
   constructor() {
@@ -25,7 +25,7 @@ export class PlayerAnimatorNode extends GameNode {
 
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('world');
-    this.playerController = this.requireNode<PlayerControllerNode>('playerController');
+    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('playerMovementController');
     this.miningTool = this.requireNode<MiningToolNode>('miningTool');
     this.playerImage = this.requireNode<AnimatedImageNode>('playerImage');
   }
@@ -61,8 +61,8 @@ export class PlayerAnimatorNode extends GameNode {
       playerX: player.x,
       aimX,
       previousFacing: this.data.facing,
-      velocity: this.playerController.velocity,
-      grounded: this.playerController.grounded,
+      velocity: this.playerMovementController.velocity,
+      grounded: this.playerMovementController.grounded,
     });
 
     this.data.facing = animation.facing;

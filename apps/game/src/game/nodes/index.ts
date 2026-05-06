@@ -4,7 +4,7 @@ export * from './HudNode';
 export * from './LevelGeneratorManagerNode';
 export * from './LevelNode';
 export * from './MiningToolNode';
-export * from './PlayerControllerNode';
+export * from './PlayerMovementControllerNode';
 export * from './PlayerNode';
 export * from './PlayerAnimatorNode';
 export * from './PlayerStateManagerNode';

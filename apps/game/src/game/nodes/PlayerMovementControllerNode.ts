@@ -2,22 +2,22 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { CollisionRectNode, GameNode, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
-import { createPlayerControllerData, type PlayerControllerData } from '../nodeData';
+import { createPlayerMovementControllerData, type PlayerMovementControllerData } from '../nodeData';
 import { stepPlayerPhysics } from '../physics/playerMovement';
 import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
-export class PlayerControllerNode extends GameNode {
+export class PlayerMovementControllerNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
   private player?: CollisionRectNode;
   override readonly dependencies = ['level', 'playerState', 'gameplayInput'] as const;
-  readonly data: PlayerControllerData = createPlayerControllerData();
+  readonly data: PlayerMovementControllerData = createPlayerMovementControllerData();
 
   constructor() {
-    super({ name: 'playerController', order: 10, className: 'PlayerControllerNode' });
+    super({ name: 'playerMovementController', order: 10, className: 'PlayerMovementControllerNode' });
   }
 
   init(ctx: NodeContext): void {

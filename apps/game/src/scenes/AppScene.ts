@@ -66,6 +66,7 @@ export class AppScene extends Phaser.Scene {
     if (this.gameplayMounted) return;
 
     this.gameplayMounted = true;
+    this.appRuntime.addPersistentNode(new GameplayInputNode());
     this.appRuntime.addPersistentNode(new PlayerStateManagerNode());
     this.appRuntime.addPersistentNode(new LevelGeneratorManagerNode());
     this.mountGameplayScenes();
@@ -73,7 +74,6 @@ export class AppScene extends Phaser.Scene {
 
   private mountGameplayScenes(): void {
     const gameplay = new SceneNode({ rootName: 'gameplay', order: 20 });
-    gameplay.addChild(new GameplayInputNode());
     gameplay.addChild(new HudStateNode());
     gameplay.addChild(new LevelNode());
     gameplay.addChild(new GameWorldNode());
