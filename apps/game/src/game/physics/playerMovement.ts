@@ -17,6 +17,7 @@ export function stepPlayerPhysics(args: PlayerPhysicsStepArgs): void {
   moveAxis(args, args.data.velocity.x * args.deltaSeconds, 0);
   args.data.grounded = false;
   moveAxis(args, 0, args.data.velocity.y * args.deltaSeconds);
+  stabilizeGroundContact(args);
 
   if (wasGrounded && !args.data.grounded) args.data.coyoteTimerSeconds = 0.1;
   if (args.data.coyoteTimerSeconds > 0) args.data.coyoteTimerSeconds -= args.deltaSeconds;
@@ -25,6 +26,13 @@ export function stepPlayerPhysics(args: PlayerPhysicsStepArgs): void {
     args.jump();
     args.data.jumpBufferTimerSeconds = 0;
   }
+}
+
+function stabilizeGroundContact(args: PlayerPhysicsStepArgs): void {
+  if (args.data.grounded || args.data.velocity.y < 0) return;
+  if (!args.collidesBox(args.player.x, args.player.y + 1, PLAYER_SIZE.w, PLAYER_SIZE.h)) return;
+  args.data.grounded = true;
+  args.data.velocity.y = 0;
 }
 
 function moveAxis(args: PlayerPhysicsStepArgs, dx: number, dy: number): void {

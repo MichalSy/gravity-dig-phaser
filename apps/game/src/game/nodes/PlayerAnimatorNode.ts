@@ -51,6 +51,11 @@ export class PlayerAnimatorNode extends GameNode {
 
   update(): void {
     const player = this.world.player;
+    if (!this.playerImage.isEffectivelyActive()) {
+      player.setVisible(false);
+      return;
+    }
+
     const aimX = this.miningTool.isMiningPressed() ? this.miningTool.getAimWorldPoint().x : undefined;
     const animation = computePlayerAnimationState({
       playerX: player.x,
