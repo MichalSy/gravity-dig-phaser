@@ -1,23 +1,25 @@
 {
   "version": 1,
   "root": {
-    "type": "SceneNode",
     "name": "Gameplay",
     "children": [
       {
-        "type": "LevelNode",
-        "name": "Level"
+        "name": "Level",
+        "id": "54f36173-6201-5d2d-8091-64b6e7967e54"
       },
       {
-        "type": "GameWorldNode",
-        "name": "World"
+        "name": "World",
+        "id": "8b5c35e6-f86c-5466-9a7d-bf045896c9a3"
       },
       {
-        "prefab": "prefabs/ship.prefab.json"
+        "prefab": "prefabs/ship.prefab.json",
+        "id": "d029a58a-5ca6-5eae-8ef4-babcdb6629d9"
       },
       {
-        "prefab": "prefabs/player.prefab.json"
+        "prefab": "prefabs/player.prefab.json",
+        "id": "ed8675b7-05b6-5f06-99dd-6caaacbfba63"
       }
-    ]
+    ],
+    "id": "f37c6a1e-9d13-53f0-9bf5-fa8f969f6648"
   }
 }

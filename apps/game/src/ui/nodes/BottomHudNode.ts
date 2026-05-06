@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { collectNodesByName, exposedPropGroup, flattenExposedPropGroups, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps } from '../../nodes';
+import { collectNodesByName, exposedPropGroup, flattenExposedPropGroups, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import { TEXT, UI_ATLAS } from './uiLayout';
 
@@ -32,8 +32,8 @@ export class BottomHudNode extends TransformNode {
   private readonly slotLabelNodes: TextNode[] = [];
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
-  constructor() {
-    super({ name: 'UI.BottomHud', className: 'BottomHudNode', parentAnchor: 'bottom-center', origin: { x: 0, y: 1 }, sizeMode: 'explicit', debugScrollFactor: 0 });
+  constructor(options: TransformNodeOptions = {}) {
+    super({ name: 'UI.BottomHud', className: 'BottomHudNode', parentAnchor: 'bottom-center', origin: { x: 0, y: 1 }, sizeMode: 'explicit', debugScrollFactor: 0, ...options });
   }
 
   init(ctx: NodeContext): void {

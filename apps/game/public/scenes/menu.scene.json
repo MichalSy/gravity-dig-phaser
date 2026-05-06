@@ -1,13 +1,13 @@
 {
   "version": 1,
   "root": {
-    "type": "SceneNode",
     "name": "Scene.Menu",
     "children": [
       {
-        "type": "MenuNode",
-        "name": "Menu"
+        "name": "Menu",
+        "id": "6285c2b2-111e-537b-bc42-c8680153d15d"
       }
-    ]
+    ],
+    "id": "18958b84-2b9f-5176-8ef7-b29688b458ed"
   }
 }

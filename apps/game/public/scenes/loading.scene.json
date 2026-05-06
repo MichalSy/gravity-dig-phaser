@@ -1,16 +1,16 @@
 {
   "version": 1,
   "root": {
-    "type": "SceneNode",
     "name": "Scene.Loading",
     "children": [
       {
-        "type": "LoadingNode",
         "name": "Loading",
         "props": {
           "active": false
-        }
+        },
+        "id": "bd4b5c0f-3d3f-5752-9e1f-a4caafbeecd0"
       }
-    ]
+    ],
+    "id": "383489d7-473a-532b-8b6c-34f6bcbe29ef"
   }
 }

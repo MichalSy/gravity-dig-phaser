@@ -1,7 +1,6 @@
 {
   "version": 1,
   "root": {
-    "type": "ShipNode",
     "name": "Ship",
     "props": {
       "position": {
@@ -20,7 +19,6 @@
     },
     "children": [
       {
-        "type": "ImageNode",
         "name": "ShipImage",
         "props": {
           "assetId": "ship",
@@ -29,10 +27,10 @@
             "x": 0.5,
             "y": 1
           }
-        }
+        },
+        "id": "ec1dc6c9-11b5-5766-ab36-55f5abf693d0"
       },
       {
-        "type": "TextNode",
         "name": "ShipPrompt",
         "props": {
           "text": "",
@@ -52,8 +50,10 @@
             }
           },
           "visible": false
-        }
+        },
+        "id": "c5b09e65-7e2a-5ab9-9d6d-63e5945612fc"
       }
-    ]
+    ],
+    "id": "cea3d11d-10b3-55ab-acdb-cff58097215b"
   }
 }

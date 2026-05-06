@@ -1,15 +1,13 @@
 {
   "version": 1,
   "root": {
-    "type": "PlayerNode",
     "name": "Player",
     "children": [
       {
-        "type": "PlayerMovementControllerNode",
-        "name": "PlayerMovementController"
+        "name": "PlayerMovementController",
+        "id": "10eec272-8b13-515a-bf70-1e159f4ac4ac"
       },
       {
-        "type": "CollisionRectNode",
         "name": "PlayerBody",
         "props": {
           "size": {
@@ -23,7 +21,6 @@
         },
         "children": [
           {
-            "type": "AnimatedImageNode",
             "name": "PlayerImage",
             "props": {
               "animationSetId": "character",
@@ -38,18 +35,21 @@
                 "y": 0.5
               },
               "scale": 0.9
-            }
+            },
+            "id": "62f5fdc4-bfe6-5da3-aaf4-7bb2c6ce9d91"
           }
-        ]
+        ],
+        "id": "2b5e049b-2024-54ee-8910-239a49ab3bcd"
       },
       {
-        "type": "PlayerAnimatorNode",
-        "name": "PlayerAnimator"
+        "name": "PlayerAnimator",
+        "id": "ce7bf020-2d91-559c-9e95-549e058ca623"
       },
       {
-        "type": "MiningToolNode",
-        "name": "MiningTool"
+        "name": "MiningTool",
+        "id": "d2421a2e-dbc3-500b-b86d-b0b483b9f5c9"
       }
-    ]
+    ],
+    "id": "971ab469-6170-5fd4-8d91-8ee2aee777c1"
   }
 }

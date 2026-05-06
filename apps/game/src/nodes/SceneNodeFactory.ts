@@ -1,13 +1,9 @@
-import { AnimatedImageNode, type AnimatedImageNodeOptions } from './AnimatedImageNode';
-import { CollisionRectNode, type CollisionRectNodeOptions } from './CollisionRectNode';
 import { ImageNode, type ImageNodeOptions } from './ImageNode';
-import { SceneNode, type SceneNodeOptions } from './SceneNode';
 import { TextNode, type TextNodeOptions } from './TextNode';
 import type { GameNode } from './GameNode';
 
 export interface SceneNodeJson {
-  id?: string;
-  type?: string;
+  id: string;
   name?: string;
   prefab?: string;
   props?: Record<string, unknown>;
@@ -30,6 +26,7 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
   return {
     ...base,
     ...override,
+    id: base.id,
     prefab: undefined,
     props: { ...(base.props ?? {}), ...(override.props ?? {}) },
     children: override.children ?? base.children,
@@ -37,36 +34,25 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
 }
 
 export class SceneNodeFactoryRegistry {
-  private readonly factoriesByGuid = new Map<string, SceneNodeFactory>();
-  private readonly factoriesByType = new Map<string, SceneNodeFactory>();
+  private readonly factories = new Map<string, SceneNodeFactory>();
   private prefabResolver?: PrefabResolver;
-
-  constructor() {
-    this.registerType('SceneNode', (definition) => new SceneNode({ guid: definition.id, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) } as SceneNodeOptions));
-    this.registerType('ImageNode', (definition) => new ImageNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
-    this.registerType('TextNode', (definition) => new TextNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
-    this.registerType('AnimatedImageNode', (definition) => new AnimatedImageNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as AnimatedImageNodeOptions));
-    this.registerType('CollisionRectNode', (definition) => new CollisionRectNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as CollisionRectNodeOptions));
-  }
 
   withPrefabResolver(resolver: PrefabResolver): this {
     this.prefabResolver = resolver;
     return this;
   }
 
-  registerType(type: string, factory: SceneNodeFactory): this {
-    this.factoriesByType.set(type, factory);
+  register(guid: string, factory: SceneNodeFactory): this {
+    this.factories.set(guid, factory);
     return this;
   }
 
   registerImage(guid: string): this {
-    this.factoriesByGuid.set(guid, (definition) => new ImageNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
-    return this;
+    return this.register(guid, (definition) => new ImageNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
   }
 
   registerText(guid: string): this {
-    this.factoriesByGuid.set(guid, (definition) => new TextNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
-    return this;
+    return this.register(guid, (definition) => new TextNode({ guid: definition.id, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
   }
 
   createTree(definition: SceneNodeJson): GameNode {
@@ -86,18 +72,9 @@ export class SceneNodeFactoryRegistry {
   }
 
   private resolveFactory(definition: SceneNodeJson): SceneNodeFactory {
-    if (definition.type) {
-      const factory = this.factoriesByType.get(definition.type);
-      if (!factory) throw new Error(`No scene node factory registered for type '${definition.type}' (${definition.name ?? definition.id ?? 'unnamed'})`);
-      return factory;
-    }
-
-    if (definition.id) {
-      const factory = this.factoriesByGuid.get(definition.id);
-      if (factory) return factory;
-    }
-
-    throw new Error(`Scene node '${definition.name ?? definition.id ?? 'unnamed'}' needs a type or registered id factory`);
+    const factory = this.factories.get(definition.id);
+    if (!factory) throw new Error(`No scene node factory registered for '${definition.id}' (${definition.name ?? 'unnamed'})`);
+    return factory;
   }
 }
 

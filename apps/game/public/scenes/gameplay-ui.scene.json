@@ -1,26 +1,28 @@
 {
   "version": 1,
   "root": {
-    "type": "SceneNode",
     "name": "UI.Gameplay",
     "props": {
       "boundsMode": "content"
     },
     "children": [
       {
-        "type": "InputModeDetectorNode",
-        "name": "InputModeDetector"
+        "name": "InputModeDetector",
+        "id": "3c223156-2661-5541-ab0e-42c431ae5085"
       },
       {
-        "prefab": "prefabs/status-hud.prefab.json"
+        "prefab": "prefabs/status-hud.prefab.json",
+        "id": "67c317c9-b3a7-5d2c-9935-76b9a7044382"
       },
       {
-        "prefab": "prefabs/bottom-hud.prefab.json"
+        "prefab": "prefabs/bottom-hud.prefab.json",
+        "id": "2e67cf0e-7e26-545d-80a4-8555f2330df9"
       },
       {
-        "type": "TouchControlsNode",
-        "name": "UI.TouchControls"
+        "name": "UI.TouchControls",
+        "id": "4a9de373-ef65-56bf-9926-4579f7f4cc8d"
       }
-    ]
+    ],
+    "id": "9eab7f71-0566-598a-8059-a250c3d4f454"
   }
 }

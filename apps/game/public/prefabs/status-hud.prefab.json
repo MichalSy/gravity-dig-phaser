@@ -1,7 +1,6 @@
 {
   "version": 1,
   "root": {
-    "type": "StatusHudNode",
     "name": "UI.StatusHud",
     "props": {
       "parentAnchor": "top-left",
@@ -10,29 +9,30 @@
     },
     "children": [
       {
-        "type": "ImageNode",
         "name": "UI.StatusFrame",
         "props": {
           "assetId": "hud-hp-fuel-atlas#topHud",
           "scrollFactor": 0
-        }
+        },
+        "id": "b4ccf634-be36-5d3f-bfb7-720ebfec7610"
       },
       {
-        "type": "ImageNode",
         "name": "UI.HpFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#hpBar",
           "scrollFactor": 0
-        }
+        },
+        "id": "32557573-b908-589b-8b3d-e1ebeb4c69b5"
       },
       {
-        "type": "ImageNode",
         "name": "UI.FuelFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#fuelBar",
           "scrollFactor": 0
-        }
+        },
+        "id": "5985c1e1-b7d2-5062-8fe6-1402a1c45034"
       }
-    ]
+    ],
+    "id": "1179c663-883d-5315-bb23-459ade336b0e"
   }
 }

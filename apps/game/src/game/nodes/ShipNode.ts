@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TILE_SIZE } from '../../config/gameConfig';
-import { ImageNode, TextNode, TransformNode, type NodeContext } from '../../nodes';
+import { ImageNode, TextNode, TransformNode, type NodeContext, type TransformNodeOptions } from '../../nodes';
 import { buildShipDockPrompt, isAtShipDock, playerPromptY } from '../gameplayLogic';
 import { GAME_EVENTS, offGameEvent, onGameEvent } from '../gameEvents';
 import { createShipData, type ShipData } from '../nodeData';
@@ -21,8 +21,8 @@ export class ShipNode extends TransformNode {
   override readonly dependencies = ['World', 'PlayerState'] as const;
   readonly data: ShipData = createShipData();
 
-  constructor() {
-    super({ name: 'Ship', className: 'ShipNode', position: { x: SHIP_DOCK_CENTER_X, y: SHIP_BOTTOM_Y }, size: { width: SHIP_DISPLAY_WIDTH, height: SHIP_DISPLAY_HEIGHT }, origin: { x: 0.5, y: 1 }, sizeMode: 'explicit' });
+  constructor(options: TransformNodeOptions = {}) {
+    super({ name: 'Ship', className: 'ShipNode', position: { x: SHIP_DOCK_CENTER_X, y: SHIP_BOTTOM_Y }, size: { width: SHIP_DISPLAY_WIDTH, height: SHIP_DISPLAY_HEIGHT }, origin: { x: 0.5, y: 1 }, sizeMode: 'explicit', ...options });
   }
 
   init(ctx: NodeContext): void {

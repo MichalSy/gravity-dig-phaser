@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { ImageNode, TransformNode, type NodeContext, type NodeDebugProps } from '../../nodes';
+import { ImageNode, TransformNode, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
 import { hudScaleForWidth, UI_ATLAS } from './uiLayout';
 
 export class StatusHudNode extends TransformNode {
@@ -15,8 +15,8 @@ export class StatusHudNode extends TransformNode {
   private fuelFillNode!: ImageNode;
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
-  constructor() {
-    super({ name: 'UI.StatusHud', className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
+  constructor(options: TransformNodeOptions = {}) {
+    super({ name: 'UI.StatusHud', className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0, ...options });
   }
 
   init(ctx: NodeContext): void {
