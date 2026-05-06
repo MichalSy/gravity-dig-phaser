@@ -882,6 +882,8 @@ function ExposedPropsSection({
   );
 }
 
+const inputCommitDebounceMs = 250;
+
 function EditablePropRow({
   name,
   prop,
@@ -898,23 +900,44 @@ function EditablePropRow({
   const label = `${prop.label ?? name}${prop.readOnly ? ' · read-only' : ''}`;
   const [draft, setDraft] = useState<unknown>(value);
   const [editing, setEditing] = useState(false);
+  const commitTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (!editing) setDraft(value);
   }, [editing, value]);
 
-  function commit(nextValue = draft): void {
+  useEffect(() => () => clearCommitTimer(), []);
+
+  function clearCommitTimer(): void {
+    if (commitTimerRef.current === undefined) return;
+    window.clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = undefined;
+  }
+
+  function scheduleCommit(nextValue: unknown): void {
+    setEditing(true);
+    setDraft(nextValue);
+    clearCommitTimer();
+    commitTimerRef.current = window.setTimeout(() => commit(nextValue, { keepEditing: true }), inputCommitDebounceMs);
+  }
+
+  function commit(nextValue = draft, options: { keepEditing?: boolean } = {}): void {
     if (prop.readOnly) return;
     const coerced = coerceEditableValue(prop, nextValue);
     console.log('[Gravity Dig Debug][inspector]', 'commit', { name, prop, draft: nextValue, coerced });
     if (coerced === undefined) return;
+    clearCommitTimer();
     setDraft(coerced);
-    setEditing(false);
+    setEditing(options.keepEditing === true);
     onCommit(coerced);
   }
 
   function commitOnEnter(event: ReactKeyboardEvent<HTMLInputElement>): void {
-    if (event.key === 'Enter') event.currentTarget.blur();
+    if (event.key === 'Enter') {
+      clearCommitTimer();
+      commit();
+      event.currentTarget.blur();
+    }
   }
 
   if (prop.type === 'Boolean') {
@@ -930,7 +953,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="number" value={numberInputValue(draft)} min={prop.min} max={prop.max} step={prop.step ?? 1} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
+        <input className={styles.editorInput} type="number" value={numberInputValue(draft)} min={prop.min} max={prop.max} step={prop.step ?? 1} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit(event.currentTarget.value)} onBlur={() => commit()} />
       </>
     );
   }
@@ -939,7 +962,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <input className={styles.editorInput} type="text" value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft(event.currentTarget.value)} onBlur={() => commit()} />
+        <input className={styles.editorInput} type="text" value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit(event.currentTarget.value)} onBlur={() => commit()} />
       </>
     );
   }
@@ -973,8 +996,8 @@ function EditablePropRow({
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.x)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: event.currentTarget.value, y: point.y })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(point.y)} step={prop.step ?? (prop.type === 'Origin' ? 0.01 : 1)} min={prop.min} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ x: point.x, y: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
@@ -986,8 +1009,8 @@ function EditablePropRow({
       <>
         <span>{label}</span>
         <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => setDraft({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
+          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
         </div>
       </>
     );
