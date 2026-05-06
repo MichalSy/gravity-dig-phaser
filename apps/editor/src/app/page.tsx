@@ -754,7 +754,7 @@ function NodeTreeItem({
   const NodeIcon = iconForNode(node);
 
   return (
-    <li className={styles.treeItem}>
+    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`}>
       <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
         <button
           type="button"
