@@ -94,7 +94,7 @@ export class BottomHudNode extends GameNode {
     const viewportWidth = this.phaserScene.scale.width;
     const viewportHeight = this.phaserScene.scale.height;
     const layout = computeBottomHudLayout(viewportWidth, viewportHeight, state);
-    const frameWidth = (UI_ATLAS.bottomHud.w + layout.extraSlotCount * UI_ATLAS.repeatSlotStep) * layout.atlasScale;
+    const frameWidth = layout.totalWidth;
     const frameHeight = UI_ATLAS.bottomHud.h * layout.atlasScale;
     const frameX = layout.x;
     const frameY = layout.dockY;
@@ -113,15 +113,15 @@ export class BottomHudNode extends GameNode {
 
       const slotFrameNode = this.slotFrameNodes[i];
       slotFrameNode.depth = UI_DEPTH + slotLayout.frameDepth;
-      this.placeRegionNode(slotFrameNode, slotLayout.frameX - frameX, i === 1 ? slotFrameNode.position.y : slotLayout.frameY - frameY, layout.slotScale, slotLayout.isExtraSlot);
+      this.placeRegionNode(slotFrameNode, slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale, slotLayout.active);
 
-      const itemParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
-      const itemParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
+      const itemParentScaleX = 1;
+      const itemParentScaleY = 1;
       const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
       const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
       const slotItemNode = this.slotItemNodes[i];
       if (slotItemNode.isEffectivelyActive()) {
-        if (i !== 1) slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
+        slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
         slotItemNode.size = { width: itemWidth, height: itemHeight };
         slotItemNode.scaleX = itemWidth / item.frame.width;
         slotItemNode.scaleY = itemHeight / item.frame.height;
@@ -129,14 +129,14 @@ export class BottomHudNode extends GameNode {
         item.setVisible(slotItemNode.visible);
       }
 
-      const labelParentScaleX = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleX) : 1;
-      const labelParentScaleY = i === 1 ? Math.abs(this.slotFrameNodes[i].scaleY) : 1;
+      const labelParentScaleX = 1;
+      const labelParentScaleY = 1;
       const labelScaleX = slotLayout.labelScale / Math.max(labelParentScaleX, Number.EPSILON);
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
       if (labelNode.isEffectivelyActive()) {
         labelNode.visible = slotLayout.hasItem;
         labelNode.text = `x${slot?.quantity ?? 0}`;
-        if (i !== 1) labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
+        labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
         labelNode.scale = labelScaleX;
         labelNode.scaleX = labelScaleX;
         labelNode.scaleY = labelScaleY;
@@ -151,16 +151,13 @@ export class BottomHudNode extends GameNode {
     }
     for (let i = 0; i < this.slotFrameNodes.length; i += 1) {
       const frameNode = this.slotFrameNodes[i];
-      for (const prop of ['size', 'scale', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
-      if (i !== 1) frameNode.markExposedPropReadOnly('position', computedByHudLayout);
+      for (const prop of ['position', 'size', 'scale', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
 
       const itemNode = this.slotItemNodes[i];
-      for (const prop of ['size', 'scale', 'visible']) itemNode.markExposedPropReadOnly(prop, computedByHudLayout);
-      if (i !== 1) itemNode.markExposedPropReadOnly('position', computedByHudLayout);
+      for (const prop of ['position', 'size', 'scale', 'visible']) itemNode.markExposedPropReadOnly(prop, computedByHudLayout);
 
       const labelNode = this.slotLabelNodes[i];
-      for (const prop of ['visible', 'text', 'scale']) labelNode.markExposedPropReadOnly(prop, computedByHudLayout);
-      if (i !== 1) labelNode.markExposedPropReadOnly('position', computedByHudLayout);
+      for (const prop of ['position', 'visible', 'text', 'scale']) labelNode.markExposedPropReadOnly(prop, computedByHudLayout);
     }
   }
 

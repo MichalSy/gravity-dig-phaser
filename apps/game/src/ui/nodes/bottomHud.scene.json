@@ -38,7 +38,7 @@
         "id": "ac806217-66e0-4a83-8ccd-7891b49e9843",
         "name": "ui.slotFrame0",
         "props": {
-          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "assetId": "hud-hp-fuel-atlas#inventoryFirstSlot",
           "order": 20,
           "parentAnchor": "top-left",
           "visible": false,
@@ -86,69 +86,63 @@
         "id": "8f51a2f7-b2a6-4291-8168-87f69cd52fc8",
         "name": "ui.slotFrame1",
         "props": {
-          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "order": 21,
-          "parentAnchor": "center-left",
-          "position": {
-            "x": 0,
-            "y": 0
-          },
+          "parentAnchor": "top-left",
           "visible": false,
           "depth": 1010.8,
           "scrollFactor": 0,
           "origin": {
             "x": 0,
+            "y": 0
+          }
+        }
+      },
+      {
+        "id": "06460d2b-6c62-4d6a-b848-0a7f80df73f1",
+        "name": "ui.slotItem1",
+        "props": {
+          "assetId": "hud-item-rock",
+          "order": 31,
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0,
+          "origin": {
+            "x": 0.5,
             "y": 0.5
           }
-        },
-        "children": [
-          {
-            "id": "06460d2b-6c62-4d6a-b848-0a7f80df73f1",
-            "name": "ui.slotItem1",
-            "props": {
-              "assetId": "hud-item-rock",
-              "order": 31,
-              "parentAnchor": "center",
-              "position": {
-                "x": 0,
-                "y": 0
-              },
-              "visible": false,
-              "depth": 1012,
-              "scrollFactor": 0,
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              }
-            }
+        }
+      },
+      {
+        "id": "9ba299e0-b2ce-4973-b3d4-38c0faeec8b0",
+        "name": "ui.slotLabel1",
+        "props": {
+          "text": "",
+          "order": 41,
+          "parentAnchor": "bottom-right",
+          "position": {
+            "x": -50,
+            "y": -50
           },
-          {
-            "id": "9ba299e0-b2ce-4973-b3d4-38c0faeec8b0",
-            "name": "ui.slotLabel1",
-            "props": {
-              "text": "",
-              "order": 41,
-              "parentAnchor": "bottom-right",
-              "position": {
-                "x": -50,
-                "y": -50
-              },
-              "visible": false,
-              "depth": 1012,
-              "scrollFactor": 0,
-              "origin": {
-                "x": 1,
-                "y": 1
-              }
-            }
+          "visible": false,
+          "depth": 1012,
+          "scrollFactor": 0,
+          "origin": {
+            "x": 1,
+            "y": 1
           }
-        ]
+        }
       },
       {
         "id": "f11d3a50-62c5-46bc-8d38-aef480dac284",
         "name": "ui.slotFrame2",
         "props": {
-          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "order": 22,
           "parentAnchor": "top-left",
           "visible": false,
@@ -196,7 +190,7 @@
         "id": "bd6775ad-9138-4255-bcd9-1b1075cacaf0",
         "name": "ui.slotFrame3",
         "props": {
-          "assetId": "hud-hp-fuel-atlas#repeatSlot",
+          "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "order": 23,
           "parentAnchor": "top-left",
           "visible": false,

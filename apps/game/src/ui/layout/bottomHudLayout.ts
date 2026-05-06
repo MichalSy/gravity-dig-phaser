@@ -8,19 +8,20 @@ export interface BottomHudLayout {
   dockY: number;
   energyPct: number;
   energy: { x: number; y: number; w: number; h: number };
-  extraSlotCount: number;
+  visibleSlotCount: number;
   slotScale: number;
-  repeatSlotW: number;
-  repeatSlotH: number;
-  firstExtraX: number;
-  extraY: number;
+  slotW: number;
+  slotH: number;
+  firstSlotX: number;
+  slotY: number;
+  totalWidth: number;
   itemSize: number;
 }
 
 export interface BottomHudSlotLayout {
   active: boolean;
   hasItem: boolean;
-  isExtraSlot: boolean;
+  isFirstSlot: boolean;
   frameDepth: number;
   frameX: number;
   frameY: number;
@@ -35,11 +36,17 @@ export interface BottomHudSlotLayout {
 export function computeBottomHudLayout(width: number, height: number, state: HudState): BottomHudLayout {
   const scale = hudScaleForWidth(width);
   const atlasScale = (UI_ATLAS.bottomDisplayHeight * scale) / UI_ATLAS.bottomHud.h;
-  const extraSlotCount = Math.max(0, Math.min(3, state.cargo.visibleSlots - 1));
-  const frameW = (UI_ATLAS.bottomHud.w + extraSlotCount * UI_ATLAS.repeatSlotStep) * atlasScale;
-  const x = width / 2 - frameW / 2;
+  const maxSlotCount = state.cargo.slots.length;
+  const visibleSlotCount = Math.max(0, Math.min(maxSlotCount, state.cargo.visibleSlots));
+  const slotScale = atlasScale;
+  const slotW = UI_ATLAS.inventoryFirstSlot.w * slotScale;
+  const slotH = UI_ATLAS.inventoryFirstSlot.h * slotScale;
+  const totalWidth = Math.max(
+    UI_ATLAS.bottomHud.w * atlasScale,
+    UI_ATLAS.inventorySlotOrigin.x * atlasScale + (Math.max(visibleSlotCount, 1) - 1) * UI_ATLAS.inventorySlotStep * atlasScale + slotW,
+  );
+  const x = width / 2 - totalWidth / 2;
   const dockY = height - UI_ATLAS.bottomHud.h * atlasScale - 10 * scale;
-  const slotScale = (UI_ATLAS.repeatSlotHeight * atlasScale) / UI_ATLAS.repeatSlot.h;
 
   return {
     atlasScale,
@@ -52,39 +59,37 @@ export function computeBottomHudLayout(width: number, height: number, state: Hud
       w: UI_ATLAS.energySlot.w * atlasScale,
       h: UI_ATLAS.energySlot.h * atlasScale,
     },
-    extraSlotCount,
+    visibleSlotCount,
     slotScale,
-    repeatSlotW: UI_ATLAS.repeatSlot.w * slotScale,
-    repeatSlotH: UI_ATLAS.repeatSlot.h * slotScale,
-    firstExtraX: x + UI_ATLAS.extraSlotOrigin.x * atlasScale,
-    extraY: dockY + UI_ATLAS.extraSlotOrigin.y * atlasScale,
+    slotW,
+    slotH,
+    firstSlotX: x + UI_ATLAS.inventorySlotOrigin.x * atlasScale,
+    slotY: dockY + UI_ATLAS.inventorySlotOrigin.y * atlasScale,
+    totalWidth,
     itemSize: UI_ATLAS.slotContentSize * atlasScale,
   };
 }
 
 export function computeBottomHudSlotLayout(layout: BottomHudLayout, state: HudState, index: number): BottomHudSlotLayout {
-  const active = index < state.cargo.visibleSlots;
+  const active = index < layout.visibleSlotCount;
   const slot = state.cargo.slots[index];
-  const isExtraSlot = index > 0 && index <= layout.extraSlotCount;
-  const frameX = layout.firstExtraX + (index - 1) * UI_ATLAS.repeatSlotStep * layout.atlasScale;
-  const frameY = layout.extraY;
-  const centerX = frameX + layout.repeatSlotW / 2;
-  const centerY = frameY + layout.repeatSlotH / 2;
-  const itemX = index === 0 ? layout.x + UI_ATLAS.firstSlotCenter.x * layout.atlasScale : centerX;
-  const itemY = index === 0 ? layout.dockY + UI_ATLAS.firstSlotCenter.y * layout.atlasScale : centerY;
+  const frameX = layout.firstSlotX + index * UI_ATLAS.inventorySlotStep * layout.atlasScale;
+  const frameY = layout.slotY;
+  const centerX = frameX + layout.slotW / 2;
+  const centerY = frameY + layout.slotH / 2;
 
   return {
     active,
     hasItem: Boolean(active && slot?.itemId && slot.quantity > 0),
-    isExtraSlot,
-    frameDepth: 10.8 + (layout.extraSlotCount - index) * 0.01,
+    isFirstSlot: index === 0,
+    frameDepth: 10.8 + (layout.visibleSlotCount - index) * 0.01,
     frameX,
     frameY,
-    itemX,
-    itemY,
+    itemX: centerX,
+    itemY: centerY,
     itemSize: layout.itemSize,
-    labelX: itemX + layout.itemSize / 2 - 4 * layout.atlasScale,
-    labelY: itemY + layout.itemSize / 2 - 4 * layout.atlasScale,
+    labelX: centerX + layout.itemSize / 2 - 4 * layout.atlasScale,
+    labelY: centerY + layout.itemSize / 2 - 4 * layout.atlasScale,
     labelScale: layout.atlasScale * 4.05,
   };
 }
