@@ -3,14 +3,6 @@ import type { LevelData } from './level';
 
 type Facing = 'east' | 'west';
 
-export interface CameraZoomData {
-  zoomOffset: number;
-}
-
-export function createCameraZoomData(): CameraZoomData {
-  return { zoomOffset: 0 };
-}
-
 export interface GameWorldData {
   level?: LevelData;
   player?: Phaser.GameObjects.Image;

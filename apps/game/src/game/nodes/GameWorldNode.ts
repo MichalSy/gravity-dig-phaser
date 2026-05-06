@@ -4,7 +4,6 @@ import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
-import { CameraZoomNode } from './CameraZoomNode';
 import { LevelNode } from './LevelNode';
 import { MiningToolNode } from './MiningToolNode';
 import { PlayerNode } from './PlayerNode';
@@ -16,9 +15,8 @@ export class GameWorldNode extends GameNode {
   private playerState!: PlayerStateManagerNode;
   private playerNode!: PlayerNode;
   private miningTool!: MiningToolNode;
-  private cameraZoom!: CameraZoomNode;
   private worldView!: WorldView;
-  override readonly dependencies = ['level', 'playerState', 'player', 'miningTool', 'cameraZoom'] as const;
+  override readonly dependencies = ['level', 'playerState', 'player', 'miningTool'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
   constructor() {
@@ -35,7 +33,6 @@ export class GameWorldNode extends GameNode {
     this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
     this.playerNode = this.requireNode<PlayerNode>('player');
     this.miningTool = this.requireNode<MiningToolNode>('miningTool');
-    this.cameraZoom = this.requireNode<CameraZoomNode>('cameraZoom');
     this.createLevel();
   }
 
@@ -79,7 +76,7 @@ export class GameWorldNode extends GameNode {
     const bounds = worldBoundsForLevel(this.level);
     this.phaserScene.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
     this.phaserScene.cameras.main.setRoundPixels(true);
+    this.phaserScene.cameras.main.setZoom(1);
     this.phaserScene.cameras.main.startFollow(this.data.player, true, 0.18, 0.18);
-    this.cameraZoom.updateCameraZoom();
   }
 }

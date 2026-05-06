@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import {
   AutoSaveNode,
-  CameraZoomNode,
   GameWorldNode,
   HudNode,
   LevelGeneratorManagerNode,
@@ -77,7 +76,6 @@ export class AppScene extends Phaser.Scene {
     gameplay.addChild(new GameplayInputNode());
     gameplay.addChild(new HudStateNode());
     gameplay.addChild(new LevelNode());
-    gameplay.addChild(new CameraZoomNode());
     gameplay.addChild(new GameWorldNode());
     gameplay.addChild(new PlayerNode());
     gameplay.addChild(new MiningToolNode());
