@@ -33,7 +33,7 @@ export class TextNode extends TransformNode {
   protected phaserText?: Phaser.GameObjects.Text;
 
   constructor(options: TextNodeOptions = {}) {
-    const defaultOrigin = anchorOrigin('top-left');
+    const defaultOrigin = anchorOrigin(options.anchor ?? 'top-left');
     super({
       ...options,
       className: options.className ?? 'TextNode',
