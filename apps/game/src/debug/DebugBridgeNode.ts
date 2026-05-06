@@ -128,7 +128,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private shouldLogDebugMessage(type: DebugMessage['type']): boolean {
-    return type !== 'node:select' && type !== 'node:props';
+    return type !== 'node:select' && type !== 'node:props' && type !== 'node:patch' && type !== 'node:patch:ack';
   }
 
   private sendAssetList(): void {

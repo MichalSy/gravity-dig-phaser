@@ -845,14 +845,20 @@ function ExposedPropsSection({
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
 }) {
   const [localOverrides, setLocalOverrides] = useState<DebugNodePatch>({});
+  const lastPatchSignatureRef = useRef<string>('');
 
   useEffect(() => {
     setLocalOverrides({});
+    lastPatchSignatureRef.current = '';
   }, [node.id]);
 
   function patchProp(key: string, value: DebugNodePatch[string]): void {
+    const patch: DebugNodePatch = { [key]: value };
+    const signature = `${node.id}:${JSON.stringify(patch)}`;
+    if (lastPatchSignatureRef.current === signature) return;
+    lastPatchSignatureRef.current = signature;
     setLocalOverrides((current) => ({ ...current, [key]: value }));
-    onPatch(node, { [key]: value });
+    onPatch(node, patch);
   }
 
   const groups = definition?.exposedPropGroups ?? (definition?.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : undefined);
@@ -866,7 +872,7 @@ function ExposedPropsSection({
         <InspectorSection key={group.name} title={group.name}>
           {visibleProps.map(([key, prop]) => (
             <EditablePropRow
-              key={key}
+              key={`${node.id}:${key}`}
               name={key}
               prop={prop}
               value={key in localOverrides ? localOverrides[key] : currentEditablePropValue(key, prop, node, debugProps)}
@@ -901,10 +907,15 @@ function EditablePropRow({
   const [draft, setDraft] = useState<unknown>(value);
   const [editing, setEditing] = useState(false);
   const commitTimerRef = useRef<number | undefined>(undefined);
+  const lastCommitSignatureRef = useRef<string>('');
 
   useEffect(() => {
     if (!editing) setDraft(value);
   }, [editing, value]);
+
+  useEffect(() => {
+    lastCommitSignatureRef.current = '';
+  }, [name]);
 
   useEffect(() => () => clearCommitTimer(), []);
 
@@ -924,8 +935,16 @@ function EditablePropRow({
   function commit(nextValue = draft, options: { keepEditing?: boolean } = {}): void {
     if (prop.readOnly) return;
     const coerced = coerceEditableValue(prop, nextValue);
-    console.log('[Gravity Dig Debug][inspector]', 'commit', { name, prop, draft: nextValue, coerced });
     if (coerced === undefined) return;
+    const signature = JSON.stringify(coerced);
+    if (lastCommitSignatureRef.current === signature) {
+      clearCommitTimer();
+      setDraft(coerced);
+      setEditing(options.keepEditing === true);
+      return;
+    }
+    lastCommitSignatureRef.current = signature;
+    console.log('[Gravity Dig Debug][inspector]', 'commit', { name, prop, draft: nextValue, coerced });
     clearCommitTimer();
     setDraft(coerced);
     setEditing(options.keepEditing === true);
