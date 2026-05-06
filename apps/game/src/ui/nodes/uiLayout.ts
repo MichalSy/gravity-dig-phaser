@@ -30,7 +30,6 @@ export const UI_ATLAS = {
   bottomDisplayHeight: 180,
 } as const;
 
-export const UI_DEPTH = 1000;
 
 export function hudScaleForWidth(width: number): number {
   return Phaser.Math.Clamp(width / 1280, 0.5, 1);

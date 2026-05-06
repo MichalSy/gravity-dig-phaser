@@ -53,7 +53,6 @@ export class NodeRuntime {
     if (this.persistentNodeList.includes(node)) return node;
 
     this.persistentNodeList.push(node);
-    this.sortPersistentNodes();
 
     if (this.initialized) {
       this.mountSubtree(node, this.ctx);
@@ -76,7 +75,6 @@ export class NodeRuntime {
     if (this.rootNodes.includes(root)) return root;
 
     this.rootNodes.push(root);
-    this.sortRoots();
 
     if (this.initialized) {
       this.mountSubtree(root, this.ctx);
@@ -97,8 +95,8 @@ export class NodeRuntime {
   init(): void {
     if (this.initialized) return;
 
-    for (const node of this.sortedPersistentNodes()) node.initTree(this.ctx);
-    for (const root of this.sortedRoots()) root.initTree(this.ctx);
+    for (const node of this.persistentNodeList) node.initTree(this.ctx);
+    for (const root of this.rootNodes) root.initTree(this.ctx);
     this.initialized = true;
   }
 
@@ -106,15 +104,16 @@ export class NodeRuntime {
     this.init();
     if (this.resolved) return;
 
-    for (const node of this.sortedPersistentNodes()) node.resolveTree(this.ctx);
-    for (const root of this.sortedRoots()) root.resolveTree(this.ctx);
+    for (const node of this.persistentNodeList) node.resolveTree(this.ctx);
+    for (const root of this.rootNodes) root.resolveTree(this.ctx);
     this.resolved = true;
   }
 
   update(deltaMs: number): void {
     this.resolve();
-    for (const node of this.sortedPersistentNodes()) node.updateTree(deltaMs);
-    for (const root of this.sortedRoots()) root.updateTree(deltaMs);
+    for (const node of this.persistentNodeList) node.updateTree(deltaMs);
+    for (const root of this.rootNodes) root.updateTree(deltaMs);
+    this.applySceneObjectHierarchy();
   }
 
   destroy(): void {
@@ -154,21 +153,11 @@ export class NodeRuntime {
     if (this.resolved) node.resolveTree(ctx);
   }
 
-  private sortPersistentNodes(): void {
-    this.persistentNodeList.sort((a, b) => a.order - b.order);
-  }
-
-  private sortedPersistentNodes(): readonly GameNode[] {
-    this.sortPersistentNodes();
-    return this.persistentNodeList;
-  }
-
-  private sortRoots(): void {
-    this.rootNodes.sort((a, b) => a.order - b.order);
-  }
-
-  private sortedRoots(): readonly NodeRoot[] {
-    this.sortRoots();
-    return this.rootNodes;
+  private applySceneObjectHierarchy(): void {
+    const orderedObjects = [
+      ...this.rootNodes.flatMap((root) => root.getSceneObjectsInHierarchy()),
+      ...this.persistentNodeList.flatMap((node) => node.getSceneObjectsInHierarchy()),
+    ];
+    for (const object of orderedObjects) this.ctx.phaserScene.children.bringToTop(object);
   }
 }

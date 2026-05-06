@@ -15,13 +15,17 @@ export class MiningLaserView {
   }
 
   mount(): void {
-    this.laser = this.scene.add.graphics().setDepth(30);
+    this.laser = this.scene.add.graphics();
     this.targetMarker = this.scene.add
       .rectangle(0, 0, TILE_SIZE, TILE_SIZE)
       .setStrokeStyle(3, 0xf97316, 0.95)
       .setVisible(false)
-      .setDepth(25);
+      ;
     this.laserSound = this.scene.sound.add('laser-loop', { loop: true, volume: 0.28 });
+  }
+
+  getSceneObjects(): Phaser.GameObjects.GameObject[] {
+    return [this.targetMarker, ...this.crackOverlays.values(), this.laser];
   }
 
   resetForLevel(): void {
@@ -62,7 +66,7 @@ export class MiningLaserView {
         .image(cell.x * TILE_SIZE + TILE_SIZE / 2, cell.y * TILE_SIZE + TILE_SIZE / 2, `crack-${stage}`)
         .setOrigin(0.5)
         .setDisplaySize(TILE_SIZE, TILE_SIZE)
-        .setDepth(6);
+        ;
       this.crackOverlays.set(key, overlay);
       return;
     }

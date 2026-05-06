@@ -17,7 +17,7 @@ export class PlayerMovementControllerNode extends GameNode {
   readonly data: PlayerMovementControllerData = createPlayerMovementControllerData();
 
   constructor() {
-    super({ name: 'PlayerMovementController', order: 10, className: 'PlayerMovementControllerNode' });
+    super({ name: 'PlayerMovementController', className: 'PlayerMovementControllerNode' });
   }
 
   init(ctx: NodeContext): void {

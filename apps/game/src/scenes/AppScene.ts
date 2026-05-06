@@ -78,7 +78,7 @@ export class AppScene extends Phaser.Scene {
   }
 
   private mountGameplayScenes(): void {
-    const gameplay = new SceneNode({ rootName: 'Gameplay', order: 20 });
+    const gameplay = new SceneNode({ rootName: 'Gameplay' });
     gameplay.addChild(new LevelNode());
     gameplay.addChild(new GameWorldNode());
     gameplay.addChild(new PlayerNode());
@@ -88,7 +88,7 @@ export class AppScene extends Phaser.Scene {
     gameplay.addChild(new AutoSaveNode());
     this.appRoot.addChild(gameplay);
 
-    const gameplayUi = new SceneNode({ rootName: 'UI.Gameplay', order: 100, boundsMode: 'content' });
+    const gameplayUi = new SceneNode({ rootName: 'UI.Gameplay', boundsMode: 'content' });
     gameplayUi.addChild(new InputModeDetectorNode());
     gameplayUi.addChild(new StatusHudNode());
     gameplayUi.addChild(new BottomHudNode());

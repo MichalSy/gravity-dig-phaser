@@ -16,7 +16,7 @@ export class ShipDockNode extends GameNode {
   readonly data: ShipDockData = createShipDockData();
 
   constructor() {
-    super({ name: 'ShipDock', order: 80, className: 'ShipDockNode' });
+    super({ name: 'ShipDock', className: 'ShipDockNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -58,6 +58,10 @@ export class ShipDockNode extends GameNode {
       .setVisible(Boolean(message));
   }
 
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.shipPrompt ? [this.shipPrompt] : [];
+  }
+
   private resetPrompt(): void {
     if (!this.world) return;
     this.shipPrompt?.destroy();
@@ -71,8 +75,7 @@ export class ShipDockNode extends GameNode {
         padding: { x: 10, y: 6 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(50)
-      .setVisible(false);
+            .setVisible(false);
   }
 
   private tryReturnCargoToShip(): void {

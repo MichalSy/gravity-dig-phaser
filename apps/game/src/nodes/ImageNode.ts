@@ -110,7 +110,6 @@ export class ImageNode extends TransformNode {
       const parentScale = this.getParentWorldScale();
       this.size = visibleSize;
       this.visible = this.phaserImage.visible;
-      this.depth = this.phaserImage.depth;
       this.scale = parentScale.x === 0 ? this.phaserImage.scaleX : this.phaserImage.scaleX / parentScale.x;
       this.scaleX = this.scale;
       this.scaleY = parentScale.y === 0 ? this.phaserImage.scaleY : this.phaserImage.scaleY / parentScale.y;
@@ -158,6 +157,10 @@ export class ImageNode extends TransformNode {
     return { ...bounds, scrollFactor: this.scrollFactor };
   }
 
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.phaserImage ? [this.phaserImage, ...super.getSceneObjectsInHierarchy()] : super.getSceneObjectsInHierarchy();
+  }
+
   override getDebugProps(): NodeDebugProps {
     return {
       ...super.getDebugProps(),
@@ -165,7 +168,6 @@ export class ImageNode extends TransformNode {
       assetKind: this.asset.kind,
       textureKey: this.asset.textureKey,
       frameKey: isFrameAsset(this.asset) ? this.asset.frameKey : null,
-      depth: this.depth,
       scale: this.scale,
       localScaleX: this.getLocalScale().x,
       localScaleY: this.getLocalScale().y,

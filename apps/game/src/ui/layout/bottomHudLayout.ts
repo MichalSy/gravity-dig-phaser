@@ -22,7 +22,6 @@ export interface BottomHudSlotLayout {
   active: boolean;
   hasItem: boolean;
   isFirstSlot: boolean;
-  frameDepth: number;
   frameX: number;
   frameY: number;
   itemX: number;
@@ -82,7 +81,6 @@ export function computeBottomHudSlotLayout(layout: BottomHudLayout, state: HudSt
     active,
     hasItem: Boolean(active && slot?.itemId && slot.quantity > 0),
     isFirstSlot: index === 0,
-    frameDepth: 10.8 + (layout.visibleSlotCount - index) * 0.01,
     frameX,
     frameY,
     itemX: centerX,

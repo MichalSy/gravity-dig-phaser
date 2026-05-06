@@ -28,5 +28,4 @@ export const MENU_LAYOUT = {
   selectorScale: 0.7,
   labelFontSize: 27,
   versionFontSize: 16,
-  depth: 2000,
 };

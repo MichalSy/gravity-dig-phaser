@@ -20,7 +20,7 @@ export class GameWorldNode extends GameNode {
   readonly data: GameWorldData = createGameWorldData();
 
   constructor() {
-    super({ name: 'World', order: 5, className: 'GameWorldNode' });
+    super({ name: 'World', className: 'GameWorldNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -34,6 +34,12 @@ export class GameWorldNode extends GameNode {
     this.playerNode = this.requireNode<PlayerNode>('Player');
     this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
     this.createLevel();
+  }
+
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    const [sky, tunnel, ship, coreOuter, coreInner] = this.data.sceneObjects;
+    const [backwall, foreground] = this.levelNode?.getSceneObjects() ?? [];
+    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ship].filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
   }
 
   destroy(): void {

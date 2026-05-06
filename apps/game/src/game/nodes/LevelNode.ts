@@ -1,3 +1,4 @@
+import type Phaser from 'phaser';
 import { GameNode, type NodeContext } from '../../nodes';
 import { tileKey } from '../../utils/tileMath';
 import type { LevelData, TileCell } from '../level';
@@ -12,7 +13,7 @@ export class LevelNode extends GameNode {
   override readonly dependencies = ['LevelGenerator'] as const;
 
   constructor() {
-    super({ name: 'Level', order: 0, className: 'LevelNode' });
+    super({ name: 'Level', className: 'LevelNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -21,6 +22,14 @@ export class LevelNode extends GameNode {
 
   resolve(): void {
     this.levelGenerator = this.requireNode<LevelGeneratorManagerNode>('LevelGenerator');
+  }
+
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.getSceneObjects();
+  }
+
+  getSceneObjects(): Phaser.GameObjects.GameObject[] {
+    return this.tilemapView.getSceneObjects();
   }
 
   destroy(): void {

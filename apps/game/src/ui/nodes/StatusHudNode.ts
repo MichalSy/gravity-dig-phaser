@@ -3,7 +3,7 @@ import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { GameNode, ImageNode, type NodeContext, type NodeDebugProps } from '../../nodes';
-import { hudScaleForWidth, UI_ATLAS, UI_DEPTH } from './uiLayout';
+import { hudScaleForWidth, UI_ATLAS } from './uiLayout';
 
 export class StatusHudNode extends GameNode {
   private phaserScene!: Phaser.Scene;
@@ -16,10 +16,10 @@ export class StatusHudNode extends GameNode {
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
   constructor() {
-    super({ name: 'UI.StatusHud', order: 0, className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
-    this.statusFrameNode = this.addChild(new ImageNode({ name: 'UI.StatusFrame', assetId: 'hud-hp-fuel-atlas#topHud', order: 0, depth: UI_DEPTH + 10, scrollFactor: 0 }));
-    this.hpFillNode = this.addChild(new ImageNode({ name: 'UI.HpFill', assetId: 'hud-hp-fuel-atlas#hpBar', order: 10, depth: UI_DEPTH + 11, scrollFactor: 0 }));
-    this.fuelFillNode = this.addChild(new ImageNode({ name: 'UI.FuelFill', assetId: 'hud-hp-fuel-atlas#fuelBar', order: 20, depth: UI_DEPTH + 11, scrollFactor: 0 }));
+    super({ name: 'UI.StatusHud', className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
+    this.statusFrameNode = this.addChild(new ImageNode({ name: 'UI.StatusFrame', assetId: 'hud-hp-fuel-atlas#topHud', scrollFactor: 0 }));
+    this.hpFillNode = this.addChild(new ImageNode({ name: 'UI.HpFill', assetId: 'hud-hp-fuel-atlas#hpBar', scrollFactor: 0 }));
+    this.fuelFillNode = this.addChild(new ImageNode({ name: 'UI.FuelFill', assetId: 'hud-hp-fuel-atlas#fuelBar', scrollFactor: 0 }));
   }
 
   init(ctx: NodeContext): void {

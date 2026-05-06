@@ -26,12 +26,12 @@ export class VirtualJoystick {
       .circle(0, 0, this.radius, 0x0f172a, 0.58)
       .setStrokeStyle(4, color, 0.95)
       .setScrollFactor(0)
-      .setDepth(20);
+      ;
     this.knob = scene.add
       .circle(0, 0, 30, color, 0.88)
       .setStrokeStyle(3, 0xf8fafc, 0.92)
       .setScrollFactor(0)
-      .setDepth(21);
+      ;
     this.label = scene.add
       .text(0, 0, label, {
         fontFamily: 'Arial, sans-serif',
@@ -41,8 +41,7 @@ export class VirtualJoystick {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(22)
-      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+            .setResolution(Math.max(2, window.devicePixelRatio || 1));
 
     this.layout();
     this.setVisible(false);
@@ -50,6 +49,10 @@ export class VirtualJoystick {
 
   get active(): boolean {
     return this.activePointerId !== undefined;
+  }
+
+  getSceneObjects(): Phaser.GameObjects.GameObject[] {
+    return [this.base, this.knob, this.label];
   }
 
   destroy(): void {

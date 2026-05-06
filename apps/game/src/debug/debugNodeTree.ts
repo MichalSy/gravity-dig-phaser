@@ -10,7 +10,6 @@ interface FlatNodeSnapshot {
   active: boolean;
   effectiveActive: boolean;
   visible: boolean;
-  order: number;
   index: number;
   descriptor: DebugNodeDescriptor;
 }
@@ -47,7 +46,7 @@ export function diffDebugNodeTrees(previous: DebugNodeTreeSnapshot, next: DebugN
       continue;
     }
 
-    if (previousNode.parentId !== nextNode.parentId || previousNode.index !== nextNode.index || previousNode.order !== nextNode.order) {
+    if (previousNode.parentId !== nextNode.parentId || previousNode.index !== nextNode.index) {
       deltas.push({
         kind: 'moved',
         id,
@@ -55,7 +54,6 @@ export function diffDebugNodeTrees(previous: DebugNodeTreeSnapshot, next: DebugN
         index: nextNode.index,
         previousParentId: previousNode.parentId,
         previousIndex: previousNode.index,
-        order: nextNode.order,
       });
     }
 
@@ -67,7 +65,6 @@ export function diffDebugNodeTrees(previous: DebugNodeTreeSnapshot, next: DebugN
         index: nextNode.index,
         active: nextNode.active,
         visible: nextNode.visible,
-        order: nextNode.order,
         node: nextNode.descriptor,
       });
     }
@@ -93,7 +90,6 @@ function serializeNode(
     active: node.active,
     effectiveActive: node.isEffectivelyActive(),
     visible: node.visible,
-    order: node.order,
     index,
     children: node.children.map((child, childIndex) => serializeNode(child, id, childIndex, flatNodes, getNodeId)),
   };
@@ -107,7 +103,6 @@ function serializeNode(
     active: descriptor.active,
     effectiveActive: descriptor.effectiveActive ?? descriptor.active,
     visible: descriptor.visible,
-    order: descriptor.order,
     index: descriptor.index,
     descriptor,
   });

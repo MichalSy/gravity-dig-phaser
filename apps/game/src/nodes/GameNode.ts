@@ -42,7 +42,6 @@ export interface GameNodeOptions {
   className?: string;
   active?: boolean;
   visible?: boolean;
-  order?: number;
   position?: Partial<PointLike>;
   size?: Partial<SizeLike>;
   parentAnchor?: Anchor;
@@ -73,7 +72,6 @@ export abstract class GameNode {
   private readonly debugClassNameValue: string;
   active: boolean;
   visible: boolean;
-  order: number;
   position: PointLike;
   size: SizeLike;
   parentAnchor: Anchor;
@@ -99,7 +97,6 @@ export abstract class GameNode {
     this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
     this.visible = options.visible ?? true;
-    this.order = options.order ?? 0;
     this.position = { x: options.position?.x ?? 0, y: options.position?.y ?? 0 };
     this.size = { width: options.size?.width ?? 0, height: options.size?.height ?? 0 };
     this.parentAnchor = options.parentAnchor ?? 'top-left';
@@ -132,7 +129,6 @@ export abstract class GameNode {
 
     child.parent = this;
     this.childNodes.push(child);
-    this.sortChildren();
 
     if (this.nodeContext) {
       this.nodeContext.runtime.mountSubtree(child, this.nodeContext);
@@ -164,7 +160,7 @@ export abstract class GameNode {
     this.init(ctx);
     this.initialized = true;
 
-    for (const child of this.sortedChildren()) child.initTree(ctx);
+    for (const child of this.children) child.initTree(ctx);
   }
 
   resolveTree(ctx: NodeContext): void {
@@ -174,14 +170,14 @@ export abstract class GameNode {
     this.resolve(ctx);
     this.resolved = true;
 
-    for (const child of this.sortedChildren()) child.resolveTree(ctx);
+    for (const child of this.children) child.resolveTree(ctx);
   }
 
   updateTree(deltaMs: number): void {
     if (!this.isEffectivelyActive()) return;
 
     this.update(deltaMs);
-    for (const child of this.sortedChildren()) child.updateTree(deltaMs);
+    for (const child of this.children) child.updateTree(deltaMs);
     this.updateContentSizeFromChildren();
     this.afterChildrenUpdated();
   }
@@ -485,10 +481,6 @@ export abstract class GameNode {
         this.visible = value;
         this.refreshSubtreeActiveState();
         return true;
-      case 'order':
-        if (typeof value !== 'number') return false;
-        this.order = value;
-        return true;
       case 'position':
         if (!isPointPatchValue(value)) return false;
         this.position = value;
@@ -521,7 +513,6 @@ export abstract class GameNode {
     return {
       active: this.active,
       visible: this.visible,
-      order: this.order,
       sizeMode: this.sizeMode,
       boundsMode: this.boundsMode,
       debugScrollFactor: this.debugScrollFactor ?? null,
@@ -569,13 +560,8 @@ export abstract class GameNode {
     }
   }
 
-  private sortChildren(): void {
-    this.childNodes.sort((a, b) => a.order - b.order);
-  }
-
-  private sortedChildren(): readonly GameNode[] {
-    this.sortChildren();
-    return this.childNodes;
+  getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.childNodes.flatMap((child) => child.getSceneObjectsInHierarchy());
   }
 
   private getLocalContentBounds(): NodeDebugBounds | undefined {

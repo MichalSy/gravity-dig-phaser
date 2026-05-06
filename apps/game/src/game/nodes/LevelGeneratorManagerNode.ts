@@ -6,7 +6,7 @@ export class LevelGeneratorManagerNode extends GameNode {
   private planetConfig!: PlanetConfig;
 
   constructor() {
-    super({ name: 'LevelGenerator', order: 10, className: 'LevelGeneratorManagerNode' });
+    super({ name: 'LevelGenerator', className: 'LevelGeneratorManagerNode' });
   }
 
   init(ctx: NodeContext): void {

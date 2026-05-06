@@ -5,7 +5,7 @@ import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { exposedPropGroup, GameNode, ImageNode, SceneNodeFactoryRegistry, TextNode, type ExposedPropGroup, type GameNodeOptions, type NodeContext, type NodeDebugProps, type SceneFileJson } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import bottomHudSceneJson from './bottomHud.scene.json';
-import { TEXT, UI_ATLAS, UI_DEPTH } from './uiLayout';
+import { TEXT, UI_ATLAS } from './uiLayout';
 
 const bottomHudScene = bottomHudSceneJson as SceneFileJson;
 const bottomHudNodeRegistry = new SceneNodeFactoryRegistry()
@@ -117,7 +117,6 @@ export class BottomHudNode extends GameNode {
       const slotLayout = computeBottomHudSlotLayout(layout, state, i);
 
       const slotFrameNode = this.slotFrameNodes[i];
-      slotFrameNode.depth = UI_DEPTH + slotLayout.frameDepth;
       this.placeRegionNode(slotFrameNode, slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale, slotLayout.active);
 
       const itemParentScaleX = 1;

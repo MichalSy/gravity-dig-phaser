@@ -5,11 +5,10 @@ import { PlayerAnimatorNode } from './PlayerAnimatorNode';
 
 export class PlayerNode extends GameNode {
   constructor() {
-    super({ name: 'Player', order: 8, className: 'PlayerNode' });
+    super({ name: 'Player', className: 'PlayerNode' });
     this.addChild(new PlayerMovementControllerNode());
     const body = this.addChild(new CollisionRectNode({
       name: 'PlayerBody',
-      order: 20,
       size: { width: 40, height: 64 },
       origin: { x: 0.5, y: 0.5 },
     }));
@@ -18,11 +17,9 @@ export class PlayerNode extends GameNode {
         name: 'PlayerImage',
         animationSetId: 'character',
         animationId: 'idle.east',
-        order: 10,
         parentAnchor: 'center',
         position: { x: 0, y: 0 },
         origin: { x: 0.5, y: 0.5 },
-        depth: 20,
         scale: 0.9,
       }),
     );

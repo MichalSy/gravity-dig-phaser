@@ -7,7 +7,7 @@ export class InputModeDetectorNode extends GameNode {
   override readonly dependencies = ['GameplayInput'] as const;
 
   constructor() {
-    super({ name: 'UI.InputModeDetector', order: -10, className: 'InputModeDetectorNode' });
+    super({ name: 'UI.InputModeDetector', className: 'InputModeDetectorNode' });
   }
 
   resolve(): void {

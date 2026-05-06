@@ -28,13 +28,12 @@ export class MenuView {
 
   mount(): void {
     this.scene.cameras.main.setBackgroundColor('#000000');
-    this.background = this.scene.add.image(0, 0, 'title-screen').setOrigin(0.5).setScrollFactor(0).setDepth(MENU_LAYOUT.depth);
+    this.background = this.scene.add.image(0, 0, 'title-screen').setOrigin(0.5).setScrollFactor(0);
     this.selector = this.scene.add
       .triangle(0, 0, 0, 0, MENU_LAYOUT.selectorWidth, MENU_LAYOUT.selectorHeight / 2, 0, MENU_LAYOUT.selectorHeight, 0xf2c94c)
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(MENU_LAYOUT.depth + 6)
-      .setStrokeStyle(4, 0x4d260f);
+            .setStrokeStyle(4, 0x4d260f);
     this.versionLabel = this.scene.add
       .text(0, 0, `v${__APP_VERSION__}`, {
         fontFamily: 'Silkscreen',
@@ -46,8 +45,7 @@ export class MenuView {
       })
       .setOrigin(1, 1)
       .setScrollFactor(0)
-      .setDepth(MENU_LAYOUT.depth + 8)
-      .setAlpha(0.82)
+            .setAlpha(0.82)
       .setResolution(2);
 
     this.buttons = MENU_ITEMS.map((item, index) => this.createButton(item, index));
@@ -111,7 +109,7 @@ export class MenuView {
   }
 
   private createButton(item: MenuItem, index: number): MenuButton {
-    const image = this.scene.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setScrollFactor(0).setDepth(MENU_LAYOUT.depth + 5);
+    const image = this.scene.add.image(0, 0, 'menu-button-inactive').setOrigin(0.5).setScrollFactor(0);
     const label = this.scene.add
       .text(0, 0, item.label, {
         fontFamily: 'Silkscreen',
@@ -124,8 +122,7 @@ export class MenuView {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(MENU_LAYOUT.depth + 7)
-      .setResolution(2);
+            .setResolution(2);
 
     if (item.enabled) {
       image.setInteractive({ useHandCursor: true });

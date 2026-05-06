@@ -1288,7 +1288,6 @@ function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, n
   const local = debugProps?.localTransform;
   if (key === 'active') return node.active;
   if (key === 'visible') return node.visible;
-  if (key === 'order') return node.order;
   if (key === 'position') return local ? { x: local.x, y: local.y } : undefined;
   if (key === 'size') return local ? { width: local.width, height: local.height } : undefined;
   if (key === 'origin') return local ? { x: local.originX, y: local.originY } : undefined;
@@ -1350,7 +1349,6 @@ function AssetLinkRow({ name, value, assetId, onSelectAsset }: { name: string; v
 const exposedPropDuplicates = new Set([
   'active',
   'visible',
-  'order',
   'sizeMode',
   'boundsMode',
   'debugScrollFactor',
@@ -1508,7 +1506,7 @@ function applyNodeDeltas(roots: DebugNodeDescriptor[], deltas: DebugNodeDelta[])
     if (delta.kind === 'removed') removeNode(clonedRoots, delta.id);
     if (delta.kind === 'added' && delta.node) insertNode(clonedRoots, delta.node, delta.parentId, delta.index);
     if (delta.kind === 'moved') moveNode(clonedRoots, delta.id, delta.parentId, delta.index);
-    if (delta.kind === 'updated') updateNode(clonedRoots, delta.id, delta.node ?? { active: delta.active, visible: delta.visible, order: delta.order });
+    if (delta.kind === 'updated') updateNode(clonedRoots, delta.id, delta.node ?? { active: delta.active, visible: delta.visible });
   }
 
   return clonedRoots;

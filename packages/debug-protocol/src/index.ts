@@ -113,7 +113,6 @@ export interface DebugNodeDescriptor {
   active: boolean;
   effectiveActive?: boolean;
   visible: boolean;
-  order: number;
   index: number;
   children: DebugNodeDescriptor[];
 }
@@ -137,7 +136,6 @@ export interface DebugNodeDelta {
   previousIndex?: number;
   active?: boolean;
   visible?: boolean;
-  order?: number;
 }
 
 export interface DebugNodeDeltaMessage {

@@ -24,16 +24,20 @@ export class DebugBridgeNode extends GameNode {
   private overlay?: Phaser.GameObjects.Graphics;
 
   constructor(config: DebugConnectionConfig) {
-    super({ name: 'DebugBridge', order: -100, className: 'DebugBridgeNode' });
+    super({ name: 'DebugBridge', className: 'DebugBridgeNode' });
     this.config = config;
   }
 
   init(ctx: NodeContext): void {
     GameNode.debugLayoutEnabled = true;
     this.ctx = ctx;
-    this.overlay = ctx.phaserScene.add.graphics().setDepth(100_000).setVisible(false);
+    this.overlay = ctx.phaserScene.add.graphics().setVisible(false);
     ctx.phaserScene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterSceneUpdate, this);
     this.connect();
+  }
+
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.overlay ? [this.overlay] : [];
   }
 
   update(deltaMs: number): void {

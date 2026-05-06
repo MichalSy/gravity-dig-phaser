@@ -8,7 +8,7 @@ export class RunRecoveryNode extends GameNode {
   override readonly dependencies = ['PlayerState', 'MiningTool'] as const;
 
   constructor() {
-    super({ name: 'RunRecovery', order: 50, className: 'RunRecoveryNode' });
+    super({ name: 'RunRecovery', className: 'RunRecoveryNode' });
   }
 
   resolve(): void {

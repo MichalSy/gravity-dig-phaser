@@ -57,6 +57,10 @@ export class LevelTilemapView {
     this.tilemap?.putTileAt(-1, cell.x - this.mapOffsetX, cell.y - this.mapOffsetY, false, this.tileLayer);
   }
 
+  getSceneObjects(): Phaser.GameObjects.GameObject[] {
+    return [this.backwallLayer, this.tileLayer].filter((object) => object !== undefined) as Phaser.GameObjects.GameObject[];
+  }
+
   destroy(): void {
     this.tileLayer?.destroy();
     this.backwallLayer?.destroy();
@@ -75,7 +79,7 @@ export class LevelTilemapView {
 
     const layer = this.backwallTilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
-    this.backwallLayer = layer.setDepth(0.6).setAlpha(0.88);
+    this.backwallLayer = layer.setAlpha(0.88);
   }
 
   private drawForeground(data: number[][], minX: number, minY: number): void {
@@ -85,6 +89,6 @@ export class LevelTilemapView {
 
     const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
     if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
-    this.tileLayer = layer.setDepth(2);
+    this.tileLayer = layer;
   }
 }

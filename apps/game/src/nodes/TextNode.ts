@@ -111,11 +111,14 @@ export class TextNode extends TransformNode {
     return { ...bounds, scrollFactor: this.scrollFactor };
   }
 
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.phaserText ? [this.phaserText, ...super.getSceneObjectsInHierarchy()] : super.getSceneObjectsInHierarchy();
+  }
+
   override getDebugProps(): NodeDebugProps {
     return {
       ...super.getDebugProps(),
       text: this.text,
-      depth: this.depth,
       scale: this.scale,
       localScaleX: this.getLocalScale().x,
       localScaleY: this.getLocalScale().y,

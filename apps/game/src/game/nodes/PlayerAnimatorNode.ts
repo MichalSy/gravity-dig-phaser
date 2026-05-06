@@ -16,7 +16,7 @@ export class PlayerAnimatorNode extends GameNode {
   readonly data: PlayerAnimatorData = createPlayerAnimatorData();
 
   constructor() {
-    super({ name: 'PlayerAnimator', order: 30, className: 'PlayerAnimatorNode' });
+    super({ name: 'PlayerAnimator', className: 'PlayerAnimatorNode' });
   }
 
   init(ctx: NodeContext): void {

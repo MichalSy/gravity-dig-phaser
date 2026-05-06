@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { VirtualJoystick } from '../../controls/VirtualJoystick';
 import { GameNode, type NodeContext } from '../../nodes';
-import { UI_DEPTH } from './uiLayout';
 
 export class TouchControlsNode extends GameNode {
   private inputState!: GameplayInputNode;
@@ -13,7 +12,7 @@ export class TouchControlsNode extends GameNode {
   override readonly dependencies = ['GameplayInput'] as const;
 
   constructor() {
-    super({ name: 'UI.TouchControls', order: 50, className: 'TouchControlsNode' });
+    super({ name: 'UI.TouchControls', className: 'TouchControlsNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -31,8 +30,7 @@ export class TouchControlsNode extends GameNode {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(UI_DEPTH + 40)
-      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+            .setResolution(Math.max(2, window.devicePixelRatio || 1));
 
     this.phaserScene.input.on('pointerdown', this.handlePointerDown, this);
     this.phaserScene.input.on('pointermove', this.handlePointerMove, this);
@@ -68,6 +66,14 @@ export class TouchControlsNode extends GameNode {
       .setPosition(width / 2, Math.max(24, height - 26))
       .setWordWrapWidth(Math.max(320, width - 48))
       .setVisible(!compact && touchMode);
+  }
+
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return [
+      ...this.leftJoystick.getSceneObjects(),
+      ...this.rightJoystick.getSceneObjects(),
+      this.controlsHint,
+    ];
   }
 
   containsPointer(pointer: Phaser.Input.Pointer): boolean {

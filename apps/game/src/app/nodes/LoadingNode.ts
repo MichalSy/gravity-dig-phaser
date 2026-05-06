@@ -16,7 +16,7 @@ export class LoadingNode extends GameNode {
   private readonly mountGameplay: () => void;
 
   constructor(mountGameplay: () => void) {
-    super({ name: 'Loading', order: 5, active: false, className: 'LoadingNode' });
+    super({ name: 'Loading', active: false, className: 'LoadingNode' });
     this.mountGameplay = mountGameplay;
   }
 

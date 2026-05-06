@@ -26,7 +26,7 @@ export class MiningToolNode extends GameNode {
   readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
-    super({ name: 'MiningTool', order: 20, className: 'MiningToolNode' });
+    super({ name: 'MiningTool', className: 'MiningToolNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -42,6 +42,10 @@ export class MiningToolNode extends GameNode {
     this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('PlayerMovementController');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
+  }
+
+  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
+    return this.laserView.getSceneObjects();
   }
 
   destroy(): void {
