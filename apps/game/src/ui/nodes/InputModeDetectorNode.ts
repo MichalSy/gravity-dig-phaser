@@ -4,14 +4,14 @@ import type { InputMode } from '../HudState';
 
 export class InputModeDetectorNode extends GameNode {
   private inputState!: GameplayInputNode;
-  override readonly dependencies = ['gameplayInput'] as const;
+  override readonly dependencies = ['GameplayInput'] as const;
 
   constructor() {
-    super({ name: 'ui.inputModeDetector', order: -10, className: 'InputModeDetectorNode' });
+    super({ name: 'UI.InputModeDetector', order: -10, className: 'InputModeDetectorNode' });
   }
 
   resolve(): void {
-    this.inputState = this.requireNode<GameplayInputNode>('gameplayInput');
+    this.inputState = this.requireNode<GameplayInputNode>('GameplayInput');
   }
 
   update(): void {

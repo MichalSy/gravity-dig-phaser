@@ -19,7 +19,7 @@ export class PlayerStateManagerNode extends GameNode {
   private effectivePlayerStats!: EffectivePlayerStats;
 
   constructor() {
-    super({ name: 'playerState', order: 0, className: 'PlayerStateManagerNode' });
+    super({ name: 'PlayerState', order: 0, className: 'PlayerStateManagerNode' });
   }
 
   init(): void {

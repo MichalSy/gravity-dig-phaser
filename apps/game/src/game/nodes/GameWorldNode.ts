@@ -16,11 +16,11 @@ export class GameWorldNode extends GameNode {
   private playerNode!: PlayerNode;
   private miningTool!: MiningToolNode;
   private worldView!: WorldView;
-  override readonly dependencies = ['level', 'playerState', 'player', 'miningTool'] as const;
+  override readonly dependencies = ['Level', 'PlayerState', 'Player', 'MiningTool'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
   constructor() {
-    super({ name: 'world', order: 5, className: 'GameWorldNode' });
+    super({ name: 'World', order: 5, className: 'GameWorldNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -29,10 +29,10 @@ export class GameWorldNode extends GameNode {
   }
 
   resolve(): void {
-    this.levelNode = this.requireNode<LevelNode>('level');
-    this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
-    this.playerNode = this.requireNode<PlayerNode>('player');
-    this.miningTool = this.requireNode<MiningToolNode>('miningTool');
+    this.levelNode = this.requireNode<LevelNode>('Level');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.playerNode = this.requireNode<PlayerNode>('Player');
+    this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
     this.createLevel();
   }
 

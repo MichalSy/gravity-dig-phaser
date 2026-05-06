@@ -12,11 +12,11 @@ export class ShipDockNode extends GameNode {
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
   private shipPrompt?: Phaser.GameObjects.Text;
-  override readonly dependencies = ['world', 'playerState'] as const;
+  override readonly dependencies = ['World', 'PlayerState'] as const;
   readonly data: ShipDockData = createShipDockData();
 
   constructor() {
-    super({ name: 'shipDock', order: 80, className: 'ShipDockNode' });
+    super({ name: 'ShipDock', order: 80, className: 'ShipDockNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -26,8 +26,8 @@ export class ShipDockNode extends GameNode {
   }
 
   resolve(): void {
-    this.world = this.requireNode<GameWorldNode>('world');
-    this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
+    this.world = this.requireNode<GameWorldNode>('World');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.resetPrompt();
   }
 

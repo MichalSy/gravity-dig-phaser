@@ -9,13 +9,13 @@ export class StatusHudNode extends GameNode {
   private readonly statusFrameNode: ImageNode;
   private readonly hpFillNode: ImageNode;
   private readonly fuelFillNode: ImageNode;
-  override readonly dependencies = ['hudState'] as const;
+  override readonly dependencies = ['HudState'] as const;
 
   constructor() {
-    super({ name: 'ui.statusHud', order: 0, className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
-    this.statusFrameNode = this.addChild(new ImageNode({ name: 'ui.statusFrame', assetId: 'hud-hp-fuel-atlas#topHud', order: 0, depth: UI_DEPTH + 10, scrollFactor: 0 }));
-    this.hpFillNode = this.addChild(new ImageNode({ name: 'ui.hpFill', assetId: 'hud-hp-fuel-atlas#hpBar', order: 10, depth: UI_DEPTH + 11, scrollFactor: 0 }));
-    this.fuelFillNode = this.addChild(new ImageNode({ name: 'ui.fuelFill', assetId: 'hud-hp-fuel-atlas#fuelBar', order: 20, depth: UI_DEPTH + 11, scrollFactor: 0 }));
+    super({ name: 'UI.StatusHud', order: 0, className: 'StatusHudNode', parentAnchor: 'top-left', sizeMode: 'explicit', debugScrollFactor: 0 });
+    this.statusFrameNode = this.addChild(new ImageNode({ name: 'UI.StatusFrame', assetId: 'hud-hp-fuel-atlas#topHud', order: 0, depth: UI_DEPTH + 10, scrollFactor: 0 }));
+    this.hpFillNode = this.addChild(new ImageNode({ name: 'UI.HpFill', assetId: 'hud-hp-fuel-atlas#hpBar', order: 10, depth: UI_DEPTH + 11, scrollFactor: 0 }));
+    this.fuelFillNode = this.addChild(new ImageNode({ name: 'UI.FuelFill', assetId: 'hud-hp-fuel-atlas#fuelBar', order: 20, depth: UI_DEPTH + 11, scrollFactor: 0 }));
   }
 
   init(ctx: NodeContext): void {
@@ -23,7 +23,7 @@ export class StatusHudNode extends GameNode {
   }
 
   resolve(): void {
-    this.hudState = this.requireNode<HudStateNode>('hudState');
+    this.hudState = this.requireNode<HudStateNode>('HudState');
   }
 
   override getDebugProps(): NodeDebugProps {

@@ -22,11 +22,11 @@ export class MiningToolNode extends GameNode {
   private gameplayInput!: GameplayInputNode;
   private laserView!: MiningLaserView;
   private miningPressed = false;
-  override readonly dependencies = ['level', 'world', 'playerMovementController', 'playerState', 'gameplayInput'] as const;
+  override readonly dependencies = ['Level', 'World', 'PlayerMovementController', 'PlayerState', 'GameplayInput'] as const;
   readonly data: MiningToolData = createMiningToolData();
 
   constructor() {
-    super({ name: 'miningTool', order: 20, className: 'MiningToolNode' });
+    super({ name: 'MiningTool', order: 20, className: 'MiningToolNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -37,11 +37,11 @@ export class MiningToolNode extends GameNode {
   }
 
   resolve(): void {
-    this.levelNode = this.requireNode<LevelNode>('level');
-    this.world = this.requireNode<GameWorldNode>('world');
-    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('playerMovementController');
-    this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
-    this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
+    this.levelNode = this.requireNode<LevelNode>('Level');
+    this.world = this.requireNode<GameWorldNode>('World');
+    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('PlayerMovementController');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
   }
 
   destroy(): void {

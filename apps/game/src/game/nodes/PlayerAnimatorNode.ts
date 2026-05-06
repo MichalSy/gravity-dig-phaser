@@ -12,11 +12,11 @@ export class PlayerAnimatorNode extends GameNode {
   private playerMovementController!: PlayerMovementControllerNode;
   private miningTool!: MiningToolNode;
   private playerImage!: AnimatedImageNode;
-  override readonly dependencies = ['world', 'playerMovementController', 'miningTool', 'playerImage'] as const;
+  override readonly dependencies = ['World', 'PlayerMovementController', 'MiningTool', 'PlayerImage'] as const;
   readonly data: PlayerAnimatorData = createPlayerAnimatorData();
 
   constructor() {
-    super({ name: 'playerAnimator', order: 30, className: 'PlayerAnimatorNode' });
+    super({ name: 'PlayerAnimator', order: 30, className: 'PlayerAnimatorNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -24,10 +24,10 @@ export class PlayerAnimatorNode extends GameNode {
   }
 
   resolve(): void {
-    this.world = this.requireNode<GameWorldNode>('world');
-    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('playerMovementController');
-    this.miningTool = this.requireNode<MiningToolNode>('miningTool');
-    this.playerImage = this.requireNode<AnimatedImageNode>('playerImage');
+    this.world = this.requireNode<GameWorldNode>('World');
+    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('PlayerMovementController');
+    this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
+    this.playerImage = this.requireNode<AnimatedImageNode>('PlayerImage');
   }
 
   override getDebugBounds(): NodeDebugBounds | undefined {

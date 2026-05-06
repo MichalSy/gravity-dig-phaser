@@ -11,7 +11,7 @@ export class MenuNode extends GameNode {
   private readonly onStart: () => void;
 
   constructor(onStart: () => void) {
-    super({ name: 'menu', order: 0, className: 'MenuNode' });
+    super({ name: 'Menu', order: 0, className: 'MenuNode' });
     this.onStart = onStart;
   }
 

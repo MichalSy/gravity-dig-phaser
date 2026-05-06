@@ -25,7 +25,7 @@ export class AppScene extends Phaser.Scene {
   private gameplayMounted = false;
 
   constructor() {
-    super('app');
+    super('App-Root');
   }
 
   preload(): void {
@@ -41,7 +41,7 @@ export class AppScene extends Phaser.Scene {
     const debugConfig = readDebugConnectionConfig();
     if (debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(debugConfig));
 
-    this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'app' }));
+    this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'App-Root' }));
     this.menuNode = this.appRoot.addChild(new MenuNode(() => this.startGame()));
     this.loadingNode = this.appRoot.addChild(new LoadingNode(() => this.mountGameplay()));
 
@@ -73,7 +73,7 @@ export class AppScene extends Phaser.Scene {
   }
 
   private mountGameplayScenes(): void {
-    const gameplay = new SceneNode({ rootName: 'gameplay', order: 20 });
+    const gameplay = new SceneNode({ rootName: 'Gameplay', order: 20 });
     gameplay.addChild(new HudStateNode());
     gameplay.addChild(new LevelNode());
     gameplay.addChild(new GameWorldNode());
@@ -85,7 +85,7 @@ export class AppScene extends Phaser.Scene {
     gameplay.addChild(new AutoSaveNode());
     this.appRoot.addChild(gameplay);
 
-    const gameplayUi = new SceneNode({ rootName: 'ui.gameplay', order: 100, boundsMode: 'content' });
+    const gameplayUi = new SceneNode({ rootName: 'UI.Gameplay', order: 100, boundsMode: 'content' });
     gameplayUi.addChild(new InputModeDetectorNode());
     gameplayUi.addChild(new StatusHudNode());
     gameplayUi.addChild(new BottomHudNode());

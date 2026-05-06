@@ -10,10 +10,10 @@ export class TouchControlsNode extends GameNode {
   private rightJoystick!: VirtualJoystick;
   private controlsHint!: Phaser.GameObjects.Text;
   private phaserScene!: Phaser.Scene;
-  override readonly dependencies = ['gameplayInput'] as const;
+  override readonly dependencies = ['GameplayInput'] as const;
 
   constructor() {
-    super({ name: 'ui.touchControls', order: 50, className: 'TouchControlsNode' });
+    super({ name: 'UI.TouchControls', order: 50, className: 'TouchControlsNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -41,7 +41,7 @@ export class TouchControlsNode extends GameNode {
   }
 
   resolve(): void {
-    this.inputState = this.requireNode<GameplayInputNode>('gameplayInput');
+    this.inputState = this.requireNode<GameplayInputNode>('GameplayInput');
     this.inputState.setControlPointerResolver((pointer) => this.containsPointer(pointer));
   }
 

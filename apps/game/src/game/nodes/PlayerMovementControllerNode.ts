@@ -13,11 +13,11 @@ export class PlayerMovementControllerNode extends GameNode {
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
   private player?: CollisionRectNode;
-  override readonly dependencies = ['level', 'playerState', 'gameplayInput'] as const;
+  override readonly dependencies = ['Level', 'PlayerState', 'GameplayInput'] as const;
   readonly data: PlayerMovementControllerData = createPlayerMovementControllerData();
 
   constructor() {
-    super({ name: 'playerMovementController', order: 10, className: 'PlayerMovementControllerNode' });
+    super({ name: 'PlayerMovementController', order: 10, className: 'PlayerMovementControllerNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -27,9 +27,9 @@ export class PlayerMovementControllerNode extends GameNode {
   }
 
   resolve(): void {
-    this.levelNode = this.requireNode<LevelNode>('level');
-    this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
-    this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
+    this.levelNode = this.requireNode<LevelNode>('Level');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
   }
 
   destroy(): void {

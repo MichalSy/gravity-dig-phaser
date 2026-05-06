@@ -9,10 +9,10 @@ export class LevelNode extends GameNode {
   private levelGenerator!: LevelGeneratorManagerNode;
   private tilemapView!: LevelTilemapView;
   private currentLevel?: LevelData;
-  override readonly dependencies = ['levelGenerator'] as const;
+  override readonly dependencies = ['LevelGenerator'] as const;
 
   constructor() {
-    super({ name: 'level', order: 0, className: 'LevelNode' });
+    super({ name: 'Level', order: 0, className: 'LevelNode' });
   }
 
   init(ctx: NodeContext): void {
@@ -20,7 +20,7 @@ export class LevelNode extends GameNode {
   }
 
   resolve(): void {
-    this.levelGenerator = this.requireNode<LevelGeneratorManagerNode>('levelGenerator');
+    this.levelGenerator = this.requireNode<LevelGeneratorManagerNode>('LevelGenerator');
   }
 
   destroy(): void {

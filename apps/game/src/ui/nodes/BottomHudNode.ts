@@ -41,7 +41,7 @@ export class BottomHudNode extends GameNode {
   private readonly slotFrameNodes: ImageNode[] = [];
   private readonly slotItemNodes: ImageNode[] = [];
   private readonly slotLabelNodes: TextNode[] = [];
-  override readonly dependencies = ['hudState'] as const;
+  override readonly dependencies = ['HudState'] as const;
 
   constructor() {
     super({ guid: bottomHudScene.root.id, name: bottomHudScene.root.name, className: 'BottomHudNode', sizeMode: 'explicit', debugScrollFactor: 0, ...(bottomHudScene.root.props as GameNodeOptions | undefined) });
@@ -52,13 +52,13 @@ export class BottomHudNode extends GameNode {
       collectNodesByName(child, nodesByName);
     }
 
-    this.actionFrameNode = requireSceneNode<ImageNode>(nodesByName, 'ui.actionFrame');
-    this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'ui.energyFill');
+    this.actionFrameNode = requireSceneNode<ImageNode>(nodesByName, 'UI.ActionFrame');
+    this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'UI.EnergyFill');
 
     for (let i = 0; i < 4; i += 1) {
-      const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `ui.slotFrame${i}`);
-      const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `ui.slotItem${i}`);
-      const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `ui.slotLabel${i}`);
+      const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotFrame${i}`);
+      const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotItem${i}`);
+      const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `UI.SlotLabel${i}`);
       slotLabelNode.style = TEXT.value;
       this.slotFrameNodes.push(slotFrameNode);
       this.slotItemNodes.push(slotItemNode);
@@ -75,7 +75,7 @@ export class BottomHudNode extends GameNode {
   }
 
   resolve(): void {
-    this.hudState = this.requireNode<HudStateNode>('hudState');
+    this.hudState = this.requireNode<HudStateNode>('HudState');
   }
 
   override getDebugProps(): NodeDebugProps {

@@ -4,15 +4,15 @@ import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class AutoSaveNode extends GameNode {
   private playerState!: PlayerStateManagerNode;
-  override readonly dependencies = ['playerState'] as const;
+  override readonly dependencies = ['PlayerState'] as const;
   readonly data: AutoSaveData = createAutoSaveData();
 
   constructor() {
-    super({ name: 'autoSave', order: 90, className: 'AutoSaveNode' });
+    super({ name: 'AutoSave', order: 90, className: 'AutoSaveNode' });
   }
 
   resolve(): void {
-    this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
   }
 
   update(deltaMs: number): void {

@@ -9,17 +9,17 @@ export class HudNode extends GameNode {
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
   private hudState!: HudStateNode;
-  override readonly dependencies = ['world', 'playerState', 'gameplayInput', 'hudState'] as const;
+  override readonly dependencies = ['World', 'PlayerState', 'GameplayInput', 'HudState'] as const;
 
   constructor() {
-    super({ name: 'hud', order: 60, className: 'HudNode' });
+    super({ name: 'Hud', order: 60, className: 'HudNode' });
   }
 
   resolve(): void {
-    this.world = this.requireNode<GameWorldNode>('world');
-    this.playerState = this.requireNode<PlayerStateManagerNode>('playerState');
-    this.gameplayInput = this.requireNode<GameplayInputNode>('gameplayInput');
-    this.hudState = this.requireNode<HudStateNode>('hudState');
+    this.world = this.requireNode<GameWorldNode>('World');
+    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
+    this.hudState = this.requireNode<HudStateNode>('HudState');
   }
 
   update(): void {

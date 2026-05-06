@@ -749,7 +749,8 @@ function NodeTreeItem({
 }) {
   const hasChildren = node.children.length > 0;
   const effectiveActive = isEffectivelyActive(node);
-  const isExpanded = effectiveActive && expandedNodeIds.has(node.id);
+  const alwaysExpanded = isAppRootNode(node);
+  const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
   return (
@@ -758,11 +759,13 @@ function NodeTreeItem({
         <button
           type="button"
           className={styles.expandButton}
-          disabled={!hasChildren}
-          aria-label={hasChildren ? (isExpanded ? `${node.name} einklappen` : `${node.name} aufklappen`) : undefined}
-          onClick={() => onToggleNode(node.id)}
+          disabled={!hasChildren || alwaysExpanded}
+          aria-label={hasChildren && !alwaysExpanded ? (isExpanded ? `${node.name} einklappen` : `${node.name} aufklappen`) : undefined}
+          onClick={() => {
+            if (!alwaysExpanded) onToggleNode(node.id);
+          }}
         >
-          {hasChildren ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span className={styles.expandSpacer} />}
+          {hasChildren && !alwaysExpanded ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span className={styles.expandSpacer} />}
         </button>
         <button type="button" className={styles.nodeContent} onClick={() => onSelectNode(node.id)}>
           <NodeIcon className={styles.nodeIcon} size={14} />
@@ -776,6 +779,10 @@ function NodeTreeItem({
       {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />}
     </li>
   );
+}
+
+function isAppRootNode(node: DebugNodeDescriptor): boolean {
+  return node.name === 'App-Root' && node.className === 'NodeRoot';
 }
 
 function iconForNode(node: DebugNodeDescriptor) {

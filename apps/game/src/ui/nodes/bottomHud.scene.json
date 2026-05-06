@@ -2,7 +2,7 @@
   "version": 1,
   "root": {
     "id": "bb3b713f-d685-44a3-b0cd-95596cbce41b",
-    "name": "ui.bottomHud",
+    "name": "UI.BottomHud",
     "props": {
       "parentAnchor": "bottom-center",
       "order": 10,
@@ -16,7 +16,7 @@
     "children": [
       {
         "id": "af9fee4b-158b-4ead-8264-c46e5d7af366",
-        "name": "ui.actionFrame",
+        "name": "UI.ActionFrame",
         "props": {
           "assetId": "hud-hp-fuel-atlas#bottomHud",
           "order": 0,
@@ -26,7 +26,7 @@
       },
       {
         "id": "470d2d11-1ada-4bac-9d20-fde438408424",
-        "name": "ui.energyFill",
+        "name": "UI.EnergyFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#energyBar",
           "order": 10,
@@ -36,7 +36,7 @@
       },
       {
         "id": "ac806217-66e0-4a83-8ccd-7891b49e9843",
-        "name": "ui.slotFrame0",
+        "name": "UI.SlotFrame0",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryFirstSlot",
           "order": 20,
@@ -52,7 +52,7 @@
       },
       {
         "id": "38b37c84-8e23-4916-a9e2-73fddf87e35d",
-        "name": "ui.slotItem0",
+        "name": "UI.SlotItem0",
         "props": {
           "assetId": "hud-item-rock",
           "order": 30,
@@ -68,7 +68,7 @@
       },
       {
         "id": "966e64da-3cd8-47e0-b74b-9cc28b4bb246",
-        "name": "ui.slotLabel0",
+        "name": "UI.SlotLabel0",
         "props": {
           "text": "",
           "order": 40,
@@ -84,7 +84,7 @@
       },
       {
         "id": "8f51a2f7-b2a6-4291-8168-87f69cd52fc8",
-        "name": "ui.slotFrame1",
+        "name": "UI.SlotFrame1",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "order": 21,
@@ -100,7 +100,7 @@
       },
       {
         "id": "06460d2b-6c62-4d6a-b848-0a7f80df73f1",
-        "name": "ui.slotItem1",
+        "name": "UI.SlotItem1",
         "props": {
           "assetId": "hud-item-rock",
           "order": 31,
@@ -120,7 +120,7 @@
       },
       {
         "id": "9ba299e0-b2ce-4973-b3d4-38c0faeec8b0",
-        "name": "ui.slotLabel1",
+        "name": "UI.SlotLabel1",
         "props": {
           "text": "",
           "order": 41,
@@ -140,7 +140,7 @@
       },
       {
         "id": "f11d3a50-62c5-46bc-8d38-aef480dac284",
-        "name": "ui.slotFrame2",
+        "name": "UI.SlotFrame2",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "order": 22,
@@ -156,7 +156,7 @@
       },
       {
         "id": "4b54d317-4b8d-46f5-90d6-214358c4d188",
-        "name": "ui.slotItem2",
+        "name": "UI.SlotItem2",
         "props": {
           "assetId": "hud-item-rock",
           "order": 32,
@@ -172,7 +172,7 @@
       },
       {
         "id": "1e1504a9-96f5-45b2-be68-c69eed3bdb1c",
-        "name": "ui.slotLabel2",
+        "name": "UI.SlotLabel2",
         "props": {
           "text": "",
           "order": 42,
@@ -188,7 +188,7 @@
       },
       {
         "id": "bd6775ad-9138-4255-bcd9-1b1075cacaf0",
-        "name": "ui.slotFrame3",
+        "name": "UI.SlotFrame3",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "order": 23,
@@ -204,7 +204,7 @@
       },
       {
         "id": "65cd6cb1-6dc7-4937-80af-315cdd92c12e",
-        "name": "ui.slotItem3",
+        "name": "UI.SlotItem3",
         "props": {
           "assetId": "hud-item-rock",
           "order": 33,
@@ -220,7 +220,7 @@
       },
       {
         "id": "80bd70f5-c17b-4058-8b77-2acfc2087e53",
-        "name": "ui.slotLabel3",
+        "name": "UI.SlotLabel3",
         "props": {
           "text": "",
           "order": 43,

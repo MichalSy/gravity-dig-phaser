@@ -5,17 +5,17 @@ import { PlayerAnimatorNode } from './PlayerAnimatorNode';
 
 export class PlayerNode extends GameNode {
   constructor() {
-    super({ name: 'player', order: 8, className: 'PlayerNode' });
+    super({ name: 'Player', order: 8, className: 'PlayerNode' });
     this.addChild(new PlayerMovementControllerNode());
     const body = this.addChild(new CollisionRectNode({
-      name: 'playerBody',
+      name: 'PlayerBody',
       order: 20,
       size: { width: 40, height: 64 },
       origin: { x: 0.5, y: 0.5 },
     }));
     body.addChild(
       new AnimatedImageNode({
-        name: 'playerImage',
+        name: 'PlayerImage',
         animationSetId: 'character',
         animationId: 'idle.east',
         order: 10,
@@ -36,15 +36,15 @@ export class PlayerNode extends GameNode {
   spawnAt(x: number, y: number): Phaser.GameObjects.Image {
     this.bodyNode.setPosition(x, y);
     this.imageNode.update(0);
-    this.requireNode<PlayerMovementControllerNode>('playerMovementController').setPlayer(this.bodyNode);
+    this.requireNode<PlayerMovementControllerNode>('PlayerMovementController').setPlayer(this.bodyNode);
     return this.image;
   }
 
   private get bodyNode(): CollisionRectNode {
-    return this.requireNode<CollisionRectNode>('playerBody');
+    return this.requireNode<CollisionRectNode>('PlayerBody');
   }
 
   private get imageNode(): AnimatedImageNode {
-    return this.requireNode<AnimatedImageNode>('playerImage');
+    return this.requireNode<AnimatedImageNode>('PlayerImage');
   }
 }

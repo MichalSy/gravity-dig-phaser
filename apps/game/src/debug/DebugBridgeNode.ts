@@ -24,7 +24,7 @@ export class DebugBridgeNode extends GameNode {
   private overlay?: Phaser.GameObjects.Graphics;
 
   constructor(config: DebugConnectionConfig) {
-    super({ name: 'debugBridge', order: -100, className: 'DebugBridgeNode' });
+    super({ name: 'DebugBridge', order: -100, className: 'DebugBridgeNode' });
     this.config = config;
   }
 
