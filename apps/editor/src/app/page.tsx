@@ -166,6 +166,7 @@ export default function Home() {
 
       socket.addEventListener('open', () => {
         const hello: DebugMessage = { type: 'hello', role: 'editor', sessionId };
+        console.debug('[Gravity Dig Debug][editor->game]', hello.type, hello);
         socket.send(JSON.stringify(hello));
         setStatus('connected');
         setLastEvent('Relay verbunden. Game wird im Editor geladen.');
@@ -174,6 +175,7 @@ export default function Home() {
       socket.addEventListener('message', (event) => {
         const message = parseDebugMessage(event.data);
         if (!message) return;
+        console.debug('[Gravity Dig Debug][game->editor]', message.type, message);
         handleMessage(message);
       });
 
@@ -255,6 +257,7 @@ export default function Home() {
     setSelectedNodeProps(undefined);
     if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
     const selectMessage: DebugMessage = { type: 'node:select', sessionId, nodeId: selectedNodeId, sentAt: Date.now() };
+    console.debug('[Gravity Dig Debug][editor->game]', selectMessage.type, selectMessage);
     socketRef.current.send(JSON.stringify(selectMessage));
   }, [selectedNodeId, sessionId]);
 
@@ -297,6 +300,7 @@ export default function Home() {
     }
 
     const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, guid: node.guid, name: node.name, props, sentAt: Date.now() };
+    console.debug('[Gravity Dig Debug][editor->game]', message.type, message);
     socketRef.current.send(JSON.stringify(message));
     setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
   }
@@ -910,6 +914,7 @@ function EditablePropRow({
 
   function commit(nextValue = draft): void {
     const coerced = coerceEditableValue(prop, nextValue);
+    console.debug('[Gravity Dig Debug][inspector]', 'commit', { name, prop, draft: nextValue, coerced });
     if (coerced === undefined) return;
     setDraft(coerced);
     setEditing(false);
@@ -1041,15 +1046,20 @@ function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, n
 }
 
 function numberInputValue(value: unknown): string | number {
+  if (typeof value === 'string') return value;
   return typeof value === 'number' && Number.isFinite(value) ? value : '';
 }
 
-function isPointValue(value: unknown): value is { x: number; y: number } {
-  return typeof value === 'object' && value !== null && typeof (value as { x: unknown }).x === 'number' && typeof (value as { y: unknown }).y === 'number';
+function isDraftNumber(value: unknown): value is number | string {
+  return typeof value === 'number' || typeof value === 'string';
 }
 
-function isSizeValue(value: unknown): value is { width: number; height: number } {
-  return typeof value === 'object' && value !== null && typeof (value as { width: unknown }).width === 'number' && typeof (value as { height: unknown }).height === 'number';
+function isPointValue(value: unknown): value is { x: number | string; y: number | string } {
+  return typeof value === 'object' && value !== null && isDraftNumber((value as { x: unknown }).x) && isDraftNumber((value as { y: unknown }).y);
+}
+
+function isSizeValue(value: unknown): value is { width: number | string; height: number | string } {
+  return typeof value === 'object' && value !== null && isDraftNumber((value as { width: unknown }).width) && isDraftNumber((value as { height: unknown }).height);
 }
 
 function InspectorSection({ title, children }: { title: string; children: ReactNode }) {
