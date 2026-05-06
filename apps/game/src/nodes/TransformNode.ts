@@ -1,6 +1,6 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { GameNode, type GameNodeOptions } from './GameNode';
-import { exposedPropGroup, propNumber, propScale, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propNumber, propOrigin, propScale, type ExposedPropGroup } from './SceneProps';
 
 export interface TransformNodeOptions extends GameNodeOptions {
   depth?: number;
@@ -14,14 +14,10 @@ export abstract class TransformNode extends GameNode {
   static override readonly sceneType: string = 'TransformNode';
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...GameNode.exposedPropGroups,
-    exposedPropGroup('Render Transform', {
-      depth: propNumber({ label: 'Depth', step: 0.1 }),
-      scrollFactor: propNumber({ label: 'Scroll Factor', step: 0.01 }),
-    }),
-    exposedPropGroup('Render Pivot', {
-      rotation: GameNode.exposedPropGroups[1].props.rotation,
+    exposedPropGroup('Transform', {
+      origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
+      rotation: propNumber({ label: 'Rotation', step: 0.01 }),
       scale: propScale({ label: 'Scale', step: 0.01 }),
-      origin: GameNode.exposedPropGroups[1].props.origin,
     }),
   ];
 

@@ -229,6 +229,29 @@
   gap: 14px;
 }
 
+.inspectorHeaderCard {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(125, 211, 252, 0.16);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(2, 6, 23, 0.32);
+}
+
+.inspectorClassTag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #7dd3fc;
+  font-size: 10px;
+  font-weight: 900;
+}
+
 .inspector > div,
 .inspectorSection {
   display: grid;

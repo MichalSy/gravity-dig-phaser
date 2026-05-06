@@ -3,7 +3,7 @@ import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransfor
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, anchorOrigin, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
-import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propNumber, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
+import { exposedPropGroup, flattenExposedPropGroups, propAnchor, propBoolean, propPosition, propSize, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
   if (rotation === 0) return { x: offset.x + x, y: offset.y + y };
@@ -58,12 +58,11 @@ export abstract class GameNode {
   static debugLayoutEnabled = false;
   static readonly sceneType: string = 'GameNode';
   static readonly exposedPropGroups: readonly ExposedPropGroup[] = [
-    exposedPropGroup('Node', {
+    exposedPropGroup('State', {
       active: propBoolean({ label: 'Active' }),
       visible: propBoolean({ label: 'Visible' }),
-      order: propNumber({ label: 'Order', step: 1 }),
     }),
-    exposedPropGroup('Transform', {
+    exposedPropGroup('Layout', {
       parentAnchor: propAnchor({ label: 'Parent Anchor' }),
       anchor: propAnchor({ label: 'Anchor' }),
       position: propPosition({ label: 'Position', step: 1 }),

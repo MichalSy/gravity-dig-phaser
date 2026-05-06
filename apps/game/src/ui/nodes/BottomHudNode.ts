@@ -25,14 +25,13 @@ const bottomHudNodeRegistry = new SceneNodeFactoryRegistry()
 export class BottomHudNode extends GameNode {
   static override readonly sceneType: string = 'BottomHudNode';
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
-    exposedPropGroup('Node', {
+    exposedPropGroup('State', {
       active: GameNode.exposedPropGroups[0].props.active,
       visible: GameNode.exposedPropGroups[0].props.visible,
-      order: GameNode.exposedPropGroups[0].props.order,
     }),
-    exposedPropGroup('Transform', {
-      anchor: GameNode.exposedPropGroups[1].props.anchor,
+    exposedPropGroup('Layout', {
       parentAnchor: GameNode.exposedPropGroups[1].props.parentAnchor,
+      anchor: GameNode.exposedPropGroups[1].props.anchor,
     }),
   ];
 
@@ -145,19 +144,19 @@ export class BottomHudNode extends GameNode {
   private markHudComputedPropsReadOnly(): void {
     const computedByHudLayout = 'computed by BottomHudNode.update';
     for (const node of [this.actionFrameNode, this.energyFillNode]) {
-      for (const prop of ['position', 'size', 'scale', 'scaleX', 'scaleY', 'visible']) node.markExposedPropReadOnly(prop, computedByHudLayout);
+      for (const prop of ['position', 'size', 'scale', 'visible']) node.markExposedPropReadOnly(prop, computedByHudLayout);
     }
     for (let i = 0; i < this.slotFrameNodes.length; i += 1) {
       const frameNode = this.slotFrameNodes[i];
-      for (const prop of ['size', 'scale', 'scaleX', 'scaleY', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
+      for (const prop of ['size', 'scale', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
       if (i !== 1) frameNode.markExposedPropReadOnly('position', computedByHudLayout);
 
       const itemNode = this.slotItemNodes[i];
-      for (const prop of ['size', 'scale', 'scaleX', 'scaleY', 'visible']) itemNode.markExposedPropReadOnly(prop, computedByHudLayout);
+      for (const prop of ['size', 'scale', 'visible']) itemNode.markExposedPropReadOnly(prop, computedByHudLayout);
       if (i !== 1) itemNode.markExposedPropReadOnly('position', computedByHudLayout);
 
       const labelNode = this.slotLabelNodes[i];
-      for (const prop of ['visible', 'text', 'scale', 'scaleX', 'scaleY']) labelNode.markExposedPropReadOnly(prop, computedByHudLayout);
+      for (const prop of ['visible', 'text', 'scale']) labelNode.markExposedPropReadOnly(prop, computedByHudLayout);
       if (i !== 1) labelNode.markExposedPropReadOnly('position', computedByHudLayout);
     }
   }

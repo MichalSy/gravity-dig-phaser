@@ -488,7 +488,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} definition={selectedNodeDefinition} debugProps={selectedNodeProps} patchStatus={patchStatus} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} definition={selectedNodeDefinition} debugProps={selectedNodeProps} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -786,7 +786,6 @@ function Inspector({
   node,
   definition,
   debugProps,
-  patchStatus,
   assets,
   onPatch,
   onSelectAsset,
@@ -794,33 +793,21 @@ function Inspector({
   node: DebugNodeDescriptor;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
-  patchStatus: string;
   assets: DebugImageAssetDescriptor[];
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
   onSelectAsset(id: string): void;
 }) {
   return (
     <div className={styles.inspector}>
-      <div>
+      <div className={styles.inspectorHeaderCard}>
+        <span className={styles.inspectorClassTag}>{node.className}</span>
         <label>Name</label>
         <strong>{node.name}</strong>
+        <label>{node.guid ? 'GUID' : 'Runtime ID'}</label>
+        <code>{node.guid ?? node.id}</code>
       </div>
-      <div>
-        <label>Class</label>
-        <strong>{node.className}</strong>
-      </div>
-      <div>
-        <label>ID</label>
-        <code>{node.id}</code>
-      </div>
-      {node.guid && (
-        <div>
-          <label>GUID</label>
-          <code>{node.guid}</code>
-        </div>
-      )}
-      <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} patchStatus={patchStatus} onPatch={onPatch} />
-      <InspectorSection title="Debug · read-only">
+      <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
+      <InspectorSection title="Debug · read-only" defaultOpen={false}>
         <FragmentRow name="index" value={node.index} />
         <FragmentRow name="children" value={node.children.length} />
         <FragmentRow name="worldBounds" value={formatBounds(debugProps?.worldBounds ?? debugProps?.bounds)} />
@@ -834,14 +821,12 @@ function ExposedPropsSection({
   definition,
   debugProps,
   assets,
-  patchStatus,
   onPatch,
 }: {
   node: DebugNodeDescriptor;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
   assets: DebugImageAssetDescriptor[];
-  patchStatus: string;
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
 }) {
   const [localOverrides, setLocalOverrides] = useState<DebugNodePatch>({});
@@ -882,7 +867,6 @@ function ExposedPropsSection({
         </InspectorSection>
         );
       }) : <InspectorSection title="Exposed Props"><FragmentRow name="status" value="Keine Node-Definition für diesen Node." /></InspectorSection>}
-      {patchStatus && <InspectorSection title="Patch"><FragmentRow name="status" value={patchStatus} /></InspectorSection>}
     </>
   );
 }
@@ -1095,8 +1079,8 @@ function isSizeValue(value: unknown): value is { width: number | string; height:
   return typeof value === 'object' && value !== null && isDraftNumber((value as { width: unknown }).width) && isDraftNumber((value as { height: unknown }).height);
 }
 
-function InspectorSection({ title, children }: { title: string; children: ReactNode }) {
-  const [open, setOpen] = useState(true);
+function InspectorSection({ title, children, defaultOpen = true }: { title: string; children: ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <section className={styles.inspectorSection}>
       <button type="button" className={styles.inspectorSectionHeader} onClick={() => setOpen((current) => !current)} aria-expanded={open}>
