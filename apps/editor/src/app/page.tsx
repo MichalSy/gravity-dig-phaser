@@ -420,7 +420,11 @@ export default function Home() {
       setGitSaveStatus(`Pending Changes nicht verworfen: ${reverted.failed} Revert-Patch(es) konnten nicht gesendet werden.`);
       return;
     }
-    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { method: 'DELETE' });
+    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true }),
+    });
     const result = await response.json().catch(() => undefined) as { ok?: boolean; error?: string } | undefined;
     if (!response.ok || result?.ok === false) throw new Error(result?.error ?? `HTTP ${response.status}`);
     setPendingChangeSet(undefined);
@@ -458,9 +462,18 @@ export default function Home() {
 
   async function removePendingSetting(change: EditorSetPropsChange, prop: string): Promise<void> {
     if (!sessionId) return;
+    const hasPreviousValue = Object.prototype.hasOwnProperty.call(change.previousProps ?? {}, prop);
     const previousValue = change.previousProps?.[prop];
     const target = findNodeByPath(treeRoots, change.target.nodePath);
-    if (target && previousValue !== undefined && !sendNodePatchMessage(target, { [prop]: previousValue }, false)) {
+    if (!target) {
+      setGitSaveStatus(`Setting '${prop}' nicht entfernt: Node in Hierarchy nicht gefunden.`);
+      return;
+    }
+    if (!hasPreviousValue) {
+      setGitSaveStatus(`Setting '${prop}' nicht entfernt: alter Wert fehlt, Revert wäre unsicher.`);
+      return;
+    }
+    if (!sendNodePatchMessage(target, { [prop]: previousValue as DebugNodePatch[string] }, false)) {
       setGitSaveStatus(`Setting '${prop}' nicht entfernt: Revert-Patch konnte nicht gesendet werden.`);
       return;
     }
@@ -471,9 +484,12 @@ export default function Home() {
     });
     const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
     if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-    setPendingChangeSet(result.changeSet);
-    setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
-    if (!result.changeSet || countPendingProps(result.changeSet) === 0) setSavePreviewOpen(false);
+    const nextChangeSet = result.changeSet ?? { sessionId, changes: [] };
+    const nextCount = countPendingProps(nextChangeSet);
+    setPendingChangeSet(nextChangeSet);
+    setPendingChangeCount(nextCount);
+    setInspectorResetVersion((current) => current + 1);
+    setGitSaveStatus(`Setting '${prop}' entfernt und zurückgesetzt.`);
   }
 
   function setNodeOverlayLayerEnabled(node: DebugNodeDescriptor, layerIds: string[]): void {
@@ -768,7 +784,7 @@ function GitSavePreviewDialog({
                   <div className={styles.gitPreviewPath}>{change.target.nodePath.join(' / ')}</div>
                   <div className={styles.gitPreviewProp}>{prop}</div>
                   <code className={styles.gitPreviewValue}>{formatPendingValue(value)}</code>
-                  <button type="button" className={styles.removeSettingButton} onClick={() => onRemoveSetting(change, prop)}>Entfernen</button>
+                  <button type="button" className={styles.removeSettingButton} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void onRemoveSetting(change, prop); }}>Entfernen</button>
                 </div>
               ))}
             </div>

@@ -26,9 +26,12 @@ export async function DELETE(request: Request, context: RouteContext) {
   try {
     const { sessionId } = await context.params;
     const body = await readJson(request);
-    if (body && typeof body === 'object') return jsonNoStore({ ok: true, changeSet: removePendingProp(sessionId, body) });
-    clearSession(sessionId);
-    return jsonNoStore({ ok: true });
+    if (body && typeof body === 'object' && 'prop' in body) return jsonNoStore({ ok: true, changeSet: removePendingProp(sessionId, body) });
+    if (body && typeof body === 'object' && (body as { all?: unknown }).all === true) {
+      clearSession(sessionId);
+      return jsonNoStore({ ok: true });
+    }
+    return jsonNoStore({ ok: false, error: 'DELETE requires either { all: true } or { target, prop }.' }, { status: 400 });
   } catch (error) {
     return jsonError(error);
   }
