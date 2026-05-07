@@ -32,6 +32,11 @@ export interface NodeContext {
 
 export type NodeDebugBounds = DebugNodeBounds;
 
+export interface DebugOverlayRenderContext {
+  graphics: Phaser.GameObjects.Graphics;
+  selected: boolean;
+}
+
 export type NodeDebugProps = Record<string, string | number | boolean | null>;
 
 export type NodeSizeMode = 'explicit' | 'content';
@@ -410,6 +415,10 @@ export abstract class GameNode {
 
   getDebugBounds(): NodeDebugBounds | undefined {
     return this.getWorldBounds();
+  }
+
+  renderDebugOverlay(_ctx: DebugOverlayRenderContext): boolean {
+    return false;
   }
 
   getSceneDefinition(id = this.instanceId): DebugSceneNodeDefinition | undefined {

@@ -278,46 +278,9 @@ export class DebugBridgeNode extends GameNode {
       overlay.clear().setVisible(false);
       return;
     }
-    const bounds = node.getDebugBounds();
-    if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
-      overlay.clear().setVisible(false);
-      return;
-    }
-
-    const scrollFactor = bounds.scrollFactor ?? 1;
-    const parentAnchor = node.getWorldParentAnchorPosition();
-    const nodeOrigin = node.getWorldOrigin();
-
-    overlay
-      .clear()
-      .setVisible(true)
-      .setScrollFactor(scrollFactor)
-      .lineStyle(3, 0x38bdf8, 1)
-      .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
-      .lineStyle(1, 0xffffff, 0.9)
-      .strokeRect(bounds.x - 3, bounds.y - 3, bounds.width + 6, bounds.height + 6);
-
-    if (parentAnchor) {
-      overlay
-        .lineStyle(2, 0xfacc15, 0.9)
-        .lineBetween(parentAnchor.x, parentAnchor.y, nodeOrigin.x, nodeOrigin.y)
-        .lineStyle(3, 0xfacc15, 1)
-        .strokeCircle(parentAnchor.x, parentAnchor.y, 11)
-        .lineStyle(1, 0x020617, 0.95)
-        .strokeCircle(parentAnchor.x, parentAnchor.y, 14)
-        .lineStyle(2, 0xfacc15, 0.95)
-        .lineBetween(parentAnchor.x - 15, parentAnchor.y, parentAnchor.x + 15, parentAnchor.y)
-        .lineBetween(parentAnchor.x, parentAnchor.y - 15, parentAnchor.x, parentAnchor.y + 15);
-    }
-
-    overlay
-      .fillStyle(0xfb7185, 1)
-      .fillCircle(nodeOrigin.x, nodeOrigin.y, 4)
-      .lineStyle(2, 0x020617, 0.9)
-      .strokeCircle(nodeOrigin.x, nodeOrigin.y, 6)
-      .lineStyle(1, 0xfb7185, 0.95)
-      .lineBetween(nodeOrigin.x - 8, nodeOrigin.y, nodeOrigin.x + 8, nodeOrigin.y)
-      .lineBetween(nodeOrigin.x, nodeOrigin.y - 8, nodeOrigin.x, nodeOrigin.y + 8);
+    overlay.clear().setScrollFactor(1);
+    const didRender = node.renderDebugOverlay({ graphics: overlay, selected: true });
+    overlay.setVisible(didRender);
   }
 
   private sendSelectedNodeProps(force = false): void {
