@@ -4,7 +4,6 @@
     "name": "UI.StatusHud",
     "props": {
       "parentAnchor": "top-left",
-      "sizeMode": "explicit",
       "debugScrollFactor": 0,
       "origin": {
         "x": 0.5,
@@ -14,10 +13,6 @@
       "position": {
         "x": 17,
         "y": 18
-      },
-      "size": {
-        "width": 400,
-        "height": 178.42190016103058
       }
     },
     "children": [

@@ -482,7 +482,8 @@ export abstract class GameNode {
         continue;
       }
 
-      this.scenePropOverrides.add(key);
+      if (validatedValue === null) this.scenePropOverrides.delete(key);
+      else this.scenePropOverrides.add(key);
       result.applied[key] = validatedValue;
     }
 
@@ -526,9 +527,17 @@ export abstract class GameNode {
         this.position = value;
         return true;
       case 'size':
+        if (value === null) {
+          this.sizeMode = 'content';
+          return true;
+        }
         if (!isSizePatchValue(value)) return false;
         this.size = value;
         this.sizeMode = 'explicit';
+        return true;
+      case 'sizeMode':
+        if (value !== 'content' && value !== 'explicit') return false;
+        this.sizeMode = value;
         return true;
       case 'parentAnchor':
         if (typeof value !== 'string') return false;

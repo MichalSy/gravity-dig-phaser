@@ -1081,7 +1081,9 @@ function ExposedPropsSection({
   }, [node.id]);
 
   function patchProp(key: string, value: DebugNodePatch[string]): void {
-    const patch: DebugNodePatch = { [key]: value };
+    const patch: DebugNodePatch = key === 'size'
+      ? { size: value, sizeMode: value === null ? 'content' : 'explicit' }
+      : { [key]: value };
     const signature = `${node.id}:${JSON.stringify(patch)}`;
     if (lastPatchSignatureRef.current === signature) return;
     lastPatchSignatureRef.current = signature;
@@ -1094,7 +1096,7 @@ function ExposedPropsSection({
   return (
     <>
       {groups ? groups.filter((group) => group.name !== 'State' && group.name !== 'Presentation').map((group) => {
-        const visibleProps = Object.entries(group.props);
+        const visibleProps = Object.entries(group.props).filter(([key]) => key !== 'sizeMode');
         return (
         <InspectorSection key={group.name} title={group.name}>
           {visibleProps.map(([key, prop]) => (
@@ -1103,6 +1105,7 @@ function ExposedPropsSection({
               name={key}
               prop={prop}
               value={key in localOverrides ? localOverrides[key] : currentEditablePropValue(key, prop, node, debugProps)}
+              debugProps={debugProps}
               assets={assets}
               onCommit={(value) => patchProp(key, value)}
             />
@@ -1120,12 +1123,14 @@ function EditablePropRow({
   name,
   prop,
   value,
+  debugProps,
   assets,
   onCommit,
 }: {
   name: string;
   prop: DebugScenePropDefinition;
   value: unknown;
+  debugProps?: DebugNodePropsMessage;
   assets: DebugImageAssetDescriptor[];
   onCommit(value: DebugNodePatch[string]): void;
 }) {
@@ -1271,13 +1276,20 @@ function EditablePropRow({
   }
 
   if (prop.type === 'Size') {
-    const size = isSizeValue(draft) ? draft : { width: 0, height: 0 };
+    const size = isSizeValue(draft) ? draft : isSizeValue(value) ? value : { width: 0, height: 0 };
+    const calculatedFromContent = draft === null || (draft === value && debugProps?.props.sizeMode === 'content');
     return (
       <>
         <span>{label}</span>
-        <div className={styles.vectorEditor}>
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
-          <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
+        <div className={styles.sizeEditorStack}>
+          <label className={styles.inlineCheckboxLabel}>
+            <input type="checkbox" checked={calculatedFromContent} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.checked ? null : size)} />
+            <span>Calculate from Content</span>
+          </label>
+          <div className={styles.vectorEditor}>
+            <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly || calculatedFromContent} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
+            <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly || calculatedFromContent} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
+          </div>
         </div>
       </>
     );
@@ -1428,6 +1440,7 @@ function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): De
     return x === undefined || y === undefined ? undefined : { x, y };
   }
   if (prop.type === 'Size') {
+    if (value === null) return null;
     if (!isSizeValue(value)) return undefined;
     const width = parseFiniteNumber(value.width);
     const height = parseFiniteNumber(value.height);

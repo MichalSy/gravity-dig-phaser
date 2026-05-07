@@ -3,7 +3,7 @@ import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/d
 import { GameNode, type DebugOverlayLayerRenderContext, type GameNodeOptions, type NodeDebugProps } from './GameNode';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { type Anchor, type PointLike, type SizeLike } from './Anchor';
-import { exposedPropGroup, propAnchor, propBoolean, propNumber, propOrigin, propPosition, propScale, propSize, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propAnchor, propBoolean, propNumber, propOrigin, propPosition, propScale, propSize, propString, type ExposedPropGroup } from './SceneProps';
 
 function isPointPatchValue(value: DebugNodePatch[string]): value is PointLike {
   return typeof value === 'object' && value !== null && 'x' in value && 'y' in value;
@@ -38,6 +38,7 @@ export abstract class TransformNode extends GameNode {
       parentAnchor: propAnchor({ label: 'Parent Anchor' }),
       position: propPosition({ label: 'Position', step: 1 }),
       size: propSize({ label: 'Size', min: 0, step: 1 }),
+      sizeMode: propString({ label: 'Size Mode' }),
     }),
     exposedPropGroup('Transform', {
       origin: propOrigin({ label: 'Origin', min: 0, max: 1, step: 0.01 }),
@@ -198,9 +199,17 @@ export abstract class TransformNode extends GameNode {
         this.position = value;
         return true;
       case 'size':
+        if (value === null) {
+          this.sizeMode = 'content';
+          return true;
+        }
         if (!isSizePatchValue(value)) return false;
         this.size = value;
         this.sizeMode = 'explicit';
+        return true;
+      case 'sizeMode':
+        if (value !== 'content' && value !== 'explicit') return false;
+        this.sizeMode = value;
         return true;
       case 'parentAnchor':
         if (typeof value !== 'string') return false;

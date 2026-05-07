@@ -998,10 +998,34 @@
   accent-color: #0ea5e9;
 }
 
-.vectorEditorStack {
+.vectorEditorStack,
+.sizeEditorStack {
   min-width: 0;
   display: grid;
   gap: 6px;
+}
+
+.inlineCheckboxLabel {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.inlineCheckboxLabel input {
+  width: 14px;
+  height: 14px;
+  accent-color: #0ea5e9;
+}
+
+.inlineCheckboxLabel span {
+  color: inherit;
+  font-size: inherit;
 }
 
 .vectorEditor {

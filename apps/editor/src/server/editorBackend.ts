@@ -194,7 +194,11 @@ async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<voi
   const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
   const node = findNodeByPath(file.root, source.nodePath);
   if (!node) throw new EditorBackendError(`Could not locate node path '${change.target.nodePath.join('/')}' in ${source.filePath}`, 422);
-  node.props = { ...(node.props ?? {}), ...change.props };
+  node.props = { ...(node.props ?? {}) };
+  for (const [key, value] of Object.entries(change.props)) {
+    if (value === null || key === 'sizeMode') delete node.props[key];
+    else node.props[key] = value;
+  }
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
 }
 

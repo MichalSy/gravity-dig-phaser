@@ -115,6 +115,7 @@ export function validateScenePropValue(definition: DebugScenePropDefinition, val
     case 'Scale':
       return isPointLike(value) ? { x: clampNumber(value.x, definition), y: clampNumber(value.y, definition) } : undefined;
     case 'Size':
+      if (value === null) return null;
       return isSizeLike(value) ? { width: Math.max(0, clampNumber(value.width, definition)), height: Math.max(0, clampNumber(value.height, definition)) } : undefined;
   }
 }
