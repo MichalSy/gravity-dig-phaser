@@ -272,6 +272,14 @@ export abstract class GameNode {
   }
 
   getBoundsInParentSpace(): NodeDebugBounds | undefined {
+    return this.getBoundsInSpace(this.getPositionInParent());
+  }
+
+  getContentBoundsForParentSizing(): NodeDebugBounds | undefined {
+    return this.getBoundsInSpace(this.position);
+  }
+
+  private getBoundsInSpace(offset: PointLike): NodeDebugBounds | undefined {
     if (this.boundsMode === 'none') return undefined;
     const localBounds = this.getLocalContentBounds();
     if (!localBounds) return undefined;
@@ -282,10 +290,10 @@ export abstract class GameNode {
     const right = (localBounds.x + localBounds.width) * localScale.x;
     const bottom = (localBounds.y + localBounds.height) * localScale.y;
     const corners = [
-      rotatePoint(left, top, this.rotation, this.getPositionInParent()),
-      rotatePoint(right, top, this.rotation, this.getPositionInParent()),
-      rotatePoint(right, bottom, this.rotation, this.getPositionInParent()),
-      rotatePoint(left, bottom, this.rotation, this.getPositionInParent()),
+      rotatePoint(left, top, this.rotation, offset),
+      rotatePoint(right, top, this.rotation, offset),
+      rotatePoint(right, bottom, this.rotation, offset),
+      rotatePoint(left, bottom, this.rotation, offset),
     ];
     const xs = corners.map((corner) => corner.x);
     const ys = corners.map((corner) => corner.y);
@@ -302,7 +310,7 @@ export abstract class GameNode {
     const includeHidden = GameNode.debugLayoutEnabled;
     const childBounds = this.children
       .filter((child) => includeHidden || child.isDebugVisible())
-      .map((child) => child.getBoundsInParentSpace())
+      .map((child) => child.getContentBoundsForParentSizing())
       .filter((bounds): bounds is NodeDebugBounds => Boolean(bounds));
     if (childBounds.length === 0) return;
 

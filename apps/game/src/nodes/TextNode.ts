@@ -9,9 +9,8 @@ function textLocalSize(text: Phaser.GameObjects.Text): { width: number; height: 
   return { width: text.width, height: text.height };
 }
 
-function textBoundsInParentSpace(node: TextNode, text: Phaser.GameObjects.Text): NodeDebugBounds {
+function textBoundsInParentSpace(node: TextNode, text: Phaser.GameObjects.Text, originPosition = node.getPositionInParent()): NodeDebugBounds {
   const size = textLocalSize(text);
-  const originPosition = node.getPositionInParent();
   const originOffset = node.getLocalOriginOffset();
   const left = originPosition.x - originOffset.x * node.scaleX;
   const top = originPosition.y - originOffset.y * node.scaleY;
@@ -104,6 +103,11 @@ export class TextNode extends TransformNode {
   override getBoundsInParentSpace(): NodeDebugBounds | undefined {
     if (!this.phaserText) return super.getBoundsInParentSpace();
     return textBoundsInParentSpace(this, this.phaserText);
+  }
+
+  override getContentBoundsForParentSizing(): NodeDebugBounds | undefined {
+    if (!this.phaserText) return super.getContentBoundsForParentSizing();
+    return textBoundsInParentSpace(this, this.phaserText, this.position);
   }
 
   override getWorldBounds(): NodeDebugBounds | undefined {

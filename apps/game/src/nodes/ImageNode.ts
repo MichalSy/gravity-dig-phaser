@@ -27,7 +27,7 @@ function visibleImageDisplaySize(image: Phaser.GameObjects.Image): { width: numb
 }
 
 
-function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObjects.Image): NodeDebugBounds {
+function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObjects.Image, originPosition = node.getPositionInParent()): NodeDebugBounds {
   const cropImage = image as CroppableImage;
   const crop = cropImage.isCropped ? cropImage._crop : undefined;
   const frameWidth = image.frame.width;
@@ -36,7 +36,6 @@ function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObje
   const cropY = crop?.y ?? 0;
   const cropWidth = crop?.width ?? frameWidth;
   const cropHeight = crop?.height ?? frameHeight;
-  const originPosition = node.getPositionInParent();
   const originOffset = node.getLocalOriginOffset();
   const left = originPosition.x - originOffset.x * node.scaleX + cropX * node.scaleX;
   const top = originPosition.y - originOffset.y * node.scaleY + cropY * node.scaleY;
@@ -150,6 +149,11 @@ export class ImageNode extends TransformNode {
   override getBoundsInParentSpace(): NodeDebugBounds | undefined {
     if (!this.phaserImage) return super.getBoundsInParentSpace();
     return visibleImageBoundsInParentSpace(this, this.phaserImage);
+  }
+
+  override getContentBoundsForParentSizing(): NodeDebugBounds | undefined {
+    if (!this.phaserImage) return super.getContentBoundsForParentSizing();
+    return visibleImageBoundsInParentSpace(this, this.phaserImage, this.position);
   }
 
   override getWorldBounds(): NodeDebugBounds | undefined {
