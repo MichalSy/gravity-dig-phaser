@@ -13,6 +13,14 @@
       "position": {
         "x": 25,
         "y": 25
+      },
+      "scale": {
+        "x": 0.3,
+        "y": 0.3
+      },
+      "size": {
+        "width": 1242,
+        "height": 200
       }
     },
     "children": [
@@ -36,11 +44,15 @@
           "assetId": "hud-hp-fuel-atlas#hpBar",
           "scrollFactor": 0,
           "position": {
-            "x": 113.04347826086956,
-            "y": 53.46215780998389
+            "x": 350,
+            "y": 165
           },
           "scaleX": 0.322061191626409,
-          "scaleY": 0.322061191626409
+          "scaleY": 0.322061191626409,
+          "scale": {
+            "x": 1,
+            "y": 1
+          }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
@@ -50,11 +62,12 @@
           "assetId": "hud-hp-fuel-atlas#fuelBar",
           "scrollFactor": 0,
           "position": {
-            "x": 116.26409017713365,
-            "y": 119.80676328502415
+            "x": 356,
+            "y": 200
           },
           "scaleX": 0.3246091440918078,
-          "scaleY": 0.3379654480030218
+          "scaleY": 0.3379654480030218,
+          "parentAnchor": "bottom-left"
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       }
