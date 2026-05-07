@@ -251,6 +251,7 @@ export interface EditorSetPropsChange {
   sessionId: string;
   target: EditorChangeTarget;
   props: DebugNodePatch;
+  previousProps?: DebugNodePatch;
   createdAt: number;
 }
 

@@ -104,8 +104,10 @@ export function removePendingProp(sessionId: string, body: unknown): EditorChang
   const changes = current.changes.flatMap((change) => {
     if (change.kind !== 'setProps' || change.target.nodePath.join('/') !== nodePath.join('/')) return [change];
     const props = { ...change.props };
+    const previousProps = { ...(change.previousProps ?? {}) };
     delete props[prop];
-    return Object.keys(props).length > 0 ? [{ ...change, props }] : [];
+    delete previousProps[prop];
+    return Object.keys(props).length > 0 ? [{ ...change, props, previousProps }] : [];
   });
   const next: EditorChangeSet = { ...current, changes, updatedAt: Date.now() };
   if (changes.length === 0) changeSets.delete(sessionId);
@@ -181,7 +183,15 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
   if (!change || change.kind !== 'setProps' || !Array.isArray(change.target?.nodePath) || typeof change.props !== 'object' || change.props === null) return undefined;
   const nodePath = change.target.nodePath.map((part) => String(part).trim()).filter(Boolean);
   if (nodePath.length === 0) return undefined;
-  return { id: change.id ?? randomUUID(), kind: 'setProps', sessionId, target: { nodePath }, props: change.props as DebugNodePatch, createdAt: change.createdAt ?? Date.now() };
+  return {
+    id: change.id ?? randomUUID(),
+    kind: 'setProps',
+    sessionId,
+    target: { nodePath },
+    props: change.props as DebugNodePatch,
+    previousProps: typeof change.previousProps === 'object' && change.previousProps !== null ? change.previousProps as DebugNodePatch : undefined,
+    createdAt: change.createdAt ?? Date.now(),
+  };
 }
 
 function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): EditorChangeSet {
@@ -197,7 +207,15 @@ function compactChanges(changes: EditorChange[]): EditorChange[] {
   for (const change of changes) {
     const key = `${change.kind}:${change.target.nodePath.join('/')}`;
     const previous = byTarget.get(key);
-    byTarget.set(key, previous ? { ...change, id: previous.id, props: { ...previous.props, ...change.props }, createdAt: previous.createdAt } : change);
+    if (!previous) {
+      byTarget.set(key, change);
+      continue;
+    }
+    const previousProps = { ...(previous.previousProps ?? {}) };
+    for (const [prop, value] of Object.entries(change.previousProps ?? {})) {
+      if (!(prop in previousProps)) previousProps[prop] = value;
+    }
+    byTarget.set(key, { ...change, id: previous.id, props: { ...previous.props, ...change.props }, previousProps, createdAt: previous.createdAt });
   }
   return [...byTarget.values()];
 }

@@ -407,19 +407,56 @@ export default function Home() {
 
   async function clearPendingChanges(): Promise<void> {
     if (!sessionId) return;
-    await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { method: 'DELETE' });
+    const changeSet = pendingChangeSet ?? await fetchPendingChangeSet();
+    const reverted = revertPendingChanges(changeSet?.changes ?? []);
+    if (reverted.failed > 0) {
+      setGitSaveStatus(`Pending Changes nicht verworfen: ${reverted.failed} Revert-Patch(es) konnten nicht gesendet werden.`);
+      return;
+    }
+    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { method: 'DELETE' });
+    const result = await response.json().catch(() => undefined) as { ok?: boolean; error?: string } | undefined;
+    if (!response.ok || result?.ok === false) throw new Error(result?.error ?? `HTTP ${response.status}`);
     setPendingChangeSet(undefined);
     setPendingChangeCount(0);
     setSavePreviewOpen(false);
-    setSelectedNodeProps(undefined);
-    lastSelectMessageRef.current = '';
-    setPatchStatus('');
-    setGameFrameKey((current) => current + 1);
-    setGitSaveStatus('Pending Changes verworfen. Werte auf Git-Stand zurückgesetzt.');
+    setGitSaveStatus(reverted.skipped > 0 ? `Pending Changes verworfen. ${reverted.applied} Setting(s) zurückgesetzt, ${reverted.skipped} ohne alten Wert/Node übersprungen.` : `Pending Changes verworfen. ${reverted.applied} Setting(s) zurückgesetzt.`);
+  }
+
+  async function fetchPendingChangeSet(): Promise<EditorChangeSet | undefined> {
+    if (!sessionId) return undefined;
+    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`));
+    if (!response.ok) return undefined;
+    return await response.json() as EditorChangeSet;
+  }
+
+  function revertPendingChanges(changes: EditorSetPropsChange[]): { applied: number; skipped: number; failed: number } {
+    let applied = 0;
+    let skipped = 0;
+    let failed = 0;
+    for (const change of changes) {
+      const target = findNodeByPath(treeRoots, change.target.nodePath);
+      const previousProps = change.previousProps ?? {};
+      const props = Object.fromEntries(Object.keys(change.props).flatMap((prop) => prop in previousProps ? [[prop, previousProps[prop]]] : [])) as DebugNodePatch;
+      skipped += Object.keys(change.props).length - Object.keys(props).length;
+      if (!target || Object.keys(props).length === 0) {
+        if (!target) skipped += Object.keys(props).length;
+        continue;
+      }
+      if (sendNodePatchMessage(target, props, false)) applied += Object.keys(props).length;
+      else failed += Object.keys(props).length;
+    }
+    if (applied > 0) setPatchStatus(`Revert angewendet: ${applied} Setting(s)`);
+    return { applied, skipped, failed };
   }
 
   async function removePendingSetting(change: EditorSetPropsChange, prop: string): Promise<void> {
     if (!sessionId) return;
+    const previousValue = change.previousProps?.[prop];
+    const target = findNodeByPath(treeRoots, change.target.nodePath);
+    if (target && previousValue !== undefined && !sendNodePatchMessage(target, { [prop]: previousValue }, false)) {
+      setGitSaveStatus(`Setting '${prop}' nicht entfernt: Revert-Patch konnte nicht gesendet werden.`);
+      return;
+    }
     const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -437,16 +474,34 @@ export default function Home() {
   }
 
   function sendNodePatch(node: DebugNodeDescriptor, props: DebugNodePatch): void {
+    const previousProps = collectPreviousProps(node, props);
+    if (!sendNodePatchMessage(node, props, true)) return;
+    void persistPendingPatch(node, props, previousProps);
+  }
+
+  function sendNodePatchMessage(node: DebugNodeDescriptor, props: DebugNodePatch, showStatus: boolean): boolean {
     if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      setPatchStatus('Patch nicht gesendet: Relay nicht verbunden.');
-      return;
+      if (showStatus) setPatchStatus('Patch nicht gesendet: Relay nicht verbunden.');
+      return false;
     }
 
     const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, instanceId: node.instanceId, name: node.name, props, sentAt: Date.now() };
     if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
     socketRef.current.send(JSON.stringify(message));
-    setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
-    void persistPendingPatch(node, props);
+    if (showStatus) setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
+    return true;
+  }
+
+  function collectPreviousProps(node: DebugNodeDescriptor, props: DebugNodePatch): DebugNodePatch {
+    const definition = node.instanceId ? nodeDefinitions.get(node.instanceId) : undefined;
+    const exposedProps = flattenDefinitionProps(definition);
+    const debugProps = selectedNodeProps?.nodeId === node.id ? selectedNodeProps : undefined;
+    return Object.fromEntries(Object.keys(props).flatMap((key) => {
+      const prop = exposedProps[key];
+      if (!prop) return [];
+      const value = coerceEditableValue(prop, currentEditablePropValue(key, prop, node, debugProps));
+      return value === undefined ? [] : [[key, value]];
+    })) as DebugNodePatch;
   }
 
   function toggleNodeExpanded(nodeId: string): void {
@@ -550,7 +605,7 @@ export default function Home() {
     window.addEventListener('pointercancel', stopResize, { once: true });
   }
 
-  async function persistPendingPatch(node: DebugNodeDescriptor, props: DebugNodePatch): Promise<void> {
+  async function persistPendingPatch(node: DebugNodeDescriptor, props: DebugNodePatch, previousProps: DebugNodePatch): Promise<void> {
     const nodePath = findNodePath(treeRoots, node.id);
     if (!nodePath) {
       setGitSaveStatus('Pending Change nicht gespeichert: Node-Pfad nicht gefunden.');
@@ -560,7 +615,7 @@ export default function Home() {
       const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'setProps', target: { nodePath }, props }),
+        body: JSON.stringify({ kind: 'setProps', target: { nodePath }, props, previousProps }),
       });
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
@@ -1787,6 +1842,16 @@ function findNodePath(nodes: DebugNodeDescriptor[], id: string, parentPath: stri
     if (node.id === id) return path;
     const childPath = findNodePath(node.children, id, path);
     if (childPath) return childPath;
+  }
+  return undefined;
+}
+
+function findNodeByPath(nodes: DebugNodeDescriptor[], path: string[], parentPath: string[] = []): DebugNodeDescriptor | undefined {
+  for (const node of nodes) {
+    const currentPath = isAppRootNode(node) ? parentPath : [...parentPath, node.name];
+    if (currentPath.length === path.length && currentPath.every((part, index) => part === path[index])) return node;
+    const child = findNodeByPath(node.children, path, currentPath);
+    if (child) return child;
   }
   return undefined;
 }
