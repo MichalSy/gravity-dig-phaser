@@ -969,7 +969,7 @@ function Inspector({
   onOverlayLayerSelectionChange(node: DebugNodeDescriptor, layerIds: string[]): void;
   onSelectAsset(id: string): void;
 }) {
-  const canToggleVisible = Boolean(flattenDefinitionProps(definition).visible);
+  const canToggleVisible = Boolean(definition?.exposedPropGroups?.some((group) => group.name === 'Presentation' && group.props.visible) ?? flattenDefinitionProps(definition).visible);
   return (
     <div className={styles.inspector}>
       <div className={styles.inspectorHeaderCard}>
@@ -986,8 +986,8 @@ function Inspector({
           )}
         </div>
       </div>
+      <OverlayLayersDropdown node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
       <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
-      <OverlayLayersSection node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
         <FragmentRow name={node.instanceId ? 'instanceId' : 'runtimeId'} value={node.instanceId ?? node.id} />
         <FragmentRow name="index" value={node.index} />
@@ -1004,7 +1004,7 @@ function flattenDefinitionProps(definition?: DebugSceneNodeDefinition): Record<s
   return Object.assign({}, ...groups.map((group) => group.props));
 }
 
-function OverlayLayersSection({
+function OverlayLayersDropdown({
   node,
   definition,
   selection,
@@ -1017,6 +1017,7 @@ function OverlayLayersSection({
 }) {
   const layers = definition?.overlayLayers ?? [];
   const enabledLayerIds = new Set(selection ?? layers.map((layer) => layer.id));
+  const enabledCount = layers.filter((layer) => enabledLayerIds.has(layer.id)).length;
 
   function setLayerEnabled(layer: DebugOverlayLayerDescriptor, enabled: boolean): void {
     const next = new Set(enabledLayerIds);
@@ -1033,24 +1034,28 @@ function OverlayLayersSection({
     onChange(node, []);
   }
 
+  if (layers.length === 0) return null;
+
   return (
-    <InspectorSection title="Debug Overlays">
-      {layers.length > 0 ? (
-        <div className={styles.overlayLayerList}>
-          <div className={styles.overlayLayerActions}>
-            <button type="button" className={styles.miniButton} onClick={enableAll}>Alle</button>
-            <button type="button" className={styles.miniButton} onClick={disableAll}>Keine</button>
-          </div>
-          {layers.map((layer) => (
-            <label key={layer.id} className={styles.overlayLayerRow}>
-              <input type="checkbox" checked={enabledLayerIds.has(layer.id)} onChange={(event) => setLayerEnabled(layer, event.currentTarget.checked)} />
-              <span>{layer.label}</span>
-              <code>{layer.source}</code>
-            </label>
-          ))}
+    <details className={styles.overlayDropdown}>
+      <summary className={styles.overlayDropdownSummary}>
+        <span>Debug Overlays</span>
+        <strong>{enabledCount}/{layers.length}</strong>
+      </summary>
+      <div className={styles.overlayDropdownPanel}>
+        <div className={styles.overlayLayerActions}>
+          <button type="button" className={styles.miniButton} onClick={enableAll}>Alle</button>
+          <button type="button" className={styles.miniButton} onClick={disableAll}>Keine</button>
         </div>
-      ) : <FragmentRow name="status" value="Dieser Node rendert kein eigenes Debug-Overlay." />}
-    </InspectorSection>
+        {layers.map((layer) => (
+          <label key={layer.id} className={styles.overlayLayerRow}>
+            <input type="checkbox" checked={enabledLayerIds.has(layer.id)} onChange={(event) => setLayerEnabled(layer, event.currentTarget.checked)} />
+            <span>{layer.label}</span>
+            <code>{layer.source}</code>
+          </label>
+        ))}
+      </div>
+    </details>
   );
 }
 
@@ -1088,7 +1093,7 @@ function ExposedPropsSection({
 
   return (
     <>
-      {groups ? groups.filter((group) => group.name !== 'State').map((group) => {
+      {groups ? groups.filter((group) => group.name !== 'State' && group.name !== 'Presentation').map((group) => {
         const visibleProps = Object.entries(group.props);
         return (
         <InspectorSection key={group.name} title={group.name}>

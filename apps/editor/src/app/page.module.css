@@ -414,9 +414,60 @@
   padding-top: 12px;
 }
 
-.overlayLayerList {
+.overlayDropdown {
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  padding-top: 9px;
+}
+
+.overlayDropdownSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 9px;
+  padding: 0 10px;
+  background: rgba(14, 165, 233, 0.08);
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.overlayDropdownSummary::-webkit-details-marker {
+  display: none;
+}
+
+.overlayDropdownSummary::before {
+  content: '▸';
+  color: #38bdf8;
+}
+
+.overlayDropdown[open] .overlayDropdownSummary::before {
+  content: '▾';
+}
+
+.overlayDropdownSummary span {
+  margin-right: auto;
+}
+
+.overlayDropdownSummary strong {
+  color: #e0f2fe;
+  font-size: 11px;
+}
+
+.overlayDropdownPanel {
   display: grid;
-  gap: 7px;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.38);
 }
 
 .overlayLayerActions {
@@ -428,18 +479,22 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 7px 8px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 9px;
-  background: rgba(15, 23, 42, 0.46);
+  gap: 7px;
+  min-height: 26px;
+  padding: 4px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.34);
+  color: #cbd5e1;
+  font-size: 11px;
   text-transform: none !important;
   letter-spacing: 0 !important;
 }
 
 .overlayLayerRow code {
-  padding: 3px 6px;
-  font-size: 10px;
+  padding: 2px 5px;
+  font-size: 9px;
+  opacity: 0.78;
 }
 
 .miniButton {
