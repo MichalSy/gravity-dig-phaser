@@ -20,7 +20,11 @@
         "name": "UI.HpFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#hpBar",
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "position": {
+            "x": 54,
+            "y": 104
+          }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
