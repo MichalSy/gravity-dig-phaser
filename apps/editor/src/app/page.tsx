@@ -1480,13 +1480,13 @@ function EditablePropRow({
   if (prop.type === 'Number') {
     if (name === 'rotation') {
       const radians = parseFiniteNumber(draft) ?? 0;
-      const degrees = radiansToDegrees(radians);
+      const degrees = roundDegreeNumber(radiansToDegrees(radians));
       return (
         <>
           <span>{label}</span>
           <div className={styles.rotationEditor}>
             <input className={styles.rotationSlider} type="range" min={-360} max={360} step={1} value={clamp(degrees, -360, 360)} disabled={prop.readOnly} onChange={(event) => scheduleCommit(degreesToRadians(Number(event.currentTarget.value)))} onBlur={() => commit()} />
-            <DragNumberInput value={degrees} min={-360} max={360} step={1} suffix="°" disabled={prop.readOnly} onChange={(next) => scheduleCommit(degreesToRadians(next))} onCommit={(next) => commit(degreesToRadians(next))} />
+            <DragNumberInput value={degrees} min={-360} max={360} step={1} suffix="°" integer precision={0} disabled={prop.readOnly} onChange={(next) => scheduleCommit(degreesToRadians(next))} onCommit={(next) => commit(degreesToRadians(next))} />
           </div>
         </>
       );
@@ -1592,6 +1592,10 @@ function roundRotationNumber(value: number): number {
 
 function radiansToDegrees(radians: number): number {
   return (radians * 180) / Math.PI;
+}
+
+function roundDegreeNumber(value: number): number {
+  return Math.round(value);
 }
 
 function DragNumberInput({
