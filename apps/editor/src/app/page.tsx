@@ -688,10 +688,6 @@ function GitSavePreviewDialog({
       <div className={styles.gitPreviewDialog} onClick={(event) => event.stopPropagation()}>
         <div className={styles.dialogHeader}>
           <strong>Git Save Preview · {rows.length} Setting{rows.length === 1 ? '' : 's'}</strong>
-          <div className={styles.dialogHeaderActions}>
-            <button type="button" className={styles.headerButton} onClick={onCancel}>Abbrechen</button>
-            <button type="button" className={styles.headerButton} disabled={rows.length === 0} onClick={onSave}>{needsRebase ? 'Rebase + Speichern' : 'Speichern'}</button>
-          </div>
         </div>
         <div className={styles.gitPreviewBody}>
           {needsRebase && <p className={styles.previewWarning}>Remote ist voraus. Beim Speichern wird zuerst rebased.</p>}
@@ -711,6 +707,10 @@ function GitSavePreviewDialog({
               ))}
             </div>
           ) : <p className={styles.empty}>Keine Settings mehr im Save.</p>}
+        </div>
+        <div className={styles.gitPreviewFooter}>
+          <button type="button" className={`${styles.button} ${styles.ghost}`} onClick={onCancel}>Abbrechen</button>
+          <button type="button" className={styles.button} disabled={rows.length === 0} onClick={onSave}>{needsRebase ? 'Rebase + Speichern' : 'Speichern'}</button>
         </div>
       </div>
     </div>

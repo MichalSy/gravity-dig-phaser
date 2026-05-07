@@ -706,8 +706,10 @@
 }
 
 .gitPreviewDialog {
-  width: min(92vw, 900px);
-  max-height: 78vh;
+  width: min(92vw, 1100px);
+  height: min(82vh, 760px);
+  max-height: min(82vh, 760px);
+  grid-template-rows: 44px minmax(0, 1fr) 58px;
   border-radius: 10px;
   box-shadow: 0 18px 56px rgba(0, 0, 0, 0.55);
 }
@@ -1091,9 +1093,9 @@
 
 .gitPreviewBody {
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   display: grid;
-  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   padding: 10px;
   background: #0f172a;
@@ -1111,14 +1113,19 @@
 }
 
 .gitPreviewTable {
+  min-height: 0;
+  overflow: auto;
   display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(110px, 0.45fr) minmax(180px, 1fr) auto;
+  grid-template-columns: minmax(260px, 1.2fr) minmax(130px, 0.45fr) minmax(220px, 1fr) auto;
+  align-content: start;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 7px;
-  overflow: hidden;
 }
 
 .gitPreviewTableHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   padding: 7px 9px;
   background: #111827;
   color: #94a3b8;
@@ -1166,3 +1173,13 @@
 }
 
 .removeSettingButton:hover { background: rgba(220, 38, 38, 0.28); }
+
+.gitPreviewFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  background: #0b1220;
+}
