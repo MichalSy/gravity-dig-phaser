@@ -477,7 +477,7 @@ export default function Home() {
       setGitSaveStatus(`Setting '${prop}' nicht entfernt: Revert-Patch konnte nicht gesendet werden.`);
       return;
     }
-    const removeUrl = editorApi(`/changes/${encodeURIComponent(sessionId)}?${new URLSearchParams([...change.target.nodePath.map((part): [string, string] => ['nodePath', part]), ['prop', prop]]).toString()}`);
+    const removeUrl = editorApi(`/changes/${encodeURIComponent(sessionId)}?${new URLSearchParams({ changeId: change.id, prop }).toString()}`);
     const response = await fetch(removeUrl, { method: 'DELETE' });
     const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
     if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);

@@ -95,14 +95,14 @@ export function clearSession(sessionId: string): void {
 }
 
 export function removePendingProp(sessionId: string, body: unknown): EditorChangeSet {
-  const typed = body as { target?: { nodePath?: unknown }; prop?: unknown } | undefined;
-  const nodePath = Array.isArray(typed?.target?.nodePath) ? typed.target.nodePath.map((part) => String(part).trim()).filter(Boolean) : [];
+  const typed = body as { changeId?: unknown; prop?: unknown } | undefined;
+  const changeId = typeof typed?.changeId === 'string' ? typed.changeId.trim() : '';
   const prop = typeof typed?.prop === 'string' ? typed.prop.trim() : '';
-  if (nodePath.length === 0 || !prop) throw new EditorBackendError('Required: target.nodePath[] and prop.', 400);
+  if (!changeId || !prop) throw new EditorBackendError('Required: changeId and prop.', 400);
 
   const current = readChangeSet(sessionId);
   const changes = current.changes.flatMap((change) => {
-    if (change.kind !== 'setProps' || change.target.nodePath.join('/') !== nodePath.join('/')) return [change];
+    if (change.kind !== 'setProps' || change.id !== changeId) return [change];
     const props = { ...change.props };
     const previousProps = { ...(change.previousProps ?? {}) };
     delete props[prop];
