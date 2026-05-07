@@ -99,9 +99,7 @@ export async function saveChangesToGit(sessionId: string, request: SaveRequest) 
   const uploads = assetUploads.get(sessionId) ?? [];
   if (changeSet.changes.length === 0 && uploads.length === 0) return { sessionId, saved: false, message: 'No pending changes.' };
   await ensureWorkspace();
-  await git(['fetch', 'origin', gitBranch]);
-  await git(['checkout', gitBranch]);
-  await git(['reset', '--hard', `origin/${gitBranch}`]);
+  await syncWorkspaceToOrigin();
   for (const change of changeSet.changes) await applyChangeToWorkspace(change);
   for (const upload of uploads) await applyAssetUploadToWorkspace(upload);
   await git(['diff', '--check']);
@@ -113,17 +111,22 @@ export async function saveChangesToGit(sessionId: string, request: SaveRequest) 
   const totalChanges = changeSet.changes.length + uploads.length;
   await git(['commit', '-m', request.message?.trim() || `editor: save ${totalChanges} pending change${totalChanges === 1 ? '' : 's'}`]);
   const commit = (await git(['rev-parse', '--short', 'HEAD'])).trim();
-  await git(['pushWithToken', 'origin', gitBranch]);
+  await pushWithRebase();
   return { sessionId, saved: true, commit, files: status.split('\n') };
 }
 
 export async function gitStatus() {
   await ensureWorkspace();
+  await git(['fetch', 'origin', gitBranch]);
+  const divergence = await branchDivergence();
   return {
     ok: true,
     branch: gitBranch,
     head: (await git(['rev-parse', '--short', 'HEAD'])).trim(),
+    originHead: (await git(['rev-parse', '--short', `origin/${gitBranch}`])).trim(),
     status: (await git(['status', '--short'])).trim().split('\n').filter(Boolean),
+    ...divergence,
+    needsRebase: divergence.behind > 0,
   };
 }
 
@@ -186,6 +189,29 @@ async function ensureWorkspace(): Promise<void> {
   await rm(workspacePath, { recursive: true, force: true });
   await mkdir(dirname(workspacePath), { recursive: true });
   await gitOutside(['clone', '--branch', gitBranch, gitRepoUrl, workspacePath]);
+}
+
+async function syncWorkspaceToOrigin(): Promise<void> {
+  await git(['fetch', 'origin', gitBranch]);
+  await git(['checkout', gitBranch]);
+  await git(['reset', '--hard', `origin/${gitBranch}`]);
+}
+
+async function branchDivergence(): Promise<{ ahead: number; behind: number }> {
+  const output = (await git(['rev-list', '--left-right', '--count', `HEAD...origin/${gitBranch}`])).trim();
+  const [aheadRaw, behindRaw] = output.split(/\s+/);
+  return { ahead: Number(aheadRaw) || 0, behind: Number(behindRaw) || 0 };
+}
+
+async function pushWithRebase(): Promise<void> {
+  try {
+    await git(['pushWithToken', 'origin', gitBranch]);
+    return;
+  } catch {
+    await git(['fetch', 'origin', gitBranch]);
+    await git(['rebase', `origin/${gitBranch}`]);
+    await git(['pushWithToken', 'origin', gitBranch]);
+  }
 }
 
 async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<void> {

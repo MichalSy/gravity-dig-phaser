@@ -86,7 +86,7 @@ export class ImageNode extends TransformNode {
   private readonly syncMode: ImageNodeSyncMode;
 
   constructor(options: ImageNodeOptions) {
-    super({ ...options, className: options.className ?? 'ImageNode', sizeMode: options.sizeMode ?? 'explicit' });
+    super({ ...options, className: options.className ?? 'ImageNode' });
     this.assetId = options.assetId;
     this.flipX = options.flipX ?? false;
     this.syncMode = options.syncMode ?? 'node-to-object';
@@ -100,9 +100,8 @@ export class ImageNode extends TransformNode {
   init(ctx: NodeContext): void {
     this.asset = ctx.assets.image(this.assetId);
     const frame = isFrameAsset(this.asset) ? this.asset.frameKey : undefined;
-    this.size = { width: this.asset.width, height: this.asset.height };
     this.phaserImage = ctx.phaserScene.add.image(0, 0, this.asset.textureKey, frame).setFlipX(this.flipX);
-    this.size = visibleImageLocalSize(this.phaserImage);
+    if (this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
     this.applyTransformTo(this.phaserImage);
   }
 
@@ -123,6 +122,7 @@ export class ImageNode extends TransformNode {
       return;
     }
 
+    if (this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
     this.applyTransformTo(this.phaserImage).setFlipX(this.flipX);
   }
 
@@ -140,9 +140,9 @@ export class ImageNode extends TransformNode {
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;
     this.phaserImage?.setTexture(asset.textureKey, frame);
     if (this.phaserImage) {
-      this.size = visibleImageLocalSize(this.phaserImage);
+      if (this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
       this.applyTransformTo(this.phaserImage);
-    } else {
+    } else if (this.sizeMode === 'content') {
       this.size = { width: asset.width, height: asset.height };
     }
   }

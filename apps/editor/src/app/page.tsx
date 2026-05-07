@@ -53,6 +53,17 @@ interface EditorLayoutState {
   assetSplitPercent: number;
 }
 
+interface EditorGitStatus {
+  ok: boolean;
+  branch: string;
+  head: string;
+  originHead?: string;
+  status: string[];
+  ahead?: number;
+  behind?: number;
+  needsRebase?: boolean;
+}
+
 const defaultLayoutState: EditorLayoutState = {
   hierarchyWidth: 448,
   inspectorWidth: 340,
@@ -124,6 +135,7 @@ export default function Home() {
   const [patchStatus, setPatchStatus] = useState('');
   const [pendingChangeCount, setPendingChangeCount] = useState(0);
   const [gitSaveStatus, setGitSaveStatus] = useState('');
+  const [gitNeedsRebase, setGitNeedsRebase] = useState(false);
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
@@ -273,6 +285,7 @@ export default function Home() {
 
   useEffect(() => {
     void refreshPendingChanges();
+    void refreshGitStatus();
   }, [sessionId]);
 
   useEffect(() => {
@@ -340,9 +353,20 @@ export default function Home() {
     }
   }
 
+  async function refreshGitStatus(): Promise<void> {
+    try {
+      const response = await fetch(editorApi('/git/status'));
+      const status = await response.json() as EditorGitStatus;
+      if (!response.ok || !status.ok) throw new Error(`HTTP ${response.status}`);
+      setGitNeedsRebase(status.needsRebase === true);
+    } catch {
+      setGitNeedsRebase(false);
+    }
+  }
+
   async function savePendingChanges(): Promise<void> {
     if (!sessionId) return;
-    setGitSaveStatus('Speichere Änderungen nach Git...');
+    setGitSaveStatus(gitNeedsRebase ? 'Rebase + Git Save läuft...' : 'Speichere Änderungen nach Git...');
     try {
       const response = await fetch(editorApi(`/git/save/${encodeURIComponent(sessionId)}`), {
         method: 'POST',
@@ -352,9 +376,12 @@ export default function Home() {
       const result = await response.json() as { ok: boolean; commit?: string; message?: string; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeCount(0);
+      setGitNeedsRebase(false);
       setGitSaveStatus(result.commit ? `Gespeichert: Commit ${result.commit}` : result.message ?? 'Keine Änderungen zu speichern.');
+      void refreshGitStatus();
     } catch (error) {
       setGitSaveStatus(`Git Save fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+      void refreshGitStatus();
     }
   }
 
@@ -499,6 +526,7 @@ export default function Home() {
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeCount(result.changeSet?.changes.length ?? 0);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
+      void refreshGitStatus();
     } catch (error) {
       setGitSaveStatus(`Pending Change fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -506,13 +534,14 @@ export default function Home() {
 
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
   const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
+  const editorTitle = gitNeedsRebase ? 'Debug Editor · Rebase nötig' : 'Debug Editor';
 
   return (
     <main className={styles.appShell}>
       <header className={styles.toolbar}>
         <div className={styles.brandBlock}>
           <span className={styles.eyebrow}>Gravity Dig</span>
-          <h1 className={styles.title}>Debug Editor</h1>
+          <h1 className={styles.title}>{editorTitle}</h1>
         </div>
         <div className={styles.statusStack}>
           <span className={`${styles.badge} ${styles[status]}`}>{statusText}</span>
@@ -522,7 +551,7 @@ export default function Home() {
           <button className={styles.button} onClick={reloadGameFrame} title="Game mit aktuellem Live-Stand neu laden">
             <RotateCcw size={16} /> Game neu laden
           </button>
-          <button className={styles.button} onClick={savePendingChanges} disabled={pendingChangeCount === 0} title={gitSaveStatus || 'Pending Changes nach Git committen und pushen'}>
+          <button className={styles.button} onClick={savePendingChanges} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Save führt erst Rebase aus.' : (gitSaveStatus || 'Pending Changes nach Git committen und pushen')}>
             Git speichern ({pendingChangeCount})
           </button>
           <button className={`${styles.button} ${styles.ghost}`} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
@@ -1276,8 +1305,9 @@ function EditablePropRow({
   }
 
   if (prop.type === 'Size') {
-    const size = isSizeValue(draft) ? draft : isSizeValue(value) ? value : { width: 0, height: 0 };
-    const calculatedFromContent = draft === null || (draft === value && debugProps?.props.sizeMode === 'content');
+    const computedSize = debugProps?.localTransform ? { width: debugProps.localTransform.width, height: debugProps.localTransform.height } : undefined;
+    const size = isSizeValue(draft) ? draft : isSizeValue(value) ? value : computedSize ?? { width: 0, height: 0 };
+    const calculatedFromContent = draft === null || debugProps?.props.sizeMode === 'content';
     return (
       <>
         <span>{label}</span>
