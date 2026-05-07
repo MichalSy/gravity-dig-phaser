@@ -221,11 +221,40 @@ async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<voi
   const node = findNodeByPath(file.root, source.nodePath);
   if (!node) throw new EditorBackendError(`Could not locate node path '${change.target.nodePath.join('/')}' in ${source.filePath}`, 422);
   node.props = { ...(node.props ?? {}) };
-  for (const [key, value] of Object.entries(change.props)) {
+  const props = canonicalizeSceneProps(change.props);
+  for (const [key, value] of Object.entries(props)) {
     if (value === null || key === 'sizeMode') delete node.props[key];
     else node.props[key] = value;
   }
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
+}
+
+function canonicalizeSceneProps(props: DebugNodePatch): DebugNodePatch {
+  const next: DebugNodePatch = { ...props };
+  const scale = next.scale;
+  if (isPointLike(scale)) {
+    next.scale = { x: roundScale(scale.x), y: roundScale(scale.y) };
+    next.scaleX = null;
+    next.scaleY = null;
+    return next;
+  }
+
+  const scaleX = typeof next.scaleX === 'number' ? next.scaleX : undefined;
+  const scaleY = typeof next.scaleY === 'number' ? next.scaleY : undefined;
+  if (scaleX !== undefined || scaleY !== undefined) {
+    next.scale = { x: roundScale(scaleX ?? scaleY ?? 1), y: roundScale(scaleY ?? scaleX ?? 1) };
+    next.scaleX = null;
+    next.scaleY = null;
+  }
+  return next;
+}
+
+function isPointLike(value: unknown): value is { x: number; y: number } {
+  return typeof value === 'object' && value !== null && typeof (value as { x?: unknown }).x === 'number' && typeof (value as { y?: unknown }).y === 'number';
+}
+
+function roundScale(value: number): number {
+  return Number(value.toFixed(2));
 }
 
 async function applyAssetUploadToWorkspace(upload: StagedAssetUpload): Promise<void> {

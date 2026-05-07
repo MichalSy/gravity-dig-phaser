@@ -62,8 +62,8 @@ export abstract class TransformNode extends GameNode {
     this.visible = options.visible ?? true;
     const scale = typeof options.scale === 'object' ? options.scale : undefined;
     const uniformScale = typeof options.scale === 'number' ? options.scale : 1;
-    this.scaleX = roundScale(options.scaleX ?? scale?.x ?? uniformScale);
-    this.scaleY = roundScale(options.scaleY ?? scale?.y ?? uniformScale);
+    this.scaleX = roundScale(scale?.x ?? options.scaleX ?? uniformScale);
+    this.scaleY = roundScale(scale?.y ?? options.scaleY ?? uniformScale);
     this.scale = this.scaleX === this.scaleY ? this.scaleX : 1;
     this.scrollFactor = options.scrollFactor ?? 1;
   }
