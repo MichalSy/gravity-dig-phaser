@@ -695,14 +695,22 @@ function GitSavePreviewDialog({
         </div>
         <div className={styles.gitPreviewBody}>
           {needsRebase && <p className={styles.previewWarning}>Remote ist voraus. Beim Speichern wird zuerst rebased.</p>}
-          {rows.length > 0 ? rows.map(({ change, prop, value }) => (
-            <div key={`${change.id}:${prop}`} className={styles.gitPreviewRow}>
-              <div className={styles.gitPreviewPath}>{change.target.nodePath.join(' / ')}</div>
-              <div className={styles.gitPreviewProp}>{prop}</div>
-              <code className={styles.gitPreviewValue}>{formatPendingValue(value)}</code>
-              <button type="button" className={styles.removeSettingButton} onClick={() => onRemoveSetting(change, prop)}>Entfernen</button>
+          {rows.length > 0 ? (
+            <div className={styles.gitPreviewTable}>
+              <div className={styles.gitPreviewTableHeader}>Node</div>
+              <div className={styles.gitPreviewTableHeader}>Prop</div>
+              <div className={styles.gitPreviewTableHeader}>Wert</div>
+              <div className={styles.gitPreviewTableHeader}></div>
+              {rows.map(({ change, prop, value }) => (
+                <div key={`${change.id}:${prop}`} className={styles.gitPreviewRow}>
+                  <div className={styles.gitPreviewPath}>{change.target.nodePath.join(' / ')}</div>
+                  <div className={styles.gitPreviewProp}>{prop}</div>
+                  <code className={styles.gitPreviewValue}>{formatPendingValue(value)}</code>
+                  <button type="button" className={styles.removeSettingButton} onClick={() => onRemoveSetting(change, prop)}>Entfernen</button>
+                </div>
+              ))}
             </div>
-          )) : <p className={styles.empty}>Keine Settings mehr im Save.</p>}
+          ) : <p className={styles.empty}>Keine Settings mehr im Save.</p>}
         </div>
       </div>
     </div>
