@@ -464,7 +464,6 @@ export abstract class GameNode {
       typeName: constructor.sceneType,
       exposedPropGroups: this.getExposedPropGroups(),
       overlayLayers: [...this.getDebugOverlayLayers()],
-      editableProps: this.getFlattenedExposedProps(),
     };
   }
 

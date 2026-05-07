@@ -1029,7 +1029,7 @@ function Inspector({
 
 function flattenDefinitionProps(definition?: DebugSceneNodeDefinition): Record<string, DebugScenePropDefinition> {
   if (!definition) return {};
-  const groups = definition.exposedPropGroups ?? (definition.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : []);
+  const groups = definition.exposedPropGroups ?? [];
   return Object.assign({}, ...groups.map((group) => group.props));
 }
 
@@ -1120,7 +1120,7 @@ function ExposedPropsSection({
     onPatch(node, patch);
   }
 
-  const groups = definition?.exposedPropGroups ?? (definition?.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : undefined);
+  const groups = definition?.exposedPropGroups;
 
   return (
     <>

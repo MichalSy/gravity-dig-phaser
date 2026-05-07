@@ -74,8 +74,6 @@ export interface DebugSceneNodeDefinition {
   typeName: string;
   exposedPropGroups: DebugScenePropGroup[];
   overlayLayers: DebugOverlayLayerDescriptor[];
-  /** @deprecated use exposedPropGroups */
-  editableProps?: Record<string, DebugScenePropDefinition>;
 }
 
 export interface DebugNodeDefinitionsMessage {

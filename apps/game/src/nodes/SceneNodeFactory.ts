@@ -5,8 +5,6 @@ import type { GameNode } from './GameNode';
 export interface SceneNodeJson {
   /** Static node type identifier. All ImageNode instances share the same nodeTypeId. */
   nodeTypeId?: string;
-  /** @deprecated legacy alias for nodeTypeId. Public JSON must not use this. */
-  id?: string;
   /** Runtime-only instance identifier. Public JSON must not use this. */
   instanceId?: string;
   name?: string;
@@ -38,7 +36,6 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
     ...base,
     ...override,
     nodeTypeId: getDefinitionNodeTypeId(base),
-    id: undefined,
     instanceId: undefined,
     prefab: undefined,
     props: { ...(base.props ?? {}), ...(override.props ?? {}) },
@@ -115,7 +112,7 @@ export class SceneNodeFactoryRegistry {
 }
 
 export function getDefinitionNodeTypeId(definition: SceneNodeJson): string | undefined {
-  return definition.nodeTypeId ?? definition.id;
+  return definition.nodeTypeId;
 }
 
 function pathsEqual(a: readonly string[], b: readonly string[]): boolean {
