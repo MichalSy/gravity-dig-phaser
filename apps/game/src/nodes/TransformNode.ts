@@ -13,6 +13,10 @@ function isSizePatchValue(value: DebugNodePatch[string]): value is SizeLike {
   return typeof value === 'object' && value !== null && 'width' in value && 'height' in value;
 }
 
+function roundScale(value: number): number {
+  return Number(value.toFixed(2));
+}
+
 export interface TransformNodeOptions extends GameNodeOptions {
   visible?: boolean;
   scale?: number;
@@ -225,17 +229,17 @@ export abstract class TransformNode extends GameNode {
         return true;
       case 'scale':
         if (typeof value !== 'object' || value === null || !('x' in value) || !('y' in value) || typeof value.x !== 'number' || typeof value.y !== 'number') return false;
-        this.scale = value.x === value.y ? value.x : 1;
-        this.scaleX = value.x;
-        this.scaleY = value.y;
+        this.scaleX = roundScale(value.x);
+        this.scaleY = roundScale(value.y);
+        this.scale = this.scaleX === this.scaleY ? this.scaleX : 1;
         return true;
       case 'scaleX':
         if (typeof value !== 'number') return false;
-        this.scaleX = value;
+        this.scaleX = roundScale(value);
         return true;
       case 'scaleY':
         if (typeof value !== 'number') return false;
-        this.scaleY = value;
+        this.scaleY = roundScale(value);
         return true;
       case 'scrollFactor':
         if (typeof value !== 'number') return false;

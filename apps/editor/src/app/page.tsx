@@ -1285,6 +1285,8 @@ function EditablePropRow({
   if (prop.type === 'Position' || prop.type === 'Origin' || prop.type === 'Scale') {
     const point = isPointValue(draft) ? draft : { x: 0, y: 0 };
     const originPreset = prop.type === 'Origin' ? originPresetValue(point) : '';
+    const scalePrecision = prop.type === 'Scale' ? 2 : undefined;
+    const normalizePointValue = prop.type === 'Scale' ? roundScalePoint : (value: { x: number | string; y: number | string }) => value;
     return (
       <>
         <span>{label}</span>
@@ -1295,9 +1297,10 @@ function EditablePropRow({
               {originPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
             </select>
           )}
-          <div className={styles.vectorEditor}>
-            <DragNumberInput value={parseFiniteNumber(point.x) ?? 0} min={prop.min ?? (prop.type === 'Scale' ? 0 : undefined)} max={prop.max ?? (prop.type === 'Scale' ? 5 : undefined)} step={prop.step ?? (prop.type === 'Position' ? 1 : 0.01)} integer={prop.type === 'Position'} disabled={prop.readOnly} onChange={(next) => scheduleCommit({ x: next, y: point.y })} onCommit={(next) => commit({ x: next, y: point.y }, { keepEditing: true })} />
-            <DragNumberInput value={parseFiniteNumber(point.y) ?? 0} min={prop.min ?? (prop.type === 'Scale' ? 0 : undefined)} max={prop.max ?? (prop.type === 'Scale' ? 5 : undefined)} step={prop.step ?? (prop.type === 'Position' ? 1 : 0.01)} integer={prop.type === 'Position'} disabled={prop.readOnly} onChange={(next) => scheduleCommit({ x: point.x, y: next })} onCommit={(next) => commit({ x: point.x, y: next }, { keepEditing: true })} />
+          <div className={prop.type === 'Scale' ? styles.scaleEditor : styles.vectorEditor}>
+            <DragNumberInput value={parseFiniteNumber(point.x) ?? 0} min={prop.min ?? (prop.type === 'Scale' ? 0 : undefined)} max={prop.max ?? (prop.type === 'Scale' ? 5 : undefined)} step={prop.step ?? (prop.type === 'Position' ? 1 : 0.01)} integer={prop.type === 'Position'} precision={scalePrecision} disabled={prop.readOnly} onChange={(next) => scheduleCommit(normalizePointValue({ x: next, y: point.y }))} onCommit={(next) => commit(normalizePointValue({ x: next, y: point.y }), { keepEditing: true })} />
+            <DragNumberInput value={parseFiniteNumber(point.y) ?? 0} min={prop.min ?? (prop.type === 'Scale' ? 0 : undefined)} max={prop.max ?? (prop.type === 'Scale' ? 5 : undefined)} step={prop.step ?? (prop.type === 'Position' ? 1 : 0.01)} integer={prop.type === 'Position'} precision={scalePrecision} disabled={prop.readOnly} onChange={(next) => scheduleCommit(normalizePointValue({ x: point.x, y: next }))} onCommit={(next) => commit(normalizePointValue({ x: point.x, y: next }), { keepEditing: true })} />
+            {prop.type === 'Scale' && <button type="button" className={styles.resetMiniButton} disabled={prop.readOnly} title="Scale auf 1 / 1 zurücksetzen" onClick={() => commit({ x: 1, y: 1 })}>Reset</button>}
           </div>
         </div>
       </>
@@ -1345,6 +1348,7 @@ function DragNumberInput({
   step,
   suffix = '',
   integer = false,
+  precision,
   disabled = false,
   onChange,
   onCommit,
@@ -1355,6 +1359,7 @@ function DragNumberInput({
   step: number;
   suffix?: string;
   integer?: boolean;
+  precision?: number;
   disabled?: boolean;
   onChange(value: number): void;
   onCommit(value: number): void;
@@ -1363,12 +1368,12 @@ function DragNumberInput({
   const [draft, setDraft] = useState('');
 
   useEffect(() => {
-    if (!editMode) setDraft(formatEditableNumber(value, suffix));
-  }, [editMode, suffix, value]);
+    if (!editMode) setDraft(formatEditableNumber(value, suffix, precision ?? 4));
+  }, [editMode, precision, suffix, value]);
 
   function normalize(next: number): number {
     const clamped = clamp(next, min ?? -Number.MAX_SAFE_INTEGER, max ?? Number.MAX_SAFE_INTEGER);
-    return integer ? Math.round(clamped) : Number(clamped.toFixed(4));
+    return integer ? Math.round(clamped) : Number(clamped.toFixed(precision ?? 4));
   }
 
   function startDrag(event: ReactPointerEvent<HTMLInputElement>): void {
@@ -1405,14 +1410,14 @@ function DragNumberInput({
     <input
       className={`${styles.editorInput} ${styles.dragNumberInput}`}
       type="text"
-      value={editMode ? draft : formatEditableNumber(value, suffix)}
+      value={editMode ? draft : formatEditableNumber(value, suffix, precision ?? 4)}
       disabled={disabled}
       readOnly={!editMode}
       title={editMode ? 'Enter bestätigt' : 'Ziehen zum Ändern, Doppelklick zum Tippen'}
       onPointerDown={startDrag}
       onDoubleClick={(event) => {
         setEditMode(true);
-        setDraft(formatPlainNumber(value));
+        setDraft(formatPlainNumber(value, precision ?? 4));
         window.setTimeout(() => event.currentTarget.select(), 0);
       }}
       onChange={(event) => setDraft(event.currentTarget.value)}
@@ -1427,12 +1432,12 @@ function DragNumberInput({
   );
 }
 
-function formatPlainNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(4)));
+function formatPlainNumber(value: number, precision = 4): string {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(precision)));
 }
 
-function formatEditableNumber(value: number, suffix: string): string {
-  return `${formatPlainNumber(value)}${suffix}`;
+function formatEditableNumber(value: number, suffix: string, precision = 4): string {
+  return `${formatPlainNumber(value, precision)}${suffix}`;
 }
 
 const originPresets = [
@@ -1467,7 +1472,8 @@ function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): De
     if (!isPointValue(value)) return undefined;
     const x = parseFiniteNumber(value.x);
     const y = parseFiniteNumber(value.y);
-    return x === undefined || y === undefined ? undefined : { x, y };
+    if (x === undefined || y === undefined) return undefined;
+    return prop.type === 'Scale' ? { x: roundScaleNumber(x), y: roundScaleNumber(y) } : { x, y };
   }
   if (prop.type === 'Size') {
     if (value === null) return null;
@@ -1477,6 +1483,14 @@ function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): De
     return width === undefined || height === undefined ? undefined : { width, height };
   }
   return undefined;
+}
+
+function roundScalePoint(value: { x: number | string; y: number | string }): { x: number; y: number } {
+  return { x: roundScaleNumber(parseFiniteNumber(value.x) ?? 0), y: roundScaleNumber(parseFiniteNumber(value.y) ?? 0) };
+}
+
+function roundScaleNumber(value: number): number {
+  return Number(value.toFixed(2));
 }
 
 function parseFiniteNumber(value: unknown): number | undefined {

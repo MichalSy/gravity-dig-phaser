@@ -1028,11 +1028,36 @@
   font-size: inherit;
 }
 
-.vectorEditor {
+.vectorEditor,
+.scaleEditor {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
+}
+
+.scaleEditor {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+}
+
+.resetMiniButton {
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 8px;
+  padding: 0 8px;
+  background: rgba(30, 41, 59, 0.88);
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.resetMiniButton:hover:not(:disabled) {
+  border-color: rgba(125, 211, 252, 0.48);
+  background: rgba(14, 165, 233, 0.18);
+}
+
+.resetMiniButton:disabled {
+  opacity: 0.5;
 }
 
 .dragNumberInput {
