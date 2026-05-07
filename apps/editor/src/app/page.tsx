@@ -1583,7 +1583,11 @@ function EditablePropRow({
 
 
 function degreesToRadians(degrees: number): number {
-  return (degrees * Math.PI) / 180;
+  return roundRotationNumber((degrees * Math.PI) / 180);
+}
+
+function roundRotationNumber(value: number): number {
+  return Number(value.toFixed(3));
 }
 
 function radiansToDegrees(radians: number): number {
