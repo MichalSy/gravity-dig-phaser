@@ -3,9 +3,18 @@
   "root": {
     "name": "UI.StatusHud",
     "props": {
-      "parentAnchor": "top-left",
+      "parentAnchor": "top-center",
       "sizeMode": "explicit",
-      "debugScrollFactor": 0
+      "debugScrollFactor": 0,
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "rotation": 0.20943951023931953,
+      "position": {
+        "x": 18,
+        "y": 18
+      }
     },
     "children": [
       {
