@@ -148,6 +148,7 @@ export default function Home() {
   const [savePreviewOpen, setSavePreviewOpen] = useState(false);
   const [gitSaveStatus, setGitSaveStatus] = useState('');
   const [gitNeedsRebase, setGitNeedsRebase] = useState(false);
+  const [inspectorResetVersion, setInspectorResetVersion] = useState(0);
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
@@ -412,6 +413,7 @@ export default function Home() {
 
   async function clearPendingChanges(): Promise<void> {
     if (!sessionId) return;
+    setInspectorResetVersion((current) => current + 1);
     const changeSet = pendingChangeSet ?? await fetchPendingChangeSet();
     const reverted = revertPendingChanges(changeSet?.changes ?? []);
     if (reverted.failed > 0) {
@@ -655,7 +657,7 @@ export default function Home() {
           <button className={styles.button} onClick={openSavePreview} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Save führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Pending Changes prüfen und speichern')}>
             Git speichern ({pendingChangeCount})
           </button>
-          <button className={`${styles.button} ${styles.ghost}`} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
+          <button className={`${styles.button} ${styles.ghost}`} onPointerDown={(event) => event.preventDefault()} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
             Pending verwerfen
           </button>
           <button className={`${styles.button} ${styles.secondary}`} onClick={openGameInTab}>
@@ -723,7 +725,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -1132,6 +1134,7 @@ function Inspector({
   parentInactive,
   definition,
   debugProps,
+  resetVersion,
   overlayLayerSelection,
   assets,
   onPatch,
@@ -1142,6 +1145,7 @@ function Inspector({
   parentInactive: boolean;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
+  resetVersion: number;
   overlayLayerSelection?: string[];
   assets: DebugImageAssetDescriptor[];
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
@@ -1166,7 +1170,7 @@ function Inspector({
         </div>
       </div>
       <OverlayLayersDropdown node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
-      <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
+      <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} resetVersion={resetVersion} assets={assets} onPatch={onPatch} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
         <FragmentRow name={node.instanceId ? 'instanceId' : 'runtimeId'} value={node.instanceId ?? node.id} />
         <FragmentRow name="index" value={node.index} />
@@ -1242,12 +1246,14 @@ function ExposedPropsSection({
   node,
   definition,
   debugProps,
+  resetVersion,
   assets,
   onPatch,
 }: {
   node: DebugNodeDescriptor;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
+  resetVersion: number;
   assets: DebugImageAssetDescriptor[];
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
 }) {
@@ -1258,6 +1264,10 @@ function ExposedPropsSection({
     setLocalOverrides({});
     lastPatchSignatureRef.current = '';
   }, [node.id]);
+
+  useEffect(() => {
+    setLocalOverrides({});
+  }, [debugProps?.sentAt, resetVersion]);
 
   function patchProp(key: string, value: DebugNodePatch[string]): void {
     const patch: DebugNodePatch = key === 'size'
@@ -1285,6 +1295,7 @@ function ExposedPropsSection({
               prop={prop}
               value={key in localOverrides ? localOverrides[key] : currentEditablePropValue(key, prop, node, debugProps)}
               debugProps={debugProps}
+              resetVersion={resetVersion}
               assets={assets}
               onCommit={(value) => patchProp(key, value)}
             />
@@ -1303,6 +1314,7 @@ function EditablePropRow({
   prop,
   value,
   debugProps,
+  resetVersion,
   assets,
   onCommit,
 }: {
@@ -1310,6 +1322,7 @@ function EditablePropRow({
   prop: DebugScenePropDefinition;
   value: unknown;
   debugProps?: DebugNodePropsMessage;
+  resetVersion: number;
   assets: DebugImageAssetDescriptor[];
   onCommit(value: DebugNodePatch[string]): void;
 }) {
@@ -1322,6 +1335,13 @@ function EditablePropRow({
   useEffect(() => {
     if (!editing) setDraft(value);
   }, [editing, value]);
+
+  useEffect(() => {
+    clearCommitTimer();
+    setEditing(false);
+    setDraft(value);
+    lastCommitSignatureRef.current = '';
+  }, [resetVersion]);
 
   useEffect(() => {
     lastCommitSignatureRef.current = '';
