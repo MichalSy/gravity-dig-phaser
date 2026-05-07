@@ -2,26 +2,15 @@ import Phaser from 'phaser';
 import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
-import { NODE_TYPE_IDS, collectNodesByName, exposedPropGroup, flattenExposedPropGroups, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
+import { NODE_TYPE_IDS, collectNodesByName, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import { TEXT, UI_ATLAS } from './uiLayout';
-
-const gameNodeProps = flattenExposedPropGroups(GameNode.exposedPropGroups);
-const transformNodeProps = flattenExposedPropGroups(TransformNode.exposedPropGroups);
 
 export class BottomHudNode extends TransformNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.BottomHudNode;
 
   static override readonly sceneType: string = 'BottomHudNode';
-  static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
-    exposedPropGroup('State', {
-      active: gameNodeProps.active,
-      visible: transformNodeProps.visible,
-    }),
-    exposedPropGroup('Layout', {
-      parentAnchor: transformNodeProps.parentAnchor,
-    }),
-  ];
+  static override readonly exposedPropGroups: readonly ExposedPropGroup[] = TransformNode.exposedPropGroups;
 
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
@@ -155,6 +144,7 @@ export class BottomHudNode extends TransformNode {
 
   private markHudComputedPropsReadOnly(): void {
     const computedByHudLayout = 'computed by BottomHudNode.update';
+    for (const prop of ['position', 'size']) this.markExposedPropReadOnly(prop, computedByHudLayout);
     for (const node of [this.actionFrameNode, this.energyFillNode]) {
       for (const prop of ['position', 'size', 'scale', 'visible']) node.markExposedPropReadOnly(prop, computedByHudLayout);
     }
