@@ -196,10 +196,38 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
 
 function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): EditorChangeSet {
   const current = readChangeSet(sessionId);
-  const splitChanges = changes.flatMap(splitChangeByProp);
-  const next: EditorChangeSet = { ...current, sessionId, changes: [...current.changes, ...splitChanges], updatedAt: Date.now() };
-  changeSets.set(sessionId, next);
-  return next;
+  const byProp = new Map<string, EditorSetPropsChange>();
+
+  for (const change of current.changes) {
+    const prop = singlePropName(change);
+    if (prop) byProp.set(changeKey(change.target.nodePath, prop), change);
+  }
+
+  for (const incoming of changes.flatMap(splitChangeByProp)) {
+    const prop = singlePropName(incoming);
+    if (!prop) continue;
+    const key = changeKey(incoming.target.nodePath, prop);
+    const existing = byProp.get(key);
+    const previousValue = existing?.previousProps && prop in existing.previousProps ? existing.previousProps[prop] : incoming.previousProps?.[prop];
+    const nextValue = incoming.props[prop];
+
+    if (previousValue !== undefined && scenePropValuesEqual(nextValue, previousValue)) {
+      byProp.delete(key);
+      continue;
+    }
+
+    byProp.set(key, {
+      ...incoming,
+      id: existing?.id ?? incoming.id,
+      createdAt: existing?.createdAt ?? incoming.createdAt,
+      previousProps: previousValue !== undefined ? { [prop]: previousValue } : undefined,
+    });
+  }
+
+  const next: EditorChangeSet = { ...current, sessionId, changes: [...byProp.values()], updatedAt: Date.now() };
+  if (next.changes.length === 0) changeSets.delete(sessionId);
+  else changeSets.set(sessionId, next);
+  return readChangeSet(sessionId);
 }
 
 function splitChangeByProp(change: EditorSetPropsChange): EditorSetPropsChange[] {
@@ -209,6 +237,19 @@ function splitChangeByProp(change: EditorSetPropsChange): EditorSetPropsChange[]
     props: { [prop]: value },
     previousProps: change.previousProps && prop in change.previousProps ? { [prop]: change.previousProps[prop] } : undefined,
   }));
+}
+
+function singlePropName(change: EditorSetPropsChange): string | undefined {
+  const props = Object.keys(change.props);
+  return props.length === 1 ? props[0] : undefined;
+}
+
+function changeKey(nodePath: string[], prop: string): string {
+  return `${nodePath.join('\u0000')}\u0000${prop}`;
+}
+
+function scenePropValuesEqual(left: DebugNodePatch[string], right: DebugNodePatch[string]): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 async function ensureWorkspace(): Promise<void> {
