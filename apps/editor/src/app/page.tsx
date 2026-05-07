@@ -158,6 +158,7 @@ export default function Home() {
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
   const lastSelectMessageRef = useRef<string>('');
+  const selectedNodeIdRef = useRef<string | undefined>(undefined);
   const workbenchRef = useRef<HTMLElement | null>(null);
   const viewportPanelRef = useRef<HTMLElement | null>(null);
   const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
@@ -276,7 +277,7 @@ export default function Home() {
       }
 
       if (message.type === 'node:props') {
-        setSelectedNodeProps(message);
+        if (message.nodeId === selectedNodeIdRef.current) setSelectedNodeProps(message);
       }
 
       if (message.type === 'node:patch:ack') {
@@ -299,6 +300,10 @@ export default function Home() {
     void refreshPendingChanges();
     void refreshGitStatus();
   }, [sessionId]);
+
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId;
+  }, [selectedNodeId]);
 
   useEffect(() => {
     setSelectedNodeProps(undefined);

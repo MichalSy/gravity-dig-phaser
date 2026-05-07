@@ -250,7 +250,6 @@ export class DebugBridgeNode extends GameNode {
     const result = node.applySceneProps(message.props);
     console.log('[Gravity Dig Debug][patch]', 'apply:result', { target: node.debugName(), result, localTransform: node.getLocalTransform(), props: node.getDebugProps() });
     const nodeId = this.getStableNodeId(node);
-    this.selectedNodeId = nodeId;
     this.send({
       type: 'node:patch:ack',
       sessionId: this.config.sessionId,
@@ -261,7 +260,7 @@ export class DebugBridgeNode extends GameNode {
       rejected: result.rejected,
       sentAt: Date.now(),
     });
-    this.sendSelectedNodeProps(true);
+    this.sendNodeProps(nodeId, node, true);
     this.sendTreeDeltas();
   }
 
@@ -290,14 +289,19 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private sendSelectedNodeProps(force = false): void {
-    if (!this.selectedNodeId || this.socket?.readyState !== WebSocket.OPEN) return;
+    if (!this.selectedNodeId) return;
     const node = this.nodesById.get(this.selectedNodeId);
     if (!node) return;
+    this.sendNodeProps(this.selectedNodeId, node, force);
+  }
+
+  private sendNodeProps(nodeId: string, node: GameNode, force = false): void {
+    if (this.socket?.readyState !== WebSocket.OPEN) return;
 
     const message = {
       type: 'node:props' as const,
       sessionId: this.config.sessionId,
-      nodeId: this.selectedNodeId,
+      nodeId,
       instanceId: node.instanceId,
       bounds: node.getDebugBounds(),
       localTransform: node.getLocalTransform(),
@@ -307,9 +311,11 @@ export class DebugBridgeNode extends GameNode {
       sentAt: Date.now(),
     };
     const signature = this.createSelectedPropsSignature(message);
-    if (!force && signature === this.lastSelectedPropsSignature) return;
+    if (nodeId === this.selectedNodeId) {
+      if (!force && signature === this.lastSelectedPropsSignature) return;
+      this.lastSelectedPropsSignature = signature;
+    }
 
-    this.lastSelectedPropsSignature = signature;
     this.send(message);
   }
 
