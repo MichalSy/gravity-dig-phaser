@@ -8,7 +8,7 @@
     "children": [
       {
         "name": "InputModeDetector",
-        "id": "993ead47-0d83-553f-a782-6bc1d2506851"
+        "nodeTypeId": "993ead47-0d83-553f-a782-6bc1d2506851"
       },
       {
         "prefab": "prefabs/status-hud.prefab.json"
@@ -18,9 +18,9 @@
       },
       {
         "name": "UI.TouchControls",
-        "id": "a690aad8-ce49-5365-9c2d-0d636d5dcb77"
+        "nodeTypeId": "a690aad8-ce49-5365-9c2d-0d636d5dcb77"
       }
     ],
-    "id": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
+    "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
   }
 }

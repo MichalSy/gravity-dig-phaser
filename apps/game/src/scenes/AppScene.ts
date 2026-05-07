@@ -11,7 +11,7 @@ import {
   PlayerStateManagerNode,
   ShipNode,
 } from '../game/nodes';
-import { AnimatedImageNode, collectNodesByName, CollisionRectNode, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, SceneNode, SceneNodeFactoryRegistry, TextNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
+import { AnimatedImageNode, collectNodesByName, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, SceneNode, SceneNodeFactoryRegistry, TextNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
@@ -30,6 +30,8 @@ const PREFAB_JSON_KEYS: Record<string, string> = {
   'prefabs/bottom-hud.prefab.json': 'prefab:bottom-hud',
 };
 
+const PREVIEW_CHANGES_KEY = 'editor:preview-changes';
+
 export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
   private appRoot!: NodeRoot;
@@ -39,6 +41,7 @@ export class AppScene extends Phaser.Scene {
   private menuNode!: MenuNode;
   private loadingNode!: LoadingNode;
   private gameplayMounted = false;
+  private debugConfig = readDebugConnectionConfig();
 
   constructor() {
     super('App-Root');
@@ -51,6 +54,11 @@ export class AppScene extends Phaser.Scene {
     this.load.json(SCENE_JSON_KEYS.gameplay, 'scenes/gameplay.scene.json');
     this.load.json(SCENE_JSON_KEYS.gameplayUi, 'scenes/gameplay-ui.scene.json');
     for (const [path, key] of Object.entries(PREFAB_JSON_KEYS)) this.load.json(key, path);
+    if (this.debugConfig) {
+      const previewUrl = new URL(`/api/editor/changes/${encodeURIComponent(this.debugConfig.sessionId)}/preview`, this.debugConfig.editorApiUrl);
+      previewUrl.searchParams.set('cacheBust', Date.now().toString(36));
+      this.load.json(PREVIEW_CHANGES_KEY, previewUrl.toString());
+    }
   }
 
   create(): void {
@@ -60,8 +68,7 @@ export class AppScene extends Phaser.Scene {
     this.appRuntime = new NodeRuntime({ phaserScene: this });
     this.sceneFactory = this.createSceneFactory();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
-    const debugConfig = readDebugConnectionConfig();
-    if (debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(debugConfig));
+    if (this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig));
 
     this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'App-Root' }));
     this.menuScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.menu));
@@ -115,6 +122,7 @@ export class AppScene extends Phaser.Scene {
 
   private createSceneFactory(): SceneNodeFactoryRegistry {
     return new SceneNodeFactoryRegistry()
+      .withPreviewChanges(this.readPreviewChanges())
       .withPrefabResolver((path) => {
         const key = PREFAB_JSON_KEYS[path];
         if (!key) throw new Error(`Unknown prefab '${path}'`);
@@ -122,7 +130,7 @@ export class AppScene extends Phaser.Scene {
         if (!prefab) throw new Error(`Prefab '${path}' was not loaded`);
         return prefab;
       })
-      .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ typeId: definition.id, guid: definition.guid, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
+      .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.MenuNode, (definition) => new MenuNode(() => this.startGame(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LoadingNode, (definition) => new LoadingNode(() => this.mountGameplay(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
@@ -142,6 +150,11 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.CollisionRectNode, (definition) => new CollisionRectNode(optionsFrom(definition)));
   }
 
+  private readPreviewChanges(): EditorPreviewSetPropsChange[] {
+    const payload = this.cache.json.get(PREVIEW_CHANGES_KEY) as { changes?: EditorPreviewSetPropsChange[] } | undefined;
+    return payload?.changes?.filter((change) => change.kind === 'setProps' && Array.isArray(change.target.nodePath)) ?? [];
+  }
+
   private requireSceneNode<T extends GameNode>(root: GameNode, name: string): T {
     const node = collectNodesByName(root).get(name);
     if (!node) throw new Error(`Scene '${root.debugName()}' is missing node '${name}'`);
@@ -150,5 +163,5 @@ export class AppScene extends Phaser.Scene {
 }
 
 function optionsFrom(definition: SceneNodeJson): Record<string, unknown> {
-  return { typeId: definition.id, guid: definition.guid, name: definition.name, ...(definition.props ?? {}) };
+  return { nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, ...(definition.props ?? {}) };
 }

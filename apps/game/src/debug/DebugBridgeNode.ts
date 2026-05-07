@@ -16,7 +16,7 @@ export class DebugBridgeNode extends GameNode {
   private lastAssetSignature = '';
   private readonly nodeIds = new WeakMap<GameNode, string>();
   private readonly nodesById = new Map<string, GameNode>();
-  private readonly nodesByGuid = new Map<string, GameNode>();
+  private readonly nodesByInstanceId = new Map<string, GameNode>();
   private nextNodeId = 1;
   private selectedNodeId?: string;
   private propsElapsedMs = 0;
@@ -70,7 +70,7 @@ export class DebugBridgeNode extends GameNode {
     this.selectedNodeId = undefined;
     this.lastSelectedPropsSignature = '';
     this.nodesById.clear();
-    this.nodesByGuid.clear();
+    this.nodesByInstanceId.clear();
   }
 
   private afterSceneUpdate(): void {
@@ -173,7 +173,7 @@ export class DebugBridgeNode extends GameNode {
 
   private collectNodeDefinitions(node: GameNode): NonNullable<ReturnType<GameNode['getSceneDefinition']>>[] {
     const nodeId = this.getStableNodeId(node);
-    const definition = node.getSceneDefinition(node.guid ?? nodeId);
+    const definition = node.getSceneDefinition(node.instanceId ?? nodeId);
     return [definition, ...node.children.flatMap((child) => this.collectNodeDefinitions(child))].filter((item) => item !== undefined);
   }
 
@@ -205,10 +205,10 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private getStableNodeId(node: GameNode): string {
-    if (node.guid) {
-      this.nodesById.set(node.guid, node);
-      this.nodesByGuid.set(node.guid, node);
-      return node.guid;
+    if (node.instanceId) {
+      this.nodesById.set(node.instanceId, node);
+      this.nodesByInstanceId.set(node.instanceId, node);
+      return node.instanceId;
     }
 
     const existing = this.nodeIds.get(node);
@@ -231,7 +231,7 @@ export class DebugBridgeNode extends GameNode {
         type: 'node:patch:ack',
         sessionId: this.config.sessionId,
         nodeId: message.nodeId,
-        guid: message.guid,
+        instanceId: message.instanceId,
         name: message.name,
         applied: {},
         rejected: { target: 'Node nicht gefunden.' },
@@ -240,7 +240,7 @@ export class DebugBridgeNode extends GameNode {
       return;
     }
 
-    console.log('[Gravity Dig Debug][patch]', 'apply:start', { target: node.debugName(), guid: node.guid, props: message.props });
+    console.log('[Gravity Dig Debug][patch]', 'apply:start', { target: node.debugName(), instanceId: node.instanceId, props: message.props });
     const result = node.applySceneProps(message.props);
     console.log('[Gravity Dig Debug][patch]', 'apply:result', { target: node.debugName(), result, localTransform: node.getLocalTransform(), props: node.getDebugProps() });
     const nodeId = this.getStableNodeId(node);
@@ -249,7 +249,7 @@ export class DebugBridgeNode extends GameNode {
       type: 'node:patch:ack',
       sessionId: this.config.sessionId,
       nodeId,
-      guid: node.guid,
+      instanceId: node.instanceId,
       name: node.debugName(),
       applied: result.applied,
       rejected: result.rejected,
@@ -260,7 +260,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private findPatchTarget(message: DebugNodePatchMessage): GameNode | undefined {
-    if (message.guid) return this.nodesByGuid.get(message.guid) ?? this.nodesById.get(message.guid);
+    if (message.instanceId) return this.nodesByInstanceId.get(message.instanceId) ?? this.nodesById.get(message.instanceId);
     if (message.nodeId) return this.nodesById.get(message.nodeId);
     if (message.name) return this.ctx?.getNode(message.name);
     return undefined;
@@ -329,7 +329,7 @@ export class DebugBridgeNode extends GameNode {
       type: 'node:props' as const,
       sessionId: this.config.sessionId,
       nodeId: this.selectedNodeId,
-      guid: node.guid,
+      instanceId: node.instanceId,
       bounds: node.getDebugBounds(),
       localTransform: node.getLocalTransform(),
       worldTransform: node.getWorldTransform(),
@@ -347,7 +347,7 @@ export class DebugBridgeNode extends GameNode {
   private createSelectedPropsSignature(message: Extract<DebugMessage, { type: 'node:props' }>): string {
     return JSON.stringify({
       nodeId: message.nodeId,
-      guid: message.guid,
+      instanceId: message.instanceId,
       bounds: message.bounds,
       localTransform: message.localTransform,
       worldTransform: message.worldTransform,

@@ -3,7 +3,7 @@ import type { GameNode, NodeRuntime } from '../nodes';
 
 interface FlatNodeSnapshot {
   id: string;
-  guid?: string;
+  instanceId?: string;
   parentId?: string;
   name: string;
   className: string;
@@ -83,7 +83,7 @@ function serializeNode(
   const id = getNodeId(node);
   const descriptor: DebugNodeDescriptor = {
     id,
-    guid: node.guid,
+    instanceId: node.instanceId,
     parentId,
     name: node.debugName(),
     className: node.debugClassName(),
@@ -96,7 +96,7 @@ function serializeNode(
 
   flatNodes.set(id, {
     id,
-    guid: descriptor.guid,
+    instanceId: descriptor.instanceId,
     parentId,
     name: descriptor.name,
     className: descriptor.className,

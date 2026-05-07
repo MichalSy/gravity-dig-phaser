@@ -14,7 +14,7 @@
           "assetId": "hud-hp-fuel-atlas#topHud",
           "scrollFactor": 0
         },
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
         "name": "UI.HpFill",
@@ -22,7 +22,7 @@
           "assetId": "hud-hp-fuel-atlas#hpBar",
           "scrollFactor": 0
         },
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
         "name": "UI.FuelFill",
@@ -30,9 +30,9 @@
           "assetId": "hud-hp-fuel-atlas#fuelBar",
           "scrollFactor": 0
         },
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       }
     ],
-    "id": "8c796b18-36c2-5771-92b9-6fc488c1d20b"
+    "nodeTypeId": "8c796b18-36c2-5771-92b9-6fc488c1d20b"
   }
 }

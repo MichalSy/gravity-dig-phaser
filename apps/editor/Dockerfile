@@ -11,6 +11,7 @@ RUN npm run build -w packages/debug-protocol && npm run build -w apps/editor
 
 FROM node:25-alpine
 WORKDIR /app
+RUN apk add --no-cache git
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=80

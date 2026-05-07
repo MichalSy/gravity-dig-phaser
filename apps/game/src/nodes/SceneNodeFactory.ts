@@ -3,8 +3,12 @@ import { TextNode, type TextNodeOptions } from './TextNode';
 import type { GameNode } from './GameNode';
 
 export interface SceneNodeJson {
+  /** Static node type identifier. All ImageNode instances share the same nodeTypeId. */
+  nodeTypeId?: string;
+  /** @deprecated legacy alias for nodeTypeId. Public JSON must not use this. */
   id?: string;
-  guid?: string;
+  /** Runtime-only instance identifier. Public JSON must not use this. */
+  instanceId?: string;
   name?: string;
   prefab?: string;
   props?: Record<string, unknown>;
@@ -14,6 +18,12 @@ export interface SceneNodeJson {
 export interface SceneFileJson {
   version: 1;
   root: SceneNodeJson;
+}
+
+export interface EditorPreviewSetPropsChange {
+  kind: 'setProps';
+  target: { nodePath: string[] };
+  props: Record<string, unknown>;
 }
 
 type SceneNodeFactory = (definition: SceneNodeJson) => GameNode;
@@ -27,8 +37,9 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
   return {
     ...base,
     ...override,
-    id: base.id,
-    guid: override.guid ?? base.guid,
+    nodeTypeId: getDefinitionNodeTypeId(base),
+    id: undefined,
+    instanceId: undefined,
     prefab: undefined,
     props: { ...(base.props ?? {}), ...(override.props ?? {}) },
     children: override.children ?? base.children,
@@ -38,31 +49,43 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
 export class SceneNodeFactoryRegistry {
   private readonly factories = new Map<string, SceneNodeFactory>();
   private prefabResolver?: PrefabResolver;
+  private previewChanges: readonly EditorPreviewSetPropsChange[] = [];
 
   withPrefabResolver(resolver: PrefabResolver): this {
     this.prefabResolver = resolver;
     return this;
   }
 
-  register(guid: string, factory: SceneNodeFactory): this {
-    this.factories.set(guid, factory);
+  withPreviewChanges(changes: readonly EditorPreviewSetPropsChange[] | undefined): this {
+    this.previewChanges = changes ?? [];
     return this;
   }
 
-  registerImage(guid: string): this {
-    return this.register(guid, (definition) => new ImageNode({ typeId: definition.id, guid: definition.guid, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
+  register(nodeTypeId: string, factory: SceneNodeFactory): this {
+    this.factories.set(nodeTypeId, factory);
+    return this;
   }
 
-  registerText(guid: string): this {
-    return this.register(guid, (definition) => new TextNode({ typeId: definition.id, guid: definition.guid, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
+  registerImage(nodeTypeId: string): this {
+    return this.register(nodeTypeId, (definition) => new ImageNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, ...(definition.props ?? {}) } as ImageNodeOptions));
+  }
+
+  registerText(nodeTypeId: string): this {
+    return this.register(nodeTypeId, (definition) => new TextNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
   }
 
   createTree(definition: SceneNodeJson): GameNode {
+    return this.createTreeAtPath(definition, []);
+  }
+
+  private createTreeAtPath(definition: SceneNodeJson, parentPath: string[]): GameNode {
     const resolvedDefinition = this.resolvePrefab(definition);
-    const factory = this.resolveFactory(resolvedDefinition);
-    const node = factory(resolvedDefinition);
-    applyInitialProps(node, resolvedDefinition.props);
-    for (const child of resolvedDefinition.children ?? []) node.addChild(this.createTree(child));
+    const nodePath = [...parentPath, resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed'];
+    const effectiveDefinition = this.applyPreviewProps(resolvedDefinition, nodePath);
+    const factory = this.resolveFactory(effectiveDefinition);
+    const node = factory(effectiveDefinition);
+    applyInitialProps(node, effectiveDefinition.props);
+    for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath));
     return node;
   }
 
@@ -74,11 +97,29 @@ export class SceneNodeFactoryRegistry {
   }
 
   private resolveFactory(definition: SceneNodeJson): SceneNodeFactory {
-    if (!definition.id) throw new Error(`Scene node '${definition.name ?? definition.guid ?? 'unnamed'}' needs a type id`);
-    const factory = this.factories.get(definition.id);
-    if (!factory) throw new Error(`No scene node factory registered for type id '${definition.id}' (${definition.name ?? 'unnamed'})`);
+    const nodeTypeId = getDefinitionNodeTypeId(definition);
+    if (!nodeTypeId) throw new Error(`Scene node '${definition.name ?? definition.instanceId ?? 'unnamed'}' needs a nodeTypeId`);
+    const factory = this.factories.get(nodeTypeId);
+    if (!factory) throw new Error(`No scene node factory registered for nodeTypeId '${nodeTypeId}' (${definition.name ?? 'unnamed'})`);
     return factory;
   }
+
+  private applyPreviewProps(definition: SceneNodeJson, nodePath: string[]): SceneNodeJson {
+    const matchingChanges = this.previewChanges.filter((change) => pathsEqual(change.target.nodePath, nodePath));
+    if (matchingChanges.length === 0) return definition;
+    return {
+      ...definition,
+      props: matchingChanges.reduce<Record<string, unknown>>((props, change) => ({ ...props, ...change.props }), { ...(definition.props ?? {}) }),
+    };
+  }
+}
+
+export function getDefinitionNodeTypeId(definition: SceneNodeJson): string | undefined {
+  return definition.nodeTypeId ?? definition.id;
+}
+
+function pathsEqual(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
 function applyInitialProps(node: GameNode, props: Record<string, unknown> | undefined): void {

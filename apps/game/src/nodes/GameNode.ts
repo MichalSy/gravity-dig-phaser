@@ -38,8 +38,8 @@ export type NodeSizeMode = 'explicit' | 'content';
 export type NodeBoundsMode = 'content' | 'none';
 
 export interface GameNodeOptions {
-  typeId?: string;
-  guid?: string;
+  nodeTypeId?: string;
+  instanceId?: string;
   name?: string;
   className?: string;
   active?: boolean;
@@ -64,8 +64,8 @@ export abstract class GameNode {
     }),
   ];
 
-  readonly typeId: string;
-  readonly guid: string;
+  readonly nodeTypeId: string;
+  readonly instanceId: string;
   readonly name?: string;
   private readonly debugClassNameValue: string;
   active: boolean;
@@ -89,8 +89,8 @@ export abstract class GameNode {
   private resolved = false;
 
   protected constructor(options: GameNodeOptions = {}) {
-    this.typeId = options.typeId ?? getNodeTypeId(this);
-    this.guid = options.guid ?? crypto.randomUUID();
+    this.nodeTypeId = options.nodeTypeId ?? getNodeTypeId(this);
+    this.instanceId = options.instanceId ?? crypto.randomUUID();
     this.name = options.name;
     this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
@@ -412,11 +412,11 @@ export abstract class GameNode {
     return this.getWorldBounds();
   }
 
-  getSceneDefinition(id = this.guid): DebugSceneNodeDefinition | undefined {
+  getSceneDefinition(id = this.instanceId): DebugSceneNodeDefinition | undefined {
     if (!id) return undefined;
     const constructor = this.constructor as typeof GameNode;
     return {
-      guid: id,
+      instanceId: id,
       name: this.debugName(),
       typeName: constructor.sceneType,
       exposedPropGroups: this.getExposedPropGroups(),

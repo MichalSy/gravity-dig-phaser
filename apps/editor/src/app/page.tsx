@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -31,11 +31,16 @@ function defaultGameUrl(): string {
   return isLocalEditorHost() ? 'http://localhost:5173' : 'https://gravity-dig-phaser.sytko.de';
 }
 
+function editorApi(path: string): string {
+  return `/api/editor${path}`;
+}
+
 function buildDebugGameUrl(sessionId: string): string {
   const url = new URL(defaultGameUrl());
   url.searchParams.set('debug', '1');
   url.searchParams.set('debugSession', sessionId);
   url.searchParams.set('debugRelay', defaultRelayUrl());
+  if (typeof window !== 'undefined') url.searchParams.set('debugEditorApi', window.location.origin);
   return url.toString();
 }
 
@@ -116,6 +121,8 @@ export default function Home() {
   const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
   const [nodeDefinitions, setNodeDefinitions] = useState<Map<string, DebugSceneNodeDefinition>>(() => new Map());
   const [patchStatus, setPatchStatus] = useState('');
+  const [pendingChangeCount, setPendingChangeCount] = useState(0);
+  const [gitSaveStatus, setGitSaveStatus] = useState('');
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
@@ -143,7 +150,7 @@ export default function Home() {
     [imageAssets, originalAssetId],
   );
   const selectedNodeDefinition = useMemo(
-    () => (selectedNode?.guid ? nodeDefinitions.get(selectedNode.guid) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
+    () => (selectedNode?.instanceId ? nodeDefinitions.get(selectedNode.instanceId) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
     [nodeDefinitions, selectedNode],
   );
   const selectedNodeHasInactiveParent = useMemo(
@@ -211,7 +218,7 @@ export default function Home() {
       }
 
       if (message.type === 'node:definitions') {
-        setNodeDefinitions(new Map(message.nodes.map((node) => [node.guid, node])));
+        setNodeDefinitions(new Map(message.nodes.map((node) => [node.instanceId, node])));
         setLastEvent(`Node-Definitionen geladen: ${message.nodes.length}`);
         return;
       }
@@ -264,6 +271,10 @@ export default function Home() {
   }, [sessionId]);
 
   useEffect(() => {
+    void refreshPendingChanges();
+  }, [sessionId]);
+
+  useEffect(() => {
     setSelectedNodeProps(undefined);
     if (!selectedNodeId || !sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
     const selectSignature = `${sessionId}:${selectedNodeId}`;
@@ -308,16 +319,53 @@ export default function Home() {
     setExpandedNodeIds(new Set());
   }
 
+  async function refreshPendingChanges(): Promise<void> {
+    if (!sessionId) return;
+    try {
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`));
+      const changeSet = await response.json() as EditorChangeSet;
+      setPendingChangeCount(changeSet.changes.length);
+    } catch (error) {
+      setGitSaveStatus(`Pending Changes konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function savePendingChanges(): Promise<void> {
+    if (!sessionId) return;
+    setGitSaveStatus('Speichere Änderungen nach Git...');
+    try {
+      const response = await fetch(editorApi(`/git/save/${encodeURIComponent(sessionId)}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `editor: save ${pendingChangeCount} pending change${pendingChangeCount === 1 ? '' : 's'}` }),
+      });
+      const result = await response.json() as { ok: boolean; commit?: string; message?: string; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPendingChangeCount(0);
+      setGitSaveStatus(result.commit ? `Gespeichert: Commit ${result.commit}` : result.message ?? 'Keine Änderungen zu speichern.');
+    } catch (error) {
+      setGitSaveStatus(`Git Save fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function clearPendingChanges(): Promise<void> {
+    if (!sessionId) return;
+    await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { method: 'DELETE' });
+    setPendingChangeCount(0);
+    setGitSaveStatus('Pending Changes verworfen. Game neu laden für committed Werte.');
+  }
+
   function sendNodePatch(node: DebugNodeDescriptor, props: DebugNodePatch): void {
     if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
       setPatchStatus('Patch nicht gesendet: Relay nicht verbunden.');
       return;
     }
 
-    const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, guid: node.guid, name: node.name, props, sentAt: Date.now() };
+    const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, instanceId: node.instanceId, name: node.name, props, sentAt: Date.now() };
     if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
     socketRef.current.send(JSON.stringify(message));
     setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
+    void persistPendingPatch(node, props);
   }
 
   function toggleNodeExpanded(nodeId: string): void {
@@ -421,6 +469,27 @@ export default function Home() {
     window.addEventListener('pointercancel', stopResize, { once: true });
   }
 
+  async function persistPendingPatch(node: DebugNodeDescriptor, props: DebugNodePatch): Promise<void> {
+    const nodePath = findNodePath(treeRoots, node.id);
+    if (!nodePath) {
+      setGitSaveStatus('Pending Change nicht gespeichert: Node-Pfad nicht gefunden.');
+      return;
+    }
+    try {
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'setProps', target: { nodePath }, props }),
+      });
+      const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPendingChangeCount(result.changeSet?.changes.length ?? 0);
+      setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
+    } catch (error) {
+      setGitSaveStatus(`Pending Change fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
   const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
 
@@ -436,8 +505,14 @@ export default function Home() {
           <span className={`${styles.badge} ${gameCount > 0 ? styles.connected : styles.connecting}`}>{gameText}</span>
         </div>
         <div className={styles.actions}>
-          <button className={styles.button} onClick={reloadGameFrame}>
+          <button className={styles.button} onClick={reloadGameFrame} title="Game mit aktuellem Live-Stand neu laden">
             <RotateCcw size={16} /> Game neu laden
+          </button>
+          <button className={styles.button} onClick={savePendingChanges} disabled={pendingChangeCount === 0} title={gitSaveStatus || 'Pending Changes nach Git committen und pushen'}>
+            Git speichern ({pendingChangeCount})
+          </button>
+          <button className={`${styles.button} ${styles.ghost}`} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
+            Pending verwerfen
           </button>
           <button className={`${styles.button} ${styles.secondary}`} onClick={openGameInTab}>
             <ExternalLink size={16} /> Neuer Tab
@@ -502,7 +577,7 @@ export default function Home() {
         <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
 
         <aside className={styles.panel}>
-          <PanelHeader title="Inspector" meta={selectedNode ? selectedNode.name : 'Kein Node'} />
+          <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
             {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
@@ -895,7 +970,7 @@ function Inspector({
       </div>
       <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
-        <FragmentRow name={node.guid ? 'guid' : 'runtimeId'} value={node.guid ?? node.id} />
+        <FragmentRow name={node.instanceId ? 'instanceId' : 'runtimeId'} value={node.instanceId ?? node.id} />
         <FragmentRow name="index" value={node.index} />
         <FragmentRow name="children" value={node.children.length} />
         <FragmentRow name="worldBounds" value={formatBounds(debugProps?.worldBounds ?? debugProps?.bounds)} />
@@ -1483,6 +1558,16 @@ function splitHierarchyRoots(roots: DebugNodeDescriptor[]): { persistentManagers
 
 function collectNodeIds(nodes: DebugNodeDescriptor[]): string[] {
   return nodes.flatMap((node) => [node.id, ...collectNodeIds(node.children)]);
+}
+
+function findNodePath(nodes: DebugNodeDescriptor[], id: string, parentPath: string[] = []): string[] | undefined {
+  for (const node of nodes) {
+    const path = isAppRootNode(node) ? parentPath : [...parentPath, node.name];
+    if (node.id === id) return path;
+    const childPath = findNodePath(node.children, id, path);
+    if (childPath) return childPath;
+  }
+  return undefined;
 }
 
 function removeInactiveNodeIds(expanded: Set<string>, nodes: DebugNodeDescriptor[]): void {

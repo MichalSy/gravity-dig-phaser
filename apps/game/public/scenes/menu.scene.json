@@ -5,9 +5,9 @@
     "children": [
       {
         "name": "Menu",
-        "id": "aa985ee7-5dc3-59a4-bafb-11f49470a224"
+        "nodeTypeId": "aa985ee7-5dc3-59a4-bafb-11f49470a224"
       }
     ],
-    "id": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
+    "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
   }
 }

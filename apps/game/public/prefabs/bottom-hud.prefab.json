@@ -1,7 +1,6 @@
 {
   "version": 1,
   "root": {
-    "id": "c046b141-aa97-576b-ba44-fc4eaaa82073",
     "name": "UI.BottomHud",
     "props": {
       "parentAnchor": "bottom-center",
@@ -14,23 +13,22 @@
     },
     "children": [
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.ActionFrame",
         "props": {
           "assetId": "hud-hp-fuel-atlas#bottomHud",
           "scrollFactor": 0
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.EnergyFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#energyBar",
           "scrollFactor": 0
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotFrame0",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryFirstSlot",
@@ -41,10 +39,10 @@
             "x": 0,
             "y": 0
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotFrame1",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
@@ -55,10 +53,10 @@
             "x": 0,
             "y": 0
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotFrame2",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
@@ -69,10 +67,10 @@
             "x": 0,
             "y": 0
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotFrame3",
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
@@ -83,10 +81,10 @@
             "x": 0,
             "y": 0
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotItem0",
         "props": {
           "assetId": "hud-item-rock",
@@ -97,10 +95,10 @@
             "x": 0.5,
             "y": 0.5
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotItem1",
         "props": {
           "assetId": "hud-item-rock",
@@ -115,10 +113,10 @@
             "x": 0.5,
             "y": 0.5
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotItem2",
         "props": {
           "assetId": "hud-item-rock",
@@ -129,10 +127,10 @@
             "x": 0.5,
             "y": 0.5
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48",
         "name": "UI.SlotItem3",
         "props": {
           "assetId": "hud-item-rock",
@@ -143,10 +141,10 @@
             "x": 0.5,
             "y": 0.5
           }
-        }
+        },
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "id": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "name": "UI.SlotLabel0",
         "props": {
           "text": "",
@@ -157,10 +155,10 @@
             "x": 1,
             "y": 1
           }
-        }
+        },
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
       },
       {
-        "id": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "name": "UI.SlotLabel1",
         "props": {
           "text": "",
@@ -175,10 +173,10 @@
             "x": 1,
             "y": 1
           }
-        }
+        },
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
       },
       {
-        "id": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "name": "UI.SlotLabel2",
         "props": {
           "text": "",
@@ -189,10 +187,10 @@
             "x": 1,
             "y": 1
           }
-        }
+        },
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
       },
       {
-        "id": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "name": "UI.SlotLabel3",
         "props": {
           "text": "",
@@ -203,8 +201,10 @@
             "x": 1,
             "y": 1
           }
-        }
+        },
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
       }
-    ]
+    ],
+    "nodeTypeId": "c046b141-aa97-576b-ba44-fc4eaaa82073"
   }
 }

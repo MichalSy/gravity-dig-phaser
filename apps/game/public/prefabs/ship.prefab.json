@@ -28,7 +28,7 @@
             "y": 1
           }
         },
-        "id": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
         "name": "ShipPrompt",
@@ -51,9 +51,9 @@
           },
           "visible": false
         },
-        "id": "2db287f7-b55c-5c58-be87-c057e8c5d302"
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
       }
     ],
-    "id": "f65ba170-e819-5f0c-ada5-b93a4dedd173"
+    "nodeTypeId": "f65ba170-e819-5f0c-ada5-b93a4dedd173"
   }
 }

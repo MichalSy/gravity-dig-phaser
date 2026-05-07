@@ -3,8 +3,8 @@
 Gravity Dig is a TypeScript monorepo with three deployable apps:
 
 - `apps/game` - Phaser + Vite game client
-- `apps/editor` - Next.js/React debug editor
-- `apps/relay` - small Node.js WebSocket debug relay
+- `apps/editor` - Next.js/React debug editor plus server-side file/Git backend
+- `apps/relay` - small Node.js WebSocket debug relay/session router
 - `packages/debug-protocol` - shared debug message types
 
 Live targets:
@@ -50,8 +50,8 @@ apps/
 │       ├── scenes/         # single Phaser scene adapter
 │       ├── ui/             # HUD/touch-control nodes and layout
 │       └── utils/          # small pure helpers
-├── editor/                 # minimal Next.js debug editor smoke UI
-└── relay/                  # Node.js WebSocket relay at /debug
+├── editor/                 # Next.js debug editor + server-only backend APIs
+└── relay/                  # Node.js WebSocket relay at /debug only
 
 packages/
 └── debug-protocol/         # shared message/types package
@@ -59,14 +59,14 @@ packages/
 
 ## Debug smoke flow
 
-The first debug milestone is intentionally tiny:
+Debug flow:
 
 1. Start relay: `npm run dev:relay`
 2. Start editor: `npm run dev:editor`
-3. Open editor; it auto-connects, generates a `debugSession`, and shows a single game-start button.
-4. Use the editor button to open the game with `?debug=1&debugSession=<id>&debugRelay=<relay-url>`.
-5. The game registers as role `game`; the editor registers as role `editor`; matching `debugSession` pairs them through the relay.
-6. The game sends an initial `node:tree` snapshot and later `node:delta` messages for node add/remove/move/active/visible changes.
+3. Open editor; it auto-connects, generates a `debugSession`, and embeds the game with `?debug=1&debugSession=<id>&debugRelay=<relay-url>&debugEditorApi=<editor-origin>`.
+4. The game registers as role `game`; the editor registers as role `editor`; matching `debugSession` pairs them through the relay.
+5. The game sends `node:tree`, `node:delta`, `node:props`, asset, and exposed-prop metadata to the editor.
+6. Editor UI patches still go to the game through WebSocket for live preview. Persisting those changes is handled by the editor's own Next.js API under `/api/editor/*`.
 
 `?debug=0` disables the persisted game debug connection. The relay exposes `/health` for Kubernetes probes.
 
@@ -86,6 +86,33 @@ The first debug milestone is intentionally tiny:
 - Unity `.meta` files are intentionally removed and ignored.
 
 The C# gameplay code is treated as reference only; Phaser/TypeScript is the canonical implementation path from here.
+
+## Debug editor backend model
+
+- Browser clients never receive repository tokens or file-system paths beyond safe relative paths; the game only gets a client-safe `debugEditorApi` origin for preview reads.
+- `apps/editor` owns backend responsibilities: pending debug changes, safe file APIs, Git status, commit and push workflow.
+- `apps/editor/src/server/*` is server-only. It validates relative paths, blocks traversal, and only writes under allowlisted repository roots.
+- `apps/relay` stays intentionally dumb: HTTP health/session metadata plus WebSocket routing/cache for debug messages. No Git, no file writes, no secrets.
+- Main editor APIs:
+  - `GET|POST|DELETE /api/editor/changes/:sessionId`
+  - `POST /api/editor/git/save/:sessionId`
+  - `GET /api/editor/git/status`
+  - `GET|PUT /api/editor/files?path=<repo-relative-path>`
+  - `POST /api/editor/assets/upload/:sessionId`
+
+Server-side editor environment:
+
+```bash
+EDITOR_GIT_REPO=https://github.com/MichalSy/gravity-dig-phaser.git
+EDITOR_GIT_BRANCH=main
+EDITOR_WORKSPACE=/tmp/gravity-dig-phaser-editor-workspace
+EDITOR_ALLOWED_REPO_ROOTS=/tmp/gravity-dig-phaser-editor-workspace
+EDITOR_GIT_AUTHOR_NAME="Gravity Dig Editor"
+EDITOR_GIT_AUTHOR_EMAIL=editor@gravity-dig.local
+GITHUB_TOKEN=... # required only for push
+```
+
+Client-safe environment remains `NEXT_PUBLIC_DEBUG_RELAY_URL` and `NEXT_PUBLIC_GAME_URL` only.
 
 ## Architecture rules
 

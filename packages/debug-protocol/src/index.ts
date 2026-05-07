@@ -63,7 +63,7 @@ export interface DebugScenePropGroup {
 }
 
 export interface DebugSceneNodeDefinition {
-  guid: string;
+  instanceId: string;
   name: string;
   typeName: string;
   exposedPropGroups: DebugScenePropGroup[];
@@ -87,7 +87,7 @@ export interface DebugNodePatchMessage {
   type: 'node:patch';
   sessionId: string;
   nodeId?: string;
-  guid?: string;
+  instanceId?: string;
   name?: string;
   props: DebugNodePatch;
   sentAt: number;
@@ -97,7 +97,7 @@ export interface DebugNodePatchAckMessage {
   type: 'node:patch:ack';
   sessionId: string;
   nodeId?: string;
-  guid?: string;
+  instanceId?: string;
   name?: string;
   applied: DebugNodePatch;
   rejected: Record<string, string>;
@@ -106,7 +106,7 @@ export interface DebugNodePatchAckMessage {
 
 export interface DebugNodeDescriptor {
   id: string;
-  guid?: string;
+  instanceId?: string;
   parentId?: string;
   name: string;
   className: string;
@@ -182,7 +182,7 @@ export interface DebugNodePropsMessage {
   type: 'node:props';
   sessionId: string;
   nodeId: string;
-  guid?: string;
+  instanceId?: string;
   bounds?: DebugNodeBounds;
   localTransform?: DebugNodeTransform;
   worldTransform?: DebugNodeTransform;
@@ -225,6 +225,29 @@ export interface DebugAssetListMessage {
   images: DebugImageAssetDescriptor[];
   animations: DebugImageAnimationDescriptor[];
   sentAt: number;
+}
+
+export interface EditorChangeTarget {
+  /** Stable authoring path by node names, e.g. ['UI.Gameplay', 'UI.BottomHud', 'UI.ActionFrame']. */
+  nodePath: string[];
+}
+
+export interface EditorSetPropsChange {
+  id: string;
+  kind: 'setProps';
+  sessionId: string;
+  target: EditorChangeTarget;
+  props: DebugNodePatch;
+  createdAt: number;
+}
+
+export type EditorChange = EditorSetPropsChange;
+
+export interface EditorChangeSet {
+  sessionId: string;
+  baseRevision?: string;
+  changes: EditorChange[];
+  updatedAt?: number;
 }
 
 export type DebugMessage =

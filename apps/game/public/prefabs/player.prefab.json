@@ -5,7 +5,7 @@
     "children": [
       {
         "name": "PlayerMovementController",
-        "id": "2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a"
+        "nodeTypeId": "2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a"
       },
       {
         "name": "PlayerBody",
@@ -36,20 +36,20 @@
               },
               "scale": 0.9
             },
-            "id": "5a0cd663-64c3-5f02-a579-9915605564be"
+            "nodeTypeId": "5a0cd663-64c3-5f02-a579-9915605564be"
           }
         ],
-        "id": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5"
+        "nodeTypeId": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5"
       },
       {
         "name": "PlayerAnimator",
-        "id": "dbfe2289-a994-52dd-88f8-1b680fc914f6"
+        "nodeTypeId": "dbfe2289-a994-52dd-88f8-1b680fc914f6"
       },
       {
         "name": "MiningTool",
-        "id": "4474d3aa-d38e-5ece-bc0c-f5103f507781"
+        "nodeTypeId": "4474d3aa-d38e-5ece-bc0c-f5103f507781"
       }
     ],
-    "id": "5eed5534-1ab9-52de-a092-be4f7dab9549"
+    "nodeTypeId": "5eed5534-1ab9-52de-a092-be4f7dab9549"
   }
 }
