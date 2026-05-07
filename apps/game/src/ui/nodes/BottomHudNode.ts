@@ -16,7 +16,6 @@ export class BottomHudNode extends TransformNode {
   private world!: GameWorldNode;
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
-  private actionFrameNode!: ImageNode;
   private energyFillNode!: ImageNode;
   private readonly slotFrameNodes: ImageNode[] = [];
   private readonly slotItemNodes: ImageNode[] = [];
@@ -66,8 +65,7 @@ export class BottomHudNode extends TransformNode {
     this.position = { x: -frameWidth / 2, y: 0 };
     this.size = { width: frameWidth, height: frameHeight };
 
-    this.placeRegionNode(this.actionFrameNode, 0, 0, layout.atlasScale);
-    this.placeBarNode(this.energyFillNode, UI_ATLAS.energyBar, layout.energy.x - frameX, layout.energy.y - frameY, layout.energy.w, layout.energy.h, layout.energyPct);
+    this.updateBarFill(this.energyFillNode, UI_ATLAS.energyBar, layout.energyPct);
 
     for (let i = 0; i < this.slotLabelNodes.length; i += 1) {
       const labelNode = this.slotLabelNodes[i];
@@ -109,7 +107,6 @@ export class BottomHudNode extends TransformNode {
 
   private resolveChildNodes(): void {
     const nodesByName = collectNodesByName(this);
-    this.actionFrameNode = requireSceneNode<ImageNode>(nodesByName, 'UI.ActionFrame');
     this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'UI.EnergyFill');
 
     this.slotFrameNodes.length = 0;
@@ -145,9 +142,6 @@ export class BottomHudNode extends TransformNode {
   private markHudComputedPropsReadOnly(): void {
     const computedByHudLayout = 'computed by BottomHudNode.update';
     for (const prop of ['position', 'size']) this.markExposedPropReadOnly(prop, computedByHudLayout);
-    for (const node of [this.actionFrameNode, this.energyFillNode]) {
-      for (const prop of ['position', 'size', 'scale', 'visible']) node.markExposedPropReadOnly(prop, computedByHudLayout);
-    }
     for (let i = 0; i < this.slotFrameNodes.length; i += 1) {
       const frameNode = this.slotFrameNodes[i];
       for (const prop of ['position', 'size', 'scale', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
@@ -171,14 +165,10 @@ export class BottomHudNode extends TransformNode {
     node.image.setCrop().setVisible(visible);
   }
 
-  private placeBarNode(node: ImageNode, frame: { w: number; h: number }, x: number, y: number, width: number, height: number, pct: number): void {
+  private updateBarFill(node: ImageNode, frame: { w: number; h: number }, pct: number): void {
     if (!node.isEffectivelyActive()) return;
     const safePct = Phaser.Math.Clamp(pct, 0, 1);
     const cropWidth = Math.max(1, Math.round(frame.w * safePct));
-    node.position = { x, y };
-    node.scaleX = width / frame.w;
-    node.scaleY = height / frame.h;
-    node.size = { width, height };
     node.visible = safePct > 0;
     node.image.setCrop(0, 0, cropWidth, frame.h).setVisible(safePct > 0);
   }

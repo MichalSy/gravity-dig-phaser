@@ -16,7 +16,15 @@
         "name": "UI.ActionFrame",
         "props": {
           "assetId": "hud-hp-fuel-atlas#bottomHud",
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "scale": {
+            "x": 0.42,
+            "y": 0.42
+          }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
@@ -24,7 +32,15 @@
         "name": "UI.EnergyFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#energyBar",
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "position": {
+            "x": 128,
+            "y": 80
+          },
+          "scale": {
+            "x": 0.41,
+            "y": 0.48
+          }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
