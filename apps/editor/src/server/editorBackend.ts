@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
-import type { DebugNodePatch, EditorChange, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugNodePatch, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 
 interface SaveRequest {
   message?: string;
@@ -196,28 +196,19 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
 
 function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): EditorChangeSet {
   const current = readChangeSet(sessionId);
-  const compacted = compactChanges([...current.changes, ...changes]);
-  const next: EditorChangeSet = { ...current, sessionId, changes: compacted, updatedAt: Date.now() };
+  const splitChanges = changes.flatMap(splitChangeByProp);
+  const next: EditorChangeSet = { ...current, sessionId, changes: [...current.changes, ...splitChanges], updatedAt: Date.now() };
   changeSets.set(sessionId, next);
   return next;
 }
 
-function compactChanges(changes: EditorChange[]): EditorChange[] {
-  const byTarget = new Map<string, EditorSetPropsChange>();
-  for (const change of changes) {
-    const key = `${change.kind}:${change.target.nodePath.join('/')}`;
-    const previous = byTarget.get(key);
-    if (!previous) {
-      byTarget.set(key, change);
-      continue;
-    }
-    const previousProps = { ...(previous.previousProps ?? {}) };
-    for (const [prop, value] of Object.entries(change.previousProps ?? {})) {
-      if (!(prop in previousProps)) previousProps[prop] = value;
-    }
-    byTarget.set(key, { ...change, id: previous.id, props: { ...previous.props, ...change.props }, previousProps, createdAt: previous.createdAt });
-  }
-  return [...byTarget.values()];
+function splitChangeByProp(change: EditorSetPropsChange): EditorSetPropsChange[] {
+  return Object.entries(change.props).map(([prop, value]) => ({
+    ...change,
+    id: randomUUID(),
+    props: { [prop]: value },
+    previousProps: change.previousProps && prop in change.previousProps ? { [prop]: change.previousProps[prop] } : undefined,
+  }));
 }
 
 async function ensureWorkspace(): Promise<void> {

@@ -363,7 +363,7 @@ export default function Home() {
   async function refreshPendingChanges(): Promise<void> {
     if (!sessionId) return;
     try {
-      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`));
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { cache: 'no-store' });
       const changeSet = await response.json() as EditorChangeSet;
       setPendingChangeSet(changeSet);
       setPendingChangeCount(countPendingProps(changeSet));
@@ -435,7 +435,7 @@ export default function Home() {
 
   async function fetchPendingChangeSet(): Promise<EditorChangeSet | undefined> {
     if (!sessionId) return undefined;
-    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`));
+    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { cache: 'no-store' });
     if (!response.ok) return undefined;
     return await response.json() as EditorChangeSet;
   }
@@ -478,7 +478,7 @@ export default function Home() {
       return;
     }
     const removeUrl = editorApi(`/changes/${encodeURIComponent(sessionId)}?${new URLSearchParams({ changeId: change.id, prop }).toString()}`);
-    const response = await fetch(removeUrl, { method: 'DELETE' });
+    const response = await fetch(removeUrl, { method: 'DELETE', cache: 'no-store' });
     const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
     if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
     const nextChangeSet = result.changeSet ?? { sessionId, changes: [] };
@@ -634,6 +634,7 @@ export default function Home() {
     try {
       const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
         method: 'POST',
+        cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ kind: 'setProps', target: { nodePath }, props, previousProps }),
       });
