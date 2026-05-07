@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
-import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
-import { GameNode, type DebugOverlayRenderContext, type GameNodeOptions, type NodeDebugProps } from './GameNode';
+import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
+import { GameNode, type DebugOverlayLayerRenderContext, type GameNodeOptions, type NodeDebugProps } from './GameNode';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { type Anchor, type PointLike, type SizeLike } from './Anchor';
 import { exposedPropGroup, propAnchor, propBoolean, propNumber, propOrigin, propPosition, propScale, propSize, type ExposedPropGroup } from './SceneProps';
@@ -24,6 +24,11 @@ export interface TransformNodeOptions extends GameNodeOptions {
 export abstract class TransformNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.TransformNode;
   static override readonly sceneType: string = 'TransformNode';
+  static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
+    { id: 'transform.bounds', label: 'Transform Bounds', source: 'TransformNode' },
+    { id: 'transform.origin', label: 'Origin', source: 'TransformNode' },
+    { id: 'transform.parentAnchor', label: 'Parent Anchor', source: 'TransformNode' },
+  ];
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...GameNode.exposedPropGroups,
     exposedPropGroup('Presentation', {
@@ -102,23 +107,25 @@ export abstract class TransformNode extends GameNode {
     return object;
   }
 
-  override renderDebugOverlay({ graphics }: DebugOverlayRenderContext): boolean {
+  protected override renderDebugOverlayLayer({ graphics, layer, selected }: DebugOverlayLayerRenderContext): boolean {
     const bounds = this.getDebugBounds();
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
 
-    const scrollFactor = bounds.scrollFactor ?? this.scrollFactor;
-    const parentAnchor = this.getWorldParentAnchorPosition();
-    const nodeOrigin = this.getWorldOrigin();
+    graphics.setVisible(true).setScrollFactor(bounds.scrollFactor ?? this.scrollFactor);
 
-    graphics
-      .setVisible(true)
-      .setScrollFactor(scrollFactor)
-      .lineStyle(3, 0x38bdf8, 1)
-      .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
-      .lineStyle(1, 0xffffff, 0.9)
-      .strokeRect(bounds.x - 3, bounds.y - 3, bounds.width + 6, bounds.height + 6);
+    if (layer.id === 'transform.bounds') {
+      graphics
+        .lineStyle(3, 0x38bdf8, 1)
+        .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
+        .lineStyle(1, 0xffffff, 0.9)
+        .strokeRect(bounds.x - 3, bounds.y - 3, bounds.width + 6, bounds.height + 6);
+      return true;
+    }
 
-    if (parentAnchor) {
+    if (layer.id === 'transform.parentAnchor') {
+      const parentAnchor = this.getWorldParentAnchorPosition();
+      if (!parentAnchor) return false;
+      const nodeOrigin = this.getWorldOrigin();
       graphics
         .lineStyle(2, 0xfacc15, 0.9)
         .lineBetween(parentAnchor.x, parentAnchor.y, nodeOrigin.x, nodeOrigin.y)
@@ -129,18 +136,23 @@ export abstract class TransformNode extends GameNode {
         .lineStyle(2, 0xfacc15, 0.95)
         .lineBetween(parentAnchor.x - 15, parentAnchor.y, parentAnchor.x + 15, parentAnchor.y)
         .lineBetween(parentAnchor.x, parentAnchor.y - 15, parentAnchor.x, parentAnchor.y + 15);
+      return true;
     }
 
-    graphics
-      .fillStyle(0xfb7185, 1)
-      .fillCircle(nodeOrigin.x, nodeOrigin.y, 4)
-      .lineStyle(2, 0x020617, 0.9)
-      .strokeCircle(nodeOrigin.x, nodeOrigin.y, 6)
-      .lineStyle(1, 0xfb7185, 0.95)
-      .lineBetween(nodeOrigin.x - 8, nodeOrigin.y, nodeOrigin.x + 8, nodeOrigin.y)
-      .lineBetween(nodeOrigin.x, nodeOrigin.y - 8, nodeOrigin.x, nodeOrigin.y + 8);
+    if (layer.id === 'transform.origin') {
+      const nodeOrigin = this.getWorldOrigin();
+      graphics
+        .fillStyle(0xfb7185, 1)
+        .fillCircle(nodeOrigin.x, nodeOrigin.y, 4)
+        .lineStyle(2, 0x020617, 0.9)
+        .strokeCircle(nodeOrigin.x, nodeOrigin.y, 6)
+        .lineStyle(1, 0xfb7185, 0.95)
+        .lineBetween(nodeOrigin.x - 8, nodeOrigin.y, nodeOrigin.x + 8, nodeOrigin.y)
+        .lineBetween(nodeOrigin.x, nodeOrigin.y - 8, nodeOrigin.x, nodeOrigin.y + 8);
+      return true;
+    }
 
-    return true;
+    return super.renderDebugOverlayLayer({ graphics, layer, selected });
   }
 
   override getDebugProps(): NodeDebugProps {

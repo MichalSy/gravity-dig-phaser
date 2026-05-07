@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
-import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
+import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
+import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
@@ -32,6 +32,9 @@ export interface TextNodeOptions extends TransformNodeOptions {
 export class TextNode extends TransformNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.TextNode;
   static override readonly sceneType: string = 'TextNode';
+  static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
+    { id: 'text.visibleBounds', label: 'Text Visible Bounds', source: 'TextNode' },
+  ];
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Text', {
@@ -111,6 +114,20 @@ export class TextNode extends TransformNode {
     if (!this.phaserText) return super.getDebugBounds();
     const bounds = textWorldBounds(this.phaserText);
     return { ...bounds, scrollFactor: this.scrollFactor };
+  }
+
+  protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {
+    if (ctx.layer.id !== 'text.visibleBounds') return super.renderDebugOverlayLayer(ctx);
+    const bounds = this.getDebugBounds();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
+    ctx.graphics
+      .setVisible(true)
+      .setScrollFactor(bounds.scrollFactor ?? this.scrollFactor)
+      .lineStyle(2, 0xc084fc, 0.95)
+      .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
+      .lineStyle(1, 0xf0abfc, 0.9)
+      .lineBetween(bounds.x, bounds.y + bounds.height, bounds.x + bounds.width, bounds.y + bounds.height);
+    return true;
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {

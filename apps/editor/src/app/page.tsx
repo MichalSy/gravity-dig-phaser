@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -119,6 +119,7 @@ export default function Home() {
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
   const [persistentManagersOpen, setPersistentManagersOpen] = useState(false);
   const [selectedNodeProps, setSelectedNodeProps] = useState<DebugNodePropsMessage | undefined>();
+  const [overlayLayerSelections, setOverlayLayerSelections] = useState<Record<string, string[]>>({});
   const [nodeDefinitions, setNodeDefinitions] = useState<Map<string, DebugSceneNodeDefinition>>(() => new Map());
   const [patchStatus, setPatchStatus] = useState('');
   const [pendingChangeCount, setPendingChangeCount] = useState(0);
@@ -284,6 +285,15 @@ export default function Home() {
     socketRef.current.send(JSON.stringify(selectMessage));
   }, [selectedNodeId, sessionId]);
 
+  useEffect(() => {
+    if (!selectedNodeId || !sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    const definition = selectedNodeDefinition;
+    const defaultLayerIds = definition?.overlayLayers.map((layer) => layer.id) ?? [];
+    const enabledLayerIds = overlayLayerSelections[selectedNodeId] ?? defaultLayerIds;
+    const message: DebugMessage = { type: 'debug:overlay-settings', sessionId, nodeId: selectedNodeId, enabledLayerIds, sentAt: Date.now() };
+    socketRef.current.send(JSON.stringify(message));
+  }, [overlayLayerSelections, selectedNodeDefinition, selectedNodeId, sessionId]);
+
   function openGameInTab(): void {
     if (!debugGameUrl) return;
     window.open(debugGameUrl, '_blank', 'noopener,noreferrer');
@@ -353,6 +363,10 @@ export default function Home() {
     await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { method: 'DELETE' });
     setPendingChangeCount(0);
     setGitSaveStatus('Pending Changes verworfen. Game neu laden für committed Werte.');
+  }
+
+  function setNodeOverlayLayerEnabled(node: DebugNodeDescriptor, layerIds: string[]): void {
+    setOverlayLayerSelections((current) => ({ ...current, [node.id]: layerIds }));
   }
 
   function sendNodePatch(node: DebugNodeDescriptor, props: DebugNodePatch): void {
@@ -579,7 +593,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} assets={imageAssets} onPatch={sendNodePatch} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -939,16 +953,20 @@ function Inspector({
   parentInactive,
   definition,
   debugProps,
+  overlayLayerSelection,
   assets,
   onPatch,
+  onOverlayLayerSelectionChange,
   onSelectAsset,
 }: {
   node: DebugNodeDescriptor;
   parentInactive: boolean;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
+  overlayLayerSelection?: string[];
   assets: DebugImageAssetDescriptor[];
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
+  onOverlayLayerSelectionChange(node: DebugNodeDescriptor, layerIds: string[]): void;
   onSelectAsset(id: string): void;
 }) {
   const canToggleVisible = Boolean(flattenDefinitionProps(definition).visible);
@@ -969,6 +987,7 @@ function Inspector({
         </div>
       </div>
       <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} assets={assets} onPatch={onPatch} />
+      <OverlayLayersSection node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
         <FragmentRow name={node.instanceId ? 'instanceId' : 'runtimeId'} value={node.instanceId ?? node.id} />
         <FragmentRow name="index" value={node.index} />
@@ -983,6 +1002,56 @@ function flattenDefinitionProps(definition?: DebugSceneNodeDefinition): Record<s
   if (!definition) return {};
   const groups = definition.exposedPropGroups ?? (definition.editableProps ? [{ name: 'Exposed Props', props: definition.editableProps }] : []);
   return Object.assign({}, ...groups.map((group) => group.props));
+}
+
+function OverlayLayersSection({
+  node,
+  definition,
+  selection,
+  onChange,
+}: {
+  node: DebugNodeDescriptor;
+  definition?: DebugSceneNodeDefinition;
+  selection?: string[];
+  onChange(node: DebugNodeDescriptor, layerIds: string[]): void;
+}) {
+  const layers = definition?.overlayLayers ?? [];
+  const enabledLayerIds = new Set(selection ?? layers.map((layer) => layer.id));
+
+  function setLayerEnabled(layer: DebugOverlayLayerDescriptor, enabled: boolean): void {
+    const next = new Set(enabledLayerIds);
+    if (enabled) next.add(layer.id);
+    else next.delete(layer.id);
+    onChange(node, layers.filter((candidate) => next.has(candidate.id)).map((candidate) => candidate.id));
+  }
+
+  function enableAll(): void {
+    onChange(node, layers.map((layer) => layer.id));
+  }
+
+  function disableAll(): void {
+    onChange(node, []);
+  }
+
+  return (
+    <InspectorSection title="Debug Overlays">
+      {layers.length > 0 ? (
+        <div className={styles.overlayLayerList}>
+          <div className={styles.overlayLayerActions}>
+            <button type="button" className={styles.miniButton} onClick={enableAll}>Alle</button>
+            <button type="button" className={styles.miniButton} onClick={disableAll}>Keine</button>
+          </div>
+          {layers.map((layer) => (
+            <label key={layer.id} className={styles.overlayLayerRow}>
+              <input type="checkbox" checked={enabledLayerIds.has(layer.id)} onChange={(event) => setLayerEnabled(layer, event.currentTarget.checked)} />
+              <span>{layer.label}</span>
+              <code>{layer.source}</code>
+            </label>
+          ))}
+        </div>
+      ) : <FragmentRow name="status" value="Dieser Node rendert kein eigenes Debug-Overlay." />}
+    </InspectorSection>
+  );
 }
 
 function ExposedPropsSection({

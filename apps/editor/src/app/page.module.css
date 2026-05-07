@@ -414,6 +414,50 @@
   padding-top: 12px;
 }
 
+.overlayLayerList {
+  display: grid;
+  gap: 7px;
+}
+
+.overlayLayerActions {
+  display: flex;
+  gap: 6px;
+}
+
+.overlayLayerRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.46);
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+
+.overlayLayerRow code {
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+.miniButton {
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 7px;
+  padding: 4px 8px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.miniButton:hover {
+  border-color: rgba(125, 211, 252, 0.48);
+  background: rgba(14, 165, 233, 0.2);
+}
+
 .assetExplorer {
   min-height: 0;
   display: grid;

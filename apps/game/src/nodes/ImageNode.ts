@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
-import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
-import { type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
+import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
+import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, propAssetId, propBoolean, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
@@ -68,6 +68,9 @@ export interface ImageNodeOptions extends TransformNodeOptions {
 export class ImageNode extends TransformNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.ImageNode;
   static override readonly sceneType: string = 'ImageNode';
+  static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
+    { id: 'image.visibleBounds', label: 'Image Visible Bounds', source: 'ImageNode' },
+  ];
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Image', {
@@ -157,6 +160,20 @@ export class ImageNode extends TransformNode {
     if (!this.phaserImage) return super.getDebugBounds();
     const bounds = visibleImageWorldBounds(this.phaserImage);
     return { ...bounds, scrollFactor: this.scrollFactor };
+  }
+
+  protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {
+    if (ctx.layer.id !== 'image.visibleBounds') return super.renderDebugOverlayLayer(ctx);
+    const bounds = this.getDebugBounds();
+    if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
+    ctx.graphics
+      .setVisible(true)
+      .setScrollFactor(bounds.scrollFactor ?? this.scrollFactor)
+      .lineStyle(2, 0x22c55e, 0.95)
+      .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
+      .lineStyle(1, 0xbbf7d0, 0.9)
+      .strokeRect(bounds.x + 2, bounds.y + 2, Math.max(0, bounds.width - 4), Math.max(0, bounds.height - 4));
+    return true;
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {

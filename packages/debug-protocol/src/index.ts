@@ -62,11 +62,18 @@ export interface DebugScenePropGroup {
   props: Record<string, DebugScenePropDefinition>;
 }
 
+export interface DebugOverlayLayerDescriptor {
+  id: string;
+  label: string;
+  source: string;
+}
+
 export interface DebugSceneNodeDefinition {
   instanceId: string;
   name: string;
   typeName: string;
   exposedPropGroups: DebugScenePropGroup[];
+  overlayLayers: DebugOverlayLayerDescriptor[];
   /** @deprecated use exposedPropGroups */
   editableProps?: Record<string, DebugScenePropDefinition>;
 }
@@ -149,6 +156,14 @@ export interface DebugNodeSelectMessage {
   type: 'node:select';
   sessionId: string;
   nodeId?: string;
+  sentAt: number;
+}
+
+export interface DebugOverlaySettingsMessage {
+  type: 'debug:overlay-settings';
+  sessionId: string;
+  nodeId?: string;
+  enabledLayerIds?: string[];
   sentAt: number;
 }
 
@@ -260,6 +275,7 @@ export type DebugMessage =
   | DebugNodeTreeMessage
   | DebugNodeDeltaMessage
   | DebugNodeSelectMessage
+  | DebugOverlaySettingsMessage
   | DebugNodePropsMessage
   | DebugNodePatchMessage
   | DebugNodePatchAckMessage

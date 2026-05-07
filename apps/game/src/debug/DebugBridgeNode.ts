@@ -19,6 +19,7 @@ export class DebugBridgeNode extends GameNode {
   private readonly nodesByInstanceId = new Map<string, GameNode>();
   private nextNodeId = 1;
   private selectedNodeId?: string;
+  private selectedOverlayLayerIds?: Set<string>;
   private propsElapsedMs = 0;
   private lastSelectedPropsSignature = '';
   private overlay?: Phaser.GameObjects.Graphics;
@@ -68,6 +69,7 @@ export class DebugBridgeNode extends GameNode {
     this.lastTree = undefined;
     this.lastAssetSignature = '';
     this.selectedNodeId = undefined;
+    this.selectedOverlayLayerIds = undefined;
     this.lastSelectedPropsSignature = '';
     this.nodesById.clear();
     this.nodesByInstanceId.clear();
@@ -107,10 +109,14 @@ export class DebugBridgeNode extends GameNode {
       }
       if (message.type === 'node:select') {
         this.selectedNodeId = message.nodeId;
+        this.selectedOverlayLayerIds = undefined;
         this.lastSelectedPropsSignature = '';
         this.sendSelectedNodeProps(true);
       }
       if (message.type === 'node:patch') this.applyNodePatch(message);
+      if (message.type === 'debug:overlay-settings') {
+        this.selectedOverlayLayerIds = message.enabledLayerIds ? new Set(message.enabledLayerIds) : undefined;
+      }
     });
 
     socket.addEventListener('close', () => {
@@ -279,7 +285,7 @@ export class DebugBridgeNode extends GameNode {
       return;
     }
     overlay.clear().setScrollFactor(1);
-    const didRender = node.renderDebugOverlay({ graphics: overlay, selected: true });
+    const didRender = node.renderDebugOverlay({ graphics: overlay, selected: true, enabledLayerIds: this.selectedOverlayLayerIds });
     overlay.setVisible(didRender);
   }
 

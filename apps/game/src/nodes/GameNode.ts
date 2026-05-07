@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransform, DebugSceneNodeDefinition } from '@gravity-dig/debug-protocol';
+import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition } from '@gravity-dig/debug-protocol';
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
@@ -35,6 +35,11 @@ export type NodeDebugBounds = DebugNodeBounds;
 export interface DebugOverlayRenderContext {
   graphics: Phaser.GameObjects.Graphics;
   selected: boolean;
+  enabledLayerIds?: ReadonlySet<string>;
+}
+
+export interface DebugOverlayLayerRenderContext extends DebugOverlayRenderContext {
+  layer: DebugOverlayLayerDescriptor;
 }
 
 export type NodeDebugProps = Record<string, string | number | boolean | null>;
@@ -68,6 +73,7 @@ export abstract class GameNode {
       active: propBoolean({ label: 'Active' }),
     }),
   ];
+  static readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [];
 
   readonly nodeTypeId: string;
   readonly instanceId: string;
@@ -417,7 +423,27 @@ export abstract class GameNode {
     return this.getWorldBounds();
   }
 
-  renderDebugOverlay(_ctx: DebugOverlayRenderContext): boolean {
+  getDebugOverlayLayers(): readonly DebugOverlayLayerDescriptor[] {
+    const constructors = collectNodeConstructors(this.constructor as typeof GameNode);
+    const layers = constructors.flatMap((constructor) => constructor.debugOverlayLayers);
+    const seen = new Set<string>();
+    return layers.filter((layer) => {
+      if (seen.has(layer.id)) return false;
+      seen.add(layer.id);
+      return true;
+    });
+  }
+
+  renderDebugOverlay(ctx: DebugOverlayRenderContext): boolean {
+    let didRender = false;
+    for (const layer of this.getDebugOverlayLayers()) {
+      if (ctx.enabledLayerIds && !ctx.enabledLayerIds.has(layer.id)) continue;
+      didRender = this.renderDebugOverlayLayer({ ...ctx, layer }) || didRender;
+    }
+    return didRender;
+  }
+
+  protected renderDebugOverlayLayer(_ctx: DebugOverlayLayerRenderContext): boolean {
     return false;
   }
 
@@ -429,6 +455,7 @@ export abstract class GameNode {
       name: this.debugName(),
       typeName: constructor.sceneType,
       exposedPropGroups: this.getExposedPropGroups(),
+      overlayLayers: [...this.getDebugOverlayLayers()],
       editableProps: this.getFlattenedExposedProps(),
     };
   }
@@ -571,4 +598,16 @@ export abstract class GameNode {
 
 function getNodeTypeId(node: GameNode): string {
   return ((node.constructor as typeof GameNode).nodeTypeId) ?? NODE_TYPE_IDS.GameNode;
+}
+
+function collectNodeConstructors(constructor: typeof GameNode): (typeof GameNode)[] {
+  const chain: (typeof GameNode)[] = [];
+  let current: typeof GameNode | undefined = constructor;
+  while (current && current !== Function.prototype) {
+    if (Object.prototype.hasOwnProperty.call(current, 'debugOverlayLayers')) chain.unshift(current);
+    const prototype = Object.getPrototypeOf(current.prototype) as GameNode | undefined;
+    if (!prototype) break;
+    current = prototype.constructor as typeof GameNode;
+  }
+  return chain;
 }
