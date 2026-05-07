@@ -411,7 +411,11 @@ export default function Home() {
     setPendingChangeSet(undefined);
     setPendingChangeCount(0);
     setSavePreviewOpen(false);
-    setGitSaveStatus('Pending Changes verworfen. Game neu laden für committed Werte.');
+    setSelectedNodeProps(undefined);
+    lastSelectMessageRef.current = '';
+    setPatchStatus('');
+    setGameFrameKey((current) => current + 1);
+    setGitSaveStatus('Pending Changes verworfen. Werte auf Git-Stand zurückgesetzt.');
   }
 
   async function removePendingSetting(change: EditorSetPropsChange, prop: string): Promise<void> {
