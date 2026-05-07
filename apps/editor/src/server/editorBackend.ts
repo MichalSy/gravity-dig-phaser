@@ -222,7 +222,7 @@ async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<voi
   if (!node) throw new EditorBackendError(`Could not locate node path '${change.target.nodePath.join('/')}' in ${source.filePath}`, 422);
   node.props = { ...(node.props ?? {}) };
   for (const [key, value] of Object.entries(change.props)) {
-    if (value === null || key === 'sizeMode') delete node.props[key];
+    if (value === null) delete node.props[key];
     else node.props[key] = value;
   }
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
