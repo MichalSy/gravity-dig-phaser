@@ -6,13 +6,13 @@
       "parentAnchor": "top-left",
       "debugScrollFactor": 0,
       "origin": {
-        "x": 0.5,
+        "x": 0,
         "y": 0
       },
-      "rotation": 0.13962634015954636,
+      "rotation": 0,
       "position": {
-        "x": 17,
-        "y": 18
+        "x": 25,
+        "y": 25
       }
     },
     "children": [
