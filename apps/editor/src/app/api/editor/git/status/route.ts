@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
 import { gitStatus } from '../../../../../server/editorBackend';
-import { jsonError } from '../../_response';
+import { jsonError, jsonNoStore } from '../../_response';
 
+
+export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
-    return NextResponse.json(await gitStatus());
+    return jsonNoStore(await gitStatus());
   } catch (error) {
     return jsonError(error);
   }

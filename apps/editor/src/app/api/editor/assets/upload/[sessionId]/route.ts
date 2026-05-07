@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
 import { stageAssetUpload } from '../../../../../../server/editorBackend';
-import { jsonError, readJson } from '../../../_response';
+import { jsonError, jsonNoStore, readJson } from '../../../_response';
 
+
+export const dynamic = 'force-dynamic';
 interface RouteContext {
   params: Promise<{ sessionId: string }>;
 }
@@ -9,7 +10,7 @@ interface RouteContext {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { sessionId } = await context.params;
-    return NextResponse.json(await stageAssetUpload(sessionId, await readJson(request)));
+    return jsonNoStore(await stageAssetUpload(sessionId, await readJson(request)));
   } catch (error) {
     return jsonError(error);
   }
