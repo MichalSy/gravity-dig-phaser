@@ -19,7 +19,7 @@ function roundScale(value: number): number {
 
 export interface TransformNodeOptions extends GameNodeOptions {
   visible?: boolean;
-  scale?: number;
+  scale?: number | PointLike;
   scaleX?: number;
   scaleY?: number;
   scrollFactor?: number;
@@ -60,9 +60,11 @@ export abstract class TransformNode extends GameNode {
   protected constructor(options: TransformNodeOptions = {}) {
     super(options);
     this.visible = options.visible ?? true;
-    this.scale = options.scale ?? 1;
-    this.scaleX = options.scaleX ?? this.scale;
-    this.scaleY = options.scaleY ?? this.scale;
+    const scale = typeof options.scale === 'object' ? options.scale : undefined;
+    const uniformScale = typeof options.scale === 'number' ? options.scale : 1;
+    this.scaleX = roundScale(options.scaleX ?? scale?.x ?? uniformScale);
+    this.scaleY = roundScale(options.scaleY ?? scale?.y ?? uniformScale);
+    this.scale = this.scaleX === this.scaleY ? this.scaleX : 1;
     this.scrollFactor = options.scrollFactor ?? 1;
   }
 

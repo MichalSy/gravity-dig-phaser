@@ -126,8 +126,25 @@ function applyInitialProps(node: GameNode, props: Record<string, unknown> | unde
   if (!props) return;
   const mutableNode = node as GameNode & Record<string, unknown>;
   for (const [key, value] of Object.entries(props)) {
-    if (key in mutableNode) mutableNode[key] = value;
+    if (!(key in mutableNode)) continue;
+
+    if (key === 'scale' && isPointLike(value)) {
+      mutableNode.scaleX = roundScale(value.x);
+      mutableNode.scaleY = roundScale(value.y);
+      mutableNode.scale = mutableNode.scaleX === mutableNode.scaleY ? mutableNode.scaleX : 1;
+      continue;
+    }
+
+    mutableNode[key] = value;
   }
+}
+
+function isPointLike(value: unknown): value is { x: number; y: number } {
+  return typeof value === 'object' && value !== null && typeof (value as { x?: unknown }).x === 'number' && typeof (value as { y?: unknown }).y === 'number';
+}
+
+function roundScale(value: number): number {
+  return Number(value.toFixed(2));
 }
 
 export function collectNodesByName(root: GameNode, target = new Map<string, GameNode>()): Map<string, GameNode> {
