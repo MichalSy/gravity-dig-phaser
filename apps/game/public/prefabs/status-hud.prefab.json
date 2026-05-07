@@ -14,6 +14,10 @@
       "position": {
         "x": 17,
         "y": 18
+      },
+      "size": {
+        "width": 400,
+        "height": 178.42190016103058
       }
     },
     "children": [
@@ -21,7 +25,13 @@
         "name": "UI.StatusFrame",
         "props": {
           "assetId": "hud-hp-fuel-atlas#topHud",
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "scaleX": 0.322061191626409,
+          "scaleY": 0.322061191626409
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
@@ -31,9 +41,11 @@
           "assetId": "hud-hp-fuel-atlas#hpBar",
           "scrollFactor": 0,
           "position": {
-            "x": 54,
-            "y": 104
-          }
+            "x": 113.04347826086956,
+            "y": 53.46215780998389
+          },
+          "scaleX": 0.322061191626409,
+          "scaleY": 0.322061191626409
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
@@ -41,7 +53,13 @@
         "name": "UI.FuelFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#fuelBar",
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "position": {
+            "x": 116.26409017713365,
+            "y": 119.80676328502415
+          },
+          "scaleX": 0.3246091440918078,
+          "scaleY": 0.3379654480030218
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       }
