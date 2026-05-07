@@ -76,7 +76,34 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function countPendingProps(changeSet: EditorChangeSet): number {
-  return changeSet.changes.reduce((sum, change) => sum + Object.keys(change.props).length, 0);
+  return pendingChangeRows(changeSet).length;
+}
+
+type PendingChangeRow = {
+  change: EditorSetPropsChange;
+  prop: string;
+  field?: string;
+  label: string;
+  value: unknown;
+};
+
+function pendingChangeRows(changeSet: EditorChangeSet): PendingChangeRow[] {
+  return changeSet.changes.flatMap((change) => Object.entries(change.props).map(([prop, value]) => {
+    const field = singleFieldName(change);
+    return { change, prop, field, label: field ? `${prop}.${field}` : prop, value: field ? fieldValue(value, field) : value };
+  }));
+}
+
+function singleFieldName(change: EditorSetPropsChange): string | undefined {
+  return change.fieldPath?.length === 1 ? change.fieldPath[0] : undefined;
+}
+
+function fieldValue(value: unknown, field: string): unknown {
+  return isObjectRecord(value) ? value[field] : undefined;
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function formatPendingValue(value: unknown): string {
@@ -444,37 +471,49 @@ export default function Home() {
     let applied = 0;
     let skipped = 0;
     let failed = 0;
+    const grouped = new Map<string, { target: DebugNodeDescriptor; props: DebugNodePatch; count: number }>();
+
     for (const change of changes) {
       const target = findNodeByPath(treeRoots, change.target.nodePath);
-      const previousProps = change.previousProps ?? {};
-      const props = Object.fromEntries(Object.keys(change.props).flatMap((prop) => prop in previousProps ? [[prop, previousProps[prop]]] : [])) as DebugNodePatch;
-      skipped += Object.keys(change.props).length - Object.keys(props).length;
-      if (!target || Object.keys(props).length === 0) {
-        if (!target) skipped += Object.keys(props).length;
+      if (!target) {
+        skipped += Object.keys(change.props).length;
         continue;
       }
-      if (sendNodePatchMessage(target, props, false)) applied += Object.keys(props).length;
-      else failed += Object.keys(props).length;
+      const key = change.target.nodePath.join('\u0000');
+      const group = grouped.get(key) ?? { target, props: {}, count: 0 };
+      const revertProps = buildRevertProps(change, target, false);
+      if (Object.keys(revertProps).length === 0) {
+        skipped += Object.keys(change.props).length;
+        continue;
+      }
+      for (const [prop, value] of Object.entries(revertProps)) group.props[prop] = value;
+      group.count += Object.keys(revertProps).length;
+      grouped.set(key, group);
+    }
+
+    for (const group of grouped.values()) {
+      if (sendNodePatchMessage(group.target, group.props, false)) applied += group.count;
+      else failed += group.count;
     }
     if (applied > 0) setPatchStatus(`Revert angewendet: ${applied} Setting(s)`);
     return { applied, skipped, failed };
   }
 
-  async function removePendingSetting(change: EditorSetPropsChange, prop: string): Promise<void> {
+  async function removePendingSetting(change: EditorSetPropsChange, prop: string, field?: string): Promise<void> {
     if (!sessionId) return;
-    const hasPreviousValue = Object.prototype.hasOwnProperty.call(change.previousProps ?? {}, prop);
-    const previousValue = change.previousProps?.[prop];
     const target = findNodeByPath(treeRoots, change.target.nodePath);
+    const label = field ? `${prop}.${field}` : prop;
     if (!target) {
-      setGitSaveStatus(`Setting '${prop}' nicht entfernt: Node in Hierarchy nicht gefunden.`);
+      setGitSaveStatus(`Setting '${label}' nicht entfernt: Node in Hierarchy nicht gefunden.`);
       return;
     }
-    if (!hasPreviousValue) {
-      setGitSaveStatus(`Setting '${prop}' nicht entfernt: alter Wert fehlt, Revert wäre unsicher.`);
+    const revertProps = buildRevertProps(change, target, true);
+    if (Object.keys(revertProps).length === 0) {
+      setGitSaveStatus(`Setting '${label}' nicht entfernt: alter Wert fehlt, Revert wäre unsicher.`);
       return;
     }
-    if (!sendNodePatchMessage(target, { [prop]: previousValue as DebugNodePatch[string] }, false)) {
-      setGitSaveStatus(`Setting '${prop}' nicht entfernt: Revert-Patch konnte nicht gesendet werden.`);
+    if (!sendNodePatchMessage(target, revertProps, false)) {
+      setGitSaveStatus(`Setting '${label}' nicht entfernt: Revert-Patch konnte nicht gesendet werden.`);
       return;
     }
     const removeUrl = editorApi(`/changes/${encodeURIComponent(sessionId)}?${new URLSearchParams({ changeId: change.id, prop }).toString()}`);
@@ -486,7 +525,33 @@ export default function Home() {
     setPendingChangeSet(nextChangeSet);
     setPendingChangeCount(nextCount);
     setInspectorResetVersion((current) => current + 1);
-    setGitSaveStatus(`Setting '${prop}' entfernt und zurückgesetzt.`);
+    setGitSaveStatus(`Setting '${label}' entfernt und zurückgesetzt.`);
+  }
+
+  function buildRevertProps(change: EditorSetPropsChange, target: DebugNodeDescriptor, preferLiveBase: boolean): DebugNodePatch {
+    return Object.fromEntries(Object.entries(change.props).flatMap(([prop, value]) => {
+      const previousValue = change.previousProps?.[prop];
+      if (!(prop in (change.previousProps ?? {}))) return [];
+      const field = singleFieldName(change);
+      if (!field) return [[prop, previousValue as DebugNodePatch[string]]];
+      if (!isObjectRecord(previousValue)) return [];
+      const base = preferLiveBase ? currentPatchValue(prop, target) : undefined;
+      const objectBase = isObjectRecord(base) ? base : isObjectRecord(value) ? value : previousValue;
+      return [[prop, { ...objectBase, [field]: (previousValue as Record<string, unknown>)[field] } as DebugNodePatch[string]]];
+    })) as DebugNodePatch;
+  }
+
+  function currentPatchValue(prop: string, node: DebugNodeDescriptor): unknown {
+    const debugProps = selectedNodeProps?.nodeId === node.id ? selectedNodeProps : undefined;
+    const local = debugProps?.localTransform;
+    if (prop === 'active') return node.active;
+    if (prop === 'visible') return node.visible;
+    if (prop === 'position') return local ? { x: local.x, y: local.y } : undefined;
+    if (prop === 'size') return local ? { width: local.width, height: local.height } : undefined;
+    if (prop === 'origin') return local ? { x: local.originX, y: local.originY } : undefined;
+    if (prop === 'rotation') return local?.rotation;
+    if (prop === 'scale') return local ? { x: local.scaleX, y: local.scaleY } : undefined;
+    return debugProps?.props[prop];
   }
 
   function setNodeOverlayLayerEnabled(node: DebugNodeDescriptor, layerIds: string[]): void {
@@ -758,11 +823,11 @@ function GitSavePreviewDialog({
 }: {
   changeSet: EditorChangeSet;
   needsRebase: boolean;
-  onRemoveSetting(change: EditorSetPropsChange, prop: string): void | Promise<void>;
+  onRemoveSetting(change: EditorSetPropsChange, prop: string, field?: string): void | Promise<void>;
   onCancel(): void;
   onSave(): void | Promise<void>;
 }) {
-  const rows = changeSet.changes.flatMap((change) => Object.entries(change.props).map(([prop, value]) => ({ change, prop, value })));
+  const rows = pendingChangeRows(changeSet);
   return (
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
       <div className={styles.gitPreviewDialog} onClick={(event) => event.stopPropagation()}>
@@ -777,12 +842,12 @@ function GitSavePreviewDialog({
               <div className={styles.gitPreviewTableHeader}>Prop</div>
               <div className={styles.gitPreviewTableHeader}>Wert</div>
               <div className={styles.gitPreviewTableHeader}></div>
-              {rows.map(({ change, prop, value }) => (
-                <div key={`${change.id}:${prop}`} className={styles.gitPreviewRow}>
+              {rows.map(({ change, prop, field, label, value }) => (
+                <div key={`${change.id}:${prop}:${field ?? ''}`} className={styles.gitPreviewRow}>
                   <div className={styles.gitPreviewPath}>{change.target.nodePath.join(' / ')}</div>
-                  <div className={styles.gitPreviewProp}>{prop}</div>
+                  <div className={styles.gitPreviewProp}>{label}</div>
                   <code className={styles.gitPreviewValue}>{formatPendingValue(value)}</code>
-                  <button type="button" className={styles.removeSettingButton} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void onRemoveSetting(change, prop); }}>Entfernen</button>
+                  <button type="button" className={styles.removeSettingButton} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void onRemoveSetting(change, prop, field); }}>Entfernen</button>
                 </div>
               ))}
             </div>

@@ -252,6 +252,8 @@ export interface EditorSetPropsChange {
   target: EditorChangeTarget;
   props: DebugNodePatch;
   previousProps?: DebugNodePatch;
+  /** Nested field inside the single changed prop, e.g. ['x'] for scale.x. */
+  fieldPath?: string[];
   createdAt: number;
 }
 

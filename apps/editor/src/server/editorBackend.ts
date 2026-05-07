@@ -190,6 +190,7 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
     target: { nodePath },
     props: change.props as DebugNodePatch,
     previousProps: typeof change.previousProps === 'object' && change.previousProps !== null ? change.previousProps as DebugNodePatch : undefined,
+    fieldPath: Array.isArray(change.fieldPath) ? change.fieldPath.map((part) => String(part).trim()).filter(Boolean) : undefined,
     createdAt: change.createdAt ?? Date.now(),
   };
 }
@@ -200,18 +201,19 @@ function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): Edit
 
   for (const change of current.changes) {
     const prop = singlePropName(change);
-    if (prop) byProp.set(changeKey(change.target.nodePath, prop), change);
+    if (prop) byProp.set(changeKey(change.target.nodePath, prop, singleFieldName(change)), change);
   }
 
   for (const incoming of changes.flatMap(splitChangeByProp)) {
     const prop = singlePropName(incoming);
     if (!prop) continue;
-    const key = changeKey(incoming.target.nodePath, prop);
+    const field = singleFieldName(incoming);
+    const key = changeKey(incoming.target.nodePath, prop, field);
     const existing = byProp.get(key);
     const previousValue = existing?.previousProps && prop in existing.previousProps ? existing.previousProps[prop] : incoming.previousProps?.[prop];
     const nextValue = incoming.props[prop];
 
-    if (previousValue !== undefined && scenePropValuesEqual(nextValue, previousValue)) {
+    if (previousValue !== undefined && scenePropValuesEqual(fieldValue(nextValue, field), fieldValue(previousValue, field))) {
       byProp.delete(key);
       continue;
     }
@@ -231,12 +233,30 @@ function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): Edit
 }
 
 function splitChangeByProp(change: EditorSetPropsChange): EditorSetPropsChange[] {
-  return Object.entries(change.props).map(([prop, value]) => ({
-    ...change,
-    id: randomUUID(),
-    props: { [prop]: value },
-    previousProps: change.previousProps && prop in change.previousProps ? { [prop]: change.previousProps[prop] } : undefined,
-  }));
+  return Object.entries(change.props).flatMap<EditorSetPropsChange>(([prop, value]) => {
+    const previousValue = change.previousProps?.[prop];
+    if (isObjectPropValue(value)) {
+      const objectValue = value as Record<string, unknown>;
+      const previousObject = isObjectPropValue(previousValue) ? previousValue as Record<string, unknown> : undefined;
+      return Object.keys(objectValue).flatMap((field) => {
+        if (previousObject && field in previousObject && scenePropValuesEqual(objectValue[field], previousObject[field])) return [];
+        return [{
+          ...change,
+          id: randomUUID(),
+          props: { [prop]: value } as DebugNodePatch,
+          previousProps: previousObject ? { [prop]: previousObject } as DebugNodePatch : undefined,
+          fieldPath: [field],
+        }];
+      });
+    }
+    return [{
+      ...change,
+      id: randomUUID(),
+      props: { [prop]: value } as DebugNodePatch,
+      previousProps: change.previousProps && prop in change.previousProps ? { [prop]: previousValue } as DebugNodePatch : undefined,
+      fieldPath: undefined,
+    }];
+  });
 }
 
 function singlePropName(change: EditorSetPropsChange): string | undefined {
@@ -244,11 +264,24 @@ function singlePropName(change: EditorSetPropsChange): string | undefined {
   return props.length === 1 ? props[0] : undefined;
 }
 
-function changeKey(nodePath: string[], prop: string): string {
-  return `${nodePath.join('\u0000')}\u0000${prop}`;
+function singleFieldName(change: EditorSetPropsChange): string | undefined {
+  return change.fieldPath?.length === 1 ? change.fieldPath[0] : undefined;
 }
 
-function scenePropValuesEqual(left: DebugNodePatch[string], right: DebugNodePatch[string]): boolean {
+function changeKey(nodePath: string[], prop: string, field?: string): string {
+  return `${nodePath.join('\u0000')}\u0000${prop}\u0000${field ?? ''}`;
+}
+
+function fieldValue(value: DebugNodePatch[string], field?: string): unknown {
+  if (!field || !isObjectPropValue(value)) return value;
+  return (value as Record<string, unknown>)[field];
+}
+
+function isObjectPropValue(value: unknown): value is Record<string, DebugNodePatch[string]> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function scenePropValuesEqual(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
@@ -291,8 +324,15 @@ async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<voi
   if (!node) throw new EditorBackendError(`Could not locate node path '${change.target.nodePath.join('/')}' in ${source.filePath}`, 422);
   node.props = { ...(node.props ?? {}) };
   for (const [key, value] of Object.entries(change.props)) {
-    if (value === null) delete node.props[key];
-    else node.props[key] = value;
+    const field = singleFieldName(change);
+    if (value === null) {
+      delete node.props[key];
+    } else if (field && isObjectPropValue(value)) {
+      const currentValue = isObjectPropValue(node.props[key]) ? node.props[key] : {};
+      node.props[key] = { ...currentValue, [field]: (value as Record<string, unknown>)[field] };
+    } else {
+      node.props[key] = value;
+    }
   }
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
 }
