@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -75,6 +75,16 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function countPendingProps(changeSet: EditorChangeSet): number {
+  return changeSet.changes.reduce((sum, change) => sum + Object.keys(change.props).length, 0);
+}
+
+function formatPendingValue(value: unknown): string {
+  if (value === null) return 'delete';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
 function applyLayoutToDocument(layout: EditorLayoutState): void {
   if (typeof document === 'undefined') return;
   const style = document.documentElement.style;
@@ -134,6 +144,8 @@ export default function Home() {
   const [nodeDefinitions, setNodeDefinitions] = useState<Map<string, DebugSceneNodeDefinition>>(() => new Map());
   const [patchStatus, setPatchStatus] = useState('');
   const [pendingChangeCount, setPendingChangeCount] = useState(0);
+  const [pendingChangeSet, setPendingChangeSet] = useState<EditorChangeSet | undefined>();
+  const [savePreviewOpen, setSavePreviewOpen] = useState(false);
   const [gitSaveStatus, setGitSaveStatus] = useState('');
   const [gitNeedsRebase, setGitNeedsRebase] = useState(false);
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
@@ -347,7 +359,8 @@ export default function Home() {
     try {
       const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`));
       const changeSet = await response.json() as EditorChangeSet;
-      setPendingChangeCount(changeSet.changes.length);
+      setPendingChangeSet(changeSet);
+      setPendingChangeCount(countPendingProps(changeSet));
     } catch (error) {
       setGitSaveStatus(`Pending Changes konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -364,8 +377,14 @@ export default function Home() {
     }
   }
 
+  async function openSavePreview(): Promise<void> {
+    await refreshPendingChanges();
+    setSavePreviewOpen(true);
+  }
+
   async function savePendingChanges(): Promise<void> {
     if (!sessionId) return;
+    setSavePreviewOpen(false);
     setGitSaveStatus(gitNeedsRebase ? 'Rebase + Git Save läuft...' : 'Speichere Änderungen nach Git...');
     try {
       const response = await fetch(editorApi(`/git/save/${encodeURIComponent(sessionId)}`), {
@@ -375,6 +394,7 @@ export default function Home() {
       });
       const result = await response.json() as { ok: boolean; commit?: string; message?: string; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPendingChangeSet(undefined);
       setPendingChangeCount(0);
       setGitNeedsRebase(false);
       setGitSaveStatus(result.commit ? `Gespeichert: Commit ${result.commit}` : result.message ?? 'Keine Änderungen zu speichern.');
@@ -388,8 +408,24 @@ export default function Home() {
   async function clearPendingChanges(): Promise<void> {
     if (!sessionId) return;
     await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { method: 'DELETE' });
+    setPendingChangeSet(undefined);
     setPendingChangeCount(0);
+    setSavePreviewOpen(false);
     setGitSaveStatus('Pending Changes verworfen. Game neu laden für committed Werte.');
+  }
+
+  async function removePendingSetting(change: EditorSetPropsChange, prop: string): Promise<void> {
+    if (!sessionId) return;
+    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: change.target, prop }),
+    });
+    const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
+    if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+    setPendingChangeSet(result.changeSet);
+    setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
+    if (!result.changeSet || countPendingProps(result.changeSet) === 0) setSavePreviewOpen(false);
   }
 
   function setNodeOverlayLayerEnabled(node: DebugNodeDescriptor, layerIds: string[]): void {
@@ -524,7 +560,8 @@ export default function Home() {
       });
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      setPendingChangeCount(result.changeSet?.changes.length ?? 0);
+      setPendingChangeSet(result.changeSet);
+      setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
       void refreshGitStatus();
     } catch (error) {
@@ -551,7 +588,7 @@ export default function Home() {
           <button className={styles.button} onClick={reloadGameFrame} title="Game mit aktuellem Live-Stand neu laden">
             <RotateCcw size={16} /> Game neu laden
           </button>
-          <button className={styles.button} onClick={savePendingChanges} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Save führt erst Rebase aus.' : (gitSaveStatus || 'Pending Changes nach Git committen und pushen')}>
+          <button className={styles.button} onClick={openSavePreview} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Save führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Pending Changes prüfen und speichern')}>
             Git speichern ({pendingChangeCount})
           </button>
           <button className={`${styles.button} ${styles.ghost}`} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
@@ -626,8 +663,49 @@ export default function Home() {
           </div>
         </aside>
       </section>
+      {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
       {originalAsset && <OriginalAssetDialog asset={originalAsset} assets={imageAssets} onClose={() => setOriginalAssetId(undefined)} />}
     </main>
+  );
+}
+
+function GitSavePreviewDialog({
+  changeSet,
+  needsRebase,
+  onRemoveSetting,
+  onCancel,
+  onSave,
+}: {
+  changeSet: EditorChangeSet;
+  needsRebase: boolean;
+  onRemoveSetting(change: EditorSetPropsChange, prop: string): void | Promise<void>;
+  onCancel(): void;
+  onSave(): void | Promise<void>;
+}) {
+  const rows = changeSet.changes.flatMap((change) => Object.entries(change.props).map(([prop, value]) => ({ change, prop, value })));
+  return (
+    <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
+      <div className={styles.gitPreviewDialog} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <strong>Git Save Preview · {rows.length} Setting{rows.length === 1 ? '' : 's'}</strong>
+          <div className={styles.dialogHeaderActions}>
+            <button type="button" className={styles.headerButton} onClick={onCancel}>Abbrechen</button>
+            <button type="button" className={styles.headerButton} disabled={rows.length === 0} onClick={onSave}>{needsRebase ? 'Rebase + Speichern' : 'Speichern'}</button>
+          </div>
+        </div>
+        <div className={styles.gitPreviewBody}>
+          {needsRebase && <p className={styles.previewWarning}>Remote ist voraus. Beim Speichern wird zuerst rebased.</p>}
+          {rows.length > 0 ? rows.map(({ change, prop, value }) => (
+            <div key={`${change.id}:${prop}`} className={styles.gitPreviewRow}>
+              <div className={styles.gitPreviewPath}>{change.target.nodePath.join(' / ')}</div>
+              <div className={styles.gitPreviewProp}>{prop}</div>
+              <code className={styles.gitPreviewValue}>{formatPendingValue(value)}</code>
+              <button type="button" className={styles.removeSettingButton} onClick={() => onRemoveSetting(change, prop)}>Entfernen</button>
+            </div>
+          )) : <p className={styles.empty}>Keine Settings mehr im Save.</p>}
+        </div>
+      </div>
+    </div>
   );
 }
 

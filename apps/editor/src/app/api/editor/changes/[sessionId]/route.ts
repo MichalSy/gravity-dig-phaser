@@ -1,4 +1,4 @@
-import { appendChangesFromBody, clearSession, readChangeSet } from '../../../../../server/editorBackend';
+import { appendChangesFromBody, clearSession, readChangeSet, removePendingProp } from '../../../../../server/editorBackend';
 import { jsonError, jsonNoStore, readJson } from '../../_response';
 
 
@@ -22,8 +22,14 @@ export async function POST(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
-  const { sessionId } = await context.params;
-  clearSession(sessionId);
-  return jsonNoStore({ ok: true });
+export async function DELETE(request: Request, context: RouteContext) {
+  try {
+    const { sessionId } = await context.params;
+    const body = await readJson(request);
+    if (body && typeof body === 'object') return jsonNoStore({ ok: true, changeSet: removePendingProp(sessionId, body) });
+    clearSession(sessionId);
+    return jsonNoStore({ ok: true });
+  } catch (error) {
+    return jsonError(error);
+  }
 }

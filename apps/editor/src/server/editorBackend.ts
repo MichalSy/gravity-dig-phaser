@@ -94,6 +94,25 @@ export function clearSession(sessionId: string): void {
   assetUploads.delete(sessionId);
 }
 
+export function removePendingProp(sessionId: string, body: unknown): EditorChangeSet {
+  const typed = body as { target?: { nodePath?: unknown }; prop?: unknown } | undefined;
+  const nodePath = Array.isArray(typed?.target?.nodePath) ? typed.target.nodePath.map((part) => String(part).trim()).filter(Boolean) : [];
+  const prop = typeof typed?.prop === 'string' ? typed.prop.trim() : '';
+  if (nodePath.length === 0 || !prop) throw new EditorBackendError('Required: target.nodePath[] and prop.', 400);
+
+  const current = readChangeSet(sessionId);
+  const changes = current.changes.flatMap((change) => {
+    if (change.kind !== 'setProps' || change.target.nodePath.join('/') !== nodePath.join('/')) return [change];
+    const props = { ...change.props };
+    delete props[prop];
+    return Object.keys(props).length > 0 ? [{ ...change, props }] : [];
+  });
+  const next: EditorChangeSet = { ...current, changes, updatedAt: Date.now() };
+  if (changes.length === 0) changeSets.delete(sessionId);
+  else changeSets.set(sessionId, next);
+  return readChangeSet(sessionId);
+}
+
 export async function saveChangesToGit(sessionId: string, request: SaveRequest) {
   const changeSet = readChangeSet(sessionId);
   const uploads = assetUploads.get(sessionId) ?? [];

@@ -692,7 +692,8 @@
   backdrop-filter: blur(8px);
 }
 
-.assetDialog {
+.assetDialog,
+.gitPreviewDialog {
   width: min(96vw, 1400px);
   max-width: min(96vw, 1400px);
   max-height: 92vh;
@@ -704,6 +705,8 @@
   box-shadow: 0 30px 120px rgba(0, 0, 0, 0.65);
   overflow: hidden;
 }
+
+.gitPreviewDialog { width: min(94vw, 980px); }
 
 .dialogHeader {
   min-width: 0;
@@ -1081,3 +1084,61 @@
   width: 100%;
   accent-color: #38bdf8;
 }
+
+.gitPreviewBody {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(2, 6, 23, 0.72);
+}
+
+.previewWarning {
+  margin: 0 0 4px;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gitPreviewRow {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(110px, 0.55fr) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(125, 211, 252, 0.14);
+  border-radius: 10px;
+  padding: 9px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.gitPreviewPath,
+.gitPreviewProp,
+.gitPreviewValue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gitPreviewPath { color: #bae6fd; font-size: 12px; font-weight: 850; }
+.gitPreviewProp { color: #f8fafc; font-size: 12px; font-weight: 900; }
+.gitPreviewValue { color: #cbd5e1; font-size: 11px; }
+
+.removeSettingButton {
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: rgba(127, 29, 29, 0.26);
+  color: #fecaca;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.removeSettingButton:hover { background: rgba(220, 38, 38, 0.28); }
