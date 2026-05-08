@@ -1184,7 +1184,7 @@ function PublicAssetExplorer({
 
 function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
   if (isNodeFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>NODE</span></div>;
-  if (isJsonAssetFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>JSON</span></div>;
+  if (isPublicJsonFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>JSON</span></div>;
   if (isImageFile(file)) return <QueuedPublicImageThumbnail file={file} />;
   if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>{file.extension?.toUpperCase() ?? 'AUDIO'}</span></div>;
   return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
@@ -2668,12 +2668,12 @@ function isNodeFile(file: PublicFileEntry): boolean {
     && ['ts', 'tsx'].includes(file.extension ?? '');
 }
 
-function isJsonAssetFile(file: PublicFileEntry): boolean {
-  return file.kind === 'file' && file.path.startsWith('apps/game/public/assets/') && file.extension === 'json';
+function isPublicJsonFile(file: PublicFileEntry): boolean {
+  return file.kind === 'file' && file.path.startsWith('apps/game/public/') && file.extension === 'json';
 }
 
 function isCodePreviewFile(file: PublicFileEntry): boolean {
-  return isNodeFile(file) || isJsonAssetFile(file);
+  return isNodeFile(file) || isPublicJsonFile(file);
 }
 
 async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<NodeSourceFileContent> {
