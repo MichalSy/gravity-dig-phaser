@@ -76,6 +76,12 @@ interface PublicFileEntry {
   children?: PublicFileEntry[];
 }
 
+interface PublicAtlasFrame {
+  id: string;
+  label: string;
+  rect: { x: number; y: number; width: number; height: number };
+}
+
 const defaultLayoutState: EditorLayoutState = {
   hierarchyWidth: 448,
   inspectorWidth: 340,
@@ -195,6 +201,7 @@ export default function Home() {
   const [publicFileRoot, setPublicFileRoot] = useState<PublicFileEntry | undefined>();
   const [selectedPublicDirectoryPath, setSelectedPublicDirectoryPath] = useState('apps/game/public');
   const [selectedPublicFilePath, setSelectedPublicFilePath] = useState<string | undefined>();
+  const [previewPublicFilePath, setPreviewPublicFilePath] = useState<string | undefined>();
   const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public']));
   const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
@@ -898,6 +905,7 @@ export default function Home() {
           onSelectDirectory={selectPublicDirectory}
           onToggleDirectory={togglePublicDirectory}
           onSelectFile={setSelectedPublicFilePath}
+          onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
         />
 
@@ -911,6 +919,7 @@ export default function Home() {
         </aside>
       </section>
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
+      {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} onClose={() => setPreviewPublicFilePath(undefined)} />}
     </main>
   );
 }
@@ -976,6 +985,7 @@ function PublicAssetExplorer({
   onSelectDirectory,
   onToggleDirectory,
   onSelectFile,
+  onOpenImage,
   onRefresh,
 }: {
   root?: PublicFileEntry;
@@ -990,6 +1000,7 @@ function PublicAssetExplorer({
   onSelectDirectory(path: string): void;
   onToggleDirectory(path: string): void;
   onSelectFile(path: string): void;
+  onOpenImage(path: string): void;
   onRefresh(): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
@@ -1038,7 +1049,7 @@ function PublicAssetExplorer({
             {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
           </div>
         </div>
-        <PublicFileDetails file={selectedFile} />
+        <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} />
       </div>
     </section>
   );
@@ -1051,14 +1062,17 @@ function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
   return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
 }
 
-function PublicFileDetails({ file }: { file?: PublicFileEntry }) {
+function PublicFileDetails({ file, onOpenImage }: { file?: PublicFileEntry; onOpenImage(path: string): void }) {
   if (!file) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle eine Datei.</p></aside>;
   const url = publicFileContentUrl(file);
   return (
     <aside className={styles.assetDetails}>
       <div className={styles.publicFilePreviewPane}>
         {isImageFile(file) ? (
-          <img className={styles.assetImagePreview} src={url} alt={file.name} loading="lazy" />
+          <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenImage(file.path)} aria-label={`${file.name} groß anzeigen`}>
+            <img className={styles.assetImagePreview} src={url} alt={file.name} loading="lazy" />
+            <span className={styles.assetPreviewHint}>Klick für Großansicht</span>
+          </button>
         ) : isAudioFile(file) ? (
           <div className={styles.audioPreview}>
             <FileIcon size={34} />
@@ -1082,6 +1096,118 @@ function PublicFileDetails({ file }: { file?: PublicFileEntry }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+function PublicImageDialog({ file, root, onClose }: { file?: PublicFileEntry; root: PublicFileEntry; onClose(): void }) {
+  const [frames, setFrames] = useState<PublicAtlasFrame[]>([]);
+  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useState<'frame' | 'atlas'>('frame');
+  const metadataFile = file ? findAtlasMetadataFile(root, file) : undefined;
+  const src = file ? publicFileContentUrl(file) : undefined;
+
+  useEffect(() => {
+    let disposed = false;
+    setFrames([]);
+    setSelectedFrameId(undefined);
+    setActiveTab('frame');
+    if (!metadataFile) return;
+    fetch(publicFileContentUrl(metadataFile), { cache: 'no-store', headers: { Accept: 'application/json' } })
+      .then((response) => response.ok ? response.json() : undefined)
+      .then((json) => {
+        if (disposed) return;
+        const parsed = parseAtlasFrames(json);
+        setFrames(parsed);
+        setSelectedFrameId(parsed[0]?.id);
+      })
+      .catch(() => undefined);
+    return () => { disposed = true; };
+  }, [metadataFile?.path]);
+
+  if (!file || !src) return null;
+  const selectedFrame = selectedFrameId ? frames.find((frame) => frame.id === selectedFrameId) : undefined;
+  const showAtlasViewer = frames.length > 0;
+
+  return (
+    <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
+      <div className={styles.assetDialog} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <strong>{file.name}</strong>
+          <div className={styles.dialogHeaderActions}>
+            {showAtlasViewer && (
+              <div className={styles.dialogTabs} role="tablist" aria-label="Atlas Ansicht">
+                <button type="button" className={activeTab === 'frame' ? styles.activeDialogTab : ''} onClick={() => setActiveTab('frame')}>Frame</button>
+                <button type="button" className={activeTab === 'atlas' ? styles.activeDialogTab : ''} onClick={() => setActiveTab('atlas')}>Atlas</button>
+              </div>
+            )}
+            <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+          </div>
+        </div>
+        {showAtlasViewer ? (
+          <div className={styles.atlasDialogBody}>
+            <aside className={styles.frameList}>
+              <div className={styles.frameListHeader}>{frames.length} Frames</div>
+              {frames.map((frame) => (
+                <button key={frame.id} type="button" className={`${styles.frameListItem} ${frame.id === selectedFrame?.id ? styles.selectedFrameListItem : ''}`} onClick={() => setSelectedFrameId(frame.id)}>
+                  <PublicFramePreview src={src} frame={frame} compact />
+                  <span>{frame.label}</span>
+                  <small>{frame.rect.width}×{frame.rect.height}</small>
+                </button>
+              ))}
+            </aside>
+            <section className={styles.atlasPreviewPanel}>
+              {activeTab === 'frame' && selectedFrame ? (
+                <div className={styles.dialogFramePreview}><PublicFramePreview src={src} frame={selectedFrame} compact={false} /></div>
+              ) : (
+                <PublicAtlasImageWithFrame src={src} fileName={file.name} selectedFrame={selectedFrame} />
+              )}
+              {selectedFrame && (
+                <div className={styles.dialogFrameMeta}>
+                  <strong>{selectedFrame.label}</strong>
+                  <span>{selectedFrame.rect.x},{selectedFrame.rect.y} · {selectedFrame.rect.width}×{selectedFrame.rect.height}</span>
+                </div>
+              )}
+            </section>
+          </div>
+        ) : (
+          <img className={styles.originalAssetImage} src={src} alt={file.name} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PublicFramePreview({ src, frame, compact }: { src: string; frame: PublicAtlasFrame; compact: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const image = new Image();
+    image.onload = () => {
+      canvas.width = frame.rect.width;
+      canvas.height = frame.rect.height;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, frame.rect.x, frame.rect.y, frame.rect.width, frame.rect.height, 0, 0, canvas.width, canvas.height);
+    };
+    image.src = src;
+  }, [src, frame]);
+  return <canvas ref={canvasRef} className={compact ? styles.assetThumbnail : styles.assetImagePreview} aria-label={frame.label} />;
+}
+
+function PublicAtlasImageWithFrame({ src, fileName, selectedFrame }: { src: string; fileName: string; selectedFrame?: PublicAtlasFrame }) {
+  const [size, setSize] = useState<{ width: number; height: number } | undefined>();
+  const rect = selectedFrame?.rect;
+  return (
+    <div className={styles.atlasImageStage}>
+      <div className={styles.atlasImageWrap}>
+        <img className={styles.originalAssetImage} src={src} alt={fileName} onLoad={(event) => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} />
+        {rect && size && size.width > 0 && size.height > 0 && (
+          <div className={styles.frameRectOverlay} style={{ left: `${(rect.x / size.width) * 100}%`, top: `${(rect.y / size.height) * 100}%`, width: `${(rect.width / size.width) * 100}%`, height: `${(rect.height / size.height) * 100}%` }} />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2255,6 +2381,54 @@ function publicDirectoryAncestorPaths(path: string): string[] {
 
 function publicFileContentUrl(file: PublicFileEntry): string {
   return editorApi(`/public-files/content?path=${encodeURIComponent(file.path)}`);
+}
+
+function findAtlasMetadataFile(root: PublicFileEntry, imageFile: PublicFileEntry): PublicFileEntry | undefined {
+  const candidates = atlasMetadataCandidatePaths(imageFile.path);
+  for (const path of candidates) {
+    const match = findPublicFile(root, path);
+    if (match) return match;
+  }
+  return undefined;
+}
+
+function atlasMetadataCandidatePaths(imagePath: string): string[] {
+  const slash = imagePath.lastIndexOf('/');
+  const directory = slash >= 0 ? imagePath.slice(0, slash + 1) : '';
+  const name = slash >= 0 ? imagePath.slice(slash + 1) : imagePath;
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  return [`${imagePath}.json`, `${directory}${stem}.json`, `${directory}${stem}_atlas.json`];
+}
+
+function parseAtlasFrames(value: unknown): PublicAtlasFrame[] {
+  if (!isObjectRecord(value)) return [];
+  const tileSize = typeof value.tile_size === 'number' ? value.tile_size : undefined;
+  const frames = value.frames;
+  if (isObjectRecord(frames)) {
+    return Object.entries(frames).flatMap(([id, rect]) => parseAtlasRect(id, id, rect, tileSize));
+  }
+  if (Array.isArray(frames)) {
+    return frames.flatMap((frame, index) => parseAtlasRect(String(index), `frame_${String(index).padStart(3, '0')}`, frame, tileSize));
+  }
+  const tiles = value.tiles;
+  if (isObjectRecord(tiles)) {
+    return Object.entries(tiles).flatMap(([id, rect]) => parseAtlasRect(id, id, rect, tileSize));
+  }
+  return [];
+}
+
+function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: number): PublicAtlasFrame[] {
+  if (!isObjectRecord(value)) return [];
+  if (typeof value.x === 'number' && typeof value.y === 'number' && typeof value.width === 'number' && typeof value.height === 'number') {
+    return [{ id, label, rect: { x: value.x, y: value.y, width: value.width, height: value.height } }];
+  }
+  const px = Array.isArray(value.px_coords) ? value.px_coords : undefined;
+  const size = typeof value.tile_size === 'number' ? value.tile_size : tileSize;
+  if (px && typeof px[0] === 'number' && typeof px[1] === 'number' && typeof size === 'number') {
+    return [{ id, label, rect: { x: px[0], y: px[1], width: size, height: size } }];
+  }
+  return [];
 }
 
 function isImageFile(file: PublicFileEntry): boolean {
