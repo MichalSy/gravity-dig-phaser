@@ -1939,7 +1939,7 @@ function NodeTreeItem({
   const NodeIcon = iconForNode(node);
 
   function handleDragOver(event: ReactDragEvent<HTMLDivElement>): void {
-    if (!readDynamicNodeDragFile(event)) return;
+    if (!hasDynamicNodeDragType(event)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }
@@ -2857,6 +2857,10 @@ function isNodeFile(file: PublicFileEntry): boolean {
 
 function isDynamicNodeFile(file: PublicFileEntry): boolean {
   return file.kind === 'file' && file.path.startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(file.name);
+}
+
+function hasDynamicNodeDragType(event: ReactDragEvent): boolean {
+  return Array.from(event.dataTransfer.types).includes(dynamicNodeDragMimeType);
 }
 
 function readDynamicNodeDragFile(event: ReactDragEvent): PublicFileEntry | undefined {
