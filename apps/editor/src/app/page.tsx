@@ -1290,6 +1290,7 @@ function NodeSourceDialog({ path, onClose }: { path: string; onClose(): void }) 
               language="typescript"
               path={`file:///${file.path}`}
               value={file.content}
+              theme="vs-dark"
               options={{ readOnly: true, minimap: { enabled: true }, fontSize: 13, wordWrap: 'off', automaticLayout: true, scrollBeyondLastLine: false }}
               beforeMount={(monaco) => {
                 monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
