@@ -179,9 +179,15 @@ export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
 }
 
 export async function listNodeFiles(): Promise<{ root: PublicFileEntry }> {
-  const rootPath = await ensureNodeRoot();
-  const root = await readNodeDirectory(rootPath, 'apps/game/src');
-  return { root: { ...root, name: 'Nodes', path: 'apps/game/src' } };
+  const sourceRootPath = await ensureNodeRoot();
+  const sourceRoot = await readNodeDirectory(sourceRootPath, 'apps/game/src');
+  const dynamicRootPath = await ensureDynamicNodeRoot();
+  const dynamicRoot = await readNodeDirectory(dynamicRootPath, 'apps/game/dynamic-nodes');
+  const children = [
+    ...(sourceRoot.children ?? []),
+    ...(dynamicRoot.children && dynamicRoot.children.length > 0 ? [dynamicRoot] : []),
+  ];
+  return { root: { name: 'Nodes', path: 'apps/game', kind: 'directory', children } };
 }
 
 export async function readNodeFile(relativePath: string): Promise<{ path: string; content: string; modifiedAt: number; size: number }> {
@@ -409,6 +415,10 @@ async function ensureNodeRoot(): Promise<string> {
   return ensureWorkspaceSubtree('apps/game/src', 'Node source root');
 }
 
+async function ensureDynamicNodeRoot(): Promise<string> {
+  return ensureWorkspaceSubtree('apps/game/dynamic-nodes', 'Dynamic node source root');
+}
+
 async function ensureWorkspaceSubtree(relativeRoot: string, label: string): Promise<string> {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
@@ -440,10 +450,10 @@ async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePa
 }
 
 async function resolveNodeFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
-  const rootPath = await ensureNodeRoot();
   const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
   if (!normalizedPath || normalizedPath.split(sep).includes('..')) throw new EditorBackendError('Invalid node file path.', 400);
-  const fullRelativePath = normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) ? normalizedPath : join('apps/game/src', normalizedPath);
+  const fullRelativePath = normalizeNodeFilePath(normalizedPath);
+  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}dynamic-nodes${sep}`) ? await ensureDynamicNodeRoot() : await ensureNodeRoot();
   const absolutePath = resolve(workspacePath, fullRelativePath);
   assertInsideRoot(absolutePath, rootPath, 'nodeFile');
   const fileStat = await stat(absolutePath);
@@ -552,12 +562,18 @@ async function readNodeDirectory(absolutePath: string, relativePath: string): Pr
       };
     }))).filter((entry): entry is PublicFileEntry => Boolean(entry));
 
-  return { name: relativePath === 'apps/game/src' ? 'Nodes' : relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
+  return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
+}
+
+function normalizeNodeFilePath(normalizedPath: string): string {
+  if (normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) || normalizedPath.startsWith(`apps${sep}game${sep}dynamic-nodes${sep}`)) return normalizedPath;
+  return join('apps/game/src', normalizedPath);
 }
 
 function isNodeSourceFile(path: string, content: string): boolean {
   const normalized = path.replaceAll('\\', '/');
   if (!/\.(ts|tsx)$/.test(normalized) || normalized.endsWith('.d.ts')) return false;
+  if (normalized.startsWith('apps/game/dynamic-nodes/') && /\.node\.tsx?$/.test(normalized)) return true;
   if (/\/(nodes|Nodes)\//.test(normalized) && /Node\.tsx?$/.test(normalized)) return true;
   return /class\s+\w+Node\s+extends\s+\w*Node\b/.test(content) || /nodeTypeId\s*=/.test(content);
 }
