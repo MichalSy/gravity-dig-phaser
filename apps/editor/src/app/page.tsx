@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
+import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -62,6 +62,16 @@ interface EditorGitStatus {
   ahead?: number;
   behind?: number;
   needsRebase?: boolean;
+}
+
+interface PublicFileEntry {
+  name: string;
+  path: string;
+  kind: 'directory' | 'file';
+  size?: number;
+  modifiedAt?: number;
+  extension?: string;
+  children?: PublicFileEntry[];
 }
 
 const defaultLayoutState: EditorLayoutState = {
@@ -180,6 +190,10 @@ export default function Home() {
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
   const [originalAssetId, setOriginalAssetId] = useState<string | undefined>();
+  const [publicFileRoot, setPublicFileRoot] = useState<PublicFileEntry | undefined>();
+  const [selectedPublicDirectoryPath, setSelectedPublicDirectoryPath] = useState('apps/game/public');
+  const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public']));
+  const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
@@ -202,6 +216,14 @@ export default function Home() {
   const originalAsset = useMemo(
     () => (originalAssetId ? imageAssets.find((asset) => asset.id === originalAssetId) : undefined),
     [imageAssets, originalAssetId],
+  );
+  const selectedPublicDirectory = useMemo(
+    () => publicFileRoot ? findPublicDirectory(publicFileRoot, selectedPublicDirectoryPath) ?? publicFileRoot : undefined,
+    [publicFileRoot, selectedPublicDirectoryPath],
+  );
+  const publicFileCount = useMemo(
+    () => publicFileRoot ? countPublicFiles(publicFileRoot) : 0,
+    [publicFileRoot],
   );
   const selectedNodeDefinition = useMemo(
     () => (selectedNode?.instanceId ? nodeDefinitions.get(selectedNode.instanceId) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
@@ -330,6 +352,10 @@ export default function Home() {
   }, [sessionId]);
 
   useEffect(() => {
+    void refreshPublicFiles();
+  }, []);
+
+  useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
 
@@ -408,6 +434,30 @@ export default function Home() {
     } catch {
       setGitNeedsRebase(false);
     }
+  }
+
+  async function refreshPublicFiles(): Promise<void> {
+    setPublicFileStatus('Lade public/ ...');
+    try {
+      const response = await fetch(editorApi('/public-files'), { cache: 'no-store' });
+      const result = await response.json() as { root?: PublicFileEntry; error?: string };
+      if (!response.ok || !result.root) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPublicFileRoot(result.root);
+      setSelectedPublicDirectoryPath((current) => findPublicDirectory(result.root!, current) ? current : result.root!.path);
+      setExpandedPublicDirectoryPaths((current) => new Set([result.root!.path, ...current].filter((path) => findPublicDirectory(result.root!, path))));
+      setPublicFileStatus('public/ geladen');
+    } catch (error) {
+      setPublicFileStatus(`public/ konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function togglePublicDirectory(path: string): void {
+    setExpandedPublicDirectoryPaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
   }
 
   async function openSavePreview(): Promise<void> {
@@ -749,7 +799,7 @@ export default function Home() {
       </header>
 
       <section ref={workbenchRef} className={styles.workbench}>
-        <aside className={styles.panel}>
+        <aside className={styles.hierarchyColumn}>
           <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`}>
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
             <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
@@ -769,6 +819,18 @@ export default function Home() {
               <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
             )}
           </div>
+          <div className={styles.rowResizerStatic} />
+          <PublicFileExplorer
+            root={publicFileRoot}
+            selectedDirectory={selectedPublicDirectory}
+            selectedDirectoryPath={selectedPublicDirectoryPath}
+            expandedDirectoryPaths={expandedPublicDirectoryPaths}
+            fileCount={publicFileCount}
+            status={publicFileStatus}
+            onSelectDirectory={setSelectedPublicDirectoryPath}
+            onToggleDirectory={togglePublicDirectory}
+            onRefresh={refreshPublicFiles}
+          />
         </aside>
 
         <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
@@ -858,6 +920,123 @@ function GitSavePreviewDialog({
           <button type="button" className={styles.button} disabled={rows.length === 0} onClick={onSave}>{needsRebase ? 'Rebase + Speichern' : 'Speichern'}</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PublicFileExplorer({
+  root,
+  selectedDirectory,
+  selectedDirectoryPath,
+  expandedDirectoryPaths,
+  fileCount,
+  status,
+  onSelectDirectory,
+  onToggleDirectory,
+  onRefresh,
+}: {
+  root?: PublicFileEntry;
+  selectedDirectory?: PublicFileEntry;
+  selectedDirectoryPath: string;
+  expandedDirectoryPaths: Set<string>;
+  fileCount: number;
+  status: string;
+  onSelectDirectory(path: string): void;
+  onToggleDirectory(path: string): void;
+  onRefresh(): void;
+}) {
+  const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
+  const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
+
+  return (
+    <section className={styles.fileExplorer}>
+      <PanelHeader title="Public Files" meta={root ? `${fileCount} Dateien` : status}>
+        <button type="button" className={styles.headerButton} onClick={onRefresh}>Refresh</button>
+      </PanelHeader>
+      <div className={styles.fileExplorerBody}>
+        <div className={styles.folderTreePane}>
+          {root ? (
+            <PublicDirectoryTree
+              directory={root}
+              selectedPath={selectedDirectoryPath}
+              expandedPaths={expandedDirectoryPaths}
+              onSelect={onSelectDirectory}
+              onToggle={onToggleDirectory}
+            />
+          ) : (
+            <p className={styles.empty}>{status}</p>
+          )}
+        </div>
+        <div className={styles.fileListPane}>
+          <div className={styles.fileListHeader}>
+            <strong>{compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>
+            <span>{childDirectories.length} Ordner · {files.length} Dateien</span>
+          </div>
+          <div className={styles.fileRows}>
+            {childDirectories.map((directory) => (
+              <button key={directory.path} type="button" className={styles.fileRow} onClick={() => onSelectDirectory(directory.path)}>
+                <Folder size={15} />
+                <span>{directory.name}</span>
+                <small>Ordner</small>
+              </button>
+            ))}
+            {files.map((file) => (
+              <div key={file.path} className={styles.fileRow} title={file.path}>
+                <FileIcon size={15} />
+                <span>{file.name}</span>
+                <small>{formatFileMeta(file)}</small>
+              </div>
+            ))}
+            {!selectedDirectory && <p className={styles.empty}>{status}</p>}
+            {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PublicDirectoryTree({
+  directory,
+  selectedPath,
+  expandedPaths,
+  onSelect,
+  onToggle,
+  depth = 0,
+}: {
+  directory: PublicFileEntry;
+  selectedPath: string;
+  expandedPaths: Set<string>;
+  onSelect(path: string): void;
+  onToggle(path: string): void;
+  depth?: number;
+}) {
+  const directories = directory.children?.filter((entry) => entry.kind === 'directory') ?? [];
+  const isExpanded = expandedPaths.has(directory.path);
+  const isSelected = selectedPath === directory.path;
+
+  return (
+    <div className={styles.directoryTreeItem}>
+      <div className={`${styles.directoryRow} ${isSelected ? styles.selectedDirectoryRow : ''}`} style={{ paddingLeft: 6 + depth * 12 }}>
+        <button type="button" className={styles.directoryToggle} onClick={() => onToggle(directory.path)} aria-label={`${directory.name} ${isExpanded ? 'zuklappen' : 'aufklappen'}`} disabled={directories.length === 0}>
+          {directories.length > 0 ? (isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : <span />}
+        </button>
+        <button type="button" className={styles.directoryNameButton} onClick={() => onSelect(directory.path)}>
+          {isExpanded ? <FolderOpen size={14} /> : <Folder size={14} />}
+          <span>{directory.name}</span>
+        </button>
+      </div>
+      {isExpanded && directories.map((child) => (
+        <PublicDirectoryTree
+          key={child.path}
+          directory={child}
+          selectedPath={selectedPath}
+          expandedPaths={expandedPaths}
+          onSelect={onSelect}
+          onToggle={onToggle}
+          depth={depth + 1}
+        />
+      ))}
     </div>
   );
 }
@@ -1946,6 +2125,37 @@ function splitHierarchyRoots(roots: DebugNodeDescriptor[]): { persistentManagers
 
 function collectNodeIds(nodes: DebugNodeDescriptor[]): string[] {
   return nodes.flatMap((node) => [node.id, ...collectNodeIds(node.children)]);
+}
+
+function findPublicDirectory(root: PublicFileEntry, path: string): PublicFileEntry | undefined {
+  if (root.kind !== 'directory') return undefined;
+  if (root.path === path) return root;
+  for (const child of root.children ?? []) {
+    if (child.kind !== 'directory') continue;
+    const match = findPublicDirectory(child, path);
+    if (match) return match;
+  }
+  return undefined;
+}
+
+function countPublicFiles(entry: PublicFileEntry): number {
+  if (entry.kind === 'file') return 1;
+  return (entry.children ?? []).reduce((sum, child) => sum + countPublicFiles(child), 0);
+}
+
+function compactPublicPath(path: string): string {
+  return path.replace(/^apps\/game\//, '');
+}
+
+function formatFileMeta(file: PublicFileEntry): string {
+  const size = formatFileSize(file.size ?? 0);
+  return file.extension ? `${file.extension.toUpperCase()} · ${size}` : size;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 }
 
 function findNodePath(nodes: DebugNodeDescriptor[], id: string, parentPath: string[] = []): string[] | undefined {

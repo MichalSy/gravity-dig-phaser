@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { DebugNodePatch, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
@@ -35,6 +35,16 @@ interface SceneNodeJsonLike {
   prefab?: string;
   props?: Record<string, unknown>;
   children?: SceneNodeJsonLike[];
+}
+
+export interface PublicFileEntry {
+  name: string;
+  path: string;
+  kind: 'directory' | 'file';
+  size?: number;
+  modifiedAt?: number;
+  extension?: string;
+  children?: PublicFileEntry[];
 }
 
 const execFileAsync = promisify(execFile);
@@ -155,6 +165,14 @@ export async function readEditorFile(relativePath: string) {
   await ensureWorkspace();
   const safePath = resolveEditablePath(relativePath);
   return { path: safePath.relativePath, content: await readFile(safePath.absolutePath, 'utf8') };
+}
+
+export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
+  await ensureWorkspace();
+  const rootPath = resolve(workspacePath, 'apps/game/public');
+  assertInsideRoot(rootPath, workspacePath, 'publicRoot');
+  const root = await readPublicDirectory(rootPath, 'apps/game/public');
+  return { root: { ...root, name: 'public', path: 'apps/game/public' } };
 }
 
 export async function writeEditorFile(relativePath: string, content: string) {
@@ -341,6 +359,38 @@ async function applyAssetUploadToWorkspace(upload: StagedAssetUpload): Promise<v
   const target = resolveEditablePath(upload.assetPath);
   await mkdir(dirname(target.absolutePath), { recursive: true });
   await writeFile(target.absolutePath, await readFile(upload.uploadPath));
+}
+
+async function readPublicDirectory(absolutePath: string, relativePath: string): Promise<PublicFileEntry> {
+  assertInsideRoot(absolutePath, workspacePath, 'publicPath');
+  const entries = await readdir(absolutePath, { withFileTypes: true });
+  const children = await Promise.all(entries
+    .filter((entry) => !entry.name.startsWith('.'))
+    .sort((left, right) => {
+      if (left.isDirectory() !== right.isDirectory()) return left.isDirectory() ? -1 : 1;
+      return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' });
+    })
+    .map(async (entry): Promise<PublicFileEntry> => {
+      const childAbsolutePath = join(absolutePath, entry.name);
+      const childRelativePath = `${relativePath}/${entry.name}`;
+      if (entry.isDirectory()) return await readPublicDirectory(childAbsolutePath, childRelativePath);
+      const fileStat = await stat(childAbsolutePath);
+      return {
+        name: entry.name,
+        path: childRelativePath,
+        kind: 'file',
+        size: fileStat.size,
+        modifiedAt: fileStat.mtimeMs,
+        extension: fileExtension(entry.name),
+      };
+    }));
+
+  return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
+}
+
+function fileExtension(fileName: string): string | undefined {
+  const index = fileName.lastIndexOf('.');
+  return index > 0 ? fileName.slice(index + 1).toLowerCase() : undefined;
 }
 
 function normalizeAssetPath(assetPath: string): string | undefined {
