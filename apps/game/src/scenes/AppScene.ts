@@ -45,6 +45,7 @@ export class AppScene extends Phaser.Scene {
   private gameplayMounted = false;
   private debugConfig = readDebugConnectionConfig();
   private readonly dynamicModuleCache = new Map<string, { hash: string; module: DynamicNodeModule }>();
+  private readonly dynamicScriptNodes = new Set<DynamicScriptNode>();
 
   constructor() {
     super('App-Root');
@@ -85,6 +86,7 @@ export class AppScene extends Phaser.Scene {
       createNode: (definition) => this.sceneFactory.createTree(definition),
       hasDynamicModule: (module) => this.hasDynamicNodeModule(module),
       ensureDynamicModule: (module, code) => this.ensureDynamicNodeModule(module, code),
+      reloadDynamicModule: (module, code) => this.reloadDynamicNodeModule(module, code),
     }));
 
     this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'App-Root' }));
@@ -151,14 +153,38 @@ export class AppScene extends Phaser.Scene {
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
 
     this.dynamicModuleCache.set(nodeTypeId, { hash: entry.hash, module });
-    this.sceneFactory.register(module.nodeTypeId, (definition) => new DynamicScriptNode({
+    this.sceneFactory.register(module.nodeTypeId, (definition) => this.createDynamicScriptNode(module, definition));
+    return true;
+  }
+
+  private createDynamicScriptNode(module: DynamicNodeModule, definition: SceneNodeJson): DynamicScriptNode {
+    const node = new DynamicScriptNode({
       module,
       nodeTypeId: getDefinitionNodeTypeId(definition),
       instanceId: definition.instanceId,
       name: definition.name,
       props: definition.props,
-    }));
-    return true;
+    });
+    this.dynamicScriptNodes.add(node);
+    return node;
+  }
+
+  private async reloadDynamicNodeModule(entry: DynamicNodeManifestEntry | { nodeTypeId?: string; hash: string; url?: string }, code: string): Promise<number> {
+    const ready = await this.ensureDynamicNodeModule(entry, code);
+    if (!ready || !entry.nodeTypeId) return 0;
+    const cached = this.dynamicModuleCache.get(entry.nodeTypeId);
+    if (!cached) return 0;
+    let reloaded = 0;
+    for (const node of [...this.dynamicScriptNodes]) {
+      if (!node.isInitialized) {
+        this.dynamicScriptNodes.delete(node);
+        continue;
+      }
+      if (node.nodeTypeId !== entry.nodeTypeId) continue;
+      node.reloadModule(cached.module);
+      reloaded += 1;
+    }
+    return reloaded;
   }
 
   private createScene(cacheKey: string): GameNode {

@@ -190,6 +190,46 @@ export interface DebugDynamicNodeModuleErrorMessage extends DebugTargetedMessage
   sentAt: number;
 }
 
+export interface DebugDynamicNodeUpdatedMessage extends DebugTargetedMessageFields {
+  type: 'dynamic-node:updated';
+  sessionId: string;
+  requestId: string;
+  module: DebugDynamicNodeModuleReference;
+  sentAt: number;
+}
+
+export interface DebugDynamicNodeUpdateAckMessage extends DebugTargetedMessageFields {
+  type: 'dynamic-node:update:ack';
+  sessionId: string;
+  requestId: string;
+  module: DebugDynamicNodeModuleReference;
+  applied: boolean;
+  reloaded: number;
+  rejected?: string;
+  sentAt: number;
+}
+
+export interface DebugNodeDeleteMessage extends DebugTargetedMessageFields {
+  type: 'node:delete';
+  sessionId: string;
+  requestId: string;
+  nodeId: string;
+  instanceId?: string;
+  sentAt: number;
+}
+
+export interface DebugNodeDeleteAckMessage extends DebugTargetedMessageFields {
+  type: 'node:delete:ack';
+  sessionId: string;
+  requestId: string;
+  nodeId: string;
+  instanceId?: string;
+  name?: string;
+  applied: boolean;
+  rejected?: string;
+  sentAt: number;
+}
+
 export interface DebugNodePatchAckMessage {
   type: 'node:patch:ack';
   sessionId: string;
@@ -380,4 +420,8 @@ export type DebugMessage =
   | DebugDynamicNodeModuleRequestMessage
   | DebugDynamicNodeModuleResponseMessage
   | DebugDynamicNodeModuleErrorMessage
+  | DebugDynamicNodeUpdatedMessage
+  | DebugDynamicNodeUpdateAckMessage
+  | DebugNodeDeleteMessage
+  | DebugNodeDeleteAckMessage
   | DebugAssetListMessage;

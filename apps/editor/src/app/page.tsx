@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
+import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -438,6 +438,16 @@ export default function Home() {
         return;
       }
 
+      if (message.type === 'node:delete:ack') {
+        setPatchStatus(message.applied ? `Node gelöscht: ${message.name ?? message.nodeId}` : `Node löschen abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+        return;
+      }
+
+      if (message.type === 'dynamic-node:update:ack') {
+        setPatchStatus(message.applied ? `Dynamic Node hot-reloaded: ${message.module.nodeTypeId} · ${message.reloaded} Instanz(en)` : `Dynamic Node Reload abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+        return;
+      }
+
       if (message.type === 'node:definitions') {
         setNodeDefinitions(new Map(message.nodes.map((node) => [node.instanceId, node])));
         setLastEvent(`Node-Definitionen geladen: ${message.nodes.length}`);
@@ -798,6 +808,31 @@ export default function Home() {
     return debugProps?.props[prop];
   }
 
+  function sendNodeDelete(node: DebugNodeDescriptor): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setPatchStatus('Delete nicht gesendet: Relay nicht verbunden.');
+      return;
+    }
+    if (!boundGameClientIdRef.current) {
+      requestBridgeBinding();
+      setPatchStatus('Delete wartet: Bridge ist noch nicht 1:1 gebunden.');
+      return;
+    }
+    const requestId = createSessionId();
+    const message: DebugMessage = {
+      type: 'node:delete',
+      sessionId,
+      targetClientId: boundGameClientIdRef.current,
+      requestId,
+      nodeId: node.id,
+      instanceId: node.instanceId,
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    if (selectedNodeId === node.id) setSelectedNodeId(undefined);
+    setPatchStatus(`Delete gesendet: ${node.name}`);
+  }
+
   function setNodeOverlayLayerEnabled(node: DebugNodeDescriptor, layerIds: string[]): void {
     setOverlayLayerSelections((current) => ({ ...current, [node.id]: layerIds }));
   }
@@ -832,6 +867,25 @@ export default function Home() {
     };
     socketRef.current.send(JSON.stringify(message));
     setBridgeBinding(force ? 'Bridge übernimmt Bindung ...' : 'Bridge-Bindung angefragt ...');
+  }
+
+  function sendDynamicNodeUpdated(module: DynamicNodeManifestEntry): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN || !boundGameClientIdRef.current || !module.nodeTypeId) return;
+    const message: DebugMessage = {
+      type: 'dynamic-node:updated',
+      sessionId,
+      targetClientId: boundGameClientIdRef.current,
+      requestId: createSessionId(),
+      module: {
+        nodeTypeId: module.nodeTypeId,
+        source: module.source,
+        url: module.url,
+        hash: module.hash,
+      },
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    setPatchStatus(`Dynamic Node Update gesendet: ${module.nodeTypeId}`);
   }
 
   async function respondToDynamicNodeModuleRequest(message: Extract<DebugMessage, { type: 'dynamic-node:module-request' }>): Promise<void> {
@@ -1146,6 +1200,7 @@ export default function Home() {
                 isDynamicNodeDragActive={() => Boolean(draggedDynamicNodeRef.current)}
                 getDraggedDynamicNode={() => draggedDynamicNodeRef.current}
                 onDropDynamicNode={injectDynamicNode}
+                onDeleteNode={sendNodeDelete}
               />
             ) : (
               <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
@@ -1207,7 +1262,11 @@ export default function Home() {
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
       {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
-        if (result.dynamicNodeBuild?.manifest) dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
+        if (!result.dynamicNodeBuild?.manifest) return;
+        dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
+        const normalizedPath = result.path.replace(/^apps\/game\//, '');
+        const updatedModule = result.dynamicNodeBuild.manifest.nodes.find((entry) => entry.source === normalizedPath || `apps/game/${entry.source}` === result.path);
+        if (updatedModule) sendDynamicNodeUpdated(updatedModule);
       }} />}
     </main>
   );
@@ -1921,6 +1980,7 @@ function HierarchyTree({
   isDynamicNodeDragActive,
   getDraggedDynamicNode,
   onDropDynamicNode,
+  onDeleteNode,
 }: {
   roots: DebugNodeDescriptor[];
   selectedNodeId?: string;
@@ -1932,6 +1992,7 @@ function HierarchyTree({
   isDynamicNodeDragActive(): boolean;
   getDraggedDynamicNode(): PublicFileEntry | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
+  onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots);
 
@@ -1945,7 +2006,7 @@ function HierarchyTree({
             <span>Persistent Managers</span>
             <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
           </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />}
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />}
         </section>
       )}
 
@@ -1955,7 +2016,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />
       </section>
     </div>
   );
@@ -1970,6 +2031,7 @@ function NodeTree({
   isDynamicNodeDragActive,
   getDraggedDynamicNode,
   onDropDynamicNode,
+  onDeleteNode,
 }: {
   nodes: DebugNodeDescriptor[];
   selectedNodeId?: string;
@@ -1979,11 +2041,12 @@ function NodeTree({
   isDynamicNodeDragActive(): boolean;
   getDraggedDynamicNode(): PublicFileEntry | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
+  onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />
       ))}
     </ol>
   );
@@ -1998,6 +2061,7 @@ function NodeTreeItem({
   isDynamicNodeDragActive,
   getDraggedDynamicNode,
   onDropDynamicNode,
+  onDeleteNode,
 }: {
   node: DebugNodeDescriptor;
   selectedNodeId?: string;
@@ -2007,6 +2071,7 @@ function NodeTreeItem({
   isDynamicNodeDragActive(): boolean;
   getDraggedDynamicNode(): PublicFileEntry | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
+  onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const hasChildren = node.children.length > 0;
   const effectiveActive = isEffectivelyActive(node);
@@ -2050,8 +2115,22 @@ function NodeTreeItem({
           {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
         </button>
+        {!alwaysExpanded && (
+          <button
+            type="button"
+            className={styles.nodeActionButton}
+            title={`${node.name} live löschen`}
+            aria-label={`${node.name} live löschen`}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (window.confirm(`Node '${node.name}' live aus der Hierarchy entfernen?`)) onDeleteNode(node);
+            }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />}
     </li>
   );
 }

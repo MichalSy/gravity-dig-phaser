@@ -306,6 +306,27 @@
   font-size: 9px;
   font-weight: 850;
 }
+.nodeActionButton {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  opacity: 0;
+  padding: 0;
+}
+.nodeRow:hover .nodeActionButton,
+.selectedNode .nodeActionButton {
+  opacity: 1;
+}
+.nodeActionButton:hover {
+  background: rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+}
 
 .inspector {
   display: grid;

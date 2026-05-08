@@ -37,9 +37,10 @@ export interface DynamicScriptNodeOptions extends GameNodeOptions {
 export class DynamicScriptNode extends GameNode {
   static override readonly sceneType = 'DynamicScriptNode';
 
-  private readonly module: DynamicNodeModule;
-  private readonly behavior: DynamicScriptBehavior;
-  private readonly scriptPropDefinitions: Record<string, DebugScenePropDefinition>;
+  private module: DynamicNodeModule;
+  private behavior: DynamicScriptBehavior;
+  private scriptPropDefinitions: Record<string, DebugScenePropDefinition>;
+  private scriptContext?: DynamicScriptContext;
   private readonly scriptPropOverrides = new Set<string>();
 
   constructor(options: DynamicScriptNodeOptions) {
@@ -55,6 +56,7 @@ export class DynamicScriptNode extends GameNode {
 
   override init(ctx: NodeContext): void {
     const scriptContext = this.createScriptContext(ctx);
+    this.scriptContext = scriptContext;
     (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
     this.behavior.init?.(scriptContext);
   }
@@ -66,6 +68,25 @@ export class DynamicScriptNode extends GameNode {
   override destroy(): void {
     this.behavior.destroy?.();
     delete (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext;
+    this.scriptContext = undefined;
+  }
+
+  reloadModule(module: DynamicNodeModule): void {
+    const previousValues = Object.fromEntries(Object.keys(this.scriptPropDefinitions).map((key) => [key, this.behavior[key]]));
+    this.behavior.destroy?.();
+    delete (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext;
+
+    this.module = module;
+    this.behavior = this.module.createBehavior();
+    const extracted = extractScriptProps(this.behavior);
+    this.scriptPropDefinitions = extracted.definitions;
+    for (const [key, value] of Object.entries(previousValues)) {
+      if (key in this.scriptPropDefinitions) this.behavior[key] = value;
+    }
+    if (this.scriptContext) {
+      (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = this.scriptContext;
+      this.behavior.init?.(this.scriptContext);
+    }
   }
 
   override getSceneDefinition(id = this.instanceId): DebugSceneNodeDefinition | undefined {
