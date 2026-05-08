@@ -1,0 +1,28 @@
+declare module '@gravity-dig/dynamic-node' {
+  export abstract class ScriptNode {
+    id: string;
+    name?: string;
+    log(message: string, ...values: unknown[]): void;
+    getNode<T = unknown>(name: string): T | undefined;
+    requireNode<T = unknown>(name: string): T;
+    init?(): void;
+    update?(deltaMs: number): void;
+    destroy?(): void;
+  }
+
+  export interface PropOptions {
+    label?: string;
+    min?: number;
+    max?: number;
+    step?: number;
+    readOnly?: boolean;
+    reason?: string;
+  }
+
+  export const prop: {
+    string<T extends string>(value: T, options?: PropOptions): T;
+    number(value: number, options?: PropOptions): number;
+    boolean(value: boolean, options?: PropOptions): boolean;
+    assetId<T extends string>(value: T, options?: PropOptions): T;
+  };
+}

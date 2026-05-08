@@ -15,6 +15,7 @@ import { AnimatedImageNode, collectNodesByName, CollisionRectNode, getDefinition
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
+import { DynamicScriptNode, loadDynamicNodeModules, type DynamicNodeManifest } from '../dynamic-nodes';
 
 const SCENE_JSON_KEYS = {
   menu: 'scene:menu',
@@ -31,6 +32,7 @@ const PREFAB_JSON_KEYS: Record<string, string> = {
 };
 
 const PREVIEW_CHANGES_KEY = 'editor:preview-changes';
+const DYNAMIC_NODE_MANIFEST_KEY = 'dynamic-nodes:manifest';
 
 export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
@@ -54,6 +56,7 @@ export class AppScene extends Phaser.Scene {
     this.load.json(SCENE_JSON_KEYS.gameplay, 'scenes/gameplay.scene.json');
     this.load.json(SCENE_JSON_KEYS.gameplayUi, 'scenes/gameplay-ui.scene.json');
     for (const [path, key] of Object.entries(PREFAB_JSON_KEYS)) this.load.json(key, path);
+    this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'dynamic-nodes/manifest.json');
     if (this.debugConfig) {
       const previewUrl = new URL(`/api/editor/changes/${encodeURIComponent(this.debugConfig.sessionId)}/preview`, this.debugConfig.editorApiUrl);
       previewUrl.searchParams.set('cacheBust', Date.now().toString(36));
@@ -62,11 +65,20 @@ export class AppScene extends Phaser.Scene {
   }
 
   create(): void {
+    void this.createAsync();
+  }
+
+  update(_time: number, deltaMs: number): void {
+    this.appRuntime?.update(deltaMs);
+  }
+
+  private async createAsync(): Promise<void> {
     this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
 
     this.appRuntime = new NodeRuntime({ phaserScene: this });
     this.sceneFactory = this.createSceneFactory();
+    await this.registerDynamicNodeModules();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
     if (this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig));
 
@@ -82,10 +94,6 @@ export class AppScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.appRuntime.destroy();
     });
-  }
-
-  update(_time: number, deltaMs: number): void {
-    this.appRuntime.update(deltaMs);
   }
 
   private startGame(): void {
@@ -112,6 +120,20 @@ export class AppScene extends Phaser.Scene {
   private mountGameplayScenes(): void {
     this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.gameplay));
     this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.gameplayUi));
+  }
+
+  private async registerDynamicNodeModules(): Promise<void> {
+    const manifest = this.cache.json.get(DYNAMIC_NODE_MANIFEST_KEY) as DynamicNodeManifest | undefined;
+    const modules = await loadDynamicNodeModules(manifest);
+    for (const module of modules) {
+      this.sceneFactory.register(module.nodeTypeId, (definition) => new DynamicScriptNode({
+        module,
+        nodeTypeId: getDefinitionNodeTypeId(definition),
+        instanceId: definition.instanceId,
+        name: definition.name,
+        props: definition.props,
+      }));
+    }
   }
 
   private createScene(cacheKey: string): GameNode {

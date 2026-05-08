@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "npm run build:dynamic-nodes && tsc && vite build",
+    "preview": "vite preview",
+    "build:dynamic-nodes": "node scripts/build-dynamic-nodes.mjs"
   },
   "dependencies": {
     "@gravity-dig/debug-protocol": "*",

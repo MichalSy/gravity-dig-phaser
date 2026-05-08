@@ -16,6 +16,14 @@
       },
       {
         "prefab": "prefabs/player.prefab.json"
+      },
+      {
+        "name": "ExamplePulseScript",
+        "nodeTypeId": "dynamic.example-pulse",
+        "props": {
+          "intervalMs": 1500,
+          "enabled": true
+        }
       }
     ],
     "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"

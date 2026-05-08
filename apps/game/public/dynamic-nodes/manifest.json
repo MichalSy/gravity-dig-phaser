@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "nodeTypeId": "dynamic.example-pulse",
+      "source": "dynamic-nodes/src/example-pulse.node.ts",
+      "url": "/dynamic-nodes/example-pulse.b604e0f24e6a.js",
+      "hash": "b604e0f24e6a"
+    }
+  ]
+}
