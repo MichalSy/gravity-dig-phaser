@@ -2664,7 +2664,7 @@ function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: nu
 
 function isNodeFile(file: PublicFileEntry): boolean {
   return file.kind === 'file'
-    && (file.path.startsWith('apps/game/src/') || file.path.startsWith('apps/game/public/dynamic-nodes/src/'))
+    && (file.path.startsWith('apps/game/src/') || file.path.startsWith('apps/game/public/dynamic-nodes/'))
     && ['ts', 'tsx'].includes(file.extension ?? '');
 }
 
@@ -2677,7 +2677,7 @@ function isCodePreviewFile(file: PublicFileEntry): boolean {
 }
 
 async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<NodeSourceFileContent> {
-  if (path.startsWith('apps/game/src/') || path.startsWith('apps/game/public/dynamic-nodes/src/')) {
+  if (path.startsWith('apps/game/src/') || path.startsWith('apps/game/public/dynamic-nodes/')) {
     const response = await fetch(nodeFileContentUrl(path), { cache: 'no-store', headers: { Accept: 'application/json' }, signal });
     const result = await response.json() as NodeSourceFileContent & { error?: string };
     if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);

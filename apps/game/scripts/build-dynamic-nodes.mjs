@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
-const sourceDir = path.join(appRoot, 'public/dynamic-nodes/src');
+const sourceDir = path.join(appRoot, 'public/dynamic-nodes');
 const outDir = path.join(appRoot, 'public/dynamic-nodes-compiled');
 const tempDir = path.join(appRoot, 'node_modules/.dynamic-node-build');
 
@@ -58,7 +58,7 @@ export { nodeTypeId, displayName, createBehavior };
   });
 
   const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
-  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/dynamic-nodes/src/${file}`, url: `/dynamic-nodes-compiled/${outfileName}`, hash });
+  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/dynamic-nodes/${file}`, url: `/dynamic-nodes-compiled/${outfileName}`, hash });
 }
 
 await writeFile(path.join(appRoot, 'public/dynamic-nodes/manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

@@ -577,7 +577,7 @@ function isHiddenPublicExplorerEntry(relativePath: string, entryName: string): b
 function isNodeSourceFile(path: string, content: string): boolean {
   const normalized = path.replaceAll('\\', '/');
   if (!/\.(ts|tsx)$/.test(normalized) || normalized.endsWith('.d.ts')) return false;
-  if (normalized.startsWith('apps/game/public/dynamic-nodes/src/') && /\.node\.tsx?$/.test(normalized)) return true;
+  if (normalized.startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(normalized)) return true;
   if (/\/(nodes|Nodes)\//.test(normalized) && /Node\.tsx?$/.test(normalized)) return true;
   return /class\s+\w+Node\s+extends\s+\w*Node\b/.test(content) || /nodeTypeId\s*=/.test(content);
 }
