@@ -168,9 +168,7 @@ export async function readEditorFile(relativePath: string) {
 }
 
 export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
-  await ensureWorkspace();
-  const rootPath = resolve(workspacePath, 'apps/game/public');
-  assertInsideRoot(rootPath, workspacePath, 'publicRoot');
+  const rootPath = await ensurePublicRoot();
   const root = await readPublicDirectory(rootPath, 'apps/game/public');
   return { root: { ...root, name: 'public', path: 'apps/game/public' } };
 }
@@ -315,6 +313,22 @@ async function syncWorkspaceToOrigin(): Promise<void> {
   await git(['fetch', 'origin', gitBranch]);
   await git(['checkout', gitBranch]);
   await git(['reset', '--hard', `origin/${gitBranch}`]);
+}
+
+async function ensurePublicRoot(): Promise<string> {
+  await ensureWorkspace();
+  const rootPath = resolve(workspacePath, 'apps/game/public');
+  assertInsideRoot(rootPath, workspacePath, 'publicRoot');
+  if (existsSync(rootPath)) return rootPath;
+
+  await syncWorkspaceToOrigin();
+  if (existsSync(rootPath)) return rootPath;
+
+  await rm(workspacePath, { recursive: true, force: true });
+  await ensureWorkspace();
+  if (existsSync(rootPath)) return rootPath;
+
+  throw new EditorBackendError(`Public root not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
 }
 
 async function branchDivergence(): Promise<{ ahead: number; behind: number }> {
