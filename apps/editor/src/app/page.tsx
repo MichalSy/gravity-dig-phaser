@@ -1166,7 +1166,7 @@ function PublicAssetExplorer({
               </button>
             ))}
             {files.map((file) => (
-              <button key={file.path} type="button" className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`} onClick={() => onSelectFile(file.path)} onDoubleClick={() => { if (isNodeFile(file)) onOpenFile(file.path); }} title={file.path}>
+              <button key={file.path} type="button" className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`} onClick={() => onSelectFile(file.path)} onDoubleClick={() => { if (isCodePreviewFile(file)) onOpenFile(file.path); }} title={file.path}>
                 <PublicFileThumbnail file={file} />
                 <span>{file.name}</span>
                 <small>{formatFileMeta(file)}</small>
@@ -1184,6 +1184,7 @@ function PublicAssetExplorer({
 
 function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
   if (isNodeFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>NODE</span></div>;
+  if (isJsonAssetFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>JSON</span></div>;
   if (isImageFile(file)) return <QueuedPublicImageThumbnail file={file} />;
   if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>{file.extension?.toUpperCase() ?? 'AUDIO'}</span></div>;
   return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
@@ -1213,11 +1214,11 @@ function QueuedPublicImageThumbnail({ file }: { file: PublicFileEntry }) {
 
 function PublicFileDetails({ file, onOpenImage, onOpenFile }: { file?: PublicFileEntry; onOpenImage(path: string): void; onOpenFile(path: string): void }) {
   if (!file) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle eine Datei.</p></aside>;
-  const url = isNodeFile(file) ? '' : publicFileContentUrl(file);
+  const url = isCodePreviewFile(file) ? '' : publicFileContentUrl(file);
   return (
     <aside className={styles.assetDetails}>
       <div className={styles.publicFilePreviewPane}>
-        {isNodeFile(file) ? (
+        {isCodePreviewFile(file) ? (
           <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenFile(file.path)} aria-label={`${file.name} öffnen`}>
             <Code2 size={46} />
             <span>Datei öffnen</span>
@@ -1262,12 +1263,8 @@ function NodeSourceDialog({ path, onClose }: { path: string; onClose(): void }) 
     const controller = new AbortController();
     setFile(undefined);
     setError(undefined);
-    void fetch(nodeFileContentUrl(path), { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal })
-      .then(async (response) => {
-        const result = await response.json() as NodeSourceFileContent & { error?: string };
-        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-        setFile(result);
-      })
+    void loadEditorSourceFile(path, controller.signal)
+      .then(setFile)
       .catch((loadError) => {
         if (!(loadError instanceof DOMException && loadError.name === 'AbortError')) setError(loadError instanceof Error ? loadError.message : String(loadError));
       });
@@ -1287,7 +1284,7 @@ function NodeSourceDialog({ path, onClose }: { path: string; onClose(): void }) 
           {file && (
             <MonacoEditor
               height="100%"
-              language="typescript"
+              language={editorLanguageForPath(file.path)}
               path={`file:///${file.path}`}
               value={file.content}
               theme="vs-dark"
@@ -2669,8 +2666,39 @@ function isNodeFile(file: PublicFileEntry): boolean {
   return file.kind === 'file' && file.path.startsWith('apps/game/src/') && ['ts', 'tsx'].includes(file.extension ?? '');
 }
 
+function isJsonAssetFile(file: PublicFileEntry): boolean {
+  return file.kind === 'file' && file.path.startsWith('apps/game/public/assets/') && file.extension === 'json';
+}
+
+function isCodePreviewFile(file: PublicFileEntry): boolean {
+  return isNodeFile(file) || isJsonAssetFile(file);
+}
+
+async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<NodeSourceFileContent> {
+  if (path.startsWith('apps/game/src/')) {
+    const response = await fetch(nodeFileContentUrl(path), { cache: 'no-store', headers: { Accept: 'application/json' }, signal });
+    const result = await response.json() as NodeSourceFileContent & { error?: string };
+    if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+    return result;
+  }
+
+  const response = await fetch(publicFileContentPathUrl(path), { cache: 'no-store', headers: { Accept: 'application/json, text/plain' }, signal });
+  const content = await response.text();
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${content.slice(0, 120)}`);
+  return { path, content, modifiedAt: 0, size: content.length };
+}
+
+function editorLanguageForPath(path: string): string {
+  if (path.endsWith('.json')) return 'json';
+  return 'typescript';
+}
+
 function nodeFileContentUrl(path: string): string {
   return editorApi(`/node-files/content?path=${encodeURIComponent(path)}`);
+}
+
+function publicFileContentPathUrl(path: string): string {
+  return editorApi(`/public-files/content?path=${encodeURIComponent(path)}`);
 }
 
 function isImageFile(file: PublicFileEntry): boolean {
