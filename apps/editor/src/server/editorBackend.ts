@@ -174,9 +174,7 @@ export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
 }
 
 export async function listNodeFiles(): Promise<{ root: PublicFileEntry }> {
-  await ensureWorkspace();
-  const rootPath = resolve(workspacePath, 'apps/game/src');
-  assertInsideRoot(rootPath, workspacePath, 'nodeRoot');
+  const rootPath = await ensureNodeRoot();
   const root = await readNodeDirectory(rootPath, 'apps/game/src');
   return { root: { ...root, name: 'Nodes', path: 'apps/game/src' } };
 }
@@ -336,9 +334,17 @@ async function syncWorkspaceToOrigin(): Promise<void> {
 }
 
 async function ensurePublicRoot(): Promise<string> {
+  return ensureWorkspaceSubtree('apps/game/public', 'Public root');
+}
+
+async function ensureNodeRoot(): Promise<string> {
+  return ensureWorkspaceSubtree('apps/game/src', 'Node source root');
+}
+
+async function ensureWorkspaceSubtree(relativeRoot: string, label: string): Promise<string> {
   await ensureWorkspace();
-  const rootPath = resolve(workspacePath, 'apps/game/public');
-  assertInsideRoot(rootPath, workspacePath, 'publicRoot');
+  const rootPath = resolve(workspacePath, relativeRoot);
+  assertInsideRoot(rootPath, workspacePath, label);
   if (existsSync(rootPath)) return rootPath;
 
   await syncWorkspaceToOrigin();
@@ -348,7 +354,7 @@ async function ensurePublicRoot(): Promise<string> {
   await ensureWorkspace();
   if (existsSync(rootPath)) return rootPath;
 
-  throw new EditorBackendError(`Public root not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
+  throw new EditorBackendError(`${label} not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
 }
 
 async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
@@ -364,8 +370,7 @@ async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePa
 }
 
 async function resolveNodeFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
-  await ensureWorkspace();
-  const rootPath = resolve(workspacePath, 'apps/game/src');
+  const rootPath = await ensureNodeRoot();
   const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
   if (!normalizedPath || normalizedPath.split(sep).includes('..')) throw new EditorBackendError('Invalid node file path.', 400);
   const fullRelativePath = normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) ? normalizedPath : join('apps/game/src', normalizedPath);
