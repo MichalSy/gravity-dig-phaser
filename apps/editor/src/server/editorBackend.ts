@@ -1,11 +1,12 @@
 import 'server-only';
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
+import ts from 'typescript';
 import type { DebugNodePatch, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 
 interface SaveRequest {
@@ -65,6 +66,7 @@ const editableFileRoots = [
   'apps/game/public/prefabs',
   'apps/game/public/config',
   'apps/game/public/assets',
+  'apps/game/public/dynamic-nodes',
 ].map((path) => path.replaceAll('/', sep));
 
 export function backendStatus() {
@@ -207,7 +209,8 @@ export async function writeEditorFile(relativePath: string, content: string) {
   const safePath = resolveEditablePath(relativePath);
   await mkdir(dirname(safePath.absolutePath), { recursive: true });
   await writeFile(safePath.absolutePath, content);
-  return { ok: true, path: safePath.relativePath };
+  const dynamicNodeBuild = isDynamicNodeSourcePath(safePath.relativePath) ? await buildDynamicNodeModules() : undefined;
+  return { ok: true, path: safePath.relativePath, dynamicNodeBuild };
 }
 
 export async function stageAssetUpload(sessionId: string, body: unknown) {
@@ -533,6 +536,112 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
   return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
 }
 
+async function buildDynamicNodeModules(): Promise<{ manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } }> {
+  const sourceDir = resolve(workspacePath, 'apps/game/public/dynamic-nodes');
+  const outDir = resolve(workspacePath, 'apps/game/public/dynamic-nodes-compiled');
+  assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
+  assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
+
+  await mkdir(outDir, { recursive: true });
+  const files = (await readdir(sourceDir)).filter((file) => file.endsWith('.node.ts') || file.endsWith('.node.tsx')).sort();
+  const manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } = { version: 1, nodes: [] };
+
+  for (const file of files) {
+    const sourcePath = join(sourceDir, file);
+    const source = await readFile(sourcePath, 'utf8');
+    const hash = createHash('sha256').update(source).digest('hex').slice(0, 12);
+    const baseName = file.replace(/\.node\.tsx?$/, '');
+    const outfileName = `${baseName}.${hash}.js`;
+    const outfile = join(outDir, outfileName);
+    const compiled = transpileDynamicNodeSource(source, baseName);
+
+    await writeFile(outfile, compiled);
+    await writeFile(`${outfile}.map`, '');
+
+    const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
+    manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/dynamic-nodes/${file}`, url: `/dynamic-nodes-compiled/${outfileName}`, hash });
+  }
+
+  await writeFile(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  return { manifest };
+}
+
+function transpileDynamicNodeSource(source: string, baseName: string): string {
+  const transformedSource = toDynamicNodeModuleSource(source, baseName);
+  const output = ts.transpileModule(transformedSource, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ES2022,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      jsx: ts.JsxEmit.ReactJSX,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      sourceMap: false,
+    },
+    fileName: `${baseName}.node.ts`,
+    reportDiagnostics: true,
+  });
+  const errors = output.diagnostics?.filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error) ?? [];
+  if (errors.length > 0) throw new EditorBackendError(errors.map(formatTsDiagnostic).join('\n'), 422);
+  return output.outputText;
+}
+
+function toDynamicNodeModuleSource(source: string, baseName: string): string {
+  const withoutApiImport = source.replace(/^\s*import\s+\{\s*ScriptNode\s*,\s*prop\s*\}\s+from\s+['"]@gravity-dig\/dynamic-node['"];?\s*$/mu, dynamicNodeApiSource());
+  const namedDefaultClass = withoutApiImport.match(/export\s+default\s+class\s+([A-Za-z_$][\w$]*)/u)?.[1];
+  if (namedDefaultClass) {
+    return `${withoutApiImport.replace(/export\s+default\s+class\s+([A-Za-z_$][\w$]*)/u, 'class $1')}
+${dynamicNodeModuleFooter(namedDefaultClass, baseName)}
+`;
+  }
+
+  const anonymousDefaultClass = withoutApiImport.replace(/export\s+default\s+class\s+/u, 'const __DynamicScriptClass = class ');
+  if (anonymousDefaultClass !== withoutApiImport) return `${anonymousDefaultClass}
+${dynamicNodeModuleFooter('__DynamicScriptClass', baseName)}
+`;
+
+  throw new EditorBackendError('Dynamic node source must use `export default class ...`.', 422);
+}
+
+function dynamicNodeModuleFooter(className: string, baseName: string): string {
+  return `
+const probe = new ${className}();
+const nodeTypeId = typeof probe.id === 'string' && probe.id.length > 0 ? probe.id : '${baseName}';
+const displayName = typeof probe.name === 'string' && probe.name.length > 0 ? probe.name : nodeTypeId;
+function createBehavior() { return new ${className}(); }
+export default { nodeTypeId, displayName, createBehavior };
+export { nodeTypeId, displayName, createBehavior };
+`;
+}
+
+function dynamicNodeApiSource(): string {
+  return `
+class ScriptNode {
+  log(message, ...values) { this.__dynamicNodeContext?.log(message, ...values); }
+  getNode(name) { return this.__dynamicNodeContext?.getNode(name); }
+  requireNode(name) {
+    const node = this.__dynamicNodeContext?.requireNode(name);
+    if (!node) throw new Error('Dynamic node context is not initialized');
+    return node;
+  }
+}
+function marker(value, definition) { return { __dynamicNodeProp: true, value, definition }; }
+const prop = {
+  string: (value, options = {}) => marker(value, { type: 'String', ...options }),
+  number: (value, options = {}) => marker(value, { type: 'Number', ...options }),
+  boolean: (value, options = {}) => marker(value, { type: 'Boolean', ...options }),
+  assetId: (value, options = {}) => marker(value, { type: 'AssetId', ...options }),
+};
+`;
+}
+
+function formatTsDiagnostic(diagnostic: ts.Diagnostic): string {
+  const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+  return diagnostic.file && typeof diagnostic.start === 'number'
+    ? `${diagnostic.file.fileName}:${diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1}: ${message}`
+    : message;
+}
+
 async function readNodeDirectory(absolutePath: string, relativePath: string): Promise<PublicFileEntry> {
   assertInsideRoot(absolutePath, workspacePath, 'nodePath');
   const entries = await readdir(absolutePath, { withFileTypes: true });
@@ -572,6 +681,10 @@ function normalizeNodeFilePath(normalizedPath: string): string {
 
 function isHiddenPublicExplorerEntry(relativePath: string, entryName: string): boolean {
   return relativePath === 'apps/game/public' && entryName === 'dynamic-nodes-compiled';
+}
+
+function isDynamicNodeSourcePath(path: string): boolean {
+  return path.replaceAll('\\', '/').startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(path);
 }
 
 function isNodeSourceFile(path: string, content: string): boolean {

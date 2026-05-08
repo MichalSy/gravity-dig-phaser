@@ -952,6 +952,13 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   gap: 10px;
 }
 
+.dialogStatus {
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .dialogTabs {
   display: inline-flex;
   gap: 2px;

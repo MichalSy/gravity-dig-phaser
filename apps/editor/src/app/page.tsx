@@ -84,6 +84,15 @@ interface DynamicNodeManifest {
   nodes: DynamicNodeManifestEntry[];
 }
 
+interface EditorFileSaveResult {
+  ok: boolean;
+  path: string;
+  dynamicNodeBuild?: {
+    manifest: DynamicNodeManifest;
+  };
+  error?: string;
+}
+
 interface EditorGitStatus {
   ok: boolean;
   branch: string;
@@ -1197,7 +1206,9 @@ export default function Home() {
       </section>
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
       {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} onClose={() => setPreviewPublicFilePath(undefined)} />}
-      {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} />}
+      {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
+        if (result.dynamicNodeBuild?.manifest) dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
+      }} />}
     </main>
   );
 }
@@ -1434,28 +1445,69 @@ function PublicFileDetails({ file, onOpenImage, onOpenFile }: { file?: PublicFil
   );
 }
 
-function NodeSourceDialog({ path, onClose }: { path: string; onClose(): void }) {
+function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose(): void; onSaved?(result: EditorFileSaveResult): void }) {
   const [file, setFile] = useState<NodeSourceFileContent | undefined>();
+  const [content, setContent] = useState('');
   const [error, setError] = useState<string | undefined>();
+  const [saveStatus, setSaveStatus] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     setFile(undefined);
+    setContent('');
     setError(undefined);
+    setSaveStatus('');
     void loadEditorSourceFile(path, controller.signal)
-      .then(setFile)
+      .then((loadedFile) => {
+        setFile(loadedFile);
+        setContent(loadedFile.content);
+      })
       .catch((loadError) => {
         if (!(loadError instanceof DOMException && loadError.name === 'AbortError')) setError(loadError instanceof Error ? loadError.message : String(loadError));
       });
     return () => controller.abort();
   }, [path]);
 
+  const dirty = file ? content !== file.content : false;
+  const canSave = file ? isEditableMonacoFile(file.path) : false;
+
+  async function saveFile(): Promise<void> {
+    if (!file || !canSave || !dirty) return;
+    setSaving(true);
+    setError(undefined);
+    setSaveStatus(isDynamicNodeFilePath(file.path) ? 'Speichere + kompiliere Dynamic Node ...' : 'Speichere Datei ...');
+    try {
+      const response = await fetch(editorApi('/files'), {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ path: file.path, content }),
+      });
+      const result = await response.json() as EditorFileSaveResult;
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setFile({ ...file, content, size: content.length, modifiedAt: Date.now() });
+      onSaved?.(result);
+      setSaveStatus(result.dynamicNodeBuild ? `Gespeichert + ${result.dynamicNodeBuild.manifest.nodes.length} Dynamic Node(s) kompiliert.` : 'Gespeichert.');
+    } catch (saveError) {
+      setSaveStatus('');
+      setError(saveError instanceof Error ? saveError.message : String(saveError));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.codeDialog} onClick={(event) => event.stopPropagation()}>
         <div className={styles.dialogHeader}>
-          <strong>{compactPublicPath(path)}</strong>
-          <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+          <strong>{compactPublicPath(path)}{dirty ? ' *' : ''}</strong>
+          <div className={styles.dialogHeaderActions}>
+            {saveStatus && <span className={styles.dialogStatus}>{saveStatus}</span>}
+            {file && !canSave && <span className={styles.dialogStatus}>Read-only</span>}
+            <button type="button" className={styles.headerButton} disabled={!canSave || !dirty || saving} onClick={() => void saveFile()}>{saving ? 'Speichere...' : 'Speichern'}</button>
+            <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+          </div>
         </div>
         <div className={styles.codeDialogBody}>
           {error && <p className={styles.empty}>Datei konnte nicht geladen werden: {error}</p>}
@@ -1465,9 +1517,10 @@ function NodeSourceDialog({ path, onClose }: { path: string; onClose(): void }) 
               height="100%"
               language={editorLanguageForPath(file.path)}
               path={`file:///${file.path}`}
-              value={file.content}
+              value={content}
               theme="vs-dark"
-              options={{ readOnly: true, minimap: { enabled: true }, fontSize: 13, wordWrap: 'off', automaticLayout: true, scrollBeyondLastLine: false }}
+              options={{ readOnly: !canSave || saving, minimap: { enabled: true }, fontSize: 13, wordWrap: 'off', automaticLayout: true, scrollBeyondLastLine: false }}
+              onChange={(value) => setContent(value ?? '')}
               beforeMount={(monaco) => {
                 monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
                   target: monaco.languages.typescript.ScriptTarget.ES2022,
@@ -2880,7 +2933,19 @@ function isNodeFile(file: PublicFileEntry): boolean {
 }
 
 function isDynamicNodeFile(file: PublicFileEntry): boolean {
-  return file.kind === 'file' && file.path.startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(file.name);
+  return file.kind === 'file' && isDynamicNodeFilePath(file.path);
+}
+
+function isDynamicNodeFilePath(path: string): boolean {
+  return path.startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(path);
+}
+
+function isEditableMonacoFile(path: string): boolean {
+  return isDynamicNodeFilePath(path)
+    || path.startsWith('apps/game/public/assets/')
+    || path.startsWith('apps/game/public/scenes/')
+    || path.startsWith('apps/game/public/prefabs/')
+    || path.startsWith('apps/game/public/config/');
 }
 
 function hasDynamicNodeDragType(event: ReactDragEvent): boolean {
