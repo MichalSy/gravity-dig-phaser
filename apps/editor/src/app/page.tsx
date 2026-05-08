@@ -32,7 +32,9 @@ function defaultGameUrl(): string {
 }
 
 function editorApi(path: string): string {
-  return `/api/editor${path}`;
+  const apiPath = `/api/editor${path}`;
+  if (typeof window === 'undefined') return apiPath;
+  return new URL(apiPath, window.location.origin).toString();
 }
 
 function buildDebugGameUrl(sessionId: string): string {
@@ -455,6 +457,7 @@ export default function Home() {
       try {
         const response = await fetch(editorApi(`/public-files?ts=${Date.now()}`), {
           cache: 'no-store',
+          credentials: 'same-origin',
           headers: { Accept: 'application/json' },
         });
         const text = await response.text();
