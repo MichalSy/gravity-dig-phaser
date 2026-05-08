@@ -492,6 +492,11 @@ export default function Home() {
     throw lastError ?? new Error('Public-Tree konnte nicht geladen werden.');
   }
 
+  function selectPublicDirectory(path: string): void {
+    setSelectedPublicDirectoryPath(path);
+    setExpandedPublicDirectoryPaths((current) => new Set([...current, ...publicDirectoryAncestorPaths(path), path]));
+  }
+
   function togglePublicDirectory(path: string): void {
     setExpandedPublicDirectoryPaths((current) => {
       const next = new Set(current);
@@ -727,7 +732,7 @@ export default function Home() {
     const shield = createResizeShield('row-resize');
     const startY = event.clientY;
     const startHeight = readStoredLayout().assetExplorerHeight;
-    const panelHeight = viewportPanelRef.current?.getBoundingClientRect().height ?? window.innerHeight;
+    const panelHeight = workbenchRef.current?.getBoundingClientRect().height ?? window.innerHeight;
     const maxHeight = Math.max(260, panelHeight - 260);
 
     function onPointerMove(moveEvent: PointerEvent): void {
@@ -862,7 +867,7 @@ export default function Home() {
           </div>
         </aside>
 
-        <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
+        <div className={`${styles.columnResizer} ${styles.leftColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
 
         <section ref={viewportPanelRef} className={styles.viewportPanel}>
           <PanelHeader title="Game" meta={lastEvent} />
@@ -877,25 +882,26 @@ export default function Home() {
               />
             </div>
           </div>
-          <div className={styles.rowResizer} role="separator" aria-orientation="horizontal" aria-label="Asset Explorer Höhe ändern" onPointerDown={startAssetHeightResize} />
-          <PublicAssetExplorer
-            root={publicFileRoot}
-            selectedDirectory={selectedPublicDirectory}
-            selectedDirectoryPath={selectedPublicDirectoryPath}
-            selectedFile={selectedPublicFile}
-            selectedFilePath={selectedPublicFilePath}
-            expandedDirectoryPaths={expandedPublicDirectoryPaths}
-            fileCount={publicFileCount}
-            status={publicFileStatus}
-            bodyRef={assetExplorerBodyRef}
-            onSelectDirectory={setSelectedPublicDirectoryPath}
-            onToggleDirectory={togglePublicDirectory}
-            onSelectFile={setSelectedPublicFilePath}
-            onRefresh={refreshPublicFiles}
-          />
         </section>
 
-        <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
+        <div className={`${styles.rowResizer} ${styles.assetRowResizer}`} role="separator" aria-orientation="horizontal" aria-label="Asset Explorer Höhe ändern" onPointerDown={startAssetHeightResize} />
+        <PublicAssetExplorer
+          root={publicFileRoot}
+          selectedDirectory={selectedPublicDirectory}
+          selectedDirectoryPath={selectedPublicDirectoryPath}
+          selectedFile={selectedPublicFile}
+          selectedFilePath={selectedPublicFilePath}
+          expandedDirectoryPaths={expandedPublicDirectoryPaths}
+          fileCount={publicFileCount}
+          status={publicFileStatus}
+          bodyRef={assetExplorerBodyRef}
+          onSelectDirectory={selectPublicDirectory}
+          onToggleDirectory={togglePublicDirectory}
+          onSelectFile={setSelectedPublicFilePath}
+          onRefresh={refreshPublicFiles}
+        />
+
+        <div className={`${styles.columnResizer} ${styles.rightColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
 
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
@@ -2238,6 +2244,13 @@ function countPublicFiles(entry: PublicFileEntry): number {
 
 function compactPublicPath(path: string): string {
   return path.replace(/^apps\/game\//, '');
+}
+
+function publicDirectoryAncestorPaths(path: string): string[] {
+  const parts = path.split('/').filter(Boolean);
+  const ancestors: string[] = [];
+  for (let index = 1; index < parts.length; index += 1) ancestors.push(parts.slice(0, index).join('/'));
+  return ancestors.filter((ancestor) => ancestor.startsWith('apps/game/public'));
 }
 
 function publicFileContentUrl(file: PublicFileEntry): string {

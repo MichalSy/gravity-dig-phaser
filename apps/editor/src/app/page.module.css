@@ -50,9 +50,13 @@
   min-height: 0;
   display: grid;
   grid-template-columns: var(--hierarchy-width, 448px) 6px minmax(420px, 1fr) 6px var(--inspector-width, 340px);
+  grid-template-rows: minmax(260px, 1fr) 6px var(--asset-explorer-height, 380px);
   gap: 0;
   background: rgba(148, 163, 184, 0.16);
 }
+
+.workbench > .panel:first-child { grid-column: 1; grid-row: 1; }
+.workbench > .panel:last-child { grid-column: 5; grid-row: 1 / 4; }
 
 .panel, .viewportPanel, .hierarchyColumn {
   min-width: 0;
@@ -63,7 +67,7 @@
 }
 
 .hierarchyColumn { grid-template-rows: 42px minmax(220px, 1fr) 6px var(--asset-explorer-height, 380px); }
-.viewportPanel { grid-template-rows: 42px minmax(260px, 1fr) 6px var(--asset-explorer-height, 380px); background: #020617; }
+.viewportPanel { grid-column: 3; grid-row: 1; grid-template-rows: 42px minmax(260px, 1fr); background: #020617; }
 
 .panelHeader {
   min-width: 0;
@@ -652,6 +656,8 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 }
 
 .assetExplorer {
+  grid-column: 1 / 4;
+  grid-row: 3;
   min-height: 0;
   display: grid;
   grid-template-rows: 42px 1fr;
@@ -721,7 +727,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   overflow-x: hidden;
   overflow-y: auto;
   display: grid;
-  grid-template-rows: minmax(190px, 1fr) auto;
+  grid-template-columns: minmax(180px, 0.95fr) minmax(0, 1.05fr);
   gap: 12px;
   padding: 12px;
   background: rgba(15, 23, 42, 0.92);
@@ -1091,6 +1097,10 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   height: 6px;
   cursor: row-resize;
 }
+
+.leftColumnResizer { grid-column: 2; grid-row: 1; }
+.rightColumnResizer { grid-column: 4; grid-row: 1 / 4; }
+.assetRowResizer { grid-column: 1 / 4; grid-row: 2; }
 
 .columnResizer::after,
 .assetSplitResizer::after {
