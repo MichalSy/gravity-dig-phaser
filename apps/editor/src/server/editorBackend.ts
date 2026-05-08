@@ -173,6 +173,20 @@ export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
   return { root: { ...root, name: 'public', path: 'apps/game/public' } };
 }
 
+export async function listNodeFiles(): Promise<{ root: PublicFileEntry }> {
+  await ensureWorkspace();
+  const rootPath = resolve(workspacePath, 'apps/game/src');
+  assertInsideRoot(rootPath, workspacePath, 'nodeRoot');
+  const root = await readNodeDirectory(rootPath, 'apps/game/src');
+  return { root: { ...root, name: 'Nodes', path: 'apps/game/src' } };
+}
+
+export async function readNodeFile(relativePath: string): Promise<{ path: string; content: string; modifiedAt: number; size: number }> {
+  const filePath = await resolveNodeFilePath(relativePath);
+  const fileStat = await stat(filePath.absolutePath);
+  return { path: filePath.relativePath, content: await readFile(filePath.absolutePath, 'utf8'), modifiedAt: fileStat.mtimeMs, size: fileStat.size };
+}
+
 export async function readPublicFile(relativePath: string): Promise<{ content: Buffer; contentType: string; path: string; size: number }> {
   const filePath = await resolvePublicFilePath(relativePath);
   const content = await readFile(filePath.absolutePath);
@@ -349,6 +363,20 @@ async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePa
   return { absolutePath, relativePath: fullRelativePath };
 }
 
+async function resolveNodeFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
+  await ensureWorkspace();
+  const rootPath = resolve(workspacePath, 'apps/game/src');
+  const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
+  if (!normalizedPath || normalizedPath.split(sep).includes('..')) throw new EditorBackendError('Invalid node file path.', 400);
+  const fullRelativePath = normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) ? normalizedPath : join('apps/game/src', normalizedPath);
+  const absolutePath = resolve(workspacePath, fullRelativePath);
+  assertInsideRoot(absolutePath, rootPath, 'nodeFile');
+  const fileStat = await stat(absolutePath);
+  if (!fileStat.isFile()) throw new EditorBackendError('Node path is not a file.', 400);
+  if (!isNodeSourceFile(fullRelativePath, await readFile(absolutePath, 'utf8'))) throw new EditorBackendError('Node path is not a node source file.', 403);
+  return { absolutePath, relativePath: fullRelativePath.split(sep).join('/') };
+}
+
 async function branchDivergence(): Promise<{ ahead: number; behind: number }> {
   const output = (await git(['rev-list', '--left-right', '--count', `HEAD...origin/${gitBranch}`])).trim();
   const [aheadRaw, behindRaw] = output.split(/\s+/);
@@ -418,6 +446,45 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
     }));
 
   return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
+}
+
+async function readNodeDirectory(absolutePath: string, relativePath: string): Promise<PublicFileEntry> {
+  assertInsideRoot(absolutePath, workspacePath, 'nodePath');
+  const entries = await readdir(absolutePath, { withFileTypes: true });
+  const children = (await Promise.all(entries
+    .filter((entry) => !entry.name.startsWith('.'))
+    .sort((left, right) => {
+      if (left.isDirectory() !== right.isDirectory()) return left.isDirectory() ? -1 : 1;
+      return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' });
+    })
+    .map(async (entry): Promise<PublicFileEntry | undefined> => {
+      const childAbsolutePath = join(absolutePath, entry.name);
+      const childRelativePath = `${relativePath}/${entry.name}`;
+      if (entry.isDirectory()) {
+        const directory = await readNodeDirectory(childAbsolutePath, childRelativePath);
+        return directory.children && directory.children.length > 0 ? directory : undefined;
+      }
+      const fileStat = await stat(childAbsolutePath);
+      const content = await readFile(childAbsolutePath, 'utf8');
+      if (!isNodeSourceFile(childRelativePath, content)) return undefined;
+      return {
+        name: entry.name,
+        path: childRelativePath,
+        kind: 'file',
+        size: fileStat.size,
+        modifiedAt: fileStat.mtimeMs,
+        extension: fileExtension(entry.name),
+      };
+    }))).filter((entry): entry is PublicFileEntry => Boolean(entry));
+
+  return { name: relativePath === 'apps/game/src' ? 'Nodes' : relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
+}
+
+function isNodeSourceFile(path: string, content: string): boolean {
+  const normalized = path.replaceAll('\\', '/');
+  if (!/\.(ts|tsx)$/.test(normalized) || normalized.endsWith('.d.ts')) return false;
+  if (/\/(nodes|Nodes)\//.test(normalized) && /Node\.tsx?$/.test(normalized)) return true;
+  return /class\s+\w+Node\s+extends\s+\w*Node\b/.test(content) || /nodeTypeId\s*=/.test(content);
 }
 
 function fileExtension(fileName: string): string | undefined {

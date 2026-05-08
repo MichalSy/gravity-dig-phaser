@@ -1,7 +1,8 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Box, Boxes, ChevronDown, ChevronRight, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
+import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -48,6 +49,7 @@ function buildDebugGameUrl(sessionId: string): string {
 
 const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
 const maxConcurrentThumbnailLoads = 5;
+const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
 interface ThumbnailQueueTask {
   url: string;
@@ -94,6 +96,13 @@ interface PublicAtlasFrame {
   id: string;
   label: string;
   rect: { x: number; y: number; width: number; height: number };
+}
+
+interface NodeSourceFileContent {
+  path: string;
+  content: string;
+  modifiedAt: number;
+  size: number;
 }
 
 const defaultLayoutState: EditorLayoutState = {
@@ -259,10 +268,12 @@ export default function Home() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
   const [originalAssetId, setOriginalAssetId] = useState<string | undefined>();
   const [publicFileRoot, setPublicFileRoot] = useState<PublicFileEntry | undefined>();
+  const [nodeFileRoot, setNodeFileRoot] = useState<PublicFileEntry | undefined>();
   const [selectedPublicDirectoryPath, setSelectedPublicDirectoryPath] = useState('apps/game/public');
   const [selectedPublicFilePath, setSelectedPublicFilePath] = useState<string | undefined>();
   const [previewPublicFilePath, setPreviewPublicFilePath] = useState<string | undefined>();
-  const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public']));
+  const [openNodeFilePath, setOpenNodeFilePath] = useState<string | undefined>();
+  const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public', 'apps/game/src']));
   const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
@@ -287,21 +298,22 @@ export default function Home() {
     () => (originalAssetId ? imageAssets.find((asset) => asset.id === originalAssetId) : undefined),
     [imageAssets, originalAssetId],
   );
+  const explorerRoots = useMemo(() => [publicFileRoot, nodeFileRoot].filter((root): root is PublicFileEntry => Boolean(root)), [publicFileRoot, nodeFileRoot]);
   const selectedPublicDirectory = useMemo(
-    () => publicFileRoot ? findPublicDirectory(publicFileRoot, selectedPublicDirectoryPath) ?? publicFileRoot : undefined,
-    [publicFileRoot, selectedPublicDirectoryPath],
+    () => findPublicDirectoryInRoots(explorerRoots, selectedPublicDirectoryPath) ?? publicFileRoot ?? nodeFileRoot,
+    [explorerRoots, nodeFileRoot, publicFileRoot, selectedPublicDirectoryPath],
   );
   const publicFilesInSelectedDirectory = useMemo(
     () => selectedPublicDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [],
     [selectedPublicDirectory],
   );
   const selectedPublicFile = useMemo(
-    () => selectedPublicFilePath ? findPublicFile(publicFileRoot, selectedPublicFilePath) : undefined,
-    [publicFileRoot, selectedPublicFilePath],
+    () => selectedPublicFilePath ? findPublicFileInRoots(explorerRoots, selectedPublicFilePath) : undefined,
+    [explorerRoots, selectedPublicFilePath],
   );
   const publicFileCount = useMemo(
-    () => publicFileRoot ? countPublicFiles(publicFileRoot) : 0,
-    [publicFileRoot],
+    () => explorerRoots.reduce((total, root) => total + countPublicFiles(root), 0),
+    [explorerRoots],
   );
   const selectedNodeDefinition = useMemo(
     () => (selectedNode?.instanceId ? nodeDefinitions.get(selectedNode.instanceId) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
@@ -523,15 +535,17 @@ export default function Home() {
   }
 
   async function refreshPublicFiles(): Promise<void> {
-    setPublicFileStatus('Lade public/ ...');
+    setPublicFileStatus('Lade Assets + Nodes ...');
     try {
-      const result = await fetchPublicFileTree();
-      setPublicFileRoot(result.root);
-      setSelectedPublicDirectoryPath((current) => findPublicDirectory(result.root, current) ? current : result.root.path);
-      setExpandedPublicDirectoryPaths((current) => new Set([result.root.path, ...current].filter((path) => findPublicDirectory(result.root, path))));
-      setPublicFileStatus('public/ geladen');
+      const [publicResult, nodeResult] = await Promise.all([fetchPublicFileTree(), fetchNodeFileTree()]);
+      const roots = [publicResult.root, nodeResult.root];
+      setPublicFileRoot(publicResult.root);
+      setNodeFileRoot(nodeResult.root);
+      setSelectedPublicDirectoryPath((current) => findPublicDirectoryInRoots(roots, current) ? current : publicResult.root.path);
+      setExpandedPublicDirectoryPaths((current) => new Set([publicResult.root.path, nodeResult.root.path, ...current].filter((path) => findPublicDirectoryInRoots(roots, path))));
+      setPublicFileStatus('Assets + Nodes geladen');
     } catch (error) {
-      setPublicFileStatus(`public/ konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+      setPublicFileStatus(`Assets/Nodes konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -557,6 +571,17 @@ export default function Home() {
       }
     }
     throw lastError ?? new Error('Public-Tree konnte nicht geladen werden.');
+  }
+
+  async function fetchNodeFileTree(): Promise<{ root: PublicFileEntry }> {
+    const response = await fetch(editorApi(`/node-files?ts=${Date.now()}`), {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    });
+    const result = await response.json() as { root?: PublicFileEntry; error?: string };
+    if (!response.ok || !result.root) throw new Error(result.error ?? `HTTP ${response.status}`);
+    return { root: result.root };
   }
 
   function selectPublicDirectory(path: string): void {
@@ -984,7 +1009,7 @@ export default function Home() {
 
         <div className={`${styles.rowResizer} ${styles.assetRowResizer}`} role="separator" aria-orientation="horizontal" aria-label="Asset Explorer Höhe ändern" onPointerDown={startAssetHeightResize} />
         <PublicAssetExplorer
-          root={publicFileRoot}
+          roots={explorerRoots}
           selectedDirectory={selectedPublicDirectory}
           selectedDirectoryPath={selectedPublicDirectoryPath}
           selectedFile={selectedPublicFile}
@@ -996,6 +1021,7 @@ export default function Home() {
           onSelectDirectory={selectPublicDirectory}
           onToggleDirectory={togglePublicDirectory}
           onSelectFile={setSelectedPublicFilePath}
+          onOpenFile={setOpenNodeFilePath}
           onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
           onStartFolderResize={startFolderTreeResize}
@@ -1012,6 +1038,7 @@ export default function Home() {
       </section>
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
       {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} onClose={() => setPreviewPublicFilePath(undefined)} />}
+      {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} />}
     </main>
   );
 }
@@ -1065,7 +1092,7 @@ function GitSavePreviewDialog({
 }
 
 function PublicAssetExplorer({
-  root,
+  roots,
   selectedDirectory,
   selectedDirectoryPath,
   selectedFile,
@@ -1077,11 +1104,12 @@ function PublicAssetExplorer({
   onSelectDirectory,
   onToggleDirectory,
   onSelectFile,
+  onOpenFile,
   onOpenImage,
   onRefresh,
   onStartFolderResize,
 }: {
-  root?: PublicFileEntry;
+  roots: PublicFileEntry[];
   selectedDirectory?: PublicFileEntry;
   selectedDirectoryPath: string;
   selectedFile?: PublicFileEntry;
@@ -1093,6 +1121,7 @@ function PublicAssetExplorer({
   onSelectDirectory(path: string): void;
   onToggleDirectory(path: string): void;
   onSelectFile(path: string): void;
+  onOpenFile(path: string): void;
   onOpenImage(path: string): void;
   onRefresh(): void;
   onStartFolderResize(event: ReactPointerEvent<HTMLDivElement>): void;
@@ -1102,19 +1131,22 @@ function PublicAssetExplorer({
 
   return (
     <section className={styles.assetExplorer}>
-      <PanelHeader title="Asset Explorer" meta={root ? `${fileCount} Public Files · Git Repo` : status}>
+      <PanelHeader title="Asset Explorer" meta={roots.length > 0 ? `${fileCount} Files · Git Repo` : status}>
         <button type="button" className={styles.headerButton} onClick={onRefresh}>Refresh</button>
       </PanelHeader>
       <div ref={bodyRef} className={styles.assetExplorerBody}>
         <div className={styles.folderTreePane}>
-          {root ? (
-            <PublicDirectoryTree
-              directory={root}
-              selectedPath={selectedDirectoryPath}
-              expandedPaths={expandedDirectoryPaths}
-              onSelect={onSelectDirectory}
-              onToggle={onToggleDirectory}
-            />
+          {roots.length > 0 ? (
+            roots.map((root) => (
+              <PublicDirectoryTree
+                key={root.path}
+                directory={root}
+                selectedPath={selectedDirectoryPath}
+                expandedPaths={expandedDirectoryPaths}
+                onSelect={onSelectDirectory}
+                onToggle={onToggleDirectory}
+              />
+            ))
           ) : (
             <p className={styles.empty}>{status}</p>
           )}
@@ -1134,7 +1166,7 @@ function PublicAssetExplorer({
               </button>
             ))}
             {files.map((file) => (
-              <button key={file.path} type="button" className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`} onClick={() => onSelectFile(file.path)} title={file.path}>
+              <button key={file.path} type="button" className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`} onClick={() => onSelectFile(file.path)} onDoubleClick={() => { if (isNodeFile(file)) onOpenFile(file.path); }} title={file.path}>
                 <PublicFileThumbnail file={file} />
                 <span>{file.name}</span>
                 <small>{formatFileMeta(file)}</small>
@@ -1144,13 +1176,14 @@ function PublicAssetExplorer({
             {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
           </div>
         </div>
-        <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} />
+        <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} onOpenFile={onOpenFile} />
       </div>
     </section>
   );
 }
 
 function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
+  if (isNodeFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>NODE</span></div>;
   if (isImageFile(file)) return <QueuedPublicImageThumbnail file={file} />;
   if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>{file.extension?.toUpperCase() ?? 'AUDIO'}</span></div>;
   return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
@@ -1178,13 +1211,19 @@ function QueuedPublicImageThumbnail({ file }: { file: PublicFileEntry }) {
   return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>{failed ? 'ERR' : 'LÄDT'}</span></div>;
 }
 
-function PublicFileDetails({ file, onOpenImage }: { file?: PublicFileEntry; onOpenImage(path: string): void }) {
+function PublicFileDetails({ file, onOpenImage, onOpenFile }: { file?: PublicFileEntry; onOpenImage(path: string): void; onOpenFile(path: string): void }) {
   if (!file) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle eine Datei.</p></aside>;
-  const url = publicFileContentUrl(file);
+  const url = isNodeFile(file) ? '' : publicFileContentUrl(file);
   return (
     <aside className={styles.assetDetails}>
       <div className={styles.publicFilePreviewPane}>
-        {isImageFile(file) ? (
+        {isNodeFile(file) ? (
+          <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenFile(file.path)} aria-label={`${file.name} öffnen`}>
+            <Code2 size={46} />
+            <span>Datei öffnen</span>
+            <span className={styles.assetPreviewHint}>Doppelklick im Grid öffnet sie ebenfalls</span>
+          </button>
+        ) : isImageFile(file) ? (
           <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenImage(file.path)} aria-label={`${file.name} groß anzeigen`}>
             <img className={styles.assetImagePreview} src={url} alt={file.name} loading="lazy" />
             <span className={styles.assetPreviewHint}>Klick für Großansicht</span>
@@ -1212,6 +1251,64 @@ function PublicFileDetails({ file, onOpenImage }: { file?: PublicFileEntry; onOp
         </div>
       </div>
     </aside>
+  );
+}
+
+function NodeSourceDialog({ path, onClose }: { path: string; onClose(): void }) {
+  const [file, setFile] = useState<NodeSourceFileContent | undefined>();
+  const [error, setError] = useState<string | undefined>();
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setFile(undefined);
+    setError(undefined);
+    void fetch(nodeFileContentUrl(path), { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal })
+      .then(async (response) => {
+        const result = await response.json() as NodeSourceFileContent & { error?: string };
+        if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+        setFile(result);
+      })
+      .catch((loadError) => {
+        if (!(loadError instanceof DOMException && loadError.name === 'AbortError')) setError(loadError instanceof Error ? loadError.message : String(loadError));
+      });
+    return () => controller.abort();
+  }, [path]);
+
+  return (
+    <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
+      <div className={styles.codeDialog} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <strong>{compactPublicPath(path)}</strong>
+          <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+        </div>
+        <div className={styles.codeDialogBody}>
+          {error && <p className={styles.empty}>Datei konnte nicht geladen werden: {error}</p>}
+          {!error && !file && <p className={styles.empty}>Lade Datei...</p>}
+          {file && (
+            <MonacoEditor
+              height="100%"
+              language="typescript"
+              path={`file:///${file.path}`}
+              value={file.content}
+              options={{ readOnly: true, minimap: { enabled: true }, fontSize: 13, wordWrap: 'off', automaticLayout: true, scrollBeyondLastLine: false }}
+              beforeMount={(monaco) => {
+                monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+                  target: monaco.languages.typescript.ScriptTarget.ES2022,
+                  module: monaco.languages.typescript.ModuleKind.ESNext,
+                  moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+                  jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+                  strict: true,
+                  allowNonTsExtensions: true,
+                  esModuleInterop: true,
+                  skipLibCheck: true,
+                });
+                monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({ noSyntaxValidation: false, noSemanticValidation: true, noSuggestionDiagnostics: true });
+              }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2479,6 +2576,22 @@ function findPublicFile(root: PublicFileEntry | undefined, path: string): Public
   return undefined;
 }
 
+function findPublicDirectoryInRoots(roots: PublicFileEntry[], path: string): PublicFileEntry | undefined {
+  for (const root of roots) {
+    const match = findPublicDirectory(root, path);
+    if (match) return match;
+  }
+  return undefined;
+}
+
+function findPublicFileInRoots(roots: PublicFileEntry[], path: string): PublicFileEntry | undefined {
+  for (const root of roots) {
+    const match = findPublicFile(root, path);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 function countPublicFiles(entry: PublicFileEntry): number {
   if (entry.kind === 'file') return 1;
   return (entry.children ?? []).reduce((sum, child) => sum + countPublicFiles(child), 0);
@@ -2492,7 +2605,7 @@ function publicDirectoryAncestorPaths(path: string): string[] {
   const parts = path.split('/').filter(Boolean);
   const ancestors: string[] = [];
   for (let index = 1; index < parts.length; index += 1) ancestors.push(parts.slice(0, index).join('/'));
-  return ancestors.filter((ancestor) => ancestor.startsWith('apps/game/public'));
+  return ancestors.filter((ancestor) => ancestor.startsWith('apps/game/public') || ancestor.startsWith('apps/game/src'));
 }
 
 function publicFileContentUrl(file: PublicFileEntry): string {
@@ -2549,6 +2662,14 @@ function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: nu
     return [{ id, label, rect: { x: px[0], y: px[1], width: size, height: size } }];
   }
   return [];
+}
+
+function isNodeFile(file: PublicFileEntry): boolean {
+  return file.kind === 'file' && file.path.startsWith('apps/game/src/') && ['ts', 'tsx'].includes(file.extension ?? '');
+}
+
+function nodeFileContentUrl(path: string): string {
+  return editorApi(`/node-files/content?path=${encodeURIComponent(path)}`);
 }
 
 function isImageFile(file: PublicFileEntry): boolean {
