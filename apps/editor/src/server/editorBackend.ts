@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { DebugNodePatch, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
@@ -54,6 +54,7 @@ const assetUploads = new Map<string, StagedAssetUpload[]>();
 const gitRepoUrl = process.env.EDITOR_GIT_REPO ?? 'https://github.com/MichalSy/gravity-dig-phaser.git';
 const gitBranch = process.env.EDITOR_GIT_BRANCH ?? 'main';
 const workspacePath = resolve(/* turbopackIgnore: true */ process.env.EDITOR_WORKSPACE ?? '/tmp/gravity-dig-phaser-editor-workspace');
+const workspaceLockPath = `${workspacePath}.lock`;
 const defaultAuthorName = process.env.EDITOR_GIT_AUTHOR_NAME ?? 'Gravity Dig Editor';
 const defaultAuthorEmail = process.env.EDITOR_GIT_AUTHOR_EMAIL ?? 'editor@gravity-dig.local';
 const uploadRoot = resolve(/* turbopackIgnore: true */ process.env.EDITOR_UPLOAD_WORKSPACE ?? '/tmp/gravity-dig-editor-uploads');
@@ -129,36 +130,40 @@ export async function saveChangesToGit(sessionId: string, request: SaveRequest) 
   const changeSet = readChangeSet(sessionId);
   const uploads = assetUploads.get(sessionId) ?? [];
   if (changeSet.changes.length === 0 && uploads.length === 0) return { sessionId, saved: false, message: 'No pending changes.' };
-  await ensureWorkspace();
-  await syncWorkspaceToOrigin();
-  for (const change of changeSet.changes) await applyChangeToWorkspace(change);
-  for (const upload of uploads) await applyAssetUploadToWorkspace(upload);
-  await git(['diff', '--check']);
-  const status = (await git(['status', '--short'])).trim();
-  if (!status) return { sessionId, saved: false, message: 'Changes already match git working tree.' };
-  await git(['config', 'user.name', request.authorName ?? defaultAuthorName]);
-  await git(['config', 'user.email', request.authorEmail ?? defaultAuthorEmail]);
-  await git(['add', 'apps/game/public']);
-  const totalChanges = changeSet.changes.length + uploads.length;
-  await git(['commit', '-m', request.message?.trim() || `editor: save ${totalChanges} pending change${totalChanges === 1 ? '' : 's'}`]);
-  const commit = (await git(['rev-parse', '--short', 'HEAD'])).trim();
-  await pushWithRebase();
-  return { sessionId, saved: true, commit, files: status.split('\n') };
+  return withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    await syncWorkspaceToOriginUnlocked();
+    for (const change of changeSet.changes) await applyChangeToWorkspace(change);
+    for (const upload of uploads) await applyAssetUploadToWorkspace(upload);
+    await git(['diff', '--check']);
+    const status = (await git(['status', '--short'])).trim();
+    if (!status) return { sessionId, saved: false, message: 'Changes already match git working tree.' };
+    await git(['config', 'user.name', request.authorName ?? defaultAuthorName]);
+    await git(['config', 'user.email', request.authorEmail ?? defaultAuthorEmail]);
+    await git(['add', 'apps/game/public']);
+    const totalChanges = changeSet.changes.length + uploads.length;
+    await git(['commit', '-m', request.message?.trim() || `editor: save ${totalChanges} pending change${totalChanges === 1 ? '' : 's'}`]);
+    const commit = (await git(['rev-parse', '--short', 'HEAD'])).trim();
+    await pushWithRebase();
+    return { sessionId, saved: true, commit, files: status.split('\n') };
+  });
 }
 
 export async function gitStatus() {
-  await ensureWorkspace();
-  await git(['fetch', 'origin', gitBranch]);
-  const divergence = await branchDivergence();
-  return {
-    ok: true,
-    branch: gitBranch,
-    head: (await git(['rev-parse', '--short', 'HEAD'])).trim(),
-    originHead: (await git(['rev-parse', '--short', `origin/${gitBranch}`])).trim(),
-    status: (await git(['status', '--short'])).trim().split('\n').filter(Boolean),
-    ...divergence,
-    needsRebase: divergence.behind > 0,
-  };
+  return withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    await git(['fetch', 'origin', gitBranch]);
+    const divergence = await branchDivergence();
+    return {
+      ok: true,
+      branch: gitBranch,
+      head: (await git(['rev-parse', '--short', 'HEAD'])).trim(),
+      originHead: (await git(['rev-parse', '--short', `origin/${gitBranch}`])).trim(),
+      status: (await git(['status', '--short'])).trim().split('\n').filter(Boolean),
+      ...divergence,
+      needsRebase: divergence.behind > 0,
+    };
+  });
 }
 
 export async function readEditorFile(relativePath: string) {
@@ -319,7 +324,70 @@ function scenePropValuesEqual(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
+async function withWorkspaceLock<T>(operation: () => Promise<T>): Promise<T> {
+  await acquireWorkspaceLock();
+  try {
+    await recoverStaleGitIndexLock();
+    return await operation();
+  } finally {
+    await rm(workspaceLockPath, { recursive: true, force: true });
+  }
+}
+
+async function acquireWorkspaceLock(): Promise<void> {
+  const startedAt = Date.now();
+  while (true) {
+    try {
+      await mkdir(workspaceLockPath, { recursive: false });
+      return;
+    } catch (error) {
+      if (!isFileSystemError(error) || error.code !== 'EEXIST') throw error;
+      if (Date.now() - startedAt > 30_000) throw new EditorBackendError('Editor workspace is busy. Bitte gleich nochmal versuchen.', 503);
+      await removeStaleDirectoryLock(workspaceLockPath, 30_000);
+      await sleep(100);
+    }
+  }
+}
+
+async function removeStaleDirectoryLock(lockPath: string, maxAgeMs: number): Promise<void> {
+  try {
+    const lockStat = await stat(lockPath);
+    if (Date.now() - lockStat.mtimeMs > maxAgeMs) await rm(lockPath, { recursive: true, force: true });
+  } catch (error) {
+    if (!isFileSystemError(error) || error.code !== 'ENOENT') throw error;
+  }
+}
+
+async function recoverStaleGitIndexLock(): Promise<void> {
+  const indexLockPath = join(workspacePath, '.git', 'index.lock');
+  if (!existsSync(indexLockPath)) return;
+  const startedAt = Date.now();
+  while (existsSync(indexLockPath)) {
+    const lockStat = await stat(indexLockPath);
+    const ageMs = Date.now() - lockStat.mtimeMs;
+    if (ageMs > 30_000) {
+      await unlink(indexLockPath);
+      console.warn('[git] removed stale index.lock', indexLockPath);
+      return;
+    }
+    if (Date.now() - startedAt > 15_000) throw new EditorBackendError('Editor workspace git index is locked. Bitte gleich nochmal versuchen.', 503);
+    await sleep(100);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
+}
+
+function isFileSystemError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
+}
+
 async function ensureWorkspace(): Promise<void> {
+  await withWorkspaceLock(() => ensureWorkspaceUnlocked());
+}
+
+async function ensureWorkspaceUnlocked(): Promise<void> {
   assertAllowedRepoRoot(workspacePath);
   if (existsSync(join(workspacePath, '.git'))) return;
   await rm(workspacePath, { recursive: true, force: true });
@@ -327,7 +395,7 @@ async function ensureWorkspace(): Promise<void> {
   await gitOutside(['clone', '--branch', gitBranch, gitRepoUrl, workspacePath]);
 }
 
-async function syncWorkspaceToOrigin(): Promise<void> {
+async function syncWorkspaceToOriginUnlocked(): Promise<void> {
   await git(['fetch', 'origin', gitBranch]);
   await git(['checkout', gitBranch]);
   await git(['reset', '--hard', `origin/${gitBranch}`]);
@@ -342,19 +410,21 @@ async function ensureNodeRoot(): Promise<string> {
 }
 
 async function ensureWorkspaceSubtree(relativeRoot: string, label: string): Promise<string> {
-  await ensureWorkspace();
-  const rootPath = resolve(workspacePath, relativeRoot);
-  assertInsideRoot(rootPath, workspacePath, label);
-  if (existsSync(rootPath)) return rootPath;
+  return withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    const rootPath = resolve(workspacePath, relativeRoot);
+    assertInsideRoot(rootPath, workspacePath, label);
+    if (existsSync(rootPath)) return rootPath;
 
-  await syncWorkspaceToOrigin();
-  if (existsSync(rootPath)) return rootPath;
+    await syncWorkspaceToOriginUnlocked();
+    if (existsSync(rootPath)) return rootPath;
 
-  await rm(workspacePath, { recursive: true, force: true });
-  await ensureWorkspace();
-  if (existsSync(rootPath)) return rootPath;
+    await rm(workspacePath, { recursive: true, force: true });
+    await ensureWorkspaceUnlocked();
+    if (existsSync(rootPath)) return rootPath;
 
-  throw new EditorBackendError(`${label} not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
+    throw new EditorBackendError(`${label} not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
+  });
 }
 
 async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
