@@ -194,6 +194,7 @@ export default function Home() {
   const [originalAssetId, setOriginalAssetId] = useState<string | undefined>();
   const [publicFileRoot, setPublicFileRoot] = useState<PublicFileEntry | undefined>();
   const [selectedPublicDirectoryPath, setSelectedPublicDirectoryPath] = useState('apps/game/public');
+  const [selectedPublicFilePath, setSelectedPublicFilePath] = useState<string | undefined>();
   const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public']));
   const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
@@ -222,6 +223,14 @@ export default function Home() {
   const selectedPublicDirectory = useMemo(
     () => publicFileRoot ? findPublicDirectory(publicFileRoot, selectedPublicDirectoryPath) ?? publicFileRoot : undefined,
     [publicFileRoot, selectedPublicDirectoryPath],
+  );
+  const publicFilesInSelectedDirectory = useMemo(
+    () => selectedPublicDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [],
+    [selectedPublicDirectory],
+  );
+  const selectedPublicFile = useMemo(
+    () => selectedPublicFilePath ? findPublicFile(publicFileRoot, selectedPublicFilePath) : undefined,
+    [publicFileRoot, selectedPublicFilePath],
   );
   const publicFileCount = useMemo(
     () => publicFileRoot ? countPublicFiles(publicFileRoot) : 0,
@@ -360,6 +369,14 @@ export default function Home() {
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    if (publicFilesInSelectedDirectory.length === 0) {
+      setSelectedPublicFilePath(undefined);
+      return;
+    }
+    setSelectedPublicFilePath((current) => current && publicFilesInSelectedDirectory.some((file) => file.path === current) ? current : publicFilesInSelectedDirectory[0]?.path);
+  }, [publicFilesInSelectedDirectory]);
 
   useEffect(() => {
     setSelectedNodeProps(undefined);
@@ -823,7 +840,7 @@ export default function Home() {
       </header>
 
       <section ref={workbenchRef} className={styles.workbench}>
-        <aside className={styles.hierarchyColumn}>
+        <aside className={styles.panel}>
           <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`}>
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
             <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
@@ -843,18 +860,6 @@ export default function Home() {
               <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
             )}
           </div>
-          <div className={styles.rowResizerStatic} />
-          <PublicFileExplorer
-            root={publicFileRoot}
-            selectedDirectory={selectedPublicDirectory}
-            selectedDirectoryPath={selectedPublicDirectoryPath}
-            expandedDirectoryPaths={expandedPublicDirectoryPaths}
-            fileCount={publicFileCount}
-            status={publicFileStatus}
-            onSelectDirectory={setSelectedPublicDirectoryPath}
-            onToggleDirectory={togglePublicDirectory}
-            onRefresh={refreshPublicFiles}
-          />
         </aside>
 
         <div className={styles.columnResizer} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
@@ -873,15 +878,20 @@ export default function Home() {
             </div>
           </div>
           <div className={styles.rowResizer} role="separator" aria-orientation="horizontal" aria-label="Asset Explorer Höhe ändern" onPointerDown={startAssetHeightResize} />
-          <AssetExplorer
-            assets={imageAssets}
-            animations={animations}
-            selectedAssetId={selectedAssetId}
-            selectedAsset={selectedAsset}
-            onSelectAsset={setSelectedAssetId}
-            onOpenOriginal={setOriginalAssetId}
+          <PublicAssetExplorer
+            root={publicFileRoot}
+            selectedDirectory={selectedPublicDirectory}
+            selectedDirectoryPath={selectedPublicDirectoryPath}
+            selectedFile={selectedPublicFile}
+            selectedFilePath={selectedPublicFilePath}
+            expandedDirectoryPaths={expandedPublicDirectoryPaths}
+            fileCount={publicFileCount}
+            status={publicFileStatus}
             bodyRef={assetExplorerBodyRef}
-            onStartSplitResize={startAssetSplitResize}
+            onSelectDirectory={setSelectedPublicDirectoryPath}
+            onToggleDirectory={togglePublicDirectory}
+            onSelectFile={setSelectedPublicFilePath}
+            onRefresh={refreshPublicFiles}
           />
         </section>
 
@@ -895,7 +905,6 @@ export default function Home() {
         </aside>
       </section>
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
-      {originalAsset && <OriginalAssetDialog asset={originalAsset} assets={imageAssets} onClose={() => setOriginalAssetId(undefined)} />}
     </main>
   );
 }
@@ -948,36 +957,44 @@ function GitSavePreviewDialog({
   );
 }
 
-function PublicFileExplorer({
+function PublicAssetExplorer({
   root,
   selectedDirectory,
   selectedDirectoryPath,
+  selectedFile,
+  selectedFilePath,
   expandedDirectoryPaths,
   fileCount,
   status,
+  bodyRef,
   onSelectDirectory,
   onToggleDirectory,
+  onSelectFile,
   onRefresh,
 }: {
   root?: PublicFileEntry;
   selectedDirectory?: PublicFileEntry;
   selectedDirectoryPath: string;
+  selectedFile?: PublicFileEntry;
+  selectedFilePath?: string;
   expandedDirectoryPaths: Set<string>;
   fileCount: number;
   status: string;
+  bodyRef: RefObject<HTMLDivElement | null>;
   onSelectDirectory(path: string): void;
   onToggleDirectory(path: string): void;
+  onSelectFile(path: string): void;
   onRefresh(): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
 
   return (
-    <section className={styles.fileExplorer}>
-      <PanelHeader title="Public Files" meta={root ? `${fileCount} Dateien` : status}>
+    <section className={styles.assetExplorer}>
+      <PanelHeader title="Asset Explorer" meta={root ? `${fileCount} Public Files · Git Repo` : status}>
         <button type="button" className={styles.headerButton} onClick={onRefresh}>Refresh</button>
       </PanelHeader>
-      <div className={styles.fileExplorerBody}>
+      <div ref={bodyRef} className={styles.assetExplorerBody}>
         <div className={styles.folderTreePane}>
           {root ? (
             <PublicDirectoryTree
@@ -996,27 +1013,69 @@ function PublicFileExplorer({
             <strong>{compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>
             <span>{childDirectories.length} Ordner · {files.length} Dateien</span>
           </div>
-          <div className={styles.fileRows}>
+          <div className={styles.assetGrid}>
             {childDirectories.map((directory) => (
-              <button key={directory.path} type="button" className={styles.fileRow} onClick={() => onSelectDirectory(directory.path)}>
-                <Folder size={15} />
+              <button key={directory.path} type="button" className={styles.assetTile} onClick={() => onSelectDirectory(directory.path)}>
+                <div className={styles.fileTileIcon}><Folder size={30} /></div>
                 <span>{directory.name}</span>
                 <small>Ordner</small>
               </button>
             ))}
             {files.map((file) => (
-              <div key={file.path} className={styles.fileRow} title={file.path}>
-                <FileIcon size={15} />
+              <button key={file.path} type="button" className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`} onClick={() => onSelectFile(file.path)} title={file.path}>
+                <PublicFileThumbnail file={file} />
                 <span>{file.name}</span>
                 <small>{formatFileMeta(file)}</small>
-              </div>
+              </button>
             ))}
             {!selectedDirectory && <p className={styles.empty}>{status}</p>}
             {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
           </div>
         </div>
+        <PublicFileDetails file={selectedFile} />
       </div>
     </section>
+  );
+}
+
+function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
+  const url = publicFileContentUrl(file);
+  if (isImageFile(file)) return <img className={styles.assetThumbnail} src={url} alt={file.name} loading="lazy" />;
+  if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>WAV</span></div>;
+  return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
+}
+
+function PublicFileDetails({ file }: { file?: PublicFileEntry }) {
+  if (!file) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle eine Datei.</p></aside>;
+  const url = publicFileContentUrl(file);
+  return (
+    <aside className={styles.assetDetails}>
+      <div className={styles.publicFilePreviewPane}>
+        {isImageFile(file) ? (
+          <img className={styles.assetImagePreview} src={url} alt={file.name} loading="lazy" />
+        ) : isAudioFile(file) ? (
+          <div className={styles.audioPreview}>
+            <FileIcon size={34} />
+            <strong>{file.name}</strong>
+            <audio controls src={url} preload="metadata" />
+          </div>
+        ) : (
+          <div className={styles.assetPreviewMissing}>Keine Vorschau für diesen Dateityp.</div>
+        )}
+      </div>
+      <div className={styles.assetMetaPanel}>
+        <div className={styles.assetMetaHeader}>
+          <strong>{file.name}</strong>
+          <span>{formatFileMeta(file)}</span>
+        </div>
+        <div className={styles.assetMetaGrid}>
+          <FragmentRow name="path" value={file.path} />
+          <FragmentRow name="type" value={file.extension ?? 'file'} />
+          <FragmentRow name="size" value={formatFileSize(file.size ?? 0)} />
+          <FragmentRow name="url" value={url} />
+        </div>
+      </div>
+    </aside>
   );
 }
 
@@ -2162,6 +2221,16 @@ function findPublicDirectory(root: PublicFileEntry, path: string): PublicFileEnt
   return undefined;
 }
 
+function findPublicFile(root: PublicFileEntry | undefined, path: string): PublicFileEntry | undefined {
+  if (!root) return undefined;
+  if (root.kind === 'file') return root.path === path ? root : undefined;
+  for (const child of root.children ?? []) {
+    const match = findPublicFile(child, path);
+    if (match) return match;
+  }
+  return undefined;
+}
+
 function countPublicFiles(entry: PublicFileEntry): number {
   if (entry.kind === 'file') return 1;
   return (entry.children ?? []).reduce((sum, child) => sum + countPublicFiles(child), 0);
@@ -2169,6 +2238,18 @@ function countPublicFiles(entry: PublicFileEntry): number {
 
 function compactPublicPath(path: string): string {
   return path.replace(/^apps\/game\//, '');
+}
+
+function publicFileContentUrl(file: PublicFileEntry): string {
+  return editorApi(`/public-files/content?path=${encodeURIComponent(file.path)}`);
+}
+
+function isImageFile(file: PublicFileEntry): boolean {
+  return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(file.extension ?? '');
+}
+
+function isAudioFile(file: PublicFileEntry): boolean {
+  return ['wav', 'mp3', 'ogg'].includes(file.extension ?? '');
 }
 
 function formatFileMeta(file: PublicFileEntry): string {

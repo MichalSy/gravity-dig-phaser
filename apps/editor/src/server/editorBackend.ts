@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { DebugNodePatch, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 
@@ -173,6 +173,12 @@ export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
   return { root: { ...root, name: 'public', path: 'apps/game/public' } };
 }
 
+export async function readPublicFile(relativePath: string): Promise<{ content: Buffer; contentType: string; path: string; size: number }> {
+  const filePath = await resolvePublicFilePath(relativePath);
+  const content = await readFile(filePath.absolutePath);
+  return { content, contentType: contentTypeForPath(filePath.relativePath), path: filePath.relativePath, size: content.length };
+}
+
 export async function writeEditorFile(relativePath: string, content: string) {
   await ensureWorkspace();
   const safePath = resolveEditablePath(relativePath);
@@ -331,6 +337,18 @@ async function ensurePublicRoot(): Promise<string> {
   throw new EditorBackendError(`Public root not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
 }
 
+async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
+  const rootPath = await ensurePublicRoot();
+  const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
+  if (!normalizedPath || normalizedPath.split(sep).includes('..')) throw new EditorBackendError('Invalid public file path.', 400);
+  const fullRelativePath = normalizedPath.startsWith(`apps${sep}game${sep}public${sep}`) ? normalizedPath : join('apps/game/public', normalizedPath);
+  const absolutePath = resolve(workspacePath, fullRelativePath);
+  assertInsideRoot(absolutePath, rootPath, 'publicFile');
+  const fileStat = await stat(absolutePath);
+  if (!fileStat.isFile()) throw new EditorBackendError('Public path is not a file.', 400);
+  return { absolutePath, relativePath: fullRelativePath };
+}
+
 async function branchDivergence(): Promise<{ ahead: number; behind: number }> {
   const output = (await git(['rev-list', '--left-right', '--count', `HEAD...origin/${gitBranch}`])).trim();
   const [aheadRaw, behindRaw] = output.split(/\s+/);
@@ -405,6 +423,24 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
 function fileExtension(fileName: string): string | undefined {
   const index = fileName.lastIndexOf('.');
   return index > 0 ? fileName.slice(index + 1).toLowerCase() : undefined;
+}
+
+function contentTypeForPath(path: string): string {
+  switch (extname(path).toLowerCase()) {
+    case '.png': return 'image/png';
+    case '.jpg':
+    case '.jpeg': return 'image/jpeg';
+    case '.webp': return 'image/webp';
+    case '.gif': return 'image/gif';
+    case '.svg': return 'image/svg+xml';
+    case '.wav': return 'audio/wav';
+    case '.mp3': return 'audio/mpeg';
+    case '.ogg': return 'audio/ogg';
+    case '.json': return 'application/json; charset=utf-8';
+    case '.txt': return 'text/plain; charset=utf-8';
+    case '.woff2': return 'font/woff2';
+    default: return 'application/octet-stream';
+  }
 }
 
 function normalizeAssetPath(assetPath: string): string | undefined {

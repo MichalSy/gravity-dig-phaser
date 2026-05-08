@@ -663,7 +663,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, var(--asset-list-fr, 58fr)) 6px minmax(320px, var(--asset-detail-fr, 42fr));
+  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr) minmax(340px, 1fr);
   gap: 0;
   background: rgba(148, 163, 184, 0.14);
   overflow: hidden;
@@ -721,7 +721,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   overflow-x: hidden;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: minmax(180px, 0.95fr) minmax(0, 1.05fr);
+  grid-template-rows: minmax(190px, 1fr) auto;
   gap: 12px;
   padding: 12px;
   background: rgba(15, 23, 42, 0.92);
@@ -769,6 +769,64 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 
 .assetImagePreview { width: 100%; height: 100%; object-fit: contain; }
 .assetPreviewMissing { display: grid; place-items: center; height: 100%; color: #94a3b8; font-size: 11px; }
+
+.fileTileIcon,
+.publicFilePreviewPane,
+.audioPreview {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(2, 6, 23, 0.72);
+  color: #7dd3fc;
+}
+
+.fileTileIcon {
+  height: 76px;
+  gap: 3px;
+}
+
+.fileTileIcon span {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.publicFilePreviewPane {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 12px;
+  padding: 10px;
+  background:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    #020617;
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  overflow: hidden;
+}
+
+.audioPreview {
+  width: 100%;
+  height: 100%;
+  align-content: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.audioPreview strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: #e0f2fe;
+  font-size: 13px;
+}
+
+.audioPreview audio {
+  width: min(100%, 360px);
+}
 
 .assetMetaPanel {
   min-width: 0;
