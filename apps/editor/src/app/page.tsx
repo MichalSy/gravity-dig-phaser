@@ -439,16 +439,37 @@ export default function Home() {
   async function refreshPublicFiles(): Promise<void> {
     setPublicFileStatus('Lade public/ ...');
     try {
-      const response = await fetch(editorApi('/public-files'), { cache: 'no-store' });
-      const result = await response.json() as { root?: PublicFileEntry; error?: string };
-      if (!response.ok || !result.root) throw new Error(result.error ?? `HTTP ${response.status}`);
+      const result = await fetchPublicFileTree();
       setPublicFileRoot(result.root);
-      setSelectedPublicDirectoryPath((current) => findPublicDirectory(result.root!, current) ? current : result.root!.path);
-      setExpandedPublicDirectoryPaths((current) => new Set([result.root!.path, ...current].filter((path) => findPublicDirectory(result.root!, path))));
+      setSelectedPublicDirectoryPath((current) => findPublicDirectory(result.root, current) ? current : result.root.path);
+      setExpandedPublicDirectoryPaths((current) => new Set([result.root.path, ...current].filter((path) => findPublicDirectory(result.root, path))));
       setPublicFileStatus('public/ geladen');
     } catch (error) {
       setPublicFileStatus(`public/ konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+
+  async function fetchPublicFileTree(): Promise<{ root: PublicFileEntry }> {
+    let lastError: Error | undefined;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const response = await fetch(editorApi(`/public-files?ts=${Date.now()}`), {
+          cache: 'no-store',
+          headers: { Accept: 'application/json' },
+        });
+        const text = await response.text();
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+        if (!contentType.includes('application/json')) throw new Error(`Erwartete JSON, bekam ${contentType || 'unbekannten Content-Type'}: ${text.slice(0, 120)}`);
+        const result = JSON.parse(text) as { root?: PublicFileEntry; error?: string };
+        if (!result.root) throw new Error(result.error ?? 'Public-Tree fehlt in API-Antwort.');
+        return { root: result.root };
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        await delay(350 * attempt);
+      }
+    }
+    throw lastError ?? new Error('Public-Tree konnte nicht geladen werden.');
   }
 
   function togglePublicDirectory(path: string): void {
@@ -2156,6 +2177,10 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(bytes < 10 * 1024 * 1024 ? 1 : 0)} MB`;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function findNodePath(nodes: DebugNodeDescriptor[], id: string, parentPath: string[] = []): string[] | undefined {
