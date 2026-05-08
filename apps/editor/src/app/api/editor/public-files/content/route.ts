@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const file = await readPublicFile(path);
     return new Response(new Uint8Array(file.content), {
       headers: {
-        'Cache-Control': 'no-store',
+        'Cache-Control': 'private, max-age=300',
         'Content-Type': file.contentType,
         'Content-Length': String(file.size),
         'X-Editor-File-Path': file.path,

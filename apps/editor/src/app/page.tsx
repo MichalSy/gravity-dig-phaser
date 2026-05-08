@@ -1056,9 +1056,9 @@ function PublicAssetExplorer({
 }
 
 function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
-  const url = publicFileContentUrl(file);
-  if (isImageFile(file)) return <img className={styles.assetThumbnail} src={url} alt={file.name} loading="lazy" />;
-  if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>WAV</span></div>;
+  if (isImageFile(file) && shouldInlineThumbnail(file)) return <img className={styles.assetThumbnail} src={publicFileContentUrl(file)} alt={file.name} loading="lazy" decoding="async" />;
+  if (isImageFile(file)) return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>IMG</span></div>;
+  if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>{file.extension?.toUpperCase() ?? 'AUDIO'}</span></div>;
   return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
 }
 
@@ -2433,6 +2433,10 @@ function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: nu
 
 function isImageFile(file: PublicFileEntry): boolean {
   return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(file.extension ?? '');
+}
+
+function shouldInlineThumbnail(file: PublicFileEntry): boolean {
+  return (file.size ?? 0) <= 180_000;
 }
 
 function isAudioFile(file: PublicFileEntry): boolean {
