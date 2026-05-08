@@ -47,6 +47,19 @@ function buildDebugGameUrl(sessionId: string): string {
 }
 
 const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
+const maxConcurrentThumbnailLoads = 5;
+
+interface ThumbnailQueueTask {
+  url: string;
+  controller: AbortController;
+  started: boolean;
+  done: boolean;
+  onLoad(blob: Blob): void;
+  onError(error: unknown): void;
+}
+
+const thumbnailQueue: ThumbnailQueueTask[] = [];
+let activeThumbnailLoads = 0;
 
 interface EditorLayoutState {
   hierarchyWidth: number;
@@ -91,6 +104,49 @@ const defaultLayoutState: EditorLayoutState = {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function enqueueThumbnailLoad(url: string, onLoad: (blob: Blob) => void, onError: (error: unknown) => void): { abort(): void } {
+  const task: ThumbnailQueueTask = { url, controller: new AbortController(), started: false, done: false, onLoad, onError };
+  thumbnailQueue.push(task);
+  pumpThumbnailQueue();
+  return {
+    abort() {
+      if (task.done) return;
+      task.done = true;
+      task.controller.abort();
+      const index = thumbnailQueue.indexOf(task);
+      if (index >= 0) thumbnailQueue.splice(index, 1);
+      pumpThumbnailQueue();
+    },
+  };
+}
+
+function pumpThumbnailQueue(): void {
+  while (activeThumbnailLoads < maxConcurrentThumbnailLoads) {
+    const task = thumbnailQueue.find((candidate) => !candidate.started && !candidate.done);
+    if (!task) return;
+    task.started = true;
+    activeThumbnailLoads += 1;
+    void fetch(task.url, { cache: 'force-cache', signal: task.controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Thumbnail HTTP ${response.status}`);
+        return response.blob();
+      })
+      .then((blob) => {
+        if (!task.done) task.onLoad(blob);
+      })
+      .catch((error) => {
+        if (!task.done && !(error instanceof DOMException && error.name === 'AbortError')) task.onError(error);
+      })
+      .finally(() => {
+        task.done = true;
+        activeThumbnailLoads = Math.max(0, activeThumbnailLoads - 1);
+        const index = thumbnailQueue.indexOf(task);
+        if (index >= 0) thumbnailQueue.splice(index, 1);
+        pumpThumbnailQueue();
+      });
+  }
 }
 
 function countPendingProps(changeSet: EditorChangeSet): number {
@@ -1056,10 +1112,31 @@ function PublicAssetExplorer({
 }
 
 function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
-  if (isImageFile(file) && shouldInlineThumbnail(file)) return <img className={styles.assetThumbnail} src={publicFileContentUrl(file)} alt={file.name} loading="lazy" decoding="async" />;
-  if (isImageFile(file)) return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>IMG</span></div>;
+  if (isImageFile(file)) return <QueuedPublicImageThumbnail file={file} />;
   if (isAudioFile(file)) return <div className={styles.fileTileIcon}><TypeIcon size={28} /><span>{file.extension?.toUpperCase() ?? 'AUDIO'}</span></div>;
   return <div className={styles.fileTileIcon}><FileIcon size={30} /><span>{file.extension?.toUpperCase() ?? 'FILE'}</span></div>;
+}
+
+function QueuedPublicImageThumbnail({ file }: { file: PublicFileEntry }) {
+  const [src, setSrc] = useState<string | undefined>();
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let objectUrl: string | undefined;
+    setSrc(undefined);
+    setFailed(false);
+    const task = enqueueThumbnailLoad(publicFileThumbnailUrl(file), (blob) => {
+      objectUrl = URL.createObjectURL(blob);
+      setSrc(objectUrl);
+    }, () => setFailed(true));
+    return () => {
+      task.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [file.path, file.size]);
+
+  if (src) return <img className={styles.assetThumbnail} src={src} alt={file.name} loading="lazy" decoding="async" />;
+  return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>{failed ? 'ERR' : 'LÄDT'}</span></div>;
 }
 
 function PublicFileDetails({ file, onOpenImage }: { file?: PublicFileEntry; onOpenImage(path: string): void }) {
@@ -2383,6 +2460,10 @@ function publicFileContentUrl(file: PublicFileEntry): string {
   return editorApi(`/public-files/content?path=${encodeURIComponent(file.path)}`);
 }
 
+function publicFileThumbnailUrl(file: PublicFileEntry): string {
+  return editorApi(`/public-files/thumbnail?size=128&path=${encodeURIComponent(file.path)}`);
+}
+
 function findAtlasMetadataFile(root: PublicFileEntry, imageFile: PublicFileEntry): PublicFileEntry | undefined {
   const candidates = atlasMetadataCandidatePaths(imageFile.path);
   for (const path of candidates) {
@@ -2433,10 +2514,6 @@ function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: nu
 
 function isImageFile(file: PublicFileEntry): boolean {
   return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'].includes(file.extension ?? '');
-}
-
-function shouldInlineThumbnail(file: PublicFileEntry): boolean {
-  return (file.size ?? 0) <= 180_000;
 }
 
 function isAudioFile(file: PublicFileEntry): boolean {
