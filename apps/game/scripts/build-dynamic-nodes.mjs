@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
-const sourceDir = path.join(appRoot, 'dynamic-nodes/src');
-const outDir = path.join(appRoot, 'public/dynamic-nodes');
+const sourceDir = path.join(appRoot, 'public/dynamic-nodes/src');
+const outDir = path.join(appRoot, 'public/dynamic-nodes/compiled');
 const tempDir = path.join(appRoot, 'node_modules/.dynamic-node-build');
 
 await mkdir(outDir, { recursive: true });
@@ -58,10 +58,10 @@ export { nodeTypeId, displayName, createBehavior };
   });
 
   const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
-  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `dynamic-nodes/src/${file}`, url: `/dynamic-nodes/${outfileName}`, hash });
+  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/dynamic-nodes/src/${file}`, url: `/dynamic-nodes/compiled/${outfileName}`, hash });
 }
 
-await writeFile(path.join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+await writeFile(path.join(appRoot, 'public/dynamic-nodes/manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 await rm(tempDir, { recursive: true, force: true });
 console.log(`Built ${manifest.nodes.length} dynamic node(s).`);
 

@@ -182,7 +182,7 @@ export async function listNodeFiles(): Promise<{ root: PublicFileEntry }> {
   const sourceRootPath = await ensureNodeRoot();
   const sourceRoot = await readNodeDirectory(sourceRootPath, 'apps/game/src');
   const dynamicRootPath = await ensureDynamicNodeRoot();
-  const dynamicRoot = await readNodeDirectory(dynamicRootPath, 'apps/game/dynamic-nodes');
+  const dynamicRoot = await readNodeDirectory(dynamicRootPath, 'apps/game/public/dynamic-nodes');
   const children = [
     ...(sourceRoot.children ?? []),
     ...(dynamicRoot.children && dynamicRoot.children.length > 0 ? [dynamicRoot] : []),
@@ -416,7 +416,7 @@ async function ensureNodeRoot(): Promise<string> {
 }
 
 async function ensureDynamicNodeRoot(): Promise<string> {
-  return ensureWorkspaceSubtree('apps/game/dynamic-nodes', 'Dynamic node source root');
+  return ensureWorkspaceSubtree('apps/game/public/dynamic-nodes', 'Dynamic node source root');
 }
 
 async function ensureWorkspaceSubtree(relativeRoot: string, label: string): Promise<string> {
@@ -453,7 +453,7 @@ async function resolveNodeFilePath(relativePath: string): Promise<{ absolutePath
   const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
   if (!normalizedPath || normalizedPath.split(sep).includes('..')) throw new EditorBackendError('Invalid node file path.', 400);
   const fullRelativePath = normalizeNodeFilePath(normalizedPath);
-  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}dynamic-nodes${sep}`) ? await ensureDynamicNodeRoot() : await ensureNodeRoot();
+  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}public${sep}dynamic-nodes${sep}`) ? await ensureDynamicNodeRoot() : await ensureNodeRoot();
   const absolutePath = resolve(workspacePath, fullRelativePath);
   assertInsideRoot(absolutePath, rootPath, 'nodeFile');
   const fileStat = await stat(absolutePath);
@@ -566,14 +566,14 @@ async function readNodeDirectory(absolutePath: string, relativePath: string): Pr
 }
 
 function normalizeNodeFilePath(normalizedPath: string): string {
-  if (normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) || normalizedPath.startsWith(`apps${sep}game${sep}dynamic-nodes${sep}`)) return normalizedPath;
+  if (normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) || normalizedPath.startsWith(`apps${sep}game${sep}public${sep}dynamic-nodes${sep}`)) return normalizedPath;
   return join('apps/game/src', normalizedPath);
 }
 
 function isNodeSourceFile(path: string, content: string): boolean {
   const normalized = path.replaceAll('\\', '/');
   if (!/\.(ts|tsx)$/.test(normalized) || normalized.endsWith('.d.ts')) return false;
-  if (normalized.startsWith('apps/game/dynamic-nodes/') && /\.node\.tsx?$/.test(normalized)) return true;
+  if (normalized.startsWith('apps/game/public/dynamic-nodes/src/') && /\.node\.tsx?$/.test(normalized)) return true;
   if (/\/(nodes|Nodes)\//.test(normalized) && /Node\.tsx?$/.test(normalized)) return true;
   return /class\s+\w+Node\s+extends\s+\w*Node\b/.test(content) || /nodeTypeId\s*=/.test(content);
 }

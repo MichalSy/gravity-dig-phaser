@@ -22,7 +22,7 @@ var prop = {
   assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options })
 };
 
-// dynamic-nodes/src/example-pulse.node.ts
+// public/dynamic-nodes/src/example-pulse.node.ts
 var ExamplePulseNode = class extends ScriptNode {
   id = "dynamic.example-pulse";
   name = "Example Pulse Script";
