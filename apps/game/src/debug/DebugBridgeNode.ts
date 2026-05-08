@@ -1,11 +1,23 @@
 import Phaser from 'phaser';
-import type { DebugMessage, DebugNodePatchMessage } from '@gravity-dig/debug-protocol';
-import { GameNode, SCENE_PROP_RECORDS, type NodeContext } from '../nodes';
+import type { DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
+import { GameNode, SCENE_PROP_RECORDS, type NodeContext, type SceneNodeJson } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
 import { captureDebugNodeTree, diffDebugNodeTrees, type DebugNodeTreeSnapshot } from './debugNodeTree';
 
+export interface DebugBridgeLiveAuthoring {
+  createNode(definition: SceneNodeJson): GameNode;
+  hasDynamicModule(module: DebugDynamicNodeModuleReference): boolean;
+  ensureDynamicModule(module: DebugDynamicNodeModuleReference, code?: string): Promise<boolean>;
+}
+
+interface PendingDynamicNodeCreate {
+  message: DebugNodeCreateMessage;
+  requestedAt: number;
+}
+
 export class DebugBridgeNode extends GameNode {
   private readonly config: DebugConnectionConfig;
+  private readonly liveAuthoring?: DebugBridgeLiveAuthoring;
   private socket?: WebSocket;
   private reconnectTimer?: number;
   private reconnectAttempts = 0;
@@ -23,10 +35,14 @@ export class DebugBridgeNode extends GameNode {
   private propsElapsedMs = 0;
   private lastSelectedPropsSignature = '';
   private overlay?: Phaser.GameObjects.Graphics;
+  private readonly clientId = crypto.randomUUID();
+  private boundEditorClientId?: string;
+  private readonly pendingCreates = new Map<string, PendingDynamicNodeCreate>();
 
-  constructor(config: DebugConnectionConfig) {
+  constructor(config: DebugConnectionConfig, liveAuthoring?: DebugBridgeLiveAuthoring) {
     super({ name: 'DebugBridge', className: 'DebugBridgeNode' });
     this.config = config;
+    this.liveAuthoring = liveAuthoring;
   }
 
   init(ctx: NodeContext): void {
@@ -71,6 +87,8 @@ export class DebugBridgeNode extends GameNode {
     this.selectedNodeId = undefined;
     this.selectedOverlayLayerIds = undefined;
     this.lastSelectedPropsSignature = '';
+    this.boundEditorClientId = undefined;
+    this.pendingCreates.clear();
     this.nodesById.clear();
     this.nodesByInstanceId.clear();
   }
@@ -90,7 +108,7 @@ export class DebugBridgeNode extends GameNode {
 
     socket.addEventListener('open', () => {
       this.reconnectAttempts = 0;
-      this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId });
+      this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId, clientId: this.clientId });
       this.sendAssetList();
       this.sendNodeDefinitions();
       this.sendTreeSnapshot();
@@ -107,6 +125,8 @@ export class DebugBridgeNode extends GameNode {
         this.sendTreeSnapshot();
         this.sendSelectedNodeProps();
       }
+      if (message.type === 'bridge:bind-request') this.handleBindRequest(message);
+      if (!this.acceptsEditorMessage(message)) return;
       if (message.type === 'node:select') {
         this.selectedNodeId = message.nodeId;
         this.selectedOverlayLayerIds = undefined;
@@ -114,6 +134,9 @@ export class DebugBridgeNode extends GameNode {
         this.sendSelectedNodeProps(true);
       }
       if (message.type === 'node:patch') this.applyNodePatch(message);
+      if (message.type === 'node:create') void this.applyNodeCreate(message);
+      if (message.type === 'dynamic-node:module-response') void this.handleDynamicModuleResponse(message);
+      if (message.type === 'dynamic-node:module-error') this.rejectPendingCreate(message.requestId, message.error);
       if (message.type === 'debug:overlay-settings') {
         this.selectedOverlayLayerIds = message.enabledLayerIds ? new Set(message.enabledLayerIds) : undefined;
       }
@@ -139,6 +162,43 @@ export class DebugBridgeNode extends GameNode {
 
   private shouldLogDebugMessage(type: DebugMessage['type']): boolean {
     return type !== 'node:select' && type !== 'node:props' && type !== 'node:patch' && type !== 'node:patch:ack';
+  }
+
+  private handleBindRequest(message: Extract<DebugMessage, { type: 'bridge:bind-request' }>): void {
+    if (this.boundEditorClientId && this.boundEditorClientId !== message.editorClientId && !message.force) {
+      this.send({
+        type: 'bridge:bind-rejected',
+        sessionId: this.config.sessionId,
+        sourceClientId: this.clientId,
+        targetClientId: message.editorClientId,
+        editorClientId: message.editorClientId,
+        gameClientId: this.clientId,
+        reason: `Game ist bereits an Editor ${this.boundEditorClientId} gebunden.`,
+        sentAt: Date.now(),
+      });
+      return;
+    }
+
+    this.boundEditorClientId = message.editorClientId;
+    this.send({
+      type: 'bridge:bind-ack',
+      sessionId: this.config.sessionId,
+      sourceClientId: this.clientId,
+      targetClientId: message.editorClientId,
+      editorClientId: message.editorClientId,
+      gameClientId: this.clientId,
+      sentAt: Date.now(),
+    });
+    this.sendAssetList();
+    this.sendNodeDefinitions();
+    this.sendTreeSnapshot();
+    this.sendSelectedNodeProps(true);
+  }
+
+  private acceptsEditorMessage(message: DebugMessage): boolean {
+    if (message.type === 'relay:status' || message.type === 'hello' || message.type === 'ping' || message.type === 'pong') return true;
+    if (!('sourceClientId' in message) || typeof message.sourceClientId !== 'string') return !this.boundEditorClientId;
+    return !this.boundEditorClientId || message.sourceClientId === this.boundEditorClientId;
   }
 
   private sendAssetList(): void {
@@ -228,6 +288,89 @@ export class DebugBridgeNode extends GameNode {
     this.nodeIds.set(node, id);
     this.nodesById.set(id, node);
     return id;
+  }
+
+  private async applyNodeCreate(message: DebugNodeCreateMessage): Promise<void> {
+    if (!this.liveAuthoring) {
+      this.sendNodeCreateAck(message, false, 'Live Authoring ist im Game nicht konfiguriert.');
+      return;
+    }
+
+    if (message.module && !this.liveAuthoring.hasDynamicModule(message.module)) {
+      if (!this.boundEditorClientId) {
+        this.sendNodeCreateAck(message, false, 'Kein gebundener Editor für Dynamic-Node-Modul-Request.');
+        return;
+      }
+      this.pendingCreates.set(message.requestId, { message, requestedAt: Date.now() });
+      this.send({
+        type: 'dynamic-node:module-request',
+        sessionId: this.config.sessionId,
+        sourceClientId: this.clientId,
+        targetClientId: this.boundEditorClientId,
+        requestId: message.requestId,
+        module: message.module,
+        sentAt: Date.now(),
+      });
+      return;
+    }
+
+    this.createInjectedNode(message);
+  }
+
+  private async handleDynamicModuleResponse(message: DebugDynamicNodeModuleResponseMessage): Promise<void> {
+    const pending = this.pendingCreates.get(message.requestId);
+    if (!pending) return;
+    const ready = await this.liveAuthoring?.ensureDynamicModule(message.module, message.code);
+    if (!ready) {
+      this.rejectPendingCreate(message.requestId, 'Dynamic-Node-Modul konnte nicht geladen werden.');
+      return;
+    }
+    this.pendingCreates.delete(message.requestId);
+    this.createInjectedNode(pending.message);
+  }
+
+  private createInjectedNode(message: DebugNodeCreateMessage): void {
+    if (!this.liveAuthoring) return;
+    const parent = this.nodesById.get(message.parentNodeId) ?? this.nodesByInstanceId.get(message.parentNodeId);
+    if (!parent) {
+      this.sendNodeCreateAck(message, false, 'Parent Node nicht gefunden.');
+      return;
+    }
+
+    try {
+      const node = this.liveAuthoring.createNode(message.definition as SceneNodeJson);
+      parent.addChild(node);
+      const nodeId = this.getStableNodeId(node);
+      this.sendNodeDefinitions();
+      this.sendTreeSnapshot();
+      this.sendNodeCreateAck(message, true, undefined, node, nodeId);
+    } catch (error) {
+      this.sendNodeCreateAck(message, false, error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private rejectPendingCreate(requestId: string, reason: string): void {
+    const pending = this.pendingCreates.get(requestId);
+    if (!pending) return;
+    this.pendingCreates.delete(requestId);
+    this.sendNodeCreateAck(pending.message, false, reason);
+  }
+
+  private sendNodeCreateAck(message: DebugNodeCreateMessage, applied: boolean, rejected?: string, node?: GameNode, nodeId?: string): void {
+    this.send({
+      type: 'node:create:ack',
+      sessionId: this.config.sessionId,
+      sourceClientId: this.clientId,
+      targetClientId: this.boundEditorClientId,
+      requestId: message.requestId,
+      parentNodeId: message.parentNodeId,
+      nodeId,
+      instanceId: node?.instanceId,
+      name: node?.debugName(),
+      applied,
+      rejected,
+      sentAt: Date.now(),
+    });
   }
 
   private applyNodePatch(message: DebugNodePatchMessage): void {

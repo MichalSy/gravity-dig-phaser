@@ -62,8 +62,9 @@ function handleMessage(socket: WebSocket, raw: string): void {
 
   const client = clients.get(socket);
   if (!client) return;
-  updateSessionCache(client.sessionId, message);
-  broadcast(client.sessionId, message, socket);
+  const enrichedMessage = withSourceClientId(message, client.id);
+  updateSessionCache(client.sessionId, enrichedMessage);
+  routeMessage(client.sessionId, enrichedMessage, socket);
 }
 
 function registerClient(socket: WebSocket, hello: DebugHelloMessage): void {
@@ -123,10 +124,26 @@ function updateSessionCache(sessionId: string, message: DebugMessage): void {
   sessionCaches.set(sessionId, cache);
 }
 
+function routeMessage(sessionId: string, message: DebugMessage, except?: WebSocket): void {
+  const targetClientId = 'targetClientId' in message && typeof message.targetClientId === 'string' ? message.targetClientId : undefined;
+  if (!targetClientId) {
+    broadcast(sessionId, message, except);
+    return;
+  }
+
+  const target = [...(sessions.get(sessionId) ?? [])].find((client) => client.id === targetClientId);
+  if (target) send(target.socket, message);
+}
+
 function broadcast(sessionId: string, message: DebugMessage, except?: WebSocket): void {
   for (const client of sessions.get(sessionId) ?? []) {
     if (client.socket !== except) send(client.socket, message);
   }
+}
+
+function withSourceClientId(message: DebugMessage, sourceClientId: string): DebugMessage {
+  if (typeof message !== 'object' || message === null || !('sessionId' in message)) return message;
+  return { ...message, sourceClientId } as DebugMessage;
 }
 
 function send(socket: WebSocket, message: DebugMessage): void {

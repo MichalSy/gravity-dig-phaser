@@ -15,7 +15,7 @@ import { AnimatedImageNode, collectNodesByName, CollisionRectNode, getDefinition
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
-import { DynamicScriptNode, loadDynamicNodeModules, type DynamicNodeManifest } from '../dynamic-nodes';
+import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../dynamic-nodes';
 
 const SCENE_JSON_KEYS = {
   menu: 'scene:menu',
@@ -44,6 +44,7 @@ export class AppScene extends Phaser.Scene {
   private loadingNode!: LoadingNode;
   private gameplayMounted = false;
   private debugConfig = readDebugConnectionConfig();
+  private readonly dynamicModuleCache = new Map<string, { hash: string; module: DynamicNodeModule }>();
 
   constructor() {
     super('App-Root');
@@ -80,7 +81,11 @@ export class AppScene extends Phaser.Scene {
     this.sceneFactory = this.createSceneFactory();
     await this.registerDynamicNodeModules();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
-    if (this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig));
+    if (this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig, {
+      createNode: (definition) => this.sceneFactory.createTree(definition),
+      hasDynamicModule: (module) => this.hasDynamicNodeModule(module),
+      ensureDynamicModule: (module, code) => this.ensureDynamicNodeModule(module, code),
+    }));
 
     this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'App-Root' }));
     this.menuScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.menu));
@@ -124,16 +129,36 @@ export class AppScene extends Phaser.Scene {
 
   private async registerDynamicNodeModules(): Promise<void> {
     const manifest = this.cache.json.get(DYNAMIC_NODE_MANIFEST_KEY) as DynamicNodeManifest | undefined;
-    const modules = await loadDynamicNodeModules(manifest);
-    for (const module of modules) {
-      this.sceneFactory.register(module.nodeTypeId, (definition) => new DynamicScriptNode({
-        module,
-        nodeTypeId: getDefinitionNodeTypeId(definition),
-        instanceId: definition.instanceId,
-        name: definition.name,
-        props: definition.props,
-      }));
-    }
+    for (const entry of manifest?.nodes ?? []) await this.ensureDynamicNodeModule(entry);
+  }
+
+  private hasDynamicNodeModule(entry: DynamicNodeManifestEntry | { nodeTypeId?: string; hash: string }): boolean {
+    const nodeTypeId = entry.nodeTypeId;
+    return Boolean(nodeTypeId && this.dynamicModuleCache.get(nodeTypeId)?.hash === entry.hash);
+  }
+
+  private async ensureDynamicNodeModule(entry: DynamicNodeManifestEntry | { nodeTypeId?: string; hash: string; url?: string }, code?: string): Promise<boolean> {
+    const nodeTypeId = entry.nodeTypeId;
+    if (!nodeTypeId) return false;
+    const cached = this.dynamicModuleCache.get(nodeTypeId);
+    if (cached?.hash === entry.hash) return true;
+
+    const module = code
+      ? await loadDynamicNodeModuleFromCode(code)
+      : entry.url
+        ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash })
+        : undefined;
+    if (!module || module.nodeTypeId !== nodeTypeId) return false;
+
+    this.dynamicModuleCache.set(nodeTypeId, { hash: entry.hash, module });
+    this.sceneFactory.register(module.nodeTypeId, (definition) => new DynamicScriptNode({
+      module,
+      nodeTypeId: getDefinitionNodeTypeId(definition),
+      instanceId: definition.instanceId,
+      name: definition.name,
+      props: definition.props,
+    }));
+    return true;
   }
 
   private createScene(cacheKey: string): GameNode {

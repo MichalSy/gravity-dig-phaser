@@ -7,6 +7,36 @@ export interface DebugHelloMessage {
   clientId?: string;
 }
 
+export interface DebugTargetedMessageFields {
+  sourceClientId?: string;
+  targetClientId?: string;
+}
+
+export interface DebugBridgeBindRequestMessage extends DebugTargetedMessageFields {
+  type: 'bridge:bind-request';
+  sessionId: string;
+  editorClientId: string;
+  force?: boolean;
+  sentAt: number;
+}
+
+export interface DebugBridgeBindAckMessage extends DebugTargetedMessageFields {
+  type: 'bridge:bind-ack';
+  sessionId: string;
+  editorClientId: string;
+  gameClientId: string;
+  sentAt: number;
+}
+
+export interface DebugBridgeBindRejectedMessage extends DebugTargetedMessageFields {
+  type: 'bridge:bind-rejected';
+  sessionId: string;
+  editorClientId: string;
+  gameClientId?: string;
+  reason: string;
+  sentAt: number;
+}
+
 export interface DebugPingMessage {
   type: 'ping';
   sentAt: number;
@@ -88,13 +118,75 @@ export type DebugScenePropValue = string | number | boolean | null | { x: number
 
 export type DebugNodePatch = Record<string, DebugScenePropValue>;
 
-export interface DebugNodePatchMessage {
+export interface DebugNodePatchMessage extends DebugTargetedMessageFields {
   type: 'node:patch';
   sessionId: string;
   nodeId?: string;
   instanceId?: string;
   name?: string;
   props: DebugNodePatch;
+  sentAt: number;
+}
+
+export interface DebugDynamicNodeModuleReference {
+  nodeTypeId: string;
+  source: string;
+  url?: string;
+  hash: string;
+}
+
+export interface DebugNodeCreateMessage extends DebugTargetedMessageFields {
+  type: 'node:create';
+  sessionId: string;
+  requestId: string;
+  parentNodeId: string;
+  index?: number;
+  definition: {
+    nodeTypeId: string;
+    name?: string;
+    props?: Record<string, unknown>;
+    children?: unknown[];
+  };
+  module?: DebugDynamicNodeModuleReference;
+  sentAt: number;
+}
+
+export interface DebugNodeCreateAckMessage extends DebugTargetedMessageFields {
+  type: 'node:create:ack';
+  sessionId: string;
+  requestId: string;
+  parentNodeId: string;
+  nodeId?: string;
+  instanceId?: string;
+  name?: string;
+  applied: boolean;
+  rejected?: string;
+  sentAt: number;
+}
+
+export interface DebugDynamicNodeModuleRequestMessage extends DebugTargetedMessageFields {
+  type: 'dynamic-node:module-request';
+  sessionId: string;
+  requestId: string;
+  module: DebugDynamicNodeModuleReference;
+  sentAt: number;
+}
+
+export interface DebugDynamicNodeModuleResponseMessage extends DebugTargetedMessageFields {
+  type: 'dynamic-node:module-response';
+  sessionId: string;
+  requestId: string;
+  module: DebugDynamicNodeModuleReference;
+  code: string;
+  sentAt: number;
+}
+
+export interface DebugDynamicNodeModuleErrorMessage extends DebugTargetedMessageFields {
+  type: 'dynamic-node:module-error';
+  sessionId: string;
+  requestId: string;
+  module: DebugDynamicNodeModuleReference;
+  error: string;
   sentAt: number;
 }
 
@@ -272,6 +364,9 @@ export type DebugMessage =
   | DebugPongMessage
   | DebugTextMessage
   | DebugRelayStatusMessage
+  | DebugBridgeBindRequestMessage
+  | DebugBridgeBindAckMessage
+  | DebugBridgeBindRejectedMessage
   | DebugNodeDefinitionsMessage
   | DebugNodeTreeMessage
   | DebugNodeDeltaMessage
@@ -280,4 +375,9 @@ export type DebugMessage =
   | DebugNodePropsMessage
   | DebugNodePatchMessage
   | DebugNodePatchAckMessage
+  | DebugNodeCreateMessage
+  | DebugNodeCreateAckMessage
+  | DebugDynamicNodeModuleRequestMessage
+  | DebugDynamicNodeModuleResponseMessage
+  | DebugDynamicNodeModuleErrorMessage
   | DebugAssetListMessage;

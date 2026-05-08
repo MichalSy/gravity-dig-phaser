@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
@@ -48,6 +48,7 @@ function buildDebugGameUrl(sessionId: string): string {
 }
 
 const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
+const dynamicNodeDragMimeType = 'application/x-gravity-dig-dynamic-node';
 const maxConcurrentThumbnailLoads = 5;
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -69,6 +70,18 @@ interface EditorLayoutState {
   assetExplorerHeight: number;
   assetSplitPercent: number;
   folderTreeWidth: number;
+}
+
+interface DynamicNodeManifestEntry {
+  nodeTypeId?: string;
+  source: string;
+  url: string;
+  hash: string;
+}
+
+interface DynamicNodeManifest {
+  version: 1;
+  nodes: DynamicNodeManifestEntry[];
 }
 
 interface EditorGitStatus {
@@ -276,10 +289,14 @@ export default function Home() {
   const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public', 'apps/game/src']));
   const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
+  const [bridgeBinding, setBridgeBinding] = useState('Bridge nicht gebunden');
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
+  const editorClientIdRef = useRef<string>(createSessionId());
+  const boundGameClientIdRef = useRef<string | undefined>(undefined);
+  const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
   const workbenchRef = useRef<HTMLElement | null>(null);
@@ -348,10 +365,11 @@ export default function Home() {
       socketRef.current = socket;
 
       socket.addEventListener('open', () => {
-        const hello: DebugMessage = { type: 'hello', role: 'editor', sessionId };
+        const hello: DebugMessage = { type: 'hello', role: 'editor', sessionId, clientId: editorClientIdRef.current };
         console.log('[Gravity Dig Debug][editor->game]', hello.type, hello);
         socket.send(JSON.stringify(hello));
         setStatus('connected');
+        setBridgeBinding('Bridge wartet auf Game-Bindung');
         setLastEvent('Relay verbunden. Game wird im Editor geladen.');
       });
 
@@ -379,7 +397,34 @@ export default function Home() {
 
       if (message.type === 'relay:status') {
         setGameCount(message.games);
-        if (message.games > 0) setLastEvent('Game verbunden.');
+        if (message.games > 0) {
+          requestBridgeBinding();
+          setLastEvent('Game verbunden. Bridge-Bindung angefragt.');
+        }
+        return;
+      }
+
+      if (message.type === 'bridge:bind-ack') {
+        boundGameClientIdRef.current = message.gameClientId;
+        setBridgeBinding('Bridge 1:1 gebunden');
+        setLastEvent('Game und Editor sind 1:1 gebunden.');
+        return;
+      }
+
+      if (message.type === 'bridge:bind-rejected') {
+        boundGameClientIdRef.current = undefined;
+        setBridgeBinding(`Bridge abgelehnt: ${message.reason}`);
+        setLastEvent(`Bridge abgelehnt: ${message.reason}`);
+        return;
+      }
+
+      if (message.type === 'dynamic-node:module-request') {
+        void respondToDynamicNodeModuleRequest(message);
+        return;
+      }
+
+      if (message.type === 'node:create:ack') {
+        setPatchStatus(message.applied ? `Node injected: ${message.name ?? message.nodeId ?? message.requestId}` : `Node Injection abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
 
@@ -537,6 +582,7 @@ export default function Home() {
   async function refreshPublicFiles(): Promise<void> {
     setPublicFileStatus('Lade Assets + Nodes ...');
     try {
+      dynamicNodeManifestRef.current = undefined;
       const [publicResult, nodeResult] = await Promise.all([fetchPublicFileTree(), fetchNodeFileTree()]);
       const roots = [publicResult.root, nodeResult.root];
       setPublicFileRoot(publicResult.root);
@@ -765,6 +811,110 @@ export default function Home() {
     return true;
   }
 
+  function requestBridgeBinding(force = false): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    const message: DebugMessage = {
+      type: 'bridge:bind-request',
+      sessionId,
+      editorClientId: editorClientIdRef.current,
+      force,
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    setBridgeBinding(force ? 'Bridge übernimmt Bindung ...' : 'Bridge-Bindung angefragt ...');
+  }
+
+  async function respondToDynamicNodeModuleRequest(message: Extract<DebugMessage, { type: 'dynamic-node:module-request' }>): Promise<void> {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    try {
+      const code = await readPublicTextFile(compiledPathForDynamicModule(message.module));
+      const response: DebugMessage = {
+        type: 'dynamic-node:module-response',
+        sessionId,
+        targetClientId: message.sourceClientId,
+        requestId: message.requestId,
+        module: message.module,
+        code,
+        sentAt: Date.now(),
+      };
+      socketRef.current.send(JSON.stringify(response));
+      setLastEvent(`Dynamic Node Modul gesendet: ${message.module.nodeTypeId}`);
+    } catch (error) {
+      const response: DebugMessage = {
+        type: 'dynamic-node:module-error',
+        sessionId,
+        targetClientId: message.sourceClientId,
+        requestId: message.requestId,
+        module: message.module,
+        error: error instanceof Error ? error.message : String(error),
+        sentAt: Date.now(),
+      };
+      socketRef.current.send(JSON.stringify(response));
+    }
+  }
+
+  async function injectDynamicNode(parentNode: DebugNodeDescriptor, file: PublicFileEntry): Promise<void> {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setPatchStatus('Node Injection nicht gesendet: Relay nicht verbunden.');
+      return;
+    }
+    if (!boundGameClientIdRef.current) {
+      requestBridgeBinding();
+      setPatchStatus('Node Injection wartet: Bridge ist noch nicht 1:1 gebunden.');
+      return;
+    }
+
+    const entry = await dynamicNodeManifestEntryForFile(file);
+    if (!entry?.nodeTypeId) {
+      setPatchStatus(`Keine Dynamic-Node-Manifest-Zuordnung für ${file.name}.`);
+      return;
+    }
+
+    const requestId = createSessionId();
+    const message: DebugMessage = {
+      type: 'node:create',
+      sessionId,
+      targetClientId: boundGameClientIdRef.current,
+      requestId,
+      parentNodeId: parentNode.id,
+      definition: {
+        nodeTypeId: entry.nodeTypeId,
+        name: defaultDynamicNodeName(entry),
+        props: {},
+      },
+      module: {
+        nodeTypeId: entry.nodeTypeId,
+        source: entry.source,
+        url: entry.url,
+        hash: entry.hash,
+      },
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    setSelectedNodeId(parentNode.id);
+    setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
+    setPatchStatus(`Node Injection gesendet: ${entry.nodeTypeId} → ${parentNode.name}`);
+  }
+
+  async function dynamicNodeManifestEntryForFile(file: PublicFileEntry): Promise<DynamicNodeManifestEntry | undefined> {
+    const manifest = dynamicNodeManifestRef.current ?? await loadDynamicNodeManifest();
+    dynamicNodeManifestRef.current = manifest;
+    const normalizedFilePath = file.path.replace(/^apps\/game\//, '');
+    return manifest.nodes.find((entry) => entry.source === normalizedFilePath || `apps/game/${entry.source}` === file.path);
+  }
+
+  async function loadDynamicNodeManifest(): Promise<DynamicNodeManifest> {
+    const text = await readPublicTextFile('apps/game/public/dynamic-nodes-compiled/manifest.json');
+    return JSON.parse(text) as DynamicNodeManifest;
+  }
+
+  async function readPublicTextFile(path: string): Promise<string> {
+    const response = await fetch(publicFileContentPathUrl(path), { cache: 'no-store', headers: { Accept: 'text/plain, application/javascript, application/json' } });
+    const text = await response.text();
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${text.slice(0, 120)}`);
+    return text;
+  }
+
   function collectPreviousProps(node: DebugNodeDescriptor, props: DebugNodePatch): DebugNodePatch {
     const definition = node.instanceId ? nodeDefinitions.get(node.instanceId) : undefined;
     const exposedProps = flattenDefinitionProps(definition);
@@ -969,7 +1119,7 @@ export default function Home() {
 
       <section ref={workbenchRef} className={styles.workbench}>
         <aside className={styles.panel}>
-          <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes`}>
+          <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes · ${bridgeBinding}`}>
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
             <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
           </PanelHeader>
@@ -983,6 +1133,7 @@ export default function Home() {
                 onSelectNode={setSelectedNodeId}
                 onToggleNode={toggleNodeExpanded}
                 onTogglePersistentManagers={() => setPersistentManagersOpen((current) => !current)}
+                onDropDynamicNode={injectDynamicNode}
               />
             ) : (
               <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
@@ -1025,6 +1176,7 @@ export default function Home() {
           onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
           onStartFolderResize={startFolderTreeResize}
+          onDynamicNodeDragStart={() => void loadDynamicNodeManifest().then((manifest) => { dynamicNodeManifestRef.current = manifest; }).catch(() => undefined)}
         />
 
         <div className={`${styles.columnResizer} ${styles.rightColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
@@ -1108,6 +1260,7 @@ function PublicAssetExplorer({
   onOpenImage,
   onRefresh,
   onStartFolderResize,
+  onDynamicNodeDragStart,
 }: {
   roots: PublicFileEntry[];
   selectedDirectory?: PublicFileEntry;
@@ -1125,6 +1278,7 @@ function PublicAssetExplorer({
   onOpenImage(path: string): void;
   onRefresh(): void;
   onStartFolderResize(event: ReactPointerEvent<HTMLDivElement>): void;
+  onDynamicNodeDragStart(file: PublicFileEntry): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
@@ -1166,7 +1320,21 @@ function PublicAssetExplorer({
               </button>
             ))}
             {files.map((file) => (
-              <button key={file.path} type="button" className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`} onClick={() => onSelectFile(file.path)} onDoubleClick={() => { if (isCodePreviewFile(file)) onOpenFile(file.path); }} title={file.path}>
+              <button
+                key={file.path}
+                type="button"
+                className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`}
+                draggable={isDynamicNodeFile(file)}
+                onDragStart={(event) => {
+                  if (!isDynamicNodeFile(file)) return;
+                  event.dataTransfer.effectAllowed = 'copy';
+                  event.dataTransfer.setData(dynamicNodeDragMimeType, JSON.stringify(file));
+                  onDynamicNodeDragStart(file);
+                }}
+                onClick={() => onSelectFile(file.path)}
+                onDoubleClick={() => { if (isCodePreviewFile(file)) onOpenFile(file.path); }}
+                title={file.path}
+              >
                 <PublicFileThumbnail file={file} />
                 <span>{file.name}</span>
                 <small>{formatFileMeta(file)}</small>
@@ -1686,6 +1854,7 @@ function HierarchyTree({
   onSelectNode,
   onToggleNode,
   onTogglePersistentManagers,
+  onDropDynamicNode,
 }: {
   roots: DebugNodeDescriptor[];
   selectedNodeId?: string;
@@ -1694,6 +1863,7 @@ function HierarchyTree({
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
   onTogglePersistentManagers(): void;
+  onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots);
 
@@ -1707,7 +1877,7 @@ function HierarchyTree({
             <span>Persistent Managers</span>
             <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
           </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />}
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />}
         </section>
       )}
 
@@ -1717,7 +1887,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />
       </section>
     </div>
   );
@@ -1729,17 +1899,19 @@ function NodeTree({
   expandedNodeIds,
   onSelectNode,
   onToggleNode,
+  onDropDynamicNode,
 }: {
   nodes: DebugNodeDescriptor[];
   selectedNodeId?: string;
   expandedNodeIds: ReadonlySet<string>;
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
+  onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />
       ))}
     </ol>
   );
@@ -1751,12 +1923,14 @@ function NodeTreeItem({
   expandedNodeIds,
   onSelectNode,
   onToggleNode,
+  onDropDynamicNode,
 }: {
   node: DebugNodeDescriptor;
   selectedNodeId?: string;
   expandedNodeIds: ReadonlySet<string>;
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
+  onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
 }) {
   const hasChildren = node.children.length > 0;
   const effectiveActive = isEffectivelyActive(node);
@@ -1764,9 +1938,22 @@ function NodeTreeItem({
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
+  function handleDragOver(event: ReactDragEvent<HTMLDivElement>): void {
+    if (!readDynamicNodeDragFile(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDrop(event: ReactDragEvent<HTMLDivElement>): void {
+    const file = readDynamicNodeDragFile(event);
+    if (!file) return;
+    event.preventDefault();
+    void onDropDynamicNode(node, file);
+  }
+
   return (
     <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`}>
-      <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
+      <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`} onDragOver={handleDragOver} onDrop={handleDrop}>
         <button
           type="button"
           className={styles.expandButton}
@@ -1787,7 +1974,7 @@ function NodeTreeItem({
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
         </button>
       </div>
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />}
     </li>
   );
 }
@@ -2666,6 +2853,32 @@ function isNodeFile(file: PublicFileEntry): boolean {
   return file.kind === 'file'
     && (file.path.startsWith('apps/game/src/') || file.path.startsWith('apps/game/public/dynamic-nodes/'))
     && ['ts', 'tsx'].includes(file.extension ?? '');
+}
+
+function isDynamicNodeFile(file: PublicFileEntry): boolean {
+  return file.kind === 'file' && file.path.startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(file.name);
+}
+
+function readDynamicNodeDragFile(event: ReactDragEvent): PublicFileEntry | undefined {
+  const raw = event.dataTransfer.getData(dynamicNodeDragMimeType);
+  if (!raw) return undefined;
+  try {
+    const file = JSON.parse(raw) as PublicFileEntry;
+    return isDynamicNodeFile(file) ? file : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function compiledPathForDynamicModule(module: { url?: string; source: string }): string {
+  if (module.url) return `apps/game/public/${module.url.replace(/^\/+/, '')}`;
+  const fileName = module.source.split('/').at(-1)?.replace(/\.node\.tsx?$/, '') ?? 'dynamic-node';
+  throw new Error(`Compiled URL fehlt für ${fileName}. Manifest/Drag-Daten sind unvollständig.`);
+}
+
+function defaultDynamicNodeName(entry: DynamicNodeManifestEntry): string {
+  const base = entry.source.split('/').at(-1)?.replace(/\.node\.tsx?$/, '') ?? entry.nodeTypeId ?? 'DynamicNode';
+  return base.split(/[-_]/).filter(Boolean).map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`).join(' ');
 }
 
 function isPublicJsonFile(file: PublicFileEntry): boolean {
