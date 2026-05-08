@@ -510,7 +510,7 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
   assertInsideRoot(absolutePath, workspacePath, 'publicPath');
   const entries = await readdir(absolutePath, { withFileTypes: true });
   const children = await Promise.all(entries
-    .filter((entry) => !entry.name.startsWith('.'))
+    .filter((entry) => !entry.name.startsWith('.') && !isHiddenPublicExplorerEntry(relativePath, entry.name))
     .sort((left, right) => {
       if (left.isDirectory() !== right.isDirectory()) return left.isDirectory() ? -1 : 1;
       return left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' });
@@ -568,6 +568,10 @@ async function readNodeDirectory(absolutePath: string, relativePath: string): Pr
 function normalizeNodeFilePath(normalizedPath: string): string {
   if (normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) || normalizedPath.startsWith(`apps${sep}game${sep}public${sep}dynamic-nodes${sep}`)) return normalizedPath;
   return join('apps/game/src', normalizedPath);
+}
+
+function isHiddenPublicExplorerEntry(relativePath: string, entryName: string): boolean {
+  return relativePath === 'apps/game/public' && entryName === 'dynamic-nodes-compiled';
 }
 
 function isNodeSourceFile(path: string, content: string): boolean {

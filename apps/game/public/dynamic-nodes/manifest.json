@@ -4,7 +4,7 @@
     {
       "nodeTypeId": "dynamic.example-pulse",
       "source": "public/dynamic-nodes/src/example-pulse.node.ts",
-      "url": "/dynamic-nodes/compiled/example-pulse.b604e0f24e6a.js",
+      "url": "/dynamic-nodes-compiled/example-pulse.b604e0f24e6a.js",
       "hash": "b604e0f24e6a"
     }
   ]
