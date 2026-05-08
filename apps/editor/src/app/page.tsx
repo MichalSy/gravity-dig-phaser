@@ -66,6 +66,7 @@ interface EditorLayoutState {
   inspectorWidth: number;
   assetExplorerHeight: number;
   assetSplitPercent: number;
+  folderTreeWidth: number;
 }
 
 interface EditorGitStatus {
@@ -100,6 +101,7 @@ const defaultLayoutState: EditorLayoutState = {
   inspectorWidth: 340,
   assetExplorerHeight: 380,
   assetSplitPercent: 58,
+  folderTreeWidth: 240,
 };
 
 function clamp(value: number, min: number, max: number): number {
@@ -194,6 +196,7 @@ function applyLayoutToDocument(layout: EditorLayoutState): void {
   style.setProperty('--asset-explorer-height', `${layout.assetExplorerHeight}px`);
   style.setProperty('--asset-list-fr', `${layout.assetSplitPercent}fr`);
   style.setProperty('--asset-detail-fr', `${100 - layout.assetSplitPercent}fr`);
+  style.setProperty('--folder-tree-width', `${layout.folderTreeWidth}px`);
 }
 
 function persistLayout(layout: EditorLayoutState): void {
@@ -226,6 +229,7 @@ function readStoredLayout(): EditorLayoutState {
       inspectorWidth: clamp(parsed.inspectorWidth ?? defaultLayoutState.inspectorWidth, 280, 560),
       assetExplorerHeight: clamp(parsed.assetExplorerHeight ?? defaultLayoutState.assetExplorerHeight, 240, 560),
       assetSplitPercent: clamp(parsed.assetSplitPercent ?? defaultLayoutState.assetSplitPercent, 35, 72),
+      folderTreeWidth: clamp(parsed.folderTreeWidth ?? defaultLayoutState.folderTreeWidth, 150, 420),
     };
   } catch {
     return defaultLayoutState;
@@ -819,6 +823,37 @@ export default function Home() {
     window.addEventListener('pointercancel', stopResize, { once: true });
   }
 
+  function startFolderTreeResize(event: ReactPointerEvent<HTMLDivElement>): void {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const shield = createResizeShield('col-resize');
+    const bodyRect = assetExplorerBodyRef.current?.getBoundingClientRect();
+    if (!bodyRect) {
+      shield?.remove();
+      return;
+    }
+    const startX = event.clientX;
+    const startWidth = readStoredLayout().folderTreeWidth;
+    const maxWidth = Math.min(520, Math.max(180, bodyRect.width - 620));
+
+    function onPointerMove(moveEvent: PointerEvent): void {
+      setLayout((current) => {
+        const next = { ...current, folderTreeWidth: clamp(startWidth + moveEvent.clientX - startX, 150, maxWidth) };
+        persistLayout(next);
+        return next;
+      });
+    }
+
+    function stopResize(): void {
+      window.removeEventListener('pointermove', onPointerMove);
+      shield?.remove();
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', stopResize, { once: true });
+    window.addEventListener('pointercancel', stopResize, { once: true });
+  }
+
   function startAssetSplitResize(event: ReactPointerEvent<HTMLDivElement>): void {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -963,6 +998,7 @@ export default function Home() {
           onSelectFile={setSelectedPublicFilePath}
           onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
+          onStartFolderResize={startFolderTreeResize}
         />
 
         <div className={`${styles.columnResizer} ${styles.rightColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
@@ -1043,6 +1079,7 @@ function PublicAssetExplorer({
   onSelectFile,
   onOpenImage,
   onRefresh,
+  onStartFolderResize,
 }: {
   root?: PublicFileEntry;
   selectedDirectory?: PublicFileEntry;
@@ -1058,6 +1095,7 @@ function PublicAssetExplorer({
   onSelectFile(path: string): void;
   onOpenImage(path: string): void;
   onRefresh(): void;
+  onStartFolderResize(event: ReactPointerEvent<HTMLDivElement>): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
@@ -1081,6 +1119,7 @@ function PublicAssetExplorer({
             <p className={styles.empty}>{status}</p>
           )}
         </div>
+        <div className={styles.folderTreeResizer} role="separator" aria-orientation="vertical" aria-label="Ordnerbereich Breite ändern" onPointerDown={onStartFolderResize} />
         <div className={styles.fileListPane}>
           <div className={styles.fileListHeader}>
             <strong>{compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>

@@ -669,7 +669,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr) minmax(340px, 1fr);
+  grid-template-columns: var(--folder-tree-width, 240px) 6px minmax(260px, var(--asset-list-fr, 58fr)) minmax(340px, var(--asset-detail-fr, 42fr));
   gap: 0;
   background: rgba(148, 163, 184, 0.14);
   overflow: hidden;
@@ -1079,6 +1079,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 
 .columnResizer,
 .assetSplitResizer,
+.folderTreeResizer,
 .rowResizer {
   position: relative;
   z-index: 5;
@@ -1088,7 +1089,8 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 }
 
 .columnResizer,
-.assetSplitResizer {
+.assetSplitResizer,
+.folderTreeResizer {
   width: 6px;
   cursor: col-resize;
 }
@@ -1103,7 +1105,8 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 .assetRowResizer { grid-column: 1 / 4; grid-row: 2; }
 
 .columnResizer::after,
-.assetSplitResizer::after {
+.assetSplitResizer::after,
+.folderTreeResizer::after {
   content: '';
   position: absolute;
   top: 0;
@@ -1127,6 +1130,8 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 .columnResizer:active,
 .assetSplitResizer:hover,
 .assetSplitResizer:active,
+.folderTreeResizer:hover,
+.folderTreeResizer:active,
 .rowResizer:hover,
 .rowResizer:active {
   background: rgba(14, 165, 233, 0.22);
@@ -1136,6 +1141,8 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 .columnResizer:active::after,
 .assetSplitResizer:hover::after,
 .assetSplitResizer:active::after,
+.folderTreeResizer:hover::after,
+.folderTreeResizer:active::after,
 .rowResizer:hover::after,
 .rowResizer:active::after {
   background: rgba(125, 211, 252, 0.72);
