@@ -297,6 +297,7 @@ export default function Home() {
   const editorClientIdRef = useRef<string>(createSessionId());
   const boundGameClientIdRef = useRef<string | undefined>(undefined);
   const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
+  const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
   const workbenchRef = useRef<HTMLElement | null>(null);
@@ -1133,6 +1134,8 @@ export default function Home() {
                 onSelectNode={setSelectedNodeId}
                 onToggleNode={toggleNodeExpanded}
                 onTogglePersistentManagers={() => setPersistentManagersOpen((current) => !current)}
+                isDynamicNodeDragActive={() => Boolean(draggedDynamicNodeRef.current)}
+                getDraggedDynamicNode={() => draggedDynamicNodeRef.current}
                 onDropDynamicNode={injectDynamicNode}
               />
             ) : (
@@ -1176,7 +1179,11 @@ export default function Home() {
           onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
           onStartFolderResize={startFolderTreeResize}
-          onDynamicNodeDragStart={() => void loadDynamicNodeManifest().then((manifest) => { dynamicNodeManifestRef.current = manifest; }).catch(() => undefined)}
+          onDynamicNodeDragStart={(file) => {
+            draggedDynamicNodeRef.current = file;
+            void loadDynamicNodeManifest().then((manifest) => { dynamicNodeManifestRef.current = manifest; }).catch(() => undefined);
+          }}
+          onDynamicNodeDragEnd={() => { draggedDynamicNodeRef.current = undefined; }}
         />
 
         <div className={`${styles.columnResizer} ${styles.rightColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
@@ -1261,6 +1268,7 @@ function PublicAssetExplorer({
   onRefresh,
   onStartFolderResize,
   onDynamicNodeDragStart,
+  onDynamicNodeDragEnd,
 }: {
   roots: PublicFileEntry[];
   selectedDirectory?: PublicFileEntry;
@@ -1279,6 +1287,7 @@ function PublicAssetExplorer({
   onRefresh(): void;
   onStartFolderResize(event: ReactPointerEvent<HTMLDivElement>): void;
   onDynamicNodeDragStart(file: PublicFileEntry): void;
+  onDynamicNodeDragEnd(): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
@@ -1329,8 +1338,10 @@ function PublicAssetExplorer({
                   if (!isDynamicNodeFile(file)) return;
                   event.dataTransfer.effectAllowed = 'copy';
                   event.dataTransfer.setData(dynamicNodeDragMimeType, JSON.stringify(file));
+                  event.dataTransfer.setData('text/plain', file.path);
                   onDynamicNodeDragStart(file);
                 }}
+                onDragEnd={onDynamicNodeDragEnd}
                 onClick={() => onSelectFile(file.path)}
                 onDoubleClick={() => { if (isCodePreviewFile(file)) onOpenFile(file.path); }}
                 title={file.path}
@@ -1854,6 +1865,8 @@ function HierarchyTree({
   onSelectNode,
   onToggleNode,
   onTogglePersistentManagers,
+  isDynamicNodeDragActive,
+  getDraggedDynamicNode,
   onDropDynamicNode,
 }: {
   roots: DebugNodeDescriptor[];
@@ -1863,6 +1876,8 @@ function HierarchyTree({
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
   onTogglePersistentManagers(): void;
+  isDynamicNodeDragActive(): boolean;
+  getDraggedDynamicNode(): PublicFileEntry | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots);
@@ -1877,7 +1892,7 @@ function HierarchyTree({
             <span>Persistent Managers</span>
             <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
           </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />}
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />}
         </section>
       )}
 
@@ -1887,7 +1902,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />
       </section>
     </div>
   );
@@ -1899,6 +1914,8 @@ function NodeTree({
   expandedNodeIds,
   onSelectNode,
   onToggleNode,
+  isDynamicNodeDragActive,
+  getDraggedDynamicNode,
   onDropDynamicNode,
 }: {
   nodes: DebugNodeDescriptor[];
@@ -1906,12 +1923,14 @@ function NodeTree({
   expandedNodeIds: ReadonlySet<string>;
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
+  isDynamicNodeDragActive(): boolean;
+  getDraggedDynamicNode(): PublicFileEntry | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />
       ))}
     </ol>
   );
@@ -1923,6 +1942,8 @@ function NodeTreeItem({
   expandedNodeIds,
   onSelectNode,
   onToggleNode,
+  isDynamicNodeDragActive,
+  getDraggedDynamicNode,
   onDropDynamicNode,
 }: {
   node: DebugNodeDescriptor;
@@ -1930,6 +1951,8 @@ function NodeTreeItem({
   expandedNodeIds: ReadonlySet<string>;
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
+  isDynamicNodeDragActive(): boolean;
+  getDraggedDynamicNode(): PublicFileEntry | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
 }) {
   const hasChildren = node.children.length > 0;
@@ -1938,22 +1961,23 @@ function NodeTreeItem({
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
-  function handleDragOver(event: ReactDragEvent<HTMLDivElement>): void {
-    if (!hasDynamicNodeDragType(event)) return;
+  function handleDragOver(event: ReactDragEvent<HTMLLIElement>): void {
+    if (!isDynamicNodeDragActive() && !hasDynamicNodeDragType(event)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }
 
-  function handleDrop(event: ReactDragEvent<HTMLDivElement>): void {
-    const file = readDynamicNodeDragFile(event);
+  function handleDrop(event: ReactDragEvent<HTMLLIElement>): void {
+    const file = readDynamicNodeDragFile(event) ?? getDraggedDynamicNode();
     if (!file) return;
     event.preventDefault();
+    event.stopPropagation();
     void onDropDynamicNode(node, file);
   }
 
   return (
-    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`}>
-      <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`} onDragOver={handleDragOver} onDrop={handleDrop}>
+    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`} onDragOver={handleDragOver} onDrop={handleDrop}>
+      <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
         <button
           type="button"
           className={styles.expandButton}
@@ -1974,7 +1998,7 @@ function NodeTreeItem({
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
         </button>
       </div>
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} onDropDynamicNode={onDropDynamicNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} />}
     </li>
   );
 }
