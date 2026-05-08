@@ -56,7 +56,7 @@ export class AppScene extends Phaser.Scene {
     this.load.json(SCENE_JSON_KEYS.gameplay, 'scenes/gameplay.scene.json');
     this.load.json(SCENE_JSON_KEYS.gameplayUi, 'scenes/gameplay-ui.scene.json');
     for (const [path, key] of Object.entries(PREFAB_JSON_KEYS)) this.load.json(key, path);
-    this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'dynamic-nodes/manifest.json');
+    this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'dynamic-nodes-compiled/manifest.json');
     if (this.debugConfig) {
       const previewUrl = new URL(`/api/editor/changes/${encodeURIComponent(this.debugConfig.sessionId)}/preview`, this.debugConfig.editorApiUrl);
       previewUrl.searchParams.set('cacheBust', Date.now().toString(36));

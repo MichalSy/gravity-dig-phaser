@@ -61,7 +61,7 @@ export { nodeTypeId, displayName, createBehavior };
   manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/dynamic-nodes/${file}`, url: `/dynamic-nodes-compiled/${outfileName}`, hash });
 }
 
-await writeFile(path.join(appRoot, 'public/dynamic-nodes/manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+await writeFile(path.join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 await rm(tempDir, { recursive: true, force: true });
 console.log(`Built ${manifest.nodes.length} dynamic node(s).`);
 
