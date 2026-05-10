@@ -44,7 +44,8 @@ const editorPreviewScenes = [
   { id: 'gameplay', label: 'Gameplay' },
   { id: 'gameplayUi', label: 'Gameplay UI' },
 ] as const;
-type EditorPreviewSceneId = (typeof editorPreviewScenes)[number]['id'];
+type EditorPreviewSceneOption = (typeof editorPreviewScenes)[number];
+type EditorPreviewSceneId = EditorPreviewSceneOption['id'];
 type ViewportMode = 'editor' | 'play';
 
 
@@ -1431,6 +1432,8 @@ export default function Home() {
   const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
   const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
   const editorTitle = gitNeedsRebase ? 'Debug Editor · Rebase nötig' : 'Debug Editor';
+  const hierarchySections = splitHierarchyRoots(treeRoots, viewportMode);
+  const hierarchyNodeCount = viewportMode === 'editor' ? countNodes(hierarchySections.scenes) : countNodes(treeRoots);
 
   return (
     <main className={styles.appShell}>
@@ -1464,7 +1467,7 @@ export default function Home() {
 
       <section ref={workbenchRef} className={styles.workbench}>
         <aside className={styles.panel}>
-          <PanelHeader title="Hierarchy" meta={`${countNodes(treeRoots)} Nodes · ${bridgeBinding}`}>
+          <PanelHeader title="Hierarchy" meta={`${hierarchyNodeCount} Nodes · ${bridgeBinding}`}>
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
             <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
           </PanelHeader>
@@ -1472,9 +1475,13 @@ export default function Home() {
             {treeRoots.length > 0 ? (
               <HierarchyTree
                 roots={treeRoots}
+                mode={viewportMode}
+                editorPreviewScene={editorPreviewScene}
+                editorPreviewSceneOptions={editorPreviewScenes}
                 selectedNodeId={selectedNodeId}
                 expandedNodeIds={expandedNodeIds}
                 persistentManagersOpen={persistentManagersOpen}
+                onEditorPreviewSceneChange={setEditorPreviewScene}
                 onSelectNode={setSelectedNodeId}
                 onToggleNode={toggleNodeExpanded}
                 onTogglePersistentManagers={() => setPersistentManagersOpen((current) => !current)}
@@ -1506,11 +1513,6 @@ export default function Home() {
             <div className={styles.viewportControls}>
               <button type="button" className={`${styles.headerButton} ${viewportMode === 'editor' ? styles.activeHeaderButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
               <button type="button" className={`${styles.headerButton} ${viewportMode === 'play' ? styles.activeHeaderButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>
-              {viewportMode === 'editor' && (
-                <select className={styles.headerSelect} value={editorPreviewScene} onChange={(event) => setEditorPreviewScene(event.target.value as EditorPreviewSceneId)}>
-                  {editorPreviewScenes.map((scene) => <option key={scene.id} value={scene.id}>{scene.label}</option>)}
-                </select>
-              )}
             </div>
           </PanelHeader>
           <div className={styles.viewportBody}>
@@ -2325,9 +2327,13 @@ function PanelHeader({ title, meta, children }: { title: string; meta: string; c
 
 function HierarchyTree({
   roots,
+  mode,
+  editorPreviewScene,
+  editorPreviewSceneOptions,
   selectedNodeId,
   expandedNodeIds,
   persistentManagersOpen,
+  onEditorPreviewSceneChange,
   onSelectNode,
   onToggleNode,
   onTogglePersistentManagers,
@@ -2347,9 +2353,13 @@ function HierarchyTree({
   onDeleteNode,
 }: {
   roots: DebugNodeDescriptor[];
+  mode: ViewportMode;
+  editorPreviewScene: EditorPreviewSceneId;
+  editorPreviewSceneOptions: readonly EditorPreviewSceneOption[];
   selectedNodeId?: string;
   expandedNodeIds: ReadonlySet<string>;
   persistentManagersOpen: boolean;
+  onEditorPreviewSceneChange(scene: EditorPreviewSceneId): void;
   onSelectNode(id: string): void;
   onToggleNode(id: string): void;
   onTogglePersistentManagers(): void;
@@ -2368,21 +2378,38 @@ function HierarchyTree({
   onMoveHierarchyNode(node: DebugNodeDescriptor, target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
-  const { persistentManagers, scenes } = splitHierarchyRoots(roots);
+  const { persistentManagers, scenes } = splitHierarchyRoots(roots, mode);
+  const treeProps = { selectedNodeId, expandedNodeIds, onSelectNode, onToggleNode, isDynamicNodeDragActive, getDraggedDynamicNode, isImageAssetDragActive, getDraggedImageAsset, onDropDynamicNode, onDropImageAsset, onOpenCreateMenu, draggedHierarchyNode, hierarchyDropTarget, onHierarchyDragStart, onHierarchyDragEnd, onHierarchyDragOver, onMoveHierarchyNode, onDeleteNode };
+
+  if (mode === 'editor') {
+    return (
+      <div className={styles.hierarchyGroups}>
+        <section className={styles.hierarchyGroup}>
+          <div className={styles.hierarchyGroupHeaderStatic}>
+            <Layers size={13} />
+            <span>Scene</span>
+            <select className={`${styles.headerSelect} ${styles.hierarchySceneSelect}`} value={editorPreviewScene} onChange={(event) => onEditorPreviewSceneChange(event.target.value as EditorPreviewSceneId)}>
+              {editorPreviewSceneOptions.map((scene) => <option key={scene.id} value={scene.id}>{scene.label}</option>)}
+            </select>
+            <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
+          </div>
+          <NodeTree nodes={scenes} {...treeProps} />
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.hierarchyGroups}>
-      {persistentManagers.length > 0 && (
-        <section className={styles.hierarchyGroup}>
-          <button type="button" className={styles.hierarchyGroupHeader} onClick={onTogglePersistentManagers} aria-expanded={persistentManagersOpen}>
-            {persistentManagersOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            <Boxes size={13} />
-            <span>Persistent Managers</span>
-            <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
-          </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />}
-        </section>
-      )}
+      <section className={styles.hierarchyGroup}>
+        <button type="button" className={styles.hierarchyGroupHeader} onClick={onTogglePersistentManagers} aria-expanded={persistentManagersOpen}>
+          {persistentManagersOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+          <Boxes size={13} />
+          <span>Persistent Managers</span>
+          <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
+        </button>
+        {persistentManagersOpen && <NodeTree nodes={persistentManagers} {...treeProps} />}
+      </section>
 
       <section className={styles.hierarchyGroup}>
         <div className={styles.hierarchyGroupHeaderStatic}>
@@ -2390,7 +2417,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />
+        <NodeTree nodes={scenes} {...treeProps} />
       </section>
     </div>
   );
@@ -2623,6 +2650,14 @@ function NodeCreateContextMenu({ menu, onCreate, onClose }: { menu: { node: Debu
 
 function isAppRootNode(node: DebugNodeDescriptor): boolean {
   return node.name === 'App-Root' && node.className === 'NodeRoot';
+}
+
+function isEditorRuntimeRootNode(node: DebugNodeDescriptor): boolean {
+  return node.name.startsWith('Editor-') && node.name.endsWith('-Root') && node.className === 'NodeRoot';
+}
+
+function isPlayRuntimeRootNode(node: DebugNodeDescriptor): boolean {
+  return node.name === 'Play-Runtime-Root' && node.className === 'NodeRoot';
 }
 
 function iconForNode(node: DebugNodeDescriptor) {
@@ -3370,11 +3405,11 @@ function countNodes(nodes: DebugNodeDescriptor[]): number {
   return nodes.reduce((count, node) => count + 1 + countNodes(node.children), 0);
 }
 
-function splitHierarchyRoots(roots: DebugNodeDescriptor[]): { persistentManagers: DebugNodeDescriptor[]; scenes: DebugNodeDescriptor[] } {
-  const appRoot = roots.find(isAppRootNode);
+function splitHierarchyRoots(roots: DebugNodeDescriptor[], mode: ViewportMode): { persistentManagers: DebugNodeDescriptor[]; scenes: DebugNodeDescriptor[] } {
+  const runtimeRoot = mode === 'editor' ? roots.find(isEditorRuntimeRootNode) : roots.find(isPlayRuntimeRootNode) ?? roots.find(isAppRootNode);
   return {
-    persistentManagers: roots.filter((node) => !isAppRootNode(node)),
-    scenes: appRoot?.children ?? [],
+    persistentManagers: mode === 'editor' ? [] : roots.filter((node) => node !== runtimeRoot),
+    scenes: runtimeRoot?.children ?? [],
   };
 }
 
