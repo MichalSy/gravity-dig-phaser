@@ -2914,9 +2914,7 @@ function ExposedPropsSection({
   }, [debugProps?.sentAt, resetVersion]);
 
   function patchProp(key: string, value: DebugNodePatch[string]): void {
-    const patch: DebugNodePatch = key === 'size'
-      ? { size: value, sizeMode: value === null ? 'content' : 'explicit' }
-      : { [key]: value };
+    const patch: DebugNodePatch = { [key]: value };
     const signature = `${node.id}:${JSON.stringify(patch)}`;
     if (lastPatchSignatureRef.current === signature) return;
     lastPatchSignatureRef.current = signature;
@@ -2928,11 +2926,9 @@ function ExposedPropsSection({
 
   return (
     <>
-      {groups ? groups.filter((group) => group.name !== 'State' && group.name !== 'Presentation').map((group) => {
-        const visibleProps = Object.entries(group.props).filter(([key]) => key !== 'sizeMode');
-        return (
+      {groups ? groups.filter((group) => group.name !== 'State' && group.name !== 'Presentation').map((group) => (
         <InspectorSection key={group.name} title={group.name}>
-          {visibleProps.map(([key, prop]) => (
+          {Object.entries(group.props).map(([key, prop]) => (
             <EditablePropRow
               key={`${node.id}:${key}`}
               name={key}
@@ -2945,13 +2941,19 @@ function ExposedPropsSection({
             />
           ))}
         </InspectorSection>
-        );
-      }) : <InspectorSection title="Exposed Props"><FragmentRow name="status" value="Keine Node-Definition für diesen Node." /></InspectorSection>}
+      )) : <InspectorSection title="Exposed Props"><FragmentRow name="status" value="Keine Node-Definition für diesen Node." /></InspectorSection>}
     </>
   );
 }
 
 const inputCommitDebounceMs = 250;
+const sizeModeOptions = ['explicit', 'content', 'fill'] as const;
+type SizeModeOption = typeof sizeModeOptions[number];
+const sizeModeLabels: Record<SizeModeOption, string> = {
+  explicit: 'Explicit Size',
+  content: 'From Content',
+  fill: 'Fill Parent',
+};
 
 function EditablePropRow({
   name,
@@ -3064,6 +3066,18 @@ function EditablePropRow({
     );
   }
 
+  if (name === 'sizeMode') {
+    const mode = typeof draft === 'string' && sizeModeOptions.includes(draft as SizeModeOption) ? draft : 'content';
+    return (
+      <>
+        <span>{label}</span>
+        <select className={styles.editorInput} value={mode} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.value)}>
+          {sizeModeOptions.map((option) => <option key={option} value={option}>{sizeModeLabels[option]}</option>)}
+        </select>
+      </>
+    );
+  }
+
   if (prop.type === 'String') {
     return (
       <>
@@ -3124,19 +3138,17 @@ function EditablePropRow({
   if (prop.type === 'Size') {
     const computedSize = debugProps?.localTransform ? { width: debugProps.localTransform.width, height: debugProps.localTransform.height } : undefined;
     const size = isSizeValue(draft) ? draft : isSizeValue(value) ? value : computedSize ?? { width: 0, height: 0 };
-    const calculatedFromContent = draft === null || debugProps?.props.sizeMode === 'content';
+    const sizeMode = typeof debugProps?.props.sizeMode === 'string' ? debugProps.props.sizeMode : 'explicit';
+    const editableSize = sizeMode === 'explicit';
     return (
       <>
         <span>{label}</span>
         <div className={styles.sizeEditorStack}>
-          <label className={styles.inlineCheckboxLabel}>
-            <input type="checkbox" checked={calculatedFromContent} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.checked ? null : size)} />
-            <span>Calculate from Content</span>
-          </label>
           <div className={styles.vectorEditor}>
-            <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly || calculatedFromContent} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
-            <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly || calculatedFromContent} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
+            <input className={styles.editorInput} type="number" value={numberInputValue(size.width)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly || !editableSize} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: event.currentTarget.value, height: size.height })} onBlur={() => commit()} />
+            <input className={styles.editorInput} type="number" value={numberInputValue(size.height)} step={prop.step ?? 1} min={prop.min ?? 0} max={prop.max} disabled={prop.readOnly || !editableSize} onFocus={() => setEditing(true)} onKeyDown={commitOnEnter} onChange={(event) => scheduleCommit({ width: size.width, height: event.currentTarget.value })} onBlur={() => commit()} />
           </div>
+          {!editableSize && <span className={styles.editorHint}>Size kommt von sizeMode: {sizeMode}</span>}
         </div>
       </>
     );
