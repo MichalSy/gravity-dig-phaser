@@ -104,7 +104,7 @@ export class ImageNode extends TransformNode {
     this.applyTransformTo(this.phaserImage);
   }
 
-  update(_deltaMs?: number): void {
+  override coreUpdate(_deltaMs?: number): void {
     if (!this.phaserImage) return;
 
     if (this.syncMode === 'object-to-node') {

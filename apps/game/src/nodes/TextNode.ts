@@ -70,7 +70,7 @@ export class TextNode extends TransformNode {
     this.updateSizeFromText();
   }
 
-  update(): void {
+  override coreUpdate(): void {
     if (!this.phaserText) return;
 
     this.phaserText.setText(this.text);
