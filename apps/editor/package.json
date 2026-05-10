@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3002",
-    "build": "next build",
-    "start": "next start -p ${PORT:-80}"
+    "build": "npm run build:embedded-game && next build",
+    "start": "next start -p ${PORT:-80}",
+    "build:embedded-game": "cd ../game && VITE_BASE_PATH=/game/ npm run build && cd ../editor && node scripts/sync-embedded-game.mjs"
   },
   "dependencies": {
     "@gravity-dig/debug-protocol": "*",

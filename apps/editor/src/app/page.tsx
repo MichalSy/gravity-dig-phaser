@@ -29,7 +29,8 @@ function defaultRelayUrl(): string {
 function defaultGameUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_URL;
   if (configured) return configured;
-  return isLocalEditorHost() ? 'http://localhost:5173' : 'https://gravity-dig-phaser.sytko.de';
+  if (typeof window !== 'undefined') return new URL('/game/', window.location.origin).toString();
+  return '';
 }
 
 function editorApi(path: string): string {
@@ -57,7 +58,9 @@ function buildDebugGameUrl(sessionId: string): string {
 }
 
 function buildEditorPreviewUrl(scene: EditorPreviewSceneId): string {
-  const url = new URL(defaultGameUrl());
+  const gameUrl = defaultGameUrl();
+  if (!gameUrl) return '';
+  const url = new URL(gameUrl);
   url.searchParams.set('runtimeMode', 'editor');
   url.searchParams.set('editorScene', scene);
   return url.toString();

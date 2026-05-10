@@ -8,3 +8,5 @@ dist
 
 .next
 **/.next
+
+apps/editor/public/game
