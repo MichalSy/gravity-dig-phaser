@@ -6,7 +6,8 @@ import { GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, Pl
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
 import { AnimatedImageNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
-import { DynamicScriptNode, loadDynamicNodeModule, type DynamicNodeManifest, type DynamicNodeModule } from '../dynamic-nodes';
+import { DebugBridgeNode } from '../debug';
+import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../dynamic-nodes';
 import { VIEWPORT_REFRESH_EVENT } from '../utils/screen';
 
 const sceneFiles = {
@@ -24,6 +25,8 @@ interface StartRuntimeMessage {
   mode: RuntimeMode;
   scene: RuntimeSceneId;
   editorApiBase?: string;
+  sessionId?: string;
+  relayUrl?: string;
 }
 
 const prefabFiles: Record<string, string> = {
@@ -36,7 +39,7 @@ const prefabFiles: Record<string, string> = {
 class EditorRuntimeScene extends Phaser.Scene {
   private runtime?: NodeRuntime;
   private factory?: SceneNodeFactoryRegistry;
-  private readonly dynamicModules = new Map<string, DynamicNodeModule>();
+  private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
 
   constructor() {
     super('EditorRuntime');
@@ -91,6 +94,9 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.factory = this.createFactory(prefabs);
 
     const needsGameplayRuntime = this.needsGameplayRuntime(message);
+    if (message.sessionId && message.relayUrl && message.editorApiBase) {
+      this.addDebugBridge(this.runtime, { sessionId: message.sessionId, relayUrl: message.relayUrl, editorApiUrl: message.editorApiBase });
+    }
     if (needsGameplayRuntime) this.addGameplayRuntimeNodes(this.runtime);
 
     const root = this.runtime.addRoot(new NodeRoot({ rootName: 'Editor-Runtime-Root' }));
@@ -119,12 +125,44 @@ class EditorRuntimeScene extends Phaser.Scene {
     runtime.addPersistentNode(new LevelGeneratorManagerNode());
   }
 
+  private addDebugBridge(runtime: NodeRuntime, config: { sessionId: string; relayUrl: string; editorApiUrl: string }): void {
+    runtime.addPersistentNode(new DebugBridgeNode({ enabled: true, ...config }, {
+      createNode: (definition) => {
+        if (!this.factory) throw new Error('Runtime factory is not ready');
+        return this.factory.createTree(definition);
+      },
+      hasDynamicModule: (module) => this.hasDynamicModule(module),
+      ensureDynamicModule: (module, code) => this.ensureDynamicModule(module, code),
+      reloadDynamicModule: (module, code) => this.reloadDynamicModule(module, code),
+    }));
+  }
+
+  private hasDynamicModule(entry: Pick<DynamicNodeManifestEntry, 'nodeTypeId' | 'hash'>): boolean {
+    return Boolean(entry.nodeTypeId && this.dynamicModules.get(entry.nodeTypeId)?.hash === entry.hash);
+  }
+
+  private async ensureDynamicModule(entry: Pick<DynamicNodeManifestEntry, 'nodeTypeId' | 'hash'> & { url?: string }, code?: string): Promise<boolean> {
+    const nodeTypeId = entry.nodeTypeId;
+    if (!nodeTypeId) return false;
+    const cached = this.dynamicModules.get(nodeTypeId);
+    if (cached?.hash === entry.hash) return true;
+    const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash }) : undefined;
+    if (!module || module.nodeTypeId !== nodeTypeId) return false;
+    this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
+    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props }));
+    return true;
+  }
+
+  private async reloadDynamicModule(entry: Pick<DynamicNodeManifestEntry, 'nodeTypeId' | 'hash'> & { url?: string }, code: string): Promise<number> {
+    return await this.ensureDynamicModule(entry, code) ? 0 : 0;
+  }
+
   private async loadDynamicModules(editorApiBase: string | undefined): Promise<void> {
     const manifest = await this.fetchOptionalJson<DynamicNodeManifest>(editorApiBase, 'dynamic-nodes-compiled/manifest.json');
     for (const entry of manifest?.nodes ?? []) {
       if (!entry.nodeTypeId) continue;
       const module = await loadDynamicNodeModule({ hash: entry.hash, url: this.contentUrl(editorApiBase, `dynamic-nodes-compiled/${entry.url.split('/').at(-1) ?? ''}`) });
-      if (module) this.dynamicModules.set(entry.nodeTypeId, module);
+      if (module) this.dynamicModules.set(entry.nodeTypeId, { hash: entry.hash, module });
     }
   }
 
@@ -166,7 +204,8 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.AnimatedImageNode, (definition) => new AnimatedImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof AnimatedImageNode>[0]))
       .register(NODE_TYPE_IDS.CollisionRectNode, (definition) => new CollisionRectNode(optionsFrom(definition)));
 
-    for (const [nodeTypeId, module] of this.dynamicModules) {
+    for (const [nodeTypeId, cached] of this.dynamicModules) {
+      const module = cached.module;
       factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props }));
     }
     return factory;

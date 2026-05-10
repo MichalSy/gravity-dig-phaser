@@ -597,7 +597,7 @@ export default function Home() {
 
   useEffect(() => {
     void startRuntimeFrame();
-  }, [viewportMode, editorPreviewScene, gameFrameKey, runtimeReadyKey]);
+  }, [viewportMode, editorPreviewScene, gameFrameKey, runtimeReadyKey, sessionId]);
 
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
@@ -678,6 +678,8 @@ export default function Home() {
       mode: viewportMode,
       scene: editorPreviewScene,
       editorApiBase: window.location.origin,
+      sessionId,
+      relayUrl: defaultRelayUrl(),
     }, window.location.origin);
   }
 
