@@ -1743,6 +1743,10 @@ function GitSavePreviewDialog({
                   height="100%"
                   original={selectedFile.original}
                   modified={selectedFile.modified}
+                  originalModelPath={`git-diff-original://${selectedFile.path}`}
+                  modifiedModelPath={`git-diff-modified://${selectedFile.path}`}
+                  keepCurrentOriginalModel
+                  keepCurrentModifiedModel
                   language={editorLanguageForPath(selectedFile.path)}
                   theme="vs-dark"
                   options={{ automaticLayout: true, readOnly: true, renderSideBySide: true, minimap: { enabled: false }, scrollBeyondLastLine: false, renderOverviewRuler: false }}
