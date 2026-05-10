@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodeDeleteMessage, DebugNodeMoveMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
-import { GameNode, SCENE_PROP_RECORDS, type NodeContext, type SceneNodeJson } from '../nodes';
+import { GameNode, SCENE_PROP_RECORDS, type NodeContext, type PointLike, type SceneNodeJson } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
 import { captureDebugNodeTree, diffDebugNodeTrees, type DebugNodeTreeSnapshot } from './debugNodeTree';
 
@@ -20,6 +20,16 @@ interface PendingDynamicNodeUpdate {
   requestId: string;
   module: DebugDynamicNodeModuleReference;
   requestedAt: number;
+}
+
+interface SelectedNodeDragState {
+  pointerId: number;
+  nodeId: string;
+  node: GameNode;
+  worldGrabOffset: PointLike;
+  startPosition: PointLike;
+  lastSentAt: number;
+  lastSentSignature: string;
 }
 
 export class DebugBridgeNode extends GameNode {
@@ -46,6 +56,7 @@ export class DebugBridgeNode extends GameNode {
   private boundEditorClientId?: string;
   private readonly pendingCreates = new Map<string, PendingDynamicNodeCreate>();
   private readonly pendingUpdates = new Map<string, PendingDynamicNodeUpdate>();
+  private selectedNodeDrag?: SelectedNodeDragState;
 
   constructor(config: DebugConnectionConfig, liveAuthoring?: DebugBridgeLiveAuthoring) {
     super({ name: 'DebugBridge', className: 'DebugBridgeNode' });
@@ -58,6 +69,10 @@ export class DebugBridgeNode extends GameNode {
     this.ctx = ctx;
     this.overlay = ctx.phaserScene.add.graphics().setVisible(false);
     ctx.phaserScene.events.on(Phaser.Scenes.Events.POST_UPDATE, this.afterSceneUpdate, this);
+    ctx.phaserScene.input.on(Phaser.Input.Events.POINTER_DOWN, this.handlePointerDown, this);
+    ctx.phaserScene.input.on(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
+    ctx.phaserScene.input.on(Phaser.Input.Events.POINTER_UP, this.handlePointerUp, this);
+    ctx.phaserScene.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.handlePointerUp, this);
     this.connect();
   }
 
@@ -85,6 +100,11 @@ export class DebugBridgeNode extends GameNode {
     GameNode.debugLayoutEnabled = false;
     this.clearReconnectTimer();
     this.ctx?.phaserScene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterSceneUpdate, this);
+    this.ctx?.phaserScene.input.off(Phaser.Input.Events.POINTER_DOWN, this.handlePointerDown, this);
+    this.ctx?.phaserScene.input.off(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
+    this.ctx?.phaserScene.input.off(Phaser.Input.Events.POINTER_UP, this.handlePointerUp, this);
+    this.ctx?.phaserScene.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.handlePointerUp, this);
+    this.selectedNodeDrag = undefined;
     this.overlay?.destroy();
     this.overlay = undefined;
     this.socket?.close();
@@ -108,6 +128,81 @@ export class DebugBridgeNode extends GameNode {
 
     this.propsElapsedMs = 0;
     this.sendSelectedNodeProps();
+  }
+
+  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+    if (!this.ctx || !this.selectedNodeId || this.selectedNodeDrag) return;
+    if (pointer.leftButtonDown && !pointer.leftButtonDown()) return;
+    const node = this.nodesById.get(this.selectedNodeId);
+    if (!node || !node.parent || !node.hasExposedSceneProp('position')) return;
+    const bounds = node.getWorldBounds();
+    if (!bounds || !pointInBounds(this.pointerToDebugWorld(pointer, bounds.scrollFactor), bounds)) return;
+
+    const pointerWorld = this.pointerToDebugWorld(pointer, bounds.scrollFactor);
+    const nodeWorld = node.getWorldPosition();
+    this.selectedNodeDrag = {
+      pointerId: pointer.id,
+      nodeId: this.selectedNodeId,
+      node,
+      worldGrabOffset: { x: pointerWorld.x - nodeWorld.x, y: pointerWorld.y - nodeWorld.y },
+      startPosition: roundPoint(node.position),
+      lastSentAt: 0,
+      lastSentSignature: '',
+    };
+    pointer.event?.preventDefault();
+  }
+
+  private handlePointerMove(pointer: Phaser.Input.Pointer): void {
+    const drag = this.selectedNodeDrag;
+    if (!drag || drag.pointerId !== pointer.id) return;
+    const bounds = drag.node.getWorldBounds();
+    const pointerWorld = this.pointerToDebugWorld(pointer, bounds?.scrollFactor);
+    const desiredWorldPosition = { x: pointerWorld.x - drag.worldGrabOffset.x, y: pointerWorld.y - drag.worldGrabOffset.y };
+    const position = roundPoint(drag.node.worldToLocalPosition(desiredWorldPosition));
+    const result = drag.node.applySceneProps({ position });
+    if (Object.keys(result.rejected).length > 0) {
+      this.selectedNodeDrag = undefined;
+      return;
+    }
+    this.lastSelectedPropsSignature = '';
+    this.drawSelectedNodeOverlay();
+    this.sendSelectedNodeProps(true);
+    pointer.event?.preventDefault();
+  }
+
+  private handlePointerUp(pointer: Phaser.Input.Pointer): void {
+    const drag = this.selectedNodeDrag;
+    if (!drag || drag.pointerId !== pointer.id) return;
+    this.sendDraggedNodePatch(drag, true);
+    this.selectedNodeDrag = undefined;
+    pointer.event?.preventDefault();
+  }
+
+  private pointerToDebugWorld(pointer: Phaser.Input.Pointer, scrollFactor = 1): PointLike {
+    const camera = this.ctx?.phaserScene.cameras.main;
+    if (!camera) return { x: pointer.worldX, y: pointer.worldY };
+    return { x: pointer.x + camera.scrollX * scrollFactor, y: pointer.y + camera.scrollY * scrollFactor };
+  }
+
+  private sendDraggedNodePatch(drag: SelectedNodeDragState, force: boolean): void {
+    const now = Date.now();
+    const position = roundPoint(drag.node.position);
+    const signature = `${position.x}:${position.y}`;
+    if (!force && (signature === drag.lastSentSignature || now - drag.lastSentAt < 80)) return;
+    drag.lastSentAt = now;
+    drag.lastSentSignature = signature;
+    this.send({
+      type: 'node:patch',
+      sessionId: this.config.sessionId,
+      sourceClientId: this.clientId,
+      targetClientId: this.boundEditorClientId,
+      nodeId: drag.nodeId,
+      instanceId: drag.node.instanceId,
+      name: drag.node.debugName(),
+      props: { position },
+      previousProps: { position: drag.startPosition },
+      sentAt: now,
+    });
   }
 
   private connect(): void {
@@ -710,6 +805,14 @@ export class DebugBridgeNode extends GameNode {
   }
 }
 
+
+function pointInBounds(point: PointLike, bounds: { x: number; y: number; width: number; height: number }): boolean {
+  return point.x >= bounds.x && point.x <= bounds.x + bounds.width && point.y >= bounds.y && point.y <= bounds.y + bounds.height;
+}
+
+function roundPoint(point: PointLike): PointLike {
+  return { x: Math.round(point.x), y: Math.round(point.y) };
+}
 
 interface DebugImageSourcePayload {
   id: string;

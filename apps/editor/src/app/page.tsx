@@ -333,6 +333,9 @@ export default function Home() {
   const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
+  const treeRootsRef = useRef<DebugNodeDescriptor[]>([]);
+  const selectedNodePropsRef = useRef<DebugNodePropsMessage | undefined>(undefined);
+  const nodeDefinitionsRef = useRef<Map<string, DebugSceneNodeDefinition>>(new Map());
   const workbenchRef = useRef<HTMLElement | null>(null);
   const viewportPanelRef = useRef<HTMLElement | null>(null);
   const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
@@ -524,6 +527,16 @@ export default function Home() {
         return;
       }
 
+      if (message.type === 'node:patch') {
+        const target = findNode(treeRootsRef.current, message.nodeId ?? '') ?? findNodeByInstanceId(treeRootsRef.current, message.instanceId);
+        if (target) {
+          const previousProps = message.previousProps ?? collectPreviousPropsFromRefs(target, message.props);
+          void persistPendingPatch(target, message.props, previousProps);
+          setPatchStatus(`Viewport-Drag übernommen: ${Object.keys(message.props).join(', ')}`);
+        }
+        return;
+      }
+
       if (message.type === 'node:props') {
         if (message.nodeId === selectedNodeIdRef.current) setSelectedNodeProps(message);
       }
@@ -556,6 +569,18 @@ export default function Home() {
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
+
+  useEffect(() => {
+    treeRootsRef.current = treeRoots;
+  }, [treeRoots]);
+
+  useEffect(() => {
+    selectedNodePropsRef.current = selectedNodeProps;
+  }, [selectedNodeProps]);
+
+  useEffect(() => {
+    nodeDefinitionsRef.current = nodeDefinitions;
+  }, [nodeDefinitions]);
 
   useEffect(() => {
     if (publicFilesInSelectedDirectory.length === 0) {
@@ -1145,9 +1170,13 @@ export default function Home() {
   }
 
   function collectPreviousProps(node: DebugNodeDescriptor, props: DebugNodePatch): DebugNodePatch {
-    const definition = node.instanceId ? nodeDefinitions.get(node.instanceId) : undefined;
+    return collectPreviousPropsFromRefs(node, props);
+  }
+
+  function collectPreviousPropsFromRefs(node: DebugNodeDescriptor, props: DebugNodePatch): DebugNodePatch {
+    const definition = node.instanceId ? nodeDefinitionsRef.current.get(node.instanceId) : undefined;
     const exposedProps = flattenDefinitionProps(definition);
-    const debugProps = selectedNodeProps?.nodeId === node.id ? selectedNodeProps : undefined;
+    const debugProps = selectedNodePropsRef.current?.nodeId === node.id ? selectedNodePropsRef.current : undefined;
     return Object.fromEntries(Object.keys(props).flatMap((key) => {
       const prop = exposedProps[key];
       if (!prop) return [];
@@ -1289,7 +1318,8 @@ export default function Home() {
   }
 
   async function persistPendingPatch(node: DebugNodeDescriptor, props: DebugNodePatch, previousProps: DebugNodePatch): Promise<void> {
-    const nodePath = findNodePath(treeRoots, node.id);
+    if (!sessionId) return;
+    const nodePath = findNodePath(treeRootsRef.current, node.id);
     if (!nodePath) {
       setGitSaveStatus('Pending Change nicht gespeichert: Node-Pfad nicht gefunden.');
       return;
@@ -3691,6 +3721,16 @@ function updateNode(nodes: DebugNodeDescriptor[], id: string, patch: Partial<Deb
   const node = findNode(nodes, id);
   if (!node) return;
   Object.assign(node, patch, { children: patch.children ?? node.children });
+}
+
+function findNodeByInstanceId(nodes: DebugNodeDescriptor[], instanceId: string | undefined): DebugNodeDescriptor | undefined {
+  if (!instanceId) return undefined;
+  for (const node of nodes) {
+    if (node.instanceId === instanceId) return node;
+    const child = findNodeByInstanceId(node.children, instanceId);
+    if (child) return child;
+  }
+  return undefined;
 }
 
 function findNode(nodes: DebugNodeDescriptor[], id: string): DebugNodeDescriptor | undefined {

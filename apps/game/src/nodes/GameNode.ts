@@ -518,6 +518,10 @@ export abstract class GameNode {
     return this.scenePropOverrides.has(key);
   }
 
+  hasExposedSceneProp(key: string): boolean {
+    return Boolean(this.getFlattenedExposedProps()[key]);
+  }
+
   markExposedPropReadOnly(key: string, reason?: string): void {
     this.readOnlyExposedProps.set(key, reason);
   }

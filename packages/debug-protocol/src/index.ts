@@ -125,6 +125,7 @@ export interface DebugNodePatchMessage extends DebugTargetedMessageFields {
   instanceId?: string;
   name?: string;
   props: DebugNodePatch;
+  previousProps?: DebugNodePatch;
   sentAt: number;
 }
 
