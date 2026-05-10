@@ -794,6 +794,7 @@ function contentTypeForPath(path: string): string {
     case '.mp3': return 'audio/mpeg';
     case '.ogg': return 'audio/ogg';
     case '.json': return 'application/json; charset=utf-8';
+    case '.js': return 'text/javascript; charset=utf-8';
     case '.txt': return 'text/plain; charset=utf-8';
     case '.woff2': return 'font/woff2';
     default: return 'application/octet-stream';
