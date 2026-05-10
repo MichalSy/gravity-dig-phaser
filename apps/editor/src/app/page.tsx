@@ -1437,12 +1437,16 @@ export default function Home() {
 
   return (
     <main className={styles.appShell}>
-      <header className={styles.toolbar}>
+      <header className={`${styles.toolbar} ${viewportMode === 'play' ? styles.liveToolbar : ''}`}>
         <div className={styles.brandBlock}>
           <span className={styles.eyebrow}>Gravity Dig</span>
           <h1 className={styles.title}>{editorTitle}</h1>
         </div>
         <div className={styles.statusStack}>
+          <div className={styles.modeToggle} role="group" aria-label="Viewport Modus">
+            <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'editor' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
+            <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'play' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>
+          </div>
           <span className={`${styles.badge} ${styles[status]}`}>{statusText}</span>
           <span className={`${styles.badge} ${gameCount > 0 ? styles.connected : styles.connecting}`}>{gameText}</span>
         </div>
@@ -1509,12 +1513,7 @@ export default function Home() {
         <div className={`${styles.columnResizer} ${styles.leftColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
 
         <section ref={viewportPanelRef} className={styles.viewportPanel}>
-          <PanelHeader title={viewportMode === 'editor' ? 'Scene Editor Preview' : 'Live Game'} meta={viewportMode === 'editor' ? `Editor Mode · ${editorPreviewScene}` : lastEvent}>
-            <div className={styles.viewportControls}>
-              <button type="button" className={`${styles.headerButton} ${viewportMode === 'editor' ? styles.activeHeaderButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
-              <button type="button" className={`${styles.headerButton} ${viewportMode === 'play' ? styles.activeHeaderButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>
-            </div>
-          </PanelHeader>
+          <PanelHeader title={viewportMode === 'editor' ? 'Scene Editor Preview' : 'Live Game'} meta={viewportMode === 'editor' ? `Editor Mode · ${editorPreviewScene}` : lastEvent} />
           <div className={styles.viewportBody}>
             <div className={`${styles.frameStage} ${viewportMode === 'editor' ? styles.editorFrameStage : ''}`}>
               <iframe
@@ -3413,9 +3412,10 @@ function splitHierarchyRoots(roots: DebugNodeDescriptor[], mode: ViewportMode): 
   const runtimeRoot = mode === 'editor'
     ? roots.find(isEditorRuntimeRootNode) ?? roots.find((node) => isRuntimeRootNode(node) && !isPlayRuntimeRootNode(node))
     : roots.find(isPlayRuntimeRootNode) ?? roots.find(isAppRootNode) ?? roots.find(isRuntimeRootNode);
+  const scenes = runtimeRoot?.children ?? [];
   return {
     persistentManagers: mode === 'editor' ? [] : roots.filter((node) => node !== runtimeRoot),
-    scenes: runtimeRoot?.children ?? [],
+    scenes: mode === 'editor' ? scenes.filter((node) => node.active && (node.effectiveActive ?? true)) : scenes,
   };
 }
 
