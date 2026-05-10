@@ -11,7 +11,7 @@ import {
   PlayerStateManagerNode,
   ShipNode,
 } from '../game/nodes';
-import { AnimatedImageNode, collectNodesByName, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
+import { AnimatedImageNode, collectNodesByName, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
@@ -78,7 +78,7 @@ export class AppScene extends Phaser.Scene {
     this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
 
-    this.appRuntime = new NodeRuntime({ phaserScene: this });
+    this.appRuntime = new NodeRuntime({ phaserScene: this, mode: NodeRuntimeMode.Play });
     this.sceneFactory = this.createSceneFactory();
     await this.registerDynamicNodeModules();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);

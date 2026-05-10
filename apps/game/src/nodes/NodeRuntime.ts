@@ -3,9 +3,11 @@ import { AssetCatalog, type ImageAssetDefinition } from '../assets/AssetCatalog'
 import type { AnimationSetDefinition } from '../assets/animationSetMeta';
 import { GameNode, type NodeContext } from './GameNode';
 import { NodeRoot } from './NodeRoot';
+import { NodeRuntimeMode } from './NodeRuntimeMode';
 
 export interface NodeRuntimeOptions {
   phaserScene: Phaser.Scene;
+  mode?: NodeRuntimeMode;
 }
 
 export class NodeRuntime {
@@ -14,10 +16,12 @@ export class NodeRuntime {
   private readonly registry = new Map<string, GameNode>();
   private readonly assetCatalog: AssetCatalog;
   private readonly ctx: NodeContext;
+  mode: NodeRuntimeMode;
   private initialized = false;
   private resolved = false;
 
   constructor(options: NodeRuntimeOptions) {
+    this.mode = options.mode ?? NodeRuntimeMode.Play;
     this.assetCatalog = new AssetCatalog(options.phaserScene);
     this.ctx = {
       phaserScene: options.phaserScene,
@@ -111,8 +115,13 @@ export class NodeRuntime {
 
   update(deltaMs: number): void {
     this.resolve();
-    for (const node of this.persistentNodeList) node.updateTree(deltaMs);
-    for (const root of this.rootNodes) root.updateTree(deltaMs);
+    if (this.mode === NodeRuntimeMode.Editor) {
+      for (const node of this.persistentNodeList) node.editorUpdateTree(deltaMs);
+      for (const root of this.rootNodes) root.editorUpdateTree(deltaMs);
+    } else {
+      for (const node of this.persistentNodeList) node.updateTree(deltaMs);
+      for (const root of this.rootNodes) root.updateTree(deltaMs);
+    }
     this.applySceneObjectHierarchy();
   }
 

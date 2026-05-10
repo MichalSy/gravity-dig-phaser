@@ -10,5 +10,6 @@ export * from './CollisionRectNode';
 export * from './SceneNode';
 export * from './DisplayNodeFactory';
 export * from './NodeRuntime';
+export * from './NodeRuntimeMode';
 export * from './NodeRoot';
 export * from './NodeTypeIds';

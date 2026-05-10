@@ -175,6 +175,7 @@ export abstract class GameNode {
   resolve(_ctx: NodeContext): void {}
   afterResolved(_ctx: NodeContext): void {}
   update(_deltaMs: number): void {}
+  editorUpdate(_deltaMs: number): void {}
   afterChildrenUpdated(): void {}
   destroy(): void {}
 
@@ -211,6 +212,15 @@ export abstract class GameNode {
 
     this.update(deltaMs);
     for (const child of this.children) child.updateTree(deltaMs);
+    this.updateContentSizeFromChildren();
+    this.afterChildrenUpdated();
+  }
+
+  editorUpdateTree(deltaMs: number): void {
+    if (!this.isEffectivelyActive()) return;
+
+    this.editorUpdate(deltaMs);
+    for (const child of this.children) child.editorUpdateTree(deltaMs);
     this.updateContentSizeFromChildren();
     this.afterChildrenUpdated();
   }
