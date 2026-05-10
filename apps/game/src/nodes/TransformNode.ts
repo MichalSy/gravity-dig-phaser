@@ -162,7 +162,7 @@ export class TransformNode extends GameNode {
 
   override getDebugProps(): NodeDebugProps {
     const world = this.getWorldTransform();
-    const contentBounds = this.getLocalContentBounds();
+    const contentBounds = this.getLayoutLocalBounds() ?? this.getLocalContentBounds();
     return {
       ...super.getDebugProps(),
       visible: this.visible,

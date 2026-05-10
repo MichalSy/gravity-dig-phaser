@@ -26,8 +26,7 @@ function visibleImageDisplaySize(image: Phaser.GameObjects.Image): { width: numb
   return { width: size.width * Math.abs(image.scaleX), height: size.height * Math.abs(image.scaleY) };
 }
 
-
-function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObjects.Image, originPosition = node.getPositionInParent()): NodeDebugBounds {
+function visibleImageLocalBounds(node: ImageNode, image: Phaser.GameObjects.Image): NodeDebugBounds {
   const cropImage = image as CroppableImage;
   const crop = cropImage.isCropped ? cropImage._crop : undefined;
   const frameWidth = image.frame.width;
@@ -36,26 +35,9 @@ function visibleImageBoundsInParentSpace(node: ImageNode, image: Phaser.GameObje
   const cropY = crop?.y ?? 0;
   const cropWidth = crop?.width ?? frameWidth;
   const cropHeight = crop?.height ?? frameHeight;
-  const originOffset = node.getLocalOriginOffset();
-  const left = originPosition.x - originOffset.x * node.scaleX + cropX * node.scaleX;
-  const top = originPosition.y - originOffset.y * node.scaleY + cropY * node.scaleY;
-  return { x: left, y: top, width: cropWidth * Math.abs(node.scaleX), height: cropHeight * Math.abs(node.scaleY), scrollFactor: node.scrollFactor };
-}
-
-function visibleImageWorldBounds(image: Phaser.GameObjects.Image): NodeDebugBounds {
-  const cropImage = image as CroppableImage;
-  const crop = cropImage.isCropped ? cropImage._crop : undefined;
-  const frameWidth = image.frame.width;
-  const frameHeight = image.frame.height;
-  const cropX = crop?.x ?? 0;
-  const cropY = crop?.y ?? 0;
-  const cropWidth = crop?.width ?? frameWidth;
-  const cropHeight = crop?.height ?? frameHeight;
-  const scaleX = image.scaleX;
-  const scaleY = image.scaleY;
-  const left = image.x - image.originX * frameWidth * scaleX + cropX * scaleX;
-  const top = image.y - image.originY * frameHeight * scaleY + cropY * scaleY;
-  return { x: left, y: top, width: cropWidth * Math.abs(scaleX), height: cropHeight * Math.abs(scaleY) };
+  const left = -node.origin.x * frameWidth + cropX;
+  const top = -node.origin.y * frameHeight + cropY;
+  return { x: left, y: top, width: cropWidth, height: cropHeight };
 }
 
 export interface ImageNodeOptions extends TransformNodeOptions {
@@ -149,24 +131,9 @@ export class ImageNode extends TransformNode {
     }
   }
 
-  override getBoundsInParentSpace(): NodeDebugBounds | undefined {
-    if (!this.phaserImage) return super.getBoundsInParentSpace();
-    return visibleImageBoundsInParentSpace(this, this.phaserImage);
-  }
-
-  override getContentBoundsForParentSizing(): NodeDebugBounds | undefined {
-    if (!this.phaserImage) return super.getContentBoundsForParentSizing();
-    return visibleImageBoundsInParentSpace(this, this.phaserImage, this.position);
-  }
-
-  override getWorldBounds(): NodeDebugBounds | undefined {
-    return this.getDebugBounds();
-  }
-
-  override getDebugBounds(): NodeDebugBounds | undefined {
-    if (!this.phaserImage) return super.getDebugBounds();
-    const bounds = visibleImageWorldBounds(this.phaserImage);
-    return { ...bounds, scrollFactor: this.scrollFactor };
+  protected override getLocalContentBounds(): NodeDebugBounds | undefined {
+    if (!this.phaserImage) return super.getLocalContentBounds();
+    return { ...visibleImageLocalBounds(this, this.phaserImage), scrollFactor: this.scrollFactor };
   }
 
   protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {

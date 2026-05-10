@@ -9,17 +9,9 @@ function textLocalSize(text: Phaser.GameObjects.Text): { width: number; height: 
   return { width: text.width, height: text.height };
 }
 
-function textBoundsInParentSpace(node: TextNode, text: Phaser.GameObjects.Text, originPosition = node.getPositionInParent()): NodeDebugBounds {
+function textLocalBounds(node: TextNode, text: Phaser.GameObjects.Text): NodeDebugBounds {
   const size = textLocalSize(text);
-  const originOffset = node.getLocalOriginOffset();
-  const left = originPosition.x - originOffset.x * node.scaleX;
-  const top = originPosition.y - originOffset.y * node.scaleY;
-  return { x: left, y: top, width: size.width * Math.abs(node.scaleX), height: size.height * Math.abs(node.scaleY), scrollFactor: node.scrollFactor };
-}
-
-function textWorldBounds(text: Phaser.GameObjects.Text): NodeDebugBounds {
-  const bounds = text.getBounds();
-  return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+  return { x: -node.origin.x * size.width, y: -node.origin.y * size.height, width: size.width, height: size.height };
 }
 
 export interface TextNodeOptions extends TransformNodeOptions {
@@ -106,24 +98,9 @@ export class TextNode extends TransformNode {
     this.updateSizeFromText();
   }
 
-  override getBoundsInParentSpace(): NodeDebugBounds | undefined {
-    if (!this.phaserText) return super.getBoundsInParentSpace();
-    return textBoundsInParentSpace(this, this.phaserText);
-  }
-
-  override getContentBoundsForParentSizing(): NodeDebugBounds | undefined {
-    if (!this.phaserText) return super.getContentBoundsForParentSizing();
-    return textBoundsInParentSpace(this, this.phaserText, this.position);
-  }
-
-  override getWorldBounds(): NodeDebugBounds | undefined {
-    return this.getDebugBounds();
-  }
-
-  override getDebugBounds(): NodeDebugBounds | undefined {
-    if (!this.phaserText) return super.getDebugBounds();
-    const bounds = textWorldBounds(this.phaserText);
-    return { ...bounds, scrollFactor: this.scrollFactor };
+  protected override getLocalContentBounds(): NodeDebugBounds | undefined {
+    if (!this.phaserText) return super.getLocalContentBounds();
+    return { ...textLocalBounds(this, this.phaserText), scrollFactor: this.scrollFactor };
   }
 
   protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {

@@ -68,6 +68,21 @@ export interface GameNodeOptions {
   debugScrollFactor?: number;
 }
 
+export interface NodeLayoutResult {
+  measuredSize: SizeLike;
+  localScale: PointLike;
+  parentWorldScale: PointLike;
+  worldScale: PointLike;
+  worldRotation: number;
+  parentAnchorOffset: PointLike;
+  positionInParent: PointLike;
+  worldPosition: PointLike;
+  worldParentAnchorPosition?: PointLike;
+  localBounds?: NodeDebugBounds;
+  boundsInParent?: NodeDebugBounds;
+  worldBounds?: NodeDebugBounds;
+}
+
 export abstract class GameNode {
   static debugLayoutEnabled = false;
   static readonly nodeTypeId: string = NODE_TYPE_IDS.GameNode;
@@ -99,6 +114,7 @@ export abstract class GameNode {
   private readonly scenePropOverrides = new Set<string>();
   private readonly readOnlyExposedProps = new Map<string, string | undefined>();
   private contentBounds?: NodeDebugBounds;
+  private layoutResult?: NodeLayoutResult;
   private nodeContext?: NodeContext;
   private initialized = false;
   private resolved = false;
@@ -213,10 +229,50 @@ export abstract class GameNode {
   measureTree(deltaMs: number): void {
     if (!this.isEffectivelyActive()) return;
 
+    this.layoutResult = undefined;
     this.prepareLayout(deltaMs);
     this.measureSelf();
     for (const child of this.children) child.measureTree(deltaMs);
     this.updateContentSizeFromChildren();
+  }
+
+  arrangeTree(): void {
+    if (!this.isEffectivelyActive()) return;
+
+    const localScale = this.getLocalScale();
+    const parentLayout = this.parent?.layoutResult;
+    const parentWorldScale = parentLayout?.worldScale ?? this.parent?.getWorldScale() ?? { x: 1, y: 1 };
+    const parentWorldRotation = parentLayout?.worldRotation ?? this.parent?.getWorldRotation() ?? 0;
+    const parentWorldPosition = parentLayout?.worldPosition ?? this.parent?.getWorldPosition();
+    const worldScale = { x: parentWorldScale.x * localScale.x, y: parentWorldScale.y * localScale.y };
+    const worldRotation = parentWorldRotation + this.rotation;
+    const parentAnchorOffset = this.calculateParentAnchorOffset();
+    const positionInParent = { x: parentAnchorOffset.x + this.position.x, y: parentAnchorOffset.y + this.position.y };
+    const worldPosition = parentWorldPosition
+      ? rotatePoint(positionInParent.x * parentWorldScale.x, positionInParent.y * parentWorldScale.y, parentWorldRotation, parentWorldPosition)
+      : { ...this.position };
+    const worldParentAnchorPosition = parentWorldPosition
+      ? rotatePoint(parentAnchorOffset.x * parentWorldScale.x, parentAnchorOffset.y * parentWorldScale.y, parentWorldRotation, parentWorldPosition)
+      : undefined;
+
+    this.layoutResult = {
+      measuredSize: { ...this.size },
+      localScale,
+      parentWorldScale,
+      worldScale,
+      worldRotation,
+      parentAnchorOffset,
+      positionInParent,
+      worldPosition,
+      worldParentAnchorPosition,
+    };
+
+    for (const child of this.children) child.arrangeTree();
+
+    const localBounds = this.calculateArrangedLocalBounds();
+    this.layoutResult.localBounds = localBounds;
+    this.layoutResult.boundsInParent = localBounds ? transformBounds(localBounds, localScale, this.rotation, positionInParent) : undefined;
+    this.layoutResult.worldBounds = localBounds ? transformBounds(localBounds, worldScale, worldRotation, worldPosition) : undefined;
   }
 
   updateTree(deltaMs: number): void {
@@ -249,6 +305,11 @@ export abstract class GameNode {
   }
 
   getParentAnchorOffset(): PointLike {
+    if (this.layoutResult) return { ...this.layoutResult.parentAnchorOffset };
+    return this.calculateParentAnchorOffset();
+  }
+
+  private calculateParentAnchorOffset(): PointLike {
     if (!this.parent) return { x: 0, y: 0 };
     const parentAnchorOffset = anchorOffset(this.parentAnchor, this.parent.size);
     const parentOriginOffset = this.parent.getLocalOriginOffset();
@@ -256,6 +317,7 @@ export abstract class GameNode {
   }
 
   getPositionInParent(): PointLike {
+    if (this.layoutResult) return { ...this.layoutResult.positionInParent };
     const parentAnchorOffset = this.getParentAnchorOffset();
     return { x: parentAnchorOffset.x + this.position.x, y: parentAnchorOffset.y + this.position.y };
   }
@@ -297,20 +359,24 @@ export abstract class GameNode {
   }
 
   getParentWorldScale(): PointLike {
+    if (this.layoutResult) return { ...this.layoutResult.parentWorldScale };
     return this.parent?.getWorldScale() ?? { x: 1, y: 1 };
   }
 
   getWorldScale(): PointLike {
+    if (this.layoutResult) return { ...this.layoutResult.worldScale };
     const parentScale = this.getParentWorldScale();
     const localScale = this.getLocalScale();
     return { x: parentScale.x * localScale.x, y: parentScale.y * localScale.y };
   }
 
   getWorldRotation(): number {
+    if (this.layoutResult) return this.layoutResult.worldRotation;
     return (this.parent?.getWorldRotation() ?? 0) + this.rotation;
   }
 
   getBoundsInParentSpace(): NodeDebugBounds | undefined {
+    if (this.layoutResult?.boundsInParent) return cloneBounds(this.layoutResult.boundsInParent);
     return this.getBoundsInSpace(this.getPositionInParent());
   }
 
@@ -373,6 +439,7 @@ export abstract class GameNode {
   }
 
   getWorldPosition(): PointLike {
+    if (this.layoutResult) return { ...this.layoutResult.worldPosition };
     const parent = this.parent;
     if (!parent) return { ...this.position };
 
@@ -384,6 +451,7 @@ export abstract class GameNode {
   }
 
   getWorldParentAnchorPosition(): PointLike | undefined {
+    if (this.layoutResult) return this.layoutResult.worldParentAnchorPosition ? { ...this.layoutResult.worldParentAnchorPosition } : undefined;
     const parent = this.parent;
     if (!parent) return undefined;
 
@@ -445,7 +513,12 @@ export abstract class GameNode {
     };
   }
 
+  getLayoutLocalBounds(): NodeDebugBounds | undefined {
+    return this.layoutResult?.localBounds ? cloneBounds(this.layoutResult.localBounds) : undefined;
+  }
+
   getWorldBounds(): NodeDebugBounds | undefined {
+    if (this.layoutResult?.worldBounds) return cloneBounds(this.layoutResult.worldBounds);
     if (this.boundsMode === 'none') return undefined;
     const localBounds = this.getLocalContentBounds();
     if (!localBounds) return undefined;
@@ -652,11 +725,7 @@ export abstract class GameNode {
   }
 
   protected getLocalContentBounds(): NodeDebugBounds | undefined {
-    if (this.contentBounds && this.contentBounds.width > 0 && this.contentBounds.height > 0) {
-      const anchoredChildBounds = this.getAnchoredChildContentBounds();
-      if (anchoredChildBounds) return anchoredChildBounds;
-      return this.contentBounds;
-    }
+    if (this.contentBounds && this.contentBounds.width > 0 && this.contentBounds.height > 0) return this.contentBounds;
     if (this.size.width <= 0 || this.size.height <= 0) return undefined;
     return {
       x: -this.origin.x * this.size.width,
@@ -667,13 +736,38 @@ export abstract class GameNode {
     };
   }
 
-  private getAnchoredChildContentBounds(): NodeDebugBounds | undefined {
-    if (this.sizeMode !== 'content' || this.children.length === 0) return undefined;
+  private calculateArrangedLocalBounds(): NodeDebugBounds | undefined {
+    if (this.boundsMode === 'none') return undefined;
+    if (this.sizeMode !== 'content' || this.children.length === 0) return this.getLocalContentBounds();
 
-    const childBounds = this.getChildContentBounds((child) => child.getBoundsInParentSpace(), false);
-    if (childBounds.length === 0) return undefined;
+    const childBounds = this.getChildContentBounds((child) => child.getBoundsInParentSpace());
+    if (childBounds.length === 0) return this.getLocalContentBounds();
     return this.unionChildBounds(childBounds, false);
   }
+}
+
+function transformBounds(localBounds: NodeDebugBounds, scale: PointLike, rotation: number, offset: PointLike): NodeDebugBounds {
+  const left = localBounds.x * scale.x;
+  const top = localBounds.y * scale.y;
+  const right = (localBounds.x + localBounds.width) * scale.x;
+  const bottom = (localBounds.y + localBounds.height) * scale.y;
+  const corners: [DebugNodePoint, DebugNodePoint, DebugNodePoint, DebugNodePoint] = [
+    rotatePoint(left, top, rotation, offset),
+    rotatePoint(right, top, rotation, offset),
+    rotatePoint(right, bottom, rotation, offset),
+    rotatePoint(left, bottom, rotation, offset),
+  ];
+  const xs = corners.map((corner) => corner.x);
+  const ys = corners.map((corner) => corner.y);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor: localBounds.scrollFactor, corners };
+}
+
+function cloneBounds(bounds: NodeDebugBounds): NodeDebugBounds {
+  return { ...bounds, corners: bounds.corners ? [...bounds.corners] as [DebugNodePoint, DebugNodePoint, DebugNodePoint, DebugNodePoint] : undefined };
 }
 
 function getNodeTypeId(node: GameNode): string {
