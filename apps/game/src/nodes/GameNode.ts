@@ -354,7 +354,7 @@ export abstract class GameNode {
     this.size = { width: bounds.width, height: bounds.height };
   }
 
-  private getChildContentBounds(getBounds: (child: GameNode) => NodeDebugBounds | undefined, includeHidden = GameNode.debugLayoutEnabled): NodeDebugBounds[] {
+  private getChildContentBounds(getBounds: (child: GameNode) => NodeDebugBounds | undefined, includeHidden = false): NodeDebugBounds[] {
     return this.children
       .filter((child) => includeHidden || child.isDebugVisible())
       .map((child) => getBounds(child))
