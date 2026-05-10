@@ -47,6 +47,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private playGameplayMounted = false;
   private gameplayPersistentMounted = false;
   private editorApiBase?: string;
+  private startQueue: Promise<void> = Promise.resolve();
   private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
 
   constructor() {
@@ -78,12 +79,14 @@ class EditorRuntimeScene extends Phaser.Scene {
   };
 
   private async start(message: StartRuntimeMessage): Promise<void> {
-    try {
-      await this.startUnsafe(message);
-    } catch (error) {
-      console.error('[Gravity Dig Runtime] start failed', error);
-      window.parent?.postMessage({ type: 'gravity-dig:runtime:error', message: error instanceof Error ? error.message : String(error) }, window.location.origin);
-    }
+    this.startQueue = this.startQueue
+      .catch(() => undefined)
+      .then(() => this.startUnsafe(message))
+      .catch((error) => {
+        console.error('[Gravity Dig Runtime] start failed', error);
+        window.parent?.postMessage({ type: 'gravity-dig:runtime:error', message: error instanceof Error ? error.message : String(error) }, window.location.origin);
+      });
+    await this.startQueue;
   }
 
   private async startUnsafe(message: StartRuntimeMessage): Promise<void> {
