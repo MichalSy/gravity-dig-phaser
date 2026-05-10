@@ -53,7 +53,7 @@ export async function loadDynamicNodeModuleFromCode(code: string): Promise<Dynam
 }
 
 function resolveDynamicNodeUrl(url: string): string {
-  if (!url.startsWith('/dynamic-nodes-compiled/')) return url;
+  if (!url.startsWith('/scripts-compiled/')) return url;
   const base = import.meta.env.BASE_URL || '/';
   if (base === '/') return url;
   return `${base.replace(/\/$/u, '')}${url}`;

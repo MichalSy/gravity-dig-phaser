@@ -364,6 +364,7 @@ export default function Home() {
   const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
   const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
   const draggedImageAssetRef = useRef<ImageAssetDragPayload | undefined>(undefined);
+  const pendingPublicFileSelectionRef = useRef<string | undefined>(undefined);
   const [nodeCreateMenu, setNodeCreateMenu] = useState<{ node: DebugNodeDescriptor; x: number; y: number } | undefined>();
   const draggedHierarchyNodeRef = useRef<DebugNodeDescriptor | undefined>(undefined);
   const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
@@ -528,7 +529,7 @@ export default function Home() {
       }
 
       if (message.type === 'dynamic-node:update:ack') {
-        setPatchStatus(message.applied ? `Dynamic Node hot-reloaded: ${message.module.nodeTypeId} · ${message.reloaded} Instanz(en)` : `Dynamic Node Reload abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+        setPatchStatus(message.applied ? `Script hot-reloaded: ${message.module.nodeTypeId} · ${message.reloaded} Instanz(en)` : `Script Reload abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
 
@@ -671,6 +672,12 @@ export default function Home() {
   useEffect(() => {
     if (publicFilesInSelectedDirectory.length === 0) {
       setSelectedPublicFilePath(undefined);
+      return;
+    }
+    const pendingPath = pendingPublicFileSelectionRef.current;
+    if (pendingPath && publicFilesInSelectedDirectory.some((file) => file.path === pendingPath)) {
+      pendingPublicFileSelectionRef.current = undefined;
+      setSelectedPublicFilePath(pendingPath);
       return;
     }
     setSelectedPublicFilePath((current) => current && publicFilesInSelectedDirectory.some((file) => file.path === current) ? current : publicFilesInSelectedDirectory[0]?.path);
@@ -837,6 +844,34 @@ export default function Home() {
   function selectPublicDirectory(path: string): void {
     setSelectedPublicDirectoryPath(path);
     setExpandedPublicDirectoryPaths((current) => new Set([...current, ...publicDirectoryAncestorPaths(path), path]));
+  }
+
+  function selectPublicFileInExplorer(path: string): void {
+    const directoryPath = path.split('/').slice(0, -1).join('/');
+    pendingPublicFileSelectionRef.current = path;
+    setSelectedPublicFilePath(path);
+    selectPublicDirectory(directoryPath);
+  }
+
+  async function selectScriptSourceForNode(node: DebugNodeDescriptor): Promise<void> {
+    if (!node.nodeTypeId) {
+      setPatchStatus(`Keine Script-Datei für ${node.name}: nodeTypeId fehlt.`);
+      return;
+    }
+    try {
+      const manifest = dynamicNodeManifestRef.current ?? await loadDynamicNodeManifest();
+      dynamicNodeManifestRef.current = manifest;
+      const entry = manifest.nodes.find((candidate) => candidate.nodeTypeId === node.nodeTypeId);
+      if (!entry) {
+        setPatchStatus(`Keine Script-Datei für ${node.nodeTypeId} im Manifest gefunden.`);
+        return;
+      }
+      const sourcePath = `apps/game/${entry.source}`;
+      selectPublicFileInExplorer(sourcePath);
+      setPatchStatus(`Script selektiert: ${compactPublicPath(sourcePath)}`);
+    } catch (error) {
+      setPatchStatus(`Script-Datei konnte nicht selektiert werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   function togglePublicDirectory(path: string): void {
@@ -1069,7 +1104,7 @@ export default function Home() {
       sentAt: Date.now(),
     };
     socketRef.current.send(JSON.stringify(message));
-    setPatchStatus(`Dynamic Node Update gesendet: ${module.nodeTypeId}`);
+    setPatchStatus(`Script Update gesendet: ${module.nodeTypeId}`);
   }
 
   async function respondToDynamicNodeModuleRequest(message: Extract<DebugMessage, { type: 'dynamic-node:module-request' }>): Promise<void> {
@@ -1086,7 +1121,7 @@ export default function Home() {
         sentAt: Date.now(),
       };
       socketRef.current.send(JSON.stringify(response));
-      setLastEvent(`Dynamic Node Modul gesendet: ${message.module.nodeTypeId}`);
+      setLastEvent(`Script-Modul gesendet: ${message.module.nodeTypeId}`);
     } catch (error) {
       const response: DebugMessage = {
         type: 'dynamic-node:module-error',
@@ -1114,7 +1149,7 @@ export default function Home() {
 
     const entry = await dynamicNodeManifestEntryForFile(file);
     if (!entry?.nodeTypeId) {
-      setPatchStatus(`Keine Dynamic-Node-Manifest-Zuordnung für ${file.name}.`);
+      setPatchStatus(`Keine Script-Manifest-Zuordnung für ${file.name}.`);
       return;
     }
 
@@ -1274,7 +1309,7 @@ export default function Home() {
   }
 
   async function loadDynamicNodeManifest(): Promise<DynamicNodeManifest> {
-    const text = await readPublicTextFile('apps/game/public/dynamic-nodes-compiled/manifest.json');
+    const text = await readPublicTextFile('apps/game/public/scripts-compiled/manifest.json');
     return JSON.parse(text) as DynamicNodeManifest;
   }
 
@@ -1525,6 +1560,7 @@ export default function Home() {
                 onDropDynamicNode={injectDynamicNode}
                 onDropImageAsset={injectImageNode}
                 onOpenCreateMenu={(node, x, y) => setNodeCreateMenu({ node, x, y })}
+                onSelectScriptSource={(node) => void selectScriptSourceForNode(node)}
                 draggedHierarchyNode={() => draggedHierarchyNodeRef.current}
                 hierarchyDropTarget={hierarchyDropTarget}
                 onHierarchyDragStart={(node) => { draggedHierarchyNodeRef.current = node; }}
@@ -1890,7 +1926,7 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
     if (!file || !canSave || !dirty) return;
     setSaving(true);
     setError(undefined);
-    setSaveStatus(isDynamicNodeFilePath(file.path) ? 'Speichere + kompiliere Dynamic Node ...' : 'Speichere Datei ...');
+    setSaveStatus(isDynamicNodeFilePath(file.path) ? 'Speichere + kompiliere Script ...' : 'Speichere Datei ...');
     try {
       const response = await fetch(editorApi('/files'), {
         method: 'PUT',
@@ -1902,7 +1938,7 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setFile({ ...file, content, size: content.length, modifiedAt: Date.now() });
       onSaved?.(result);
-      setSaveStatus(result.dynamicNodeBuild ? `Gespeichert + ${result.dynamicNodeBuild.manifest.nodes.length} Dynamic Node(s) kompiliert.` : 'Gespeichert.');
+      setSaveStatus(result.dynamicNodeBuild ? `Gespeichert + ${result.dynamicNodeBuild.manifest.nodes.length} Script(s) kompiliert.` : 'Gespeichert.');
     } catch (saveError) {
       setSaveStatus('');
       setError(saveError instanceof Error ? saveError.message : String(saveError));
@@ -2372,6 +2408,7 @@ function HierarchyTree({
   onDropDynamicNode,
   onDropImageAsset,
   onOpenCreateMenu,
+  onSelectScriptSource,
   draggedHierarchyNode,
   hierarchyDropTarget,
   onHierarchyDragStart,
@@ -2398,6 +2435,7 @@ function HierarchyTree({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
+  onSelectScriptSource(node: DebugNodeDescriptor): void;
   draggedHierarchyNode(): DebugNodeDescriptor | undefined;
   hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
   onHierarchyDragStart(node: DebugNodeDescriptor): void;
@@ -2407,7 +2445,7 @@ function HierarchyTree({
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots, mode);
-  const treeProps = { selectedNodeId, expandedNodeIds, onSelectNode, onToggleNode, isDynamicNodeDragActive, getDraggedDynamicNode, isImageAssetDragActive, getDraggedImageAsset, onDropDynamicNode, onDropImageAsset, onOpenCreateMenu, draggedHierarchyNode, hierarchyDropTarget, onHierarchyDragStart, onHierarchyDragEnd, onHierarchyDragOver, onMoveHierarchyNode, onDeleteNode };
+  const treeProps = { selectedNodeId, expandedNodeIds, onSelectNode, onToggleNode, isDynamicNodeDragActive, getDraggedDynamicNode, isImageAssetDragActive, getDraggedImageAsset, onDropDynamicNode, onDropImageAsset, onOpenCreateMenu, onSelectScriptSource, draggedHierarchyNode, hierarchyDropTarget, onHierarchyDragStart, onHierarchyDragEnd, onHierarchyDragOver, onMoveHierarchyNode, onDeleteNode };
 
   if (mode === 'editor') {
     return (
@@ -2464,6 +2502,7 @@ function NodeTree({
   onDropDynamicNode,
   onDropImageAsset,
   onOpenCreateMenu,
+  onSelectScriptSource,
   draggedHierarchyNode,
   hierarchyDropTarget,
   onHierarchyDragStart,
@@ -2484,6 +2523,7 @@ function NodeTree({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
+  onSelectScriptSource(node: DebugNodeDescriptor): void;
   draggedHierarchyNode(): DebugNodeDescriptor | undefined;
   hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
   onHierarchyDragStart(node: DebugNodeDescriptor): void;
@@ -2495,7 +2535,7 @@ function NodeTree({
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onSelectScriptSource={onSelectScriptSource} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />
       ))}
     </ol>
   );
@@ -2514,6 +2554,7 @@ function NodeTreeItem({
   onDropDynamicNode,
   onDropImageAsset,
   onOpenCreateMenu,
+  onSelectScriptSource,
   draggedHierarchyNode,
   hierarchyDropTarget,
   onHierarchyDragStart,
@@ -2534,6 +2575,7 @@ function NodeTreeItem({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
+  onSelectScriptSource(node: DebugNodeDescriptor): void;
   draggedHierarchyNode(): DebugNodeDescriptor | undefined;
   hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
   onHierarchyDragStart(node: DebugNodeDescriptor): void;
@@ -2549,6 +2591,7 @@ function NodeTreeItem({
   const isSceneNode = sceneNodeClassNames.has(node.className);
   const canDragNode = !alwaysExpanded && !isSystemRoot;
   const canCreateChild = !isSceneNode;
+  const canSelectScriptSource = node.nodeTypeId?.startsWith('dynamic.') === true;
   const canDeleteNode = !alwaysExpanded && !isSystemRoot;
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
@@ -2640,6 +2683,20 @@ function NodeTreeItem({
             <Plus size={13} />
           </button>
         )}
+        {canSelectScriptSource && (
+          <button
+            type="button"
+            className={styles.nodeActionButton}
+            title={`Script-Datei für ${node.name} im Asset Explorer selektieren`}
+            aria-label={`Script-Datei für ${node.name} im Asset Explorer selektieren`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectScriptSource(node);
+            }}
+          >
+            <Search size={13} />
+          </button>
+        )}
         {canDeleteNode && (
           <button
             type="button"
@@ -2657,7 +2714,7 @@ function NodeTreeItem({
       </div>
       {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'child' && <HierarchyDropIndicator placement="child" />}
       {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'after' && <HierarchyDropIndicator placement="after" />}
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onSelectScriptSource={onSelectScriptSource} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />}
     </li>
   );
 }
@@ -3570,7 +3627,7 @@ function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: nu
 
 function isNodeFile(file: PublicFileEntry): boolean {
   return file.kind === 'file'
-    && (file.path.startsWith('apps/game/src/') || file.path.startsWith('apps/game/public/dynamic-nodes/'))
+    && (file.path.startsWith('apps/game/src/') || file.path.startsWith('apps/game/public/scripts/'))
     && ['ts', 'tsx'].includes(file.extension ?? '');
 }
 
@@ -3579,7 +3636,7 @@ function isDynamicNodeFile(file: PublicFileEntry): boolean {
 }
 
 function isDynamicNodeFilePath(path: string): boolean {
-  return path.startsWith('apps/game/public/dynamic-nodes/') && /\.node\.tsx?$/.test(path);
+  return path.startsWith('apps/game/public/scripts/') && /\.node\.tsx?$/.test(path);
 }
 
 function isEditableMonacoFile(path: string): boolean {
@@ -3752,7 +3809,7 @@ function isCodePreviewFile(file: PublicFileEntry): boolean {
 }
 
 async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<NodeSourceFileContent> {
-  if (path.startsWith('apps/game/src/') || path.startsWith('apps/game/public/dynamic-nodes/')) {
+  if (path.startsWith('apps/game/src/') || path.startsWith('apps/game/public/scripts/')) {
     const response = await fetch(nodeFileContentUrl(path), { cache: 'no-store', headers: { Accept: 'application/json' }, signal });
     const result = await response.json() as NodeSourceFileContent & { error?: string };
     if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);

@@ -270,6 +270,7 @@ export interface DebugNodeDescriptor {
   id: string;
   instanceId?: string;
   parentId?: string;
+  nodeTypeId?: string;
   name: string;
   className: string;
   active: boolean;

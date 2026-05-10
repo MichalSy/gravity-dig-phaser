@@ -39,7 +39,7 @@ var prop = {
   assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options })
 };
 
-// public/dynamic-nodes/menu-script.node.ts
+// public/scripts/GameMenu/MenuScript.node.ts
 function wrapIndex(value, length) {
   return (value % length + length) % length;
 }
@@ -112,18 +112,18 @@ var MenuScript = class extends ScriptNode {
   }
 };
 
-// node_modules/.dynamic-node-build/menu-script.entry.ts
+// node_modules/.script-build/GameMenu-MenuScript.entry.ts
 var probe = new MenuScript();
-var nodeTypeId = typeof probe.id === "string" && probe.id.length > 0 ? probe.id : "menu-script";
+var nodeTypeId = typeof probe.id === "string" && probe.id.length > 0 ? probe.id : "GameMenu-MenuScript";
 var displayName = typeof probe.name === "string" && probe.name.length > 0 ? probe.name : nodeTypeId;
 function createBehavior() {
   return new MenuScript();
 }
-var menu_script_entry_default = { nodeTypeId, displayName, createBehavior };
+var GameMenu_MenuScript_entry_default = { nodeTypeId, displayName, createBehavior };
 export {
   createBehavior,
-  menu_script_entry_default as default,
+  GameMenu_MenuScript_entry_default as default,
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=menu-script.a5272748cb5b.js.map
+//# sourceMappingURL=GameMenu-MenuScript.a5272748cb5b.js.map

@@ -5,6 +5,7 @@ interface FlatNodeSnapshot {
   id: string;
   instanceId?: string;
   parentId?: string;
+  nodeTypeId?: string;
   name: string;
   className: string;
   active: boolean;
@@ -85,6 +86,7 @@ function serializeNode(
     id,
     instanceId: node.instanceId,
     parentId,
+    nodeTypeId: node.nodeTypeId,
     name: node.debugName(),
     className: node.debugClassName(),
     active: node.active,
@@ -98,6 +100,7 @@ function serializeNode(
     id,
     instanceId: descriptor.instanceId,
     parentId,
+    nodeTypeId: descriptor.nodeTypeId,
     name: descriptor.name,
     className: descriptor.className,
     active: descriptor.active,

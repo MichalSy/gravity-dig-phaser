@@ -39,7 +39,7 @@ var prop = {
   assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options })
 };
 
-// public/dynamic-nodes/example-pulse.node.ts
+// public/scripts/ExamplePulse.node.ts
 var ExamplePulseNode = class extends ScriptNode {
   id = "dynamic.example-pulse";
   name = "Example Pulse Script";
@@ -55,18 +55,18 @@ var ExamplePulseNode = class extends ScriptNode {
   }
 };
 
-// node_modules/.dynamic-node-build/example-pulse.entry.ts
+// node_modules/.script-build/ExamplePulse.entry.ts
 var probe = new ExamplePulseNode();
-var nodeTypeId = typeof probe.id === "string" && probe.id.length > 0 ? probe.id : "example-pulse";
+var nodeTypeId = typeof probe.id === "string" && probe.id.length > 0 ? probe.id : "ExamplePulse";
 var displayName = typeof probe.name === "string" && probe.name.length > 0 ? probe.name : nodeTypeId;
 function createBehavior() {
   return new ExamplePulseNode();
 }
-var example_pulse_entry_default = { nodeTypeId, displayName, createBehavior };
+var ExamplePulse_entry_default = { nodeTypeId, displayName, createBehavior };
 export {
   createBehavior,
-  example_pulse_entry_default as default,
+  ExamplePulse_entry_default as default,
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=example-pulse.b604e0f24e6a.js.map
+//# sourceMappingURL=ExamplePulse.b604e0f24e6a.js.map

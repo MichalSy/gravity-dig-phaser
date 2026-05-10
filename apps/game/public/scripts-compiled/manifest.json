@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "nodeTypeId": "dynamic.example-pulse",
+      "source": "public/scripts/ExamplePulse.node.ts",
+      "url": "/scripts-compiled/ExamplePulse.b604e0f24e6a.js",
+      "hash": "b604e0f24e6a"
+    },
+    {
+      "nodeTypeId": "dynamic.menu-script",
+      "source": "public/scripts/GameMenu/MenuScript.node.ts",
+      "url": "/scripts-compiled/GameMenu-MenuScript.a5272748cb5b.js",
+      "hash": "a5272748cb5b"
+    }
+  ]
+}

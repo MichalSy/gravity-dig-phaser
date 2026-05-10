@@ -6,22 +6,22 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
-const sourceDir = path.join(appRoot, 'public/dynamic-nodes');
-const outDir = path.join(appRoot, 'public/dynamic-nodes-compiled');
-const tempDir = path.join(appRoot, 'node_modules/.dynamic-node-build');
+const sourceDir = path.join(appRoot, 'public/scripts');
+const outDir = path.join(appRoot, 'public/scripts-compiled');
+const tempDir = path.join(appRoot, 'node_modules/.script-build');
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 await mkdir(tempDir, { recursive: true });
 
-const files = (await readdir(sourceDir)).filter((file) => file.endsWith('.node.ts')).sort();
+const files = await findScriptFiles(sourceDir);
 const manifest = { version: 1, nodes: [] };
 
 for (const file of files) {
   const sourcePath = path.join(sourceDir, file);
   const source = await readFile(sourcePath, 'utf8');
   const hash = createHash('sha256').update(source).digest('hex').slice(0, 12);
-  const baseName = file.replace(/\.node\.ts$/, '');
+  const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(path.sep, '-');
   const entryPath = path.join(tempDir, `${baseName}.entry.ts`);
   const outfileName = `${baseName}.${hash}.js`;
   const outfile = path.join(outDir, outfileName);
@@ -59,12 +59,25 @@ export { nodeTypeId, displayName, createBehavior };
   });
 
   const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
-  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/dynamic-nodes/${file}`, url: `/dynamic-nodes-compiled/${outfileName}`, hash });
+  const sourceUrl = `public/scripts/${file.replaceAll(path.sep, '/')}`;
+  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: sourceUrl, url: `/scripts-compiled/${outfileName}`, hash });
 }
 
 await writeFile(path.join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 await rm(tempDir, { recursive: true, force: true });
-console.log(`Built ${manifest.nodes.length} dynamic node(s).`);
+console.log(`Built ${manifest.nodes.length} script node(s).`);
+
+async function findScriptFiles(directory, prefix = '') {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const relativePath = path.join(prefix, entry.name);
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await findScriptFiles(fullPath, relativePath));
+    else if (/\.node\.tsx?$/.test(entry.name)) files.push(relativePath);
+  }
+  return files.sort();
+}
 
 function dynamicNodeApiPlugin() {
   return {

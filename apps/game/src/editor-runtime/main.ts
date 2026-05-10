@@ -271,10 +271,10 @@ class EditorRuntimeScene extends Phaser.Scene {
   }
 
   private async loadDynamicModules(editorApiBase: string | undefined): Promise<void> {
-    const manifest = await this.fetchOptionalJson<DynamicNodeManifest>(editorApiBase, 'dynamic-nodes-compiled/manifest.json');
+    const manifest = await this.fetchOptionalJson<DynamicNodeManifest>(editorApiBase, 'scripts-compiled/manifest.json');
     for (const entry of manifest?.nodes ?? []) {
       if (!entry.nodeTypeId || this.dynamicModules.get(entry.nodeTypeId)?.hash === entry.hash) continue;
-      const module = await loadDynamicNodeModule({ hash: entry.hash, url: this.contentUrl(editorApiBase, `dynamic-nodes-compiled/${entry.url.split('/').at(-1) ?? ''}`) });
+      const module = await loadDynamicNodeModule({ hash: entry.hash, url: this.contentUrl(editorApiBase, `scripts-compiled/${entry.url.split('/').at(-1) ?? ''}`) });
       if (module) this.dynamicModules.set(entry.nodeTypeId, { hash: entry.hash, module });
     }
   }
