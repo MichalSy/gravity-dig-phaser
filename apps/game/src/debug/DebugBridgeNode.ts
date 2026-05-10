@@ -464,9 +464,10 @@ export class DebugBridgeNode extends GameNode {
     }
     const name = node.debugName();
     const instanceId = node.instanceId;
+    const deletedRefs = this.collectNodeTreeRefs(node);
     node.parent.removeChild(node);
-    this.unregisterNodeTree(node);
-    if (this.selectedNodeId === message.nodeId || this.selectedNodeId === instanceId) {
+    this.unregisterNodeTreeRefs(deletedRefs);
+    if (deletedRefs.some((ref) => ref.nodeId === this.selectedNodeId || ref.instanceId === this.selectedNodeId)) {
       this.selectedNodeId = undefined;
       this.selectedOverlayLayerIds = undefined;
       this.lastSelectedPropsSignature = '';
@@ -476,14 +477,22 @@ export class DebugBridgeNode extends GameNode {
     this.sendNodeDeleteAck(message, true, undefined, name, instanceId);
   }
 
-  private unregisterNodeTree(node: GameNode): void {
-    const stableId = this.nodeIds.get(node);
-    if (stableId) this.nodesById.delete(stableId);
-    if (node.instanceId) {
-      this.nodesById.delete(node.instanceId);
-      this.nodesByInstanceId.delete(node.instanceId);
+  private collectNodeTreeRefs(node: GameNode): { node: GameNode; nodeId?: string; instanceId?: string }[] {
+    return [
+      { node, nodeId: this.nodeIds.get(node), instanceId: node.instanceId },
+      ...node.children.flatMap((child) => this.collectNodeTreeRefs(child)),
+    ];
+  }
+
+  private unregisterNodeTreeRefs(refs: readonly { node: GameNode; nodeId?: string; instanceId?: string }[]): void {
+    for (const ref of refs) {
+      if (ref.nodeId) this.nodesById.delete(ref.nodeId);
+      if (ref.instanceId) {
+        this.nodesById.delete(ref.instanceId);
+        this.nodesByInstanceId.delete(ref.instanceId);
+      }
+      this.nodeIds.delete(ref.node);
     }
-    for (const child of node.children) this.unregisterNodeTree(child);
   }
 
   private sendNodeDeleteAck(message: DebugNodeDeleteMessage, applied: boolean, rejected?: string, name?: string, instanceId?: string): void {
