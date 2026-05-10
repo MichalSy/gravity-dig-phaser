@@ -29,8 +29,7 @@ function defaultRelayUrl(): string {
 function defaultRuntimeUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_URL;
   if (configured) return configured;
-  if (typeof window !== 'undefined') return new URL('/game/runtime.html', window.location.origin).toString();
-  return '';
+  return '/game/runtime.html';
 }
 
 function editorApi(path: string): string {
