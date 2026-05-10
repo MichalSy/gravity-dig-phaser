@@ -10,6 +10,7 @@ const sourceDir = path.join(appRoot, 'public/dynamic-nodes');
 const outDir = path.join(appRoot, 'public/dynamic-nodes-compiled');
 const tempDir = path.join(appRoot, 'node_modules/.dynamic-node-build');
 
+await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 await mkdir(tempDir, { recursive: true });
 
@@ -77,13 +78,30 @@ export class ScriptNode {
   log(message, ...values) {
     this.__dynamicNodeContext?.log(message, ...values);
   }
-  getNode(name) {
-    return this.__dynamicNodeContext?.getNode(name);
+  getNode(key) {
+    return this.__dynamicNodeContext?.getNode(key);
   }
-  requireNode(name) {
-    const node = this.__dynamicNodeContext?.requireNode(name);
+  requireNode(key) {
+    const node = this.__dynamicNodeContext?.requireNode(key);
     if (!node) throw new Error('Dynamic node context is not initialized');
     return node;
+  }
+  getNodeById(instanceId) {
+    return this.__dynamicNodeContext?.getNodeById(instanceId);
+  }
+  requireNodeById(instanceId) {
+    const node = this.__dynamicNodeContext?.requireNodeById(instanceId);
+    if (!node) throw new Error('Dynamic node context is not initialized');
+    return node;
+  }
+  getNodesByName(name) {
+    return this.__dynamicNodeContext?.getNodesByName(name) ?? [];
+  }
+  getAppVersion() {
+    return this.__dynamicNodeContext?.getAppVersion() ?? '0.0.0';
+  }
+  emit(action) {
+    this.__dynamicNodeContext?.emit(action);
   }
 }
 function marker(value, definition) {

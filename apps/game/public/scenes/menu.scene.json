@@ -101,10 +101,12 @@
               },
               {
                 "name": "Menu.Script",
-                "nodeTypeId": "adb64c27-ea8e-5df5-b3de-e52e75ca164f",
+                "nodeTypeId": "dynamic.menu-script",
                 "props": {
                   "versionNodeName": "Menu.Version",
-                  "startAction": "start"
+                  "startAction": "start",
+                  "buttonNames": "Menu.PlayButton,Menu.OptionsButton",
+                  "startEvent": "game:start"
                 }
               }
             ]

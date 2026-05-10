@@ -24,6 +24,8 @@ export interface DynamicScriptContext {
   getNodeById(instanceId: string): GameNode | undefined;
   requireNodeById(instanceId: string): GameNode;
   getNodesByName(name: string): GameNode[];
+  getAppVersion(): string;
+  emit(action: string): void;
 }
 
 export interface DynamicNodeModule {
@@ -35,6 +37,7 @@ export interface DynamicNodeModule {
 export interface DynamicScriptNodeOptions extends GameNodeOptions {
   module: DynamicNodeModule;
   props?: Record<string, unknown>;
+  actions?: Record<string, () => void>;
 }
 
 export class DynamicScriptNode extends GameNode {
@@ -45,11 +48,13 @@ export class DynamicScriptNode extends GameNode {
   private scriptPropDefinitions: Record<string, DebugScenePropDefinition>;
   private scriptContext?: DynamicScriptContext;
   private readonly scriptPropOverrides = new Set<string>();
+  private readonly actions: Record<string, () => void>;
 
   constructor(options: DynamicScriptNodeOptions) {
     super({ ...options, nodeTypeId: options.nodeTypeId ?? options.module.nodeTypeId, className: options.module.displayName ?? 'DynamicScriptNode' });
     this.module = options.module;
     this.behavior = this.module.createBehavior();
+    this.actions = options.actions ?? {};
     const extracted = extractScriptProps(this.behavior);
     this.scriptPropDefinitions = extracted.definitions;
     for (const [key, value] of Object.entries(options.props ?? {})) {
@@ -159,7 +164,18 @@ export class DynamicScriptNode extends GameNode {
       getNodeById: (instanceId) => ctx.getNodeById(instanceId),
       requireNodeById: (instanceId) => ctx.requireNodeById(instanceId),
       getNodesByName: (name) => ctx.getNodesByName(name),
+      getAppVersion: () => __APP_VERSION__,
+      emit: (action) => this.emitScriptAction(action),
     };
+  }
+
+  private emitScriptAction(action: string): void {
+    const handler = this.actions[action];
+    if (!handler) {
+      console.warn(`[DynamicNode:${this.debugName()}] unknown script action '${action}'`);
+      return;
+    }
+    handler();
   }
 }
 

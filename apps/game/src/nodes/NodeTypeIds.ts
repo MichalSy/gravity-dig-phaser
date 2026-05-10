@@ -7,7 +7,6 @@ export const NODE_TYPE_IDS = {
   TextNode: '2db287f7-b55c-5c58-be87-c057e8c5d302',
   AnimatedImageNode: '5a0cd663-64c3-5f02-a579-9915605564be',
   CollisionRectNode: 'f3f82d6c-c31e-56bc-afd6-b5892604eaf5',
-  MenuScriptNode: 'adb64c27-ea8e-5df5-b3de-e52e75ca164f',
   ButtonNode: 'addc5b95-e208-503a-9474-4408cee67995',
   LoadingNode: 'dcb8bfef-f40b-539b-928c-eead650c1b6f',
   GameplayInputNode: 'c981faaa-6359-537c-ad47-d1605cde3381',
