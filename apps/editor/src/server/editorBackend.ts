@@ -180,6 +180,18 @@ export async function listPublicFiles(): Promise<{ root: PublicFileEntry }> {
   return { root: { ...root, name: 'public', path: 'apps/game/public' } };
 }
 
+export async function listPublicDirectories(): Promise<{ root: PublicFileEntry }> {
+  const rootPath = await ensurePublicRoot();
+  const root = await readDirectoryStructure(rootPath, 'apps/game/public', { hidePublicEntries: true });
+  return { root: { ...root, name: 'public', path: 'apps/game/public' } };
+}
+
+export async function listPublicDirectoryFiles(relativePath: string): Promise<{ path: string; files: PublicFileEntry[] }> {
+  const rootPath = await ensurePublicRoot();
+  const directory = resolvePublicDirectoryPath(rootPath, relativePath);
+  return { path: directory.relativePath, files: await readDirectPublicFiles(directory.absolutePath, directory.relativePath) };
+}
+
 export async function listNodeFiles(): Promise<{ root: PublicFileEntry }> {
   const sourceRootPath = await ensureNodeRoot();
   const sourceRoot = await readNodeDirectory(sourceRootPath, 'apps/game/src');
@@ -190,6 +202,19 @@ export async function listNodeFiles(): Promise<{ root: PublicFileEntry }> {
     ...(dynamicRoot.children && dynamicRoot.children.length > 0 ? [dynamicRoot] : []),
   ];
   return { root: { name: 'Nodes', path: 'apps/game', kind: 'directory', children } };
+}
+
+export async function listNodeDirectories(): Promise<{ root: PublicFileEntry }> {
+  const sourceRootPath = await ensureNodeRoot();
+  const sourceRoot = await readDirectoryStructure(sourceRootPath, 'apps/game/src');
+  const dynamicRootPath = await ensureDynamicNodeRoot();
+  const dynamicRoot = await readDirectoryStructure(dynamicRootPath, 'apps/game/public/dynamic-nodes');
+  return { root: { name: 'Nodes', path: 'apps/game', kind: 'directory', children: [...(sourceRoot.children ?? []), dynamicRoot] } };
+}
+
+export async function listNodeDirectoryFiles(relativePath: string): Promise<{ path: string; files: PublicFileEntry[] }> {
+  const directory = await resolveNodeDirectoryPath(relativePath);
+  return { path: directory.relativePath, files: await readDirectNodeFiles(directory.absolutePath, directory.relativePath) };
 }
 
 export async function readNodeFile(relativePath: string): Promise<{ path: string; content: string; modifiedAt: number; size: number }> {
@@ -507,6 +532,63 @@ async function applyAssetUploadToWorkspace(upload: StagedAssetUpload): Promise<v
   const target = resolveEditablePath(upload.assetPath);
   await mkdir(dirname(target.absolutePath), { recursive: true });
   await writeFile(target.absolutePath, await readFile(upload.uploadPath));
+}
+
+async function readDirectoryStructure(absolutePath: string, relativePath: string, options: { hidePublicEntries?: boolean } = {}): Promise<PublicFileEntry> {
+  assertInsideRoot(absolutePath, workspacePath, 'directoryPath');
+  const entries = await readdir(absolutePath, { withFileTypes: true });
+  const children = await Promise.all(entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && !(options.hidePublicEntries && isHiddenPublicExplorerEntry(relativePath, entry.name)))
+    .sort((left, right) => left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' }))
+    .map((entry) => readDirectoryStructure(join(absolutePath, entry.name), `${relativePath}/${entry.name}`, options)));
+
+  return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
+}
+
+function resolvePublicDirectoryPath(rootPath: string, relativePath: string): { absolutePath: string; relativePath: string } {
+  const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
+  const fullRelativePath = normalizedPath.startsWith(`apps${sep}game${sep}public`) ? normalizedPath : join('apps/game/public', normalizedPath);
+  const absolutePath = resolve(workspacePath, fullRelativePath);
+  assertInsideRoot(absolutePath, rootPath, 'publicDirectory');
+  return { absolutePath, relativePath: fullRelativePath.split(sep).join('/') };
+}
+
+async function resolveNodeDirectoryPath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
+  const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
+  const fullRelativePath = normalizedPath === `apps${sep}game` ? normalizedPath : normalizeNodeFilePath(normalizedPath);
+  if (fullRelativePath === `apps${sep}game`) return { absolutePath: await ensureNodeRoot(), relativePath: 'apps/game' };
+  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}public${sep}dynamic-nodes`) ? await ensureDynamicNodeRoot() : await ensureNodeRoot();
+  const absolutePath = resolve(workspacePath, fullRelativePath);
+  assertInsideRoot(absolutePath, rootPath, 'nodeDirectory');
+  return { absolutePath, relativePath: fullRelativePath.split(sep).join('/') };
+}
+
+async function readDirectPublicFiles(absolutePath: string, relativePath: string): Promise<PublicFileEntry[]> {
+  const entries = await readdir(absolutePath, { withFileTypes: true });
+  return Promise.all(entries
+    .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+    .sort((left, right) => left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' }))
+    .map(async (entry) => {
+      const childAbsolutePath = join(absolutePath, entry.name);
+      const fileStat = await stat(childAbsolutePath);
+      return { name: entry.name, path: `${relativePath}/${entry.name}`, kind: 'file' as const, size: fileStat.size, modifiedAt: fileStat.mtimeMs, extension: fileExtension(entry.name) };
+    }));
+}
+
+async function readDirectNodeFiles(absolutePath: string, relativePath: string): Promise<PublicFileEntry[]> {
+  const entries = await readdir(absolutePath, { withFileTypes: true });
+  const files = await Promise.all(entries
+    .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+    .sort((left, right) => left.name.localeCompare(right.name, undefined, { numeric: true, sensitivity: 'base' }))
+    .map(async (entry): Promise<PublicFileEntry | undefined> => {
+      const childAbsolutePath = join(absolutePath, entry.name);
+      const childRelativePath = `${relativePath}/${entry.name}`;
+      const fileStat = await stat(childAbsolutePath);
+      const content = await readFile(childAbsolutePath, 'utf8');
+      if (!isNodeSourceFile(childRelativePath, content)) return undefined;
+      return { name: entry.name, path: childRelativePath, kind: 'file', size: fileStat.size, modifiedAt: fileStat.mtimeMs, extension: fileExtension(entry.name) };
+    }));
+  return files.filter((entry): entry is PublicFileEntry => Boolean(entry));
 }
 
 async function readPublicDirectory(absolutePath: string, relativePath: string): Promise<PublicFileEntry> {

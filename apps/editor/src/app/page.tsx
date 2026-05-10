@@ -313,6 +313,8 @@ export default function Home() {
   const [nodeFileRoot, setNodeFileRoot] = useState<PublicFileEntry | undefined>();
   const [selectedPublicDirectoryPath, setSelectedPublicDirectoryPath] = useState('apps/game/public');
   const [selectedPublicFilePath, setSelectedPublicFilePath] = useState<string | undefined>();
+  const [selectedDirectoryFiles, setSelectedDirectoryFiles] = useState<PublicFileEntry[]>([]);
+  const [selectedDirectoryFilesStatus, setSelectedDirectoryFilesStatus] = useState('');
   const [previewPublicFilePath, setPreviewPublicFilePath] = useState<string | undefined>();
   const [openNodeFilePath, setOpenNodeFilePath] = useState<string | undefined>();
   const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public', 'apps/game/src']));
@@ -370,17 +372,18 @@ export default function Home() {
     () => findPublicDirectoryInRoots(explorerRoots, selectedPublicDirectoryPath) ?? publicFileRoot ?? nodeFileRoot,
     [explorerRoots, nodeFileRoot, publicFileRoot, selectedPublicDirectoryPath],
   );
-  const publicFilesInSelectedDirectory = useMemo(
-    () => selectedPublicDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [],
-    [selectedPublicDirectory],
+  const publicFilesInSelectedDirectory = selectedDirectoryFiles;
+  const selectedDirectoryWithFiles = useMemo(
+    () => selectedPublicDirectory ? { ...selectedPublicDirectory, children: [...(selectedPublicDirectory.children ?? []), ...selectedDirectoryFiles] } : undefined,
+    [selectedDirectoryFiles, selectedPublicDirectory],
   );
   const selectedPublicFile = useMemo(
-    () => selectedPublicFilePath ? findPublicFileInRoots(explorerRoots, selectedPublicFilePath) : undefined,
-    [explorerRoots, selectedPublicFilePath],
+    () => selectedPublicFilePath ? selectedDirectoryFiles.find((file) => file.path === selectedPublicFilePath) : undefined,
+    [selectedDirectoryFiles, selectedPublicFilePath],
   );
   const publicFileCount = useMemo(
-    () => explorerRoots.reduce((total, root) => total + countPublicFiles(root), 0),
-    [explorerRoots],
+    () => explorerRoots.reduce((total, root) => total + countPublicFiles(root), 0) + selectedDirectoryFiles.length,
+    [explorerRoots, selectedDirectoryFiles.length],
   );
   const selectedNodeDefinition = useMemo(
     () => (selectedNode?.instanceId ? nodeDefinitions.get(selectedNode.instanceId) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
@@ -583,6 +586,29 @@ export default function Home() {
   }, [nodeDefinitions]);
 
   useEffect(() => {
+    if (!selectedPublicDirectory?.path) {
+      setSelectedDirectoryFiles([]);
+      setSelectedDirectoryFilesStatus('');
+      return;
+    }
+    let cancelled = false;
+    setSelectedDirectoryFiles([]);
+    setSelectedDirectoryFilesStatus('Lade Dateien ...');
+    void fetchDirectoryFiles(selectedPublicDirectory.path)
+      .then((files) => {
+        if (cancelled) return;
+        setSelectedDirectoryFiles(files);
+        setSelectedDirectoryFilesStatus(`${files.length} Datei(en) geladen`);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setSelectedDirectoryFiles([]);
+        setSelectedDirectoryFilesStatus(`Dateien konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+      });
+    return () => { cancelled = true; };
+  }, [selectedPublicDirectory?.path]);
+
+  useEffect(() => {
     if (publicFilesInSelectedDirectory.length === 0) {
       setSelectedPublicFilePath(undefined);
       return;
@@ -677,7 +703,7 @@ export default function Home() {
       setNodeFileRoot(nodeResult.root);
       setSelectedPublicDirectoryPath((current) => findPublicDirectoryInRoots(roots, current) ? current : publicResult.root.path);
       setExpandedPublicDirectoryPaths((current) => new Set([publicResult.root.path, nodeResult.root.path, ...current].filter((path) => findPublicDirectoryInRoots(roots, path))));
-      setPublicFileStatus('Assets + Nodes geladen');
+      setPublicFileStatus('Ordner geladen · Dateien lazy');
     } catch (error) {
       setPublicFileStatus(`Assets/Nodes konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -687,7 +713,7 @@ export default function Home() {
     let lastError: Error | undefined;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
-        const response = await fetch(editorApi(`/public-files?ts=${Date.now()}`), {
+        const response = await fetch(editorApi(`/public-files?mode=directories&ts=${Date.now()}`), {
           cache: 'no-store',
           credentials: 'same-origin',
           headers: { Accept: 'application/json' },
@@ -708,7 +734,7 @@ export default function Home() {
   }
 
   async function fetchNodeFileTree(): Promise<{ root: PublicFileEntry }> {
-    const response = await fetch(editorApi(`/node-files?ts=${Date.now()}`), {
+    const response = await fetch(editorApi(`/node-files?mode=directories&ts=${Date.now()}`), {
       cache: 'no-store',
       credentials: 'same-origin',
       headers: { Accept: 'application/json' },
@@ -716,6 +742,18 @@ export default function Home() {
     const result = await response.json() as { root?: PublicFileEntry; error?: string };
     if (!response.ok || !result.root) throw new Error(result.error ?? `HTTP ${response.status}`);
     return { root: result.root };
+  }
+
+  async function fetchDirectoryFiles(path: string): Promise<PublicFileEntry[]> {
+    const endpoint = path.startsWith('apps/game/public') ? '/public-files' : '/node-files';
+    const response = await fetch(editorApi(`${endpoint}?${new URLSearchParams({ mode: 'files', path, ts: String(Date.now()) }).toString()}`), {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    });
+    const result = await response.json() as { path?: string; files?: PublicFileEntry[]; error?: string };
+    if (!response.ok || !result.files) throw new Error(result.error ?? `HTTP ${response.status}`);
+    return result.files;
   }
 
   function selectPublicDirectory(path: string): void {
@@ -1437,6 +1475,8 @@ export default function Home() {
           selectedDirectoryPath={selectedPublicDirectoryPath}
           selectedFile={selectedPublicFile}
           selectedFilePath={selectedPublicFilePath}
+          files={publicFilesInSelectedDirectory}
+          filesStatus={selectedDirectoryFilesStatus}
           expandedDirectoryPaths={expandedPublicDirectoryPaths}
           fileCount={publicFileCount}
           status={publicFileStatus}
@@ -1468,7 +1508,7 @@ export default function Home() {
       </section>
       {nodeCreateMenu && <NodeCreateContextMenu menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
-      {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
+      {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
         if (!result.dynamicNodeBuild?.manifest) return;
         dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
@@ -1534,6 +1574,8 @@ function PublicAssetExplorer({
   selectedDirectoryPath,
   selectedFile,
   selectedFilePath,
+  files,
+  filesStatus,
   expandedDirectoryPaths,
   fileCount,
   status,
@@ -1555,6 +1597,8 @@ function PublicAssetExplorer({
   selectedDirectoryPath: string;
   selectedFile?: PublicFileEntry;
   selectedFilePath?: string;
+  files: PublicFileEntry[];
+  filesStatus: string;
   expandedDirectoryPaths: Set<string>;
   fileCount: number;
   status: string;
@@ -1572,7 +1616,6 @@ function PublicAssetExplorer({
   onImageAssetDragEnd(): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
-  const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
 
   return (
     <section className={styles.assetExplorer}>
@@ -1600,7 +1643,7 @@ function PublicAssetExplorer({
         <div className={styles.fileListPane}>
           <div className={styles.fileListHeader}>
             <strong>{compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>
-            <span>{childDirectories.length} Ordner · {files.length} Dateien</span>
+            <span>{childDirectories.length} Ordner · {filesStatus || `${files.length} Dateien`}</span>
           </div>
           <div className={styles.assetGrid}>
             {childDirectories.map((directory) => (
