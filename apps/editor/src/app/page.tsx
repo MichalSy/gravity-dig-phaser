@@ -2649,15 +2649,19 @@ function NodeCreateContextMenu({ menu, onCreate, onClose }: { menu: { node: Debu
 }
 
 function isAppRootNode(node: DebugNodeDescriptor): boolean {
-  return node.name === 'App-Root' && node.className === 'NodeRoot';
+  return node.name === 'App-Root' && isRuntimeRootNode(node);
 }
 
 function isEditorRuntimeRootNode(node: DebugNodeDescriptor): boolean {
-  return node.name.startsWith('Editor-') && node.name.endsWith('-Root') && node.className === 'NodeRoot';
+  return node.name.startsWith('Editor-') && node.name.endsWith('-Root') && isRuntimeRootNode(node);
 }
 
 function isPlayRuntimeRootNode(node: DebugNodeDescriptor): boolean {
-  return node.name === 'Play-Runtime-Root' && node.className === 'NodeRoot';
+  return node.name === 'Play-Runtime-Root' && isRuntimeRootNode(node);
+}
+
+function isRuntimeRootNode(node: DebugNodeDescriptor): boolean {
+  return node.className.toLowerCase().includes('root') || node.name.endsWith('-Root') || node.name === 'App-Root';
 }
 
 function iconForNode(node: DebugNodeDescriptor) {
@@ -3406,7 +3410,9 @@ function countNodes(nodes: DebugNodeDescriptor[]): number {
 }
 
 function splitHierarchyRoots(roots: DebugNodeDescriptor[], mode: ViewportMode): { persistentManagers: DebugNodeDescriptor[]; scenes: DebugNodeDescriptor[] } {
-  const runtimeRoot = mode === 'editor' ? roots.find(isEditorRuntimeRootNode) : roots.find(isPlayRuntimeRootNode) ?? roots.find(isAppRootNode);
+  const runtimeRoot = mode === 'editor'
+    ? roots.find(isEditorRuntimeRootNode) ?? roots.find((node) => isRuntimeRootNode(node) && !isPlayRuntimeRootNode(node))
+    : roots.find(isPlayRuntimeRootNode) ?? roots.find(isAppRootNode) ?? roots.find(isRuntimeRootNode);
   return {
     persistentManagers: mode === 'editor' ? [] : roots.filter((node) => node !== runtimeRoot),
     scenes: runtimeRoot?.children ?? [],
