@@ -4,7 +4,7 @@
     "name": "UI.BottomHud",
     "props": {
       "parentAnchor": "bottom-center",
-      "sizeMode": "explicit",
+      "sizeMode": "content",
       "debugScrollFactor": 0,
       "origin": {
         "x": 0,

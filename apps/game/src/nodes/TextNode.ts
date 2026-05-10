@@ -70,13 +70,19 @@ export class TextNode extends TransformNode {
     this.updateSizeFromText();
   }
 
+  override measureSelf(): void {
+    if (!this.phaserText) return;
+    this.phaserText.setText(this.text);
+    if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
+    this.updateSizeFromText();
+  }
+
   override coreUpdate(): void {
     if (!this.phaserText) return;
 
     this.phaserText.setText(this.text);
-    this.applyTransformTo(this.phaserText);
     if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
-    this.updateSizeFromText();
+    this.applyTransformTo(this.phaserText);
   }
 
   destroy(): void {

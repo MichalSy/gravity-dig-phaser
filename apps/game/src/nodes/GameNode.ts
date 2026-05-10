@@ -174,6 +174,8 @@ export abstract class GameNode {
   init(_ctx: NodeContext): void {}
   resolve(_ctx: NodeContext): void {}
   afterResolved(_ctx: NodeContext): void {}
+  prepareLayout(_deltaMs: number): void {}
+  measureSelf(): void {}
   coreUpdate(_deltaMs: number): void {}
   update(_deltaMs: number): void {}
   editorUpdate(_deltaMs: number): void {}
@@ -208,13 +210,21 @@ export abstract class GameNode {
     for (const child of this.children) child.afterResolvedTree(ctx);
   }
 
+  measureTree(deltaMs: number): void {
+    if (!this.isEffectivelyActive()) return;
+
+    this.prepareLayout(deltaMs);
+    this.measureSelf();
+    for (const child of this.children) child.measureTree(deltaMs);
+    this.updateContentSizeFromChildren();
+  }
+
   updateTree(deltaMs: number): void {
     if (!this.isEffectivelyActive()) return;
 
     this.coreUpdate(deltaMs);
     this.update(deltaMs);
     for (const child of this.children) child.updateTree(deltaMs);
-    this.updateContentSizeFromChildren();
     this.afterChildrenUpdated();
   }
 
@@ -224,7 +234,6 @@ export abstract class GameNode {
     this.coreUpdate(deltaMs);
     this.editorUpdate(deltaMs);
     for (const child of this.children) child.editorUpdateTree(deltaMs);
-    this.updateContentSizeFromChildren();
     this.afterChildrenUpdated();
   }
 

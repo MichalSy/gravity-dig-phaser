@@ -115,6 +115,8 @@ export class NodeRuntime {
 
   update(deltaMs: number): void {
     this.resolve();
+    for (const node of this.persistentNodeList) node.measureTree(deltaMs);
+    for (const root of this.rootNodes) root.measureTree(deltaMs);
     if (this.mode === NodeRuntimeMode.Editor) {
       for (const node of this.persistentNodeList) node.editorUpdateTree(deltaMs);
       for (const root of this.rootNodes) root.editorUpdateTree(deltaMs);

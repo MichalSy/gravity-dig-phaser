@@ -104,6 +104,10 @@ export class ImageNode extends TransformNode {
     this.applyTransformTo(this.phaserImage);
   }
 
+  override measureSelf(): void {
+    if (this.phaserImage && this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
+  }
+
   override coreUpdate(_deltaMs?: number): void {
     if (!this.phaserImage) return;
 
@@ -121,7 +125,6 @@ export class ImageNode extends TransformNode {
       return;
     }
 
-    if (this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
     this.applyTransformTo(this.phaserImage).setFlipX(this.flipX);
   }
 

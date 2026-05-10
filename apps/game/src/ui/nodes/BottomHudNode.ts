@@ -23,7 +23,7 @@ export class BottomHudNode extends TransformNode {
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
 
   constructor(options: TransformNodeOptions = {}) {
-    super({ name: 'UI.BottomHud', className: 'BottomHudNode', parentAnchor: 'bottom-center', origin: { x: 0, y: 1 }, sizeMode: 'explicit', debugScrollFactor: 0, ...options });
+    super({ name: 'UI.BottomHud', className: 'BottomHudNode', parentAnchor: 'bottom-center', origin: { x: 0, y: 1 }, sizeMode: 'content', debugScrollFactor: 0, ...options });
   }
 
   init(ctx: NodeContext): void {
@@ -51,7 +51,7 @@ export class BottomHudNode extends TransformNode {
     };
   }
 
-  update(): void {
+  override prepareLayout(): void {
     const state = this.getHudState();
 
     const viewportWidth = this.phaserScene.scale.width;
@@ -63,7 +63,7 @@ export class BottomHudNode extends TransformNode {
     const frameY = layout.dockY;
 
     this.position = { x: -frameWidth / 2, y: 0 };
-    this.size = { width: frameWidth, height: frameHeight };
+    if (this.sizeMode === 'explicit') this.size = { width: frameWidth, height: frameHeight };
 
     this.updateBarFill(this.energyFillNode, UI_ATLAS.energyBar, layout.energyPct);
 

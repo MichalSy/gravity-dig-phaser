@@ -26,6 +26,10 @@ export class SceneNode extends NodeRoot {
     this.updateViewportSize();
   }
 
+  override prepareLayout(): void {
+    this.updateViewportSize();
+  }
+
   update(): void {
     this.updateViewportSize();
   }
