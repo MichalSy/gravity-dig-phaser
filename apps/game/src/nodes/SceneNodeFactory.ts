@@ -145,7 +145,7 @@ function roundScale(value: number): number {
 }
 
 export function collectNodesByName(root: GameNode, target = new Map<string, GameNode>()): Map<string, GameNode> {
-  if (root.name) target.set(root.name, root);
+  if (root.name && !target.has(root.name)) target.set(root.name, root);
   for (const child of root.children) collectNodesByName(child, target);
   return target;
 }

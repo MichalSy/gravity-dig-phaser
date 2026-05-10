@@ -3,8 +3,11 @@ declare module '@gravity-dig/dynamic-node' {
     id: string;
     name?: string;
     log(message: string, ...values: unknown[]): void;
-    getNode<T = unknown>(name: string): T | undefined;
-    requireNode<T = unknown>(name: string): T;
+    getNode<T = unknown>(key: string): T | undefined;
+    requireNode<T = unknown>(key: string): T;
+    getNodeById<T = unknown>(instanceId: string): T | undefined;
+    requireNodeById<T = unknown>(instanceId: string): T;
+    getNodesByName<T = unknown>(name: string): T[];
     init?(): void;
     update?(deltaMs: number): void;
     destroy?(): void;

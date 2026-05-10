@@ -29,8 +29,11 @@ export interface NodeContext {
   phaserScene: Phaser.Scene;
   runtime: NodeRuntime;
   assets: AssetCatalog;
-  getNode<T extends GameNode = GameNode>(name: string): T | undefined;
-  requireNode<T extends GameNode = GameNode>(name: string): T;
+  getNode<T extends GameNode = GameNode>(key: string): T | undefined;
+  requireNode<T extends GameNode = GameNode>(key: string): T;
+  getNodeById<T extends GameNode = GameNode>(instanceId: string): T | undefined;
+  requireNodeById<T extends GameNode = GameNode>(instanceId: string): T;
+  getNodesByName<T extends GameNode = GameNode>(name: string): T[];
 }
 
 
@@ -695,13 +698,26 @@ export abstract class GameNode {
     };
   }
 
-  getNode<T extends GameNode = GameNode>(name: string): T | undefined {
-    return this.nodeContext?.getNode<T>(name);
+  getNodeById<T extends GameNode = GameNode>(instanceId: string): T | undefined {
+    return this.nodeContext?.getNodeById<T>(instanceId);
   }
 
-  requireNode<T extends GameNode = GameNode>(name: string): T {
-    if (!this.nodeContext) throw new Error(`Node ${this.debugName()} is not initialized and cannot resolve '${name}'`);
-    return this.nodeContext.requireNode<T>(name);
+  requireNodeById<T extends GameNode = GameNode>(instanceId: string): T {
+    if (!this.nodeContext) throw new Error(`Node ${this.debugName()} is not initialized and cannot resolve id '${instanceId}'`);
+    return this.nodeContext.requireNodeById<T>(instanceId);
+  }
+
+  getNodesByName<T extends GameNode = GameNode>(name: string): T[] {
+    return this.nodeContext?.getNodesByName<T>(name) ?? [];
+  }
+
+  getNode<T extends GameNode = GameNode>(key: string): T | undefined {
+    return this.nodeContext?.getNode<T>(key);
+  }
+
+  requireNode<T extends GameNode = GameNode>(key: string): T {
+    if (!this.nodeContext) throw new Error(`Node ${this.debugName()} is not initialized and cannot resolve '${key}'`);
+    return this.nodeContext.requireNode<T>(key);
   }
 
   debugName(): string {

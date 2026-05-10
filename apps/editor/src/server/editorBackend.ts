@@ -700,12 +700,19 @@ function dynamicNodeApiSource(): string {
   return `
 class ScriptNode {
   log(message, ...values) { this.__dynamicNodeContext?.log(message, ...values); }
-  getNode(name) { return this.__dynamicNodeContext?.getNode(name); }
-  requireNode(name) {
-    const node = this.__dynamicNodeContext?.requireNode(name);
+  getNode(key) { return this.__dynamicNodeContext?.getNode(key); }
+  requireNode(key) {
+    const node = this.__dynamicNodeContext?.requireNode(key);
     if (!node) throw new Error('Dynamic node context is not initialized');
     return node;
   }
+  getNodeById(instanceId) { return this.__dynamicNodeContext?.getNodeById(instanceId); }
+  requireNodeById(instanceId) {
+    const node = this.__dynamicNodeContext?.requireNodeById(instanceId);
+    if (!node) throw new Error('Dynamic node context is not initialized');
+    return node;
+  }
+  getNodesByName(name) { return this.__dynamicNodeContext?.getNodesByName(name) ?? []; }
 }
 function marker(value, definition) { return { __dynamicNodeProp: true, value, definition }; }
 const prop = {

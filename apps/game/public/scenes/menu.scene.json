@@ -4,11 +4,11 @@
     "name": "Scene.Menu",
     "children": [
       {
-        "name": "Menu.GameRoot",
+        "name": "GameRoot",
         "nodeTypeId": "297cb39e-5ac2-51ea-a2c4-6f16fa58de77"
       },
       {
-        "name": "Menu.UIRoot",
+        "name": "UIRoot",
         "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
         "children": [
           {

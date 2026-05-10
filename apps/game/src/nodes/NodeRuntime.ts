@@ -13,7 +13,8 @@ export interface NodeRuntimeOptions {
 export class NodeRuntime {
   private readonly persistentNodeList: GameNode[] = [];
   private readonly rootNodes: NodeRoot[] = [];
-  private readonly registry = new Map<string, GameNode>();
+  private readonly nodesByInstanceId = new Map<string, GameNode>();
+  private readonly nodesByName = new Map<string, Set<GameNode>>();
   private readonly assetCatalog: AssetCatalog;
   private readonly ctx: NodeContext;
   mode: NodeRuntimeMode;
@@ -27,8 +28,11 @@ export class NodeRuntime {
       phaserScene: options.phaserScene,
       runtime: this,
       assets: this.assetCatalog,
-      getNode: <T extends GameNode = GameNode>(name: string): T | undefined => this.getNode<T>(name),
-      requireNode: <T extends GameNode = GameNode>(name: string): T => this.requireNode<T>(name),
+      getNode: <T extends GameNode = GameNode>(key: string): T | undefined => this.getNode<T>(key),
+      requireNode: <T extends GameNode = GameNode>(key: string): T => this.requireNode<T>(key),
+      getNodeById: <T extends GameNode = GameNode>(instanceId: string): T | undefined => this.getNodeById<T>(instanceId),
+      requireNodeById: <T extends GameNode = GameNode>(instanceId: string): T => this.requireNodeById<T>(instanceId),
+      getNodesByName: <T extends GameNode = GameNode>(name: string): T[] => this.getNodesByName<T>(name),
     };
   }
 
@@ -134,31 +138,54 @@ export class NodeRuntime {
     for (const node of [...this.persistentNodeList].reverse()) node.destroyTree();
     this.rootNodes.length = 0;
     this.persistentNodeList.length = 0;
-    this.registry.clear();
+    this.nodesByInstanceId.clear();
+    this.nodesByName.clear();
     this.initialized = false;
     this.resolved = false;
   }
 
-  getNode<T extends GameNode = GameNode>(name: string): T | undefined {
-    return this.registry.get(name) as T | undefined;
+  getNodeById<T extends GameNode = GameNode>(instanceId: string): T | undefined {
+    return this.nodesByInstanceId.get(instanceId) as T | undefined;
   }
 
-  requireNode<T extends GameNode = GameNode>(name: string): T {
-    const node = this.getNode<T>(name);
-    if (!node) throw new Error(`Required node '${name}' was not found`);
+  requireNodeById<T extends GameNode = GameNode>(instanceId: string): T {
+    const node = this.getNodeById<T>(instanceId);
+    if (!node) throw new Error(`Required node id '${instanceId}' was not found`);
+    return node;
+  }
+
+  getNodesByName<T extends GameNode = GameNode>(name: string): T[] {
+    return [...(this.nodesByName.get(name) ?? [])] as T[];
+  }
+
+  getNode<T extends GameNode = GameNode>(key: string): T | undefined {
+    return this.getNodeById<T>(key) ?? this.getNodesByName<T>(key)[0];
+  }
+
+  requireNode<T extends GameNode = GameNode>(key: string): T {
+    const node = this.getNode<T>(key);
+    if (!node) throw new Error(`Required node '${key}' was not found`);
     return node;
   }
 
   registerNode(node: GameNode): void {
-    if (!node.name) return;
+    const existing = this.nodesByInstanceId.get(node.instanceId);
+    if (existing && existing !== node) throw new Error(`Duplicate node instanceId '${node.instanceId}'`);
+    this.nodesByInstanceId.set(node.instanceId, node);
 
-    const existing = this.registry.get(node.name);
-    if (existing && existing !== node) throw new Error(`Duplicate node name '${node.name}'`);
-    this.registry.set(node.name, node);
+    if (!node.name) return;
+    const namedNodes = this.nodesByName.get(node.name) ?? new Set<GameNode>();
+    namedNodes.add(node);
+    this.nodesByName.set(node.name, namedNodes);
   }
 
   unregisterNode(node: GameNode): void {
-    if (node.name && this.registry.get(node.name) === node) this.registry.delete(node.name);
+    if (this.nodesByInstanceId.get(node.instanceId) === node) this.nodesByInstanceId.delete(node.instanceId);
+    if (!node.name) return;
+    const namedNodes = this.nodesByName.get(node.name);
+    if (!namedNodes) return;
+    namedNodes.delete(node);
+    if (namedNodes.size === 0) this.nodesByName.delete(node.name);
   }
 
   mountSubtree(node: GameNode, ctx = this.ctx): void {

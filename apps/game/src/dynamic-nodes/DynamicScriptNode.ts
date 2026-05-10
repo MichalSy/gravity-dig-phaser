@@ -19,8 +19,11 @@ export interface DynamicScriptBehavior {
 
 export interface DynamicScriptContext {
   log(message: string, ...values: unknown[]): void;
-  getNode(name: string): GameNode | undefined;
-  requireNode(name: string): GameNode;
+  getNode(key: string): GameNode | undefined;
+  requireNode(key: string): GameNode;
+  getNodeById(instanceId: string): GameNode | undefined;
+  requireNodeById(instanceId: string): GameNode;
+  getNodesByName(name: string): GameNode[];
 }
 
 export interface DynamicNodeModule {
@@ -151,8 +154,11 @@ export class DynamicScriptNode extends GameNode {
   private createScriptContext(ctx: NodeContext): DynamicScriptContext {
     return {
       log: (message, ...values) => console.info(`[DynamicNode:${this.debugName()}] ${message}`, ...values),
-      getNode: (name) => ctx.getNode(name),
-      requireNode: (name) => ctx.requireNode(name),
+      getNode: (key) => ctx.getNode(key),
+      requireNode: (key) => ctx.requireNode(key),
+      getNodeById: (instanceId) => ctx.getNodeById(instanceId),
+      requireNodeById: (instanceId) => ctx.requireNodeById(instanceId),
+      getNodesByName: (name) => ctx.getNodesByName(name),
     };
   }
 }
