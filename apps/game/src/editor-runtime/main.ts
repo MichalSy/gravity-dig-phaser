@@ -67,6 +67,15 @@ class EditorRuntimeScene extends Phaser.Scene {
   };
 
   private async start(message: StartRuntimeMessage): Promise<void> {
+    try {
+      await this.startUnsafe(message);
+    } catch (error) {
+      console.error('[Gravity Dig Runtime] start failed', error);
+      window.parent?.postMessage({ type: 'gravity-dig:runtime:error', message: error instanceof Error ? error.message : String(error) }, window.location.origin);
+    }
+  }
+
+  private async startUnsafe(message: StartRuntimeMessage): Promise<void> {
     this.runtime?.destroy();
     this.children.removeAll(true);
     this.dynamicModules.clear();
@@ -81,13 +90,14 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
     this.factory = this.createFactory(prefabs);
 
-    if (message.mode === 'play') {
-      this.runtime.addPersistentNode(new GameplayInputNode());
-      this.runtime.addPersistentNode(new PlayerStateManagerNode());
-      this.runtime.addPersistentNode(new LevelGeneratorManagerNode());
-    }
+    const needsGameplayRuntime = this.needsGameplayRuntime(message);
+    if (needsGameplayRuntime) this.addGameplayRuntimeNodes(this.runtime);
 
     const root = this.runtime.addRoot(new NodeRoot({ rootName: 'Editor-Runtime-Root' }));
+    if (message.scene === 'gameplayUi') {
+      const gameplay = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.gameplay);
+      root.addChild(this.createScene(gameplay));
+    }
     root.addChild(this.createScene(scene));
     if (message.mode === 'play' && message.scene === 'gameplay') {
       const ui = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.gameplayUi);
@@ -97,6 +107,16 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.runtime.init();
     this.runtime.resolve();
     window.parent?.postMessage({ type: 'gravity-dig:runtime:started', mode: message.mode, scene: message.scene }, window.location.origin);
+  }
+
+  private needsGameplayRuntime(message: StartRuntimeMessage): boolean {
+    return message.scene === 'gameplay' || message.scene === 'gameplayUi';
+  }
+
+  private addGameplayRuntimeNodes(runtime: NodeRuntime): void {
+    runtime.addPersistentNode(new GameplayInputNode());
+    runtime.addPersistentNode(new PlayerStateManagerNode());
+    runtime.addPersistentNode(new LevelGeneratorManagerNode());
   }
 
   private async loadDynamicModules(editorApiBase: string | undefined): Promise<void> {

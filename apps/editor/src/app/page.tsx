@@ -586,6 +586,10 @@ export default function Home() {
       }
       if (message?.type === 'gravity-dig:runtime:started') {
         setLastEvent(`Runtime gestartet: ${message.mode ?? 'unknown'} · ${message.scene ?? 'unknown'}`);
+        return;
+      }
+      if (message?.type === 'gravity-dig:runtime:error') {
+        setLastEvent(`Runtime Fehler: ${String((message as { message?: unknown }).message ?? 'Unbekannt')}`);
       }
     }
     window.addEventListener('message', handleRuntimeMessage);
