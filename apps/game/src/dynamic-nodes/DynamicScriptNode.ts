@@ -34,6 +34,13 @@ export interface DynamicNodeModule {
   createBehavior(): DynamicScriptBehavior;
 }
 
+interface ScriptFault {
+  phase: string;
+  message: string;
+}
+
+const guardedFunction = Symbol('dynamic-script-guarded-function');
+
 export interface DynamicScriptNodeOptions extends GameNodeOptions {
   module: DynamicNodeModule;
   props?: Record<string, unknown>;
@@ -47,15 +54,17 @@ export class DynamicScriptNode extends GameNode {
   private behavior: DynamicScriptBehavior;
   private scriptPropDefinitions: Record<string, DebugScenePropDefinition>;
   private scriptContext?: DynamicScriptContext;
+  private scriptFault?: ScriptFault;
+  private scriptErrorCount = 0;
   private readonly scriptPropOverrides = new Set<string>();
   private readonly actions: Record<string, () => void>;
 
   constructor(options: DynamicScriptNodeOptions) {
     super({ ...options, nodeTypeId: options.nodeTypeId ?? options.module.nodeTypeId, className: options.module.displayName ?? 'DynamicScriptNode' });
     this.module = options.module;
-    this.behavior = this.module.createBehavior();
+    this.behavior = this.createGuardedBehavior();
     this.actions = options.actions ?? {};
-    const extracted = extractScriptProps(this.behavior);
+    const extracted = this.extractScriptPropsSafely(this.behavior);
     this.scriptPropDefinitions = extracted.definitions;
     for (const [key, value] of Object.entries(options.props ?? {})) {
       if (key in this.scriptPropDefinitions) this.behavior[key] = value;
@@ -66,34 +75,37 @@ export class DynamicScriptNode extends GameNode {
     const scriptContext = this.createScriptContext(ctx);
     this.scriptContext = scriptContext;
     (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
-    this.behavior.init?.(scriptContext);
+    this.callScriptLifecycle('init', () => this.behavior.init?.(scriptContext));
   }
 
   override update(deltaMs: number): void {
-    this.behavior.update?.(deltaMs);
+    if (this.scriptFault) return;
+    this.callScriptLifecycle('update', () => this.behavior.update?.(deltaMs));
   }
 
   override destroy(): void {
-    this.behavior.destroy?.();
+    this.callScriptLifecycle('destroy', () => this.behavior.destroy?.());
     delete (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext;
     this.scriptContext = undefined;
   }
 
   reloadModule(module: DynamicNodeModule): void {
-    const previousValues = Object.fromEntries(Object.keys(this.scriptPropDefinitions).map((key) => [key, this.behavior[key]]));
-    this.behavior.destroy?.();
+    const previousValues = Object.fromEntries(Object.keys(this.scriptPropDefinitions).map((key) => [key, this.readScriptValue(key)]));
+    this.callScriptLifecycle('destroy', () => this.behavior.destroy?.());
     delete (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext;
 
     this.module = module;
-    this.behavior = this.module.createBehavior();
-    const extracted = extractScriptProps(this.behavior);
+    this.scriptFault = undefined;
+    this.behavior = this.createGuardedBehavior();
+    const extracted = this.extractScriptPropsSafely(this.behavior);
     this.scriptPropDefinitions = extracted.definitions;
     for (const [key, value] of Object.entries(previousValues)) {
       if (key in this.scriptPropDefinitions) this.behavior[key] = value;
     }
-    if (this.scriptContext) {
-      (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = this.scriptContext;
-      this.behavior.init?.(this.scriptContext);
+    const scriptContext = this.scriptContext;
+    if (scriptContext) {
+      (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
+      this.callScriptLifecycle('init', () => this.behavior.init?.(scriptContext));
     }
   }
 
@@ -124,10 +136,15 @@ export class DynamicScriptNode extends GameNode {
         continue;
       }
 
-      this.behavior[key] = validatedValue;
-      if (validatedValue === null) this.scriptPropOverrides.delete(key);
-      else this.scriptPropOverrides.add(key);
-      result.applied[key] = validatedValue;
+      try {
+        this.behavior[key] = validatedValue;
+        if (validatedValue === null) this.scriptPropOverrides.delete(key);
+        else this.scriptPropOverrides.add(key);
+        result.applied[key] = validatedValue;
+      } catch (error) {
+        this.recordScriptError(`set-prop:${key}`, error);
+        result.rejected[key] = `Script-Prop konnte nicht gesetzt werden: ${errorMessage(error)}`;
+      }
     }
 
     const baseResult = Object.keys(baseProps).length > 0 ? super.applySceneProps(baseProps) : undefined;
@@ -145,7 +162,10 @@ export class DynamicScriptNode extends GameNode {
     return {
       ...super.getDebugProps(),
       script: this.module.nodeTypeId,
-      ...Object.fromEntries(Object.keys(this.scriptPropDefinitions).map((key) => [key, debugValue(this.behavior[key])])),
+      scriptStatus: this.scriptFault ? 'faulted' : 'ok',
+      scriptError: this.scriptFault ? `${this.scriptFault.phase}: ${this.scriptFault.message}` : null,
+      scriptErrorCount: this.scriptErrorCount,
+      ...Object.fromEntries(Object.keys(this.scriptPropDefinitions).map((key) => [key, this.readDebugScriptValue(key)])),
     };
   }
 
@@ -154,6 +174,32 @@ export class DynamicScriptNode extends GameNode {
       ...GameNode.exposedPropGroups,
       { name: 'Script', props: this.scriptPropDefinitions },
     ];
+  }
+
+  private extractScriptPropsSafely(behavior: DynamicScriptBehavior): { definitions: Record<string, DebugScenePropDefinition> } {
+    try {
+      return extractScriptProps(behavior);
+    } catch (error) {
+      this.recordScriptError('extract-props', error);
+      return { definitions: {} };
+    }
+  }
+
+  private readScriptValue(key: string): unknown {
+    try {
+      return this.behavior[key];
+    } catch (error) {
+      this.recordScriptError(`get-prop:${key}`, error);
+      return undefined;
+    }
+  }
+
+  private readDebugScriptValue(key: string): NodeDebugProps[string] {
+    try {
+      return debugValue(this.behavior[key]);
+    } catch (error) {
+      return `<error: ${errorMessage(error)}>`;
+    }
   }
 
   private createScriptContext(ctx: NodeContext): DynamicScriptContext {
@@ -165,8 +211,78 @@ export class DynamicScriptNode extends GameNode {
       requireNodeById: (instanceId) => ctx.requireNodeById(instanceId),
       getNodesByName: (name) => ctx.getNodesByName(name),
       getAppVersion: () => __APP_VERSION__,
-      emit: (action) => this.emitScriptAction(action),
+      emit: (action) => this.callScriptLifecycle(`emit:${action}`, () => this.emitScriptAction(action)),
     };
+  }
+
+  private createGuardedBehavior(): DynamicScriptBehavior {
+    try {
+      return this.installExceptionGuards(this.module.createBehavior());
+    } catch (error) {
+      this.recordScriptError('create', error);
+      return {};
+    }
+  }
+
+  private installExceptionGuards(behavior: DynamicScriptBehavior): DynamicScriptBehavior {
+    const wrap = (fn: (...args: unknown[]) => unknown, phase: string) => {
+      if ((fn as { [guardedFunction]?: true })[guardedFunction]) return fn;
+      const node = this;
+      const wrapped = function guardedScriptFunction(this: unknown, ...args: unknown[]) {
+        try {
+          const result = fn.apply(this, args);
+          if (isPromiseLike(result)) {
+            void result.catch((error: unknown) => node.recordScriptError(phase, error));
+          }
+          return result;
+        } catch (error) {
+          node.recordScriptError(phase, error);
+          return undefined;
+        }
+      };
+      Object.defineProperty(wrapped, guardedFunction, { value: true });
+      return wrapped;
+    };
+
+    for (const [key, value] of Object.entries(behavior)) {
+      if (typeof value === 'function') behavior[key] = wrap(value as (...args: unknown[]) => unknown, key);
+    }
+
+    let prototype = Object.getPrototypeOf(behavior) as object | null;
+    while (prototype && prototype !== Object.prototype) {
+      if ((prototype.constructor as { name?: string } | undefined)?.name === 'ScriptNode') break;
+      for (const key of Object.getOwnPropertyNames(prototype)) {
+        if (key === 'constructor' || Object.hasOwn(behavior, key)) continue;
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+        if (typeof descriptor?.value !== 'function') continue;
+        Object.defineProperty(behavior, key, {
+          configurable: true,
+          writable: true,
+          value: wrap(descriptor.value as (...args: unknown[]) => unknown, key),
+        });
+      }
+      prototype = Object.getPrototypeOf(prototype) as object | null;
+    }
+
+    return behavior;
+  }
+
+  private callScriptLifecycle(phase: string, callback: () => unknown): void {
+    try {
+      const result = callback();
+      if (isPromiseLike(result)) {
+        void result.catch((error: unknown) => this.recordScriptError(phase, error));
+      }
+    } catch (error) {
+      this.recordScriptError(phase, error);
+    }
+  }
+
+  private recordScriptError(phase: string, error: unknown): void {
+    const message = errorMessage(error);
+    this.scriptFault = { phase, message };
+    this.scriptErrorCount += 1;
+    console.error(`[DynamicNode:${this.debugName()}] Script exception in ${phase}: ${message}`, error);
   }
 
   private emitScriptAction(action: string): void {
@@ -191,6 +307,14 @@ function extractScriptProps(behavior: DynamicScriptBehavior): { definitions: Rec
 
 function isDynamicPropMarker(value: unknown): value is DynamicPropMarker {
   return typeof value === 'object' && value !== null && (value as DynamicPropMarker).__dynamicNodeProp === true;
+}
+
+function isPromiseLike(value: unknown): value is Promise<unknown> {
+  return typeof value === 'object' && value !== null && typeof (value as Promise<unknown>).catch === 'function';
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function debugValue(value: unknown): NodeDebugProps[string] {
