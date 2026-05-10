@@ -983,11 +983,27 @@ export default function Home() {
       return;
     }
 
-    const asset = resolveDraggedImageAsset(payload, imageAssets);
+    const resolution = resolveDraggedImageAssetWithDiagnostics(payload, imageAssets);
+    const asset = resolution.asset;
     if (!asset) {
-      setPatchStatus(`Kein geladenes ImageAsset für ${payload.label} gefunden. Game/Assets neu laden?`);
+      console.warn('[GravityDigEditor] ImageNode drop konnte kein registriertes ImageAsset finden.', {
+        payload,
+        publicPath: resolution.publicPath,
+        frameKey: payload.frameKey,
+        availableImageAssetCount: imageAssets.length,
+        closeCandidates: resolution.closeCandidates,
+        hint: 'ImageNode kann nur Assets verwenden, die das Game im AssetCatalog registriert hat. Public-Datei allein reicht nicht.',
+      });
+      setPatchStatus(`ImageNode nicht erstellt: ${payload.label} ist kein registriertes Game-ImageAsset (${resolution.publicPath ?? payload.filePath ?? 'kein Pfad'}). Siehe Browser-Konsole.`);
       return;
     }
+
+    console.info('[GravityDigEditor] ImageNode drop resolved.', {
+      payload,
+      publicPath: resolution.publicPath,
+      resolvedAsset: asset,
+      availableImageAssetCount: imageAssets.length,
+    });
 
     const requestId = createSessionId();
     const message: DebugMessage = {
@@ -3187,13 +3203,31 @@ function readImageAssetDragPayload(event: ReactDragEvent): ImageAssetDragPayload
 }
 
 function resolveDraggedImageAsset(payload: ImageAssetDragPayload, assets: DebugImageAssetDescriptor[]): DebugImageAssetDescriptor | undefined {
-  if (payload.assetId) {
-    const asset = assets.find((candidate) => candidate.id === payload.assetId);
-    if (asset) return asset;
-  }
-  if (payload.filePath && payload.frameKey) return resolveImageAssetForPublicFrame(payload.filePath, { id: payload.frameKey, label: payload.frameKey, rect: { x: 0, y: 0, width: 0, height: 0 } }, assets);
-  if (payload.filePath) return resolveImageAssetForPublicFile(payload.filePath, assets, 'image');
-  return undefined;
+  return resolveDraggedImageAssetWithDiagnostics(payload, assets).asset;
+}
+
+function resolveDraggedImageAssetWithDiagnostics(payload: ImageAssetDragPayload, assets: DebugImageAssetDescriptor[]): { asset?: DebugImageAssetDescriptor; publicPath?: string; closeCandidates: DebugImageAssetDescriptor[] } {
+  const publicPath = payload.filePath ? publicAssetPathForFilePath(payload.filePath) : undefined;
+  let asset: DebugImageAssetDescriptor | undefined;
+  if (payload.assetId) asset = assets.find((candidate) => candidate.id === payload.assetId);
+  if (!asset && payload.filePath && payload.frameKey) asset = resolveImageAssetForPublicFrame(payload.filePath, { id: payload.frameKey, label: payload.frameKey, rect: { x: 0, y: 0, width: 0, height: 0 } }, assets);
+  if (!asset && payload.filePath) asset = resolveImageAssetForPublicFile(payload.filePath, assets, 'image');
+  return { asset, publicPath, closeCandidates: findCloseImageAssetCandidates(payload, assets, publicPath).slice(0, 12) };
+}
+
+function findCloseImageAssetCandidates(payload: ImageAssetDragPayload, assets: DebugImageAssetDescriptor[], publicPath?: string): DebugImageAssetDescriptor[] {
+  const fileName = payload.filePath?.split('/').at(-1)?.toLowerCase();
+  const parentFolder = payload.filePath?.split('/').slice(-2, -1)[0]?.toLowerCase();
+  const needle = (payload.frameKey ?? fileName ?? payload.label).toLowerCase().replace(/\.(png|jpe?g|webp|gif)$/i, '');
+  return assets.filter((asset) => {
+    const haystack = [asset.id, asset.url, asset.sourceUrl, asset.frameKey, asset.sourceImageId].filter(Boolean).join(' ').toLowerCase();
+    return Boolean(
+      (publicPath && assetPathMatches(asset.url ?? asset.sourceUrl, publicPath))
+      || (fileName && haystack.includes(fileName))
+      || (parentFolder && haystack.includes(parentFolder))
+      || (needle && haystack.includes(needle)),
+    );
+  });
 }
 
 function resolveImageAssetForPublicFrame(filePath: string, frame: PublicAtlasFrame, assets: DebugImageAssetDescriptor[]): DebugImageAssetDescriptor | undefined {
