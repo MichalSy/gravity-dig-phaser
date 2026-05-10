@@ -50,6 +50,7 @@ function buildDebugGameUrl(sessionId: string): string {
 const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
 const dynamicNodeDragMimeType = 'application/x-gravity-dig-dynamic-node';
 const imageAssetDragMimeType = 'application/x-gravity-dig-image-asset';
+const hierarchyNodeDragMimeType = 'application/x-gravity-dig-hierarchy-node';
 const imageNodeTypeId = '73e926f5-c280-5131-b820-a89f898e2d48';
 const genericCreateNodeOptions = [
   { id: 'empty', label: 'Empty / Transform', nodeTypeId: 'b78a74e0-452a-5e20-85f4-579f7c0b1364', className: 'TransformNode', props: { size: { width: 120, height: 80 }, sizeMode: 'explicit' } },
@@ -59,6 +60,7 @@ const genericCreateNodeOptions = [
   { id: 'collision-rect', label: 'CollisionRectNode', nodeTypeId: 'f3f82d6c-c31e-56bc-afd6-b5892604eaf5', className: 'CollisionRectNode', props: { size: { width: 64, height: 64 }, sizeMode: 'explicit' } },
 ] as const;
 type GenericCreateNodeOption = (typeof genericCreateNodeOptions)[number];
+type HierarchyDropPlacement = 'before' | 'after' | 'child';
 const maxConcurrentThumbnailLoads = 5;
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -327,6 +329,8 @@ export default function Home() {
   const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
   const draggedImageAssetRef = useRef<ImageAssetDragPayload | undefined>(undefined);
   const [nodeCreateMenu, setNodeCreateMenu] = useState<{ node: DebugNodeDescriptor; x: number; y: number } | undefined>();
+  const draggedHierarchyNodeRef = useRef<DebugNodeDescriptor | undefined>(undefined);
+  const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
   const workbenchRef = useRef<HTMLElement | null>(null);
@@ -474,6 +478,11 @@ export default function Home() {
 
       if (message.type === 'node:delete:ack') {
         setPatchStatus(message.applied ? `Node gelöscht: ${message.name ?? message.nodeId}` : `Node löschen abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+        return;
+      }
+
+      if (message.type === 'node:move:ack') {
+        setPatchStatus(message.applied ? 'Node verschoben.' : `Node verschieben abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
 
@@ -1083,6 +1092,39 @@ export default function Home() {
     setPatchStatus(`${option.label} Create gesendet → ${parentNode.name}`);
   }
 
+
+  function moveHierarchyNode(node: DebugNodeDescriptor, targetNode: DebugNodeDescriptor, placement: HierarchyDropPlacement): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setPatchStatus('Node Move nicht gesendet: Relay nicht verbunden.');
+      return;
+    }
+    if (!boundGameClientIdRef.current) {
+      requestBridgeBinding();
+      setPatchStatus('Node Move wartet: Bridge ist noch nicht 1:1 gebunden.');
+      return;
+    }
+    if (node.id === targetNode.id || containsNode(node, targetNode.id)) {
+      setPatchStatus('Node kann nicht in sich selbst oder eigenen Subtree verschoben werden.');
+      return;
+    }
+    const requestId = createSessionId();
+    const message: DebugMessage = {
+      type: 'node:move',
+      sessionId,
+      targetClientId: boundGameClientIdRef.current,
+      requestId,
+      nodeId: node.id,
+      targetNodeId: targetNode.id,
+      placement,
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    setSelectedNodeId(node.id);
+    setHierarchyDropTarget(undefined);
+    draggedHierarchyNodeRef.current = undefined;
+    setPatchStatus(`Node Move gesendet: ${node.name} ${placement} ${targetNode.name}`);
+  }
+
   async function dynamicNodeManifestEntryForFile(file: PublicFileEntry): Promise<DynamicNodeManifestEntry | undefined> {
     const manifest = dynamicNodeManifestRef.current ?? await loadDynamicNodeManifest();
     dynamicNodeManifestRef.current = manifest;
@@ -1327,6 +1369,12 @@ export default function Home() {
                 onDropDynamicNode={injectDynamicNode}
                 onDropImageAsset={injectImageNode}
                 onOpenCreateMenu={(node, x, y) => setNodeCreateMenu({ node, x, y })}
+                draggedHierarchyNode={() => draggedHierarchyNodeRef.current}
+                hierarchyDropTarget={hierarchyDropTarget}
+                onHierarchyDragStart={(node) => { draggedHierarchyNodeRef.current = node; }}
+                onHierarchyDragEnd={() => { draggedHierarchyNodeRef.current = undefined; setHierarchyDropTarget(undefined); }}
+                onHierarchyDragOver={(targetNode, placement) => setHierarchyDropTarget({ targetId: targetNode.id, placement })}
+                onMoveHierarchyNode={moveHierarchyNode}
                 onDeleteNode={sendNodeDelete}
               />
             ) : (
@@ -2158,6 +2206,12 @@ function HierarchyTree({
   onDropDynamicNode,
   onDropImageAsset,
   onOpenCreateMenu,
+  draggedHierarchyNode,
+  hierarchyDropTarget,
+  onHierarchyDragStart,
+  onHierarchyDragEnd,
+  onHierarchyDragOver,
+  onMoveHierarchyNode,
   onDeleteNode,
 }: {
   roots: DebugNodeDescriptor[];
@@ -2174,6 +2228,12 @@ function HierarchyTree({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
+  draggedHierarchyNode(): DebugNodeDescriptor | undefined;
+  hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
+  onHierarchyDragStart(node: DebugNodeDescriptor): void;
+  onHierarchyDragEnd(): void;
+  onHierarchyDragOver(target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
+  onMoveHierarchyNode(node: DebugNodeDescriptor, target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots);
@@ -2188,7 +2248,7 @@ function HierarchyTree({
             <span>Persistent Managers</span>
             <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
           </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />}
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />}
         </section>
       )}
 
@@ -2198,7 +2258,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />
       </section>
     </div>
   );
@@ -2217,6 +2277,12 @@ function NodeTree({
   onDropDynamicNode,
   onDropImageAsset,
   onOpenCreateMenu,
+  draggedHierarchyNode,
+  hierarchyDropTarget,
+  onHierarchyDragStart,
+  onHierarchyDragEnd,
+  onHierarchyDragOver,
+  onMoveHierarchyNode,
   onDeleteNode,
 }: {
   nodes: DebugNodeDescriptor[];
@@ -2231,12 +2297,18 @@ function NodeTree({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
+  draggedHierarchyNode(): DebugNodeDescriptor | undefined;
+  hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
+  onHierarchyDragStart(node: DebugNodeDescriptor): void;
+  onHierarchyDragEnd(): void;
+  onHierarchyDragOver(target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
+  onMoveHierarchyNode(node: DebugNodeDescriptor, target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />
       ))}
     </ol>
   );
@@ -2255,6 +2327,12 @@ function NodeTreeItem({
   onDropDynamicNode,
   onDropImageAsset,
   onOpenCreateMenu,
+  draggedHierarchyNode,
+  hierarchyDropTarget,
+  onHierarchyDragStart,
+  onHierarchyDragEnd,
+  onHierarchyDragOver,
+  onMoveHierarchyNode,
   onDeleteNode,
 }: {
   node: DebugNodeDescriptor;
@@ -2269,6 +2347,12 @@ function NodeTreeItem({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
+  draggedHierarchyNode(): DebugNodeDescriptor | undefined;
+  hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
+  onHierarchyDragStart(node: DebugNodeDescriptor): void;
+  onHierarchyDragEnd(): void;
+  onHierarchyDragOver(target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
+  onMoveHierarchyNode(node: DebugNodeDescriptor, target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const hasChildren = node.children.length > 0;
@@ -2278,12 +2362,29 @@ function NodeTreeItem({
   const NodeIcon = iconForNode(node);
 
   function handleDragOver(event: ReactDragEvent<HTMLLIElement>): void {
+    const draggedNode = draggedHierarchyNode();
+    if (draggedNode || hasHierarchyNodeDragType(event)) {
+      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = 'move';
+      onHierarchyDragOver(node, placementForHierarchyDrop(event));
+      return;
+    }
     if (!isDynamicNodeDragActive() && !isImageAssetDragActive() && !hasDynamicNodeDragType(event) && !hasImageAssetDragType(event)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }
 
   function handleDrop(event: ReactDragEvent<HTMLLIElement>): void {
+    const draggedNode = draggedHierarchyNode();
+    if (draggedNode || hasHierarchyNodeDragType(event)) {
+      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded) return;
+      event.preventDefault();
+      event.stopPropagation();
+      onMoveHierarchyNode(draggedNode, node, placementForHierarchyDrop(event));
+      return;
+    }
     const imagePayload = readImageAssetDragPayload(event) ?? getDraggedImageAsset();
     const file = readDynamicNodeDragFile(event) ?? getDraggedDynamicNode();
     if (!imagePayload && !file) return;
@@ -2298,6 +2399,7 @@ function NodeTreeItem({
 
   return (
     <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onSelectNode(node.id); onOpenCreateMenu(node, event.clientX, event.clientY); }}>
+      {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'before' && <HierarchyDropIndicator placement="before" />}
       <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
         <button
           type="button"
@@ -2310,7 +2412,21 @@ function NodeTreeItem({
         >
           {hasChildren && !alwaysExpanded ? (isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />) : <span className={styles.expandSpacer} />}
         </button>
-        <button type="button" className={styles.nodeContent} onClick={() => onSelectNode(node.id)}>
+        <button
+          type="button"
+          className={styles.nodeContent}
+          draggable={!alwaysExpanded}
+          onDragStart={(event) => {
+            if (alwaysExpanded) return;
+            event.stopPropagation();
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData(hierarchyNodeDragMimeType, node.id);
+            event.dataTransfer.setData('text/plain', node.name);
+            onHierarchyDragStart(node);
+          }}
+          onDragEnd={onHierarchyDragEnd}
+          onClick={() => onSelectNode(node.id)}
+        >
           <NodeIcon className={styles.nodeIcon} size={14} />
           <span className={styles.nodeName}>{node.name}</span>
           <span className={styles.nodeMeta}>{node.className}</span>
@@ -2345,11 +2461,17 @@ function NodeTreeItem({
           </button>
         )}
       </div>
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />}
+      {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'child' && <HierarchyDropIndicator placement="child" />}
+      {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'after' && <HierarchyDropIndicator placement="after" />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />}
     </li>
   );
 }
 
+
+function HierarchyDropIndicator({ placement }: { placement: HierarchyDropPlacement }) {
+  return <div className={`${styles.hierarchyDropIndicator} ${styles[`hierarchyDrop${capitalizePlacement(placement)}`]}`}><span /></div>;
+}
 
 function NodeCreateContextMenu({ menu, onCreate, onClose }: { menu: { node: DebugNodeDescriptor; x: number; y: number }; onCreate(parent: DebugNodeDescriptor, option: GenericCreateNodeOption): void; onClose(): void }) {
   const x = Math.min(menu.x, typeof window === 'undefined' ? menu.x : window.innerWidth - 230);
@@ -3367,6 +3489,27 @@ function assetPathMatches(url: string | undefined, publicPath: string): boolean 
   }
 }
 
+
+function hasHierarchyNodeDragType(event: ReactDragEvent): boolean {
+  return Array.from(event.dataTransfer.types).includes(hierarchyNodeDragMimeType);
+}
+
+function placementForHierarchyDrop(event: ReactDragEvent<HTMLElement>): HierarchyDropPlacement {
+  const row = (event.currentTarget as HTMLElement).querySelector(`.${styles.nodeRow}`) as HTMLElement | null;
+  const rect = (row ?? event.currentTarget).getBoundingClientRect();
+  const ratio = rect.height <= 0 ? 0.5 : (event.clientY - rect.top) / rect.height;
+  if (ratio < 0.25) return 'before';
+  if (ratio > 0.75) return 'after';
+  return 'child';
+}
+
+function containsNode(root: DebugNodeDescriptor, id: string): boolean {
+  return root.children.some((child) => child.id === id || containsNode(child, id));
+}
+
+function capitalizePlacement(placement: HierarchyDropPlacement): string {
+  return `${placement[0].toUpperCase()}${placement.slice(1)}`;
+}
 
 function defaultGenericNodeName(className: string): string {
   return `${className}-${Date.now().toString(36).slice(-5)}`;

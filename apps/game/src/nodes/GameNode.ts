@@ -6,6 +6,10 @@ import type { NodeRuntime } from './NodeRuntime';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, flattenExposedPropGroups, propBoolean, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
+function clampChildIndex(index: number, length: number): number {
+  return Math.max(0, Math.min(length, Math.trunc(index)));
+}
+
 function rotatePoint(x: number, y: number, rotation: number, offset: PointLike): PointLike {
   if (rotation === 0) return { x: offset.x + x, y: offset.y + y };
   const cos = Math.cos(rotation);
@@ -133,16 +137,29 @@ export abstract class GameNode {
   }
 
   addChild<T extends GameNode>(child: T): T {
+    return this.insertChildAt(child, this.childNodes.length);
+  }
+
+  insertChildAt<T extends GameNode>(child: T, index = this.childNodes.length): T {
     if (child.parent) throw new Error(`Node ${child.debugName()} already has a parent`);
 
     child.parent = this;
-    this.childNodes.push(child);
+    this.childNodes.splice(clampChildIndex(index, this.childNodes.length), 0, child);
 
-    if (this.nodeContext) {
+    if (this.nodeContext && !child.isInitialized) {
       this.nodeContext.runtime.mountSubtree(child, this.nodeContext);
     }
 
     return child;
+  }
+
+  detachChildForMove(child: GameNode): boolean {
+    const index = this.childNodes.indexOf(child);
+    if (index < 0) return false;
+
+    this.childNodes.splice(index, 1);
+    child.parent = undefined;
+    return true;
   }
 
   removeChild(child: GameNode): void {

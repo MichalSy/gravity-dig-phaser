@@ -230,6 +230,30 @@ export interface DebugNodeDeleteAckMessage extends DebugTargetedMessageFields {
   sentAt: number;
 }
 
+export type DebugNodeMovePlacement = 'before' | 'after' | 'child';
+
+export interface DebugNodeMoveMessage extends DebugTargetedMessageFields {
+  type: 'node:move';
+  sessionId: string;
+  requestId: string;
+  nodeId: string;
+  targetNodeId: string;
+  placement: DebugNodeMovePlacement;
+  sentAt: number;
+}
+
+export interface DebugNodeMoveAckMessage extends DebugTargetedMessageFields {
+  type: 'node:move:ack';
+  sessionId: string;
+  requestId: string;
+  nodeId: string;
+  targetNodeId: string;
+  placement: DebugNodeMovePlacement;
+  applied: boolean;
+  rejected?: string;
+  sentAt: number;
+}
+
 export interface DebugNodePatchAckMessage {
   type: 'node:patch:ack';
   sessionId: string;
@@ -424,4 +448,6 @@ export type DebugMessage =
   | DebugDynamicNodeUpdateAckMessage
   | DebugNodeDeleteMessage
   | DebugNodeDeleteAckMessage
+  | DebugNodeMoveMessage
+  | DebugNodeMoveAckMessage
   | DebugAssetListMessage;

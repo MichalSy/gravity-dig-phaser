@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodeDeleteMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
+import type { DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodeDeleteMessage, DebugNodeMoveMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
 import { GameNode, SCENE_PROP_RECORDS, type NodeContext, type SceneNodeJson } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
 import { captureDebugNodeTree, diffDebugNodeTrees, type DebugNodeTreeSnapshot } from './debugNodeTree';
@@ -145,6 +145,7 @@ export class DebugBridgeNode extends GameNode {
       if (message.type === 'node:patch') this.applyNodePatch(message);
       if (message.type === 'node:create') void this.applyNodeCreate(message);
       if (message.type === 'node:delete') this.applyNodeDelete(message);
+      if (message.type === 'node:move') this.applyNodeMove(message);
       if (message.type === 'dynamic-node:updated') this.requestDynamicNodeUpdate(message);
       if (message.type === 'dynamic-node:module-response') void this.handleDynamicModuleResponse(message);
       if (message.type === 'dynamic-node:module-error') this.rejectPendingDynamicModuleRequest(message.requestId, message.error);
@@ -493,6 +494,77 @@ export class DebugBridgeNode extends GameNode {
       }
       this.nodeIds.delete(ref.node);
     }
+  }
+
+  private applyNodeMove(message: DebugNodeMoveMessage): void {
+    const node = this.findNodeTarget(message.nodeId);
+    const target = this.findNodeTarget(message.targetNodeId);
+    if (!node || !target) {
+      this.sendNodeMoveAck(message, false, !node ? 'Node nicht gefunden.' : 'Target Node nicht gefunden.');
+      return;
+    }
+    if (!node.parent) {
+      this.sendNodeMoveAck(message, false, 'Root/Persistent Nodes können live nicht verschoben werden.');
+      return;
+    }
+    if (node === target || this.isNodeDescendant(target, node)) {
+      this.sendNodeMoveAck(message, false, 'Node kann nicht in sich selbst oder seinen eigenen Subtree verschoben werden.');
+      return;
+    }
+
+    const oldParent = node.parent;
+    const oldIndex = oldParent.children.indexOf(node);
+    const newParent = message.placement === 'child' ? target : target.parent;
+    if (!newParent) {
+      this.sendNodeMoveAck(message, false, 'Root-Level Reordering ist live nicht erlaubt.');
+      return;
+    }
+
+    let insertIndex = message.placement === 'child' ? 0 : newParent.children.indexOf(target) + (message.placement === 'after' ? 1 : 0);
+    if (insertIndex < 0) {
+      this.sendNodeMoveAck(message, false, 'Target Index konnte nicht bestimmt werden.');
+      return;
+    }
+    if (oldParent === newParent && oldIndex >= 0 && oldIndex < insertIndex) insertIndex -= 1;
+    if (oldParent === newParent && oldIndex === insertIndex) {
+      this.sendNodeMoveAck(message, true);
+      return;
+    }
+
+    if (!oldParent.detachChildForMove(node)) {
+      this.sendNodeMoveAck(message, false, 'Node konnte nicht aus Parent entfernt werden.');
+      return;
+    }
+    newParent.insertChildAt(node, insertIndex);
+    this.sendNodeDefinitions();
+    this.sendTreeSnapshot();
+    this.sendSelectedNodeProps(true);
+    this.sendNodeMoveAck(message, true);
+  }
+
+  private isNodeDescendant(candidate: GameNode, ancestor: GameNode): boolean {
+    let parent = candidate.parent;
+    while (parent) {
+      if (parent === ancestor) return true;
+      parent = parent.parent;
+    }
+    return false;
+  }
+
+  private sendNodeMoveAck(message: DebugNodeMoveMessage, applied: boolean, rejected?: string): void {
+    this.send({
+      type: 'node:move:ack',
+      sessionId: this.config.sessionId,
+      sourceClientId: this.clientId,
+      targetClientId: this.boundEditorClientId,
+      requestId: message.requestId,
+      nodeId: message.nodeId,
+      targetNodeId: message.targetNodeId,
+      placement: message.placement,
+      applied,
+      rejected,
+      sentAt: Date.now(),
+    });
   }
 
   private sendNodeDeleteAck(message: DebugNodeDeleteMessage, applied: boolean, rejected?: string, name?: string, instanceId?: string): void {
