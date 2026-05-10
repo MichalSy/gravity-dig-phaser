@@ -21,7 +21,8 @@ export async function loadDynamicNodeModules(manifest: DynamicNodeManifest | und
 
 export async function loadDynamicNodeModule(entry: Pick<DynamicNodeManifestEntry, 'url' | 'hash'>): Promise<DynamicNodeModule | undefined> {
   try {
-    const url = `${entry.url}${entry.url.includes('?') ? '&' : '?'}v=${encodeURIComponent(entry.hash)}`;
+    const resolvedEntryUrl = resolveDynamicNodeUrl(entry.url);
+    const url = `${resolvedEntryUrl}${resolvedEntryUrl.includes('?') ? '&' : '?'}v=${encodeURIComponent(entry.hash)}`;
     const module = await import(/* @vite-ignore */ url) as { default?: DynamicNodeModule };
     if (!module.default?.nodeTypeId || typeof module.default.createBehavior !== 'function') {
       console.warn('[DynamicNode] invalid module', entry);
@@ -49,4 +50,11 @@ export async function loadDynamicNodeModuleFromCode(code: string): Promise<Dynam
   } finally {
     URL.revokeObjectURL(blobUrl);
   }
+}
+
+function resolveDynamicNodeUrl(url: string): string {
+  if (!url.startsWith('/dynamic-nodes-compiled/')) return url;
+  const base = import.meta.env.BASE_URL || '/';
+  if (base === '/') return url;
+  return `${base.replace(/\/$/u, '')}${url}`;
 }

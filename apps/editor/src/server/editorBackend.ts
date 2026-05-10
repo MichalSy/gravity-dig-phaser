@@ -618,7 +618,7 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
   return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
 }
 
-async function buildDynamicNodeModules(): Promise<{ manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } }> {
+export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } }> {
   const sourceDir = resolve(workspacePath, 'apps/game/public/dynamic-nodes');
   const outDir = resolve(workspacePath, 'apps/game/public/dynamic-nodes-compiled');
   assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');

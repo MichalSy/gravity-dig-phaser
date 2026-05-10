@@ -54,9 +54,17 @@ export const GAME_ANIMATION_SETS: readonly AnimationSetDefinition[] = [
   { key: 'character', path: '/assets/character/character.animation.json' },
 ];
 
+function publicAssetPath(path: string): string {
+  if (!path.startsWith('/')) return path;
+  const base = import.meta.env.BASE_URL || '/';
+  if (base === '/') return path;
+  return `${base.replace(/\/$/u, '')}${path}`;
+}
+
 function versioned(path: string): string {
-  const separator = path.includes('?') ? '&' : '?';
-  return `${path}${separator}v=${ASSET_VERSION}`;
+  const resolvedPath = publicAssetPath(path);
+  const separator = resolvedPath.includes('?') ? '&' : '?';
+  return `${resolvedPath}${separator}v=${ASSET_VERSION}`;
 }
 
 function frameName(index: number): string {

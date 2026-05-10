@@ -26,10 +26,10 @@ function defaultRelayUrl(): string {
   return isLocalEditorHost() ? 'ws://localhost:8787/debug' : 'wss://gravity-dig-relay.sytko.de/debug';
 }
 
-function defaultGameUrl(): string {
+function defaultRuntimeUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_URL;
   if (configured) return configured;
-  if (typeof window !== 'undefined') return new URL('/game/index.html', window.location.origin).toString();
+  if (typeof window !== 'undefined') return new URL('/game/runtime.html', window.location.origin).toString();
   return '';
 }
 
@@ -48,23 +48,6 @@ const editorPreviewScenes = [
 type EditorPreviewSceneId = (typeof editorPreviewScenes)[number]['id'];
 type ViewportMode = 'editor' | 'play';
 
-function buildDebugGameUrl(sessionId: string): string {
-  const url = new URL(defaultGameUrl());
-  url.searchParams.set('debug', '1');
-  url.searchParams.set('debugSession', sessionId);
-  url.searchParams.set('debugRelay', defaultRelayUrl());
-  if (typeof window !== 'undefined') url.searchParams.set('debugEditorApi', window.location.origin);
-  return url.toString();
-}
-
-function buildEditorPreviewUrl(scene: EditorPreviewSceneId): string {
-  const gameUrl = defaultGameUrl();
-  if (!gameUrl) return '';
-  const url = new URL(gameUrl);
-  url.searchParams.set('runtimeMode', 'editor');
-  url.searchParams.set('editorScene', scene);
-  return url.toString();
-}
 
 const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
 const dynamicNodeDragMimeType = 'application/x-gravity-dig-dynamic-node';
@@ -341,6 +324,7 @@ export default function Home() {
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [bridgeBinding, setBridgeBinding] = useState('Bridge nicht gebunden');
   const [gameFrameKey, setGameFrameKey] = useState(0);
+  const [runtimeReadyKey, setRuntimeReadyKey] = useState(0);
   const [viewportMode, setViewportMode] = useState<ViewportMode>('editor');
   const [editorPreviewScene, setEditorPreviewScene] = useState<EditorPreviewSceneId>('gameplay');
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
@@ -361,10 +345,9 @@ export default function Home() {
   const nodeDefinitionsRef = useRef<Map<string, DebugSceneNodeDefinition>>(new Map());
   const workbenchRef = useRef<HTMLElement | null>(null);
   const viewportPanelRef = useRef<HTMLElement | null>(null);
+  const runtimeFrameRef = useRef<HTMLIFrameElement | null>(null);
   const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
-  const debugGameUrl = useMemo(() => (sessionId ? buildDebugGameUrl(sessionId) : ''), [sessionId]);
-  const editorPreviewUrl = useMemo(() => buildEditorPreviewUrl(editorPreviewScene), [editorPreviewScene]);
-  const viewportUrl = viewportMode === 'play' ? debugGameUrl : editorPreviewUrl;
+  const runtimeUrl = useMemo(() => defaultRuntimeUrl(), []);
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
     [selectedNodeId, treeRoots],
@@ -593,6 +576,27 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    function handleRuntimeMessage(event: MessageEvent): void {
+      if (event.origin !== window.location.origin) return;
+      const message = event.data as { type?: string; mode?: string; scene?: string } | undefined;
+      if (message?.type === 'gravity-dig:runtime:ready') {
+        setRuntimeReadyKey((current) => current + 1);
+        setLastEvent('Runtime iframe bereit.');
+        return;
+      }
+      if (message?.type === 'gravity-dig:runtime:started') {
+        setLastEvent(`Runtime gestartet: ${message.mode ?? 'unknown'} · ${message.scene ?? 'unknown'}`);
+      }
+    }
+    window.addEventListener('message', handleRuntimeMessage);
+    return () => window.removeEventListener('message', handleRuntimeMessage);
+  }, []);
+
+  useEffect(() => {
+    void startRuntimeFrame();
+  }, [viewportMode, editorPreviewScene, gameFrameKey, runtimeReadyKey]);
+
+  useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
 
@@ -658,9 +662,25 @@ export default function Home() {
     socketRef.current.send(JSON.stringify(message));
   }, [overlayLayerSelections, selectedNodeDefinition, selectedNodeId, sessionId]);
 
+  async function startRuntimeFrame(): Promise<void> {
+    const frame = runtimeFrameRef.current;
+    if (!frame?.contentWindow) return;
+    try {
+      await fetch(editorApi('/dynamic-nodes/build'), { method: 'POST', cache: 'no-store' });
+    } catch (error) {
+      setLastEvent(`Dynamic Scripts konnten nicht kompiliert werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    frame.contentWindow.postMessage({
+      type: 'gravity-dig:runtime:start',
+      mode: viewportMode,
+      scene: editorPreviewScene,
+      editorApiBase: window.location.origin,
+    }, window.location.origin);
+  }
+
   function openGameInTab(): void {
-    if (!debugGameUrl) return;
-    window.open(debugGameUrl, '_blank', 'noopener,noreferrer');
+    if (!runtimeUrl) return;
+    window.open(runtimeUrl, '_blank', 'noopener,noreferrer');
   }
 
   function reloadGameFrame(): void {
@@ -1491,10 +1511,11 @@ export default function Home() {
           <div className={styles.viewportBody}>
             <div className={`${styles.frameStage} ${viewportMode === 'editor' ? styles.editorFrameStage : ''}`}>
               <iframe
-                key={`${viewportMode}-${viewportMode === 'play' ? `${sessionId}-${gameFrameKey}` : editorPreviewScene}`}
+                ref={runtimeFrameRef}
+                key={`runtime-${gameFrameKey}`}
                 className={styles.gameFrame}
-                title={viewportMode === 'editor' ? 'Gravity Dig Scene Editor Preview' : 'Gravity Dig Game'}
-                src={viewportUrl || 'about:blank'}
+                title={viewportMode === 'editor' ? 'Gravity Dig Runtime Editor Preview' : 'Gravity Dig Runtime Play'}
+                src={runtimeUrl || 'about:blank'}
                 allow="gamepad; fullscreen"
               />
             </div>
