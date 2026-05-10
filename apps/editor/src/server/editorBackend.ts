@@ -3,7 +3,7 @@ import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, readdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import ts from 'typescript';
@@ -624,7 +624,6 @@ export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 
   assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
   assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
 
-  await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
   const files = await findDynamicNodeSourceFiles(sourceDir);
   const manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } = { version: 1, nodes: [] };
@@ -638,15 +637,21 @@ export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 
     const outfile = join(outDir, outfileName);
     const compiled = transpileDynamicNodeSource(source, baseName);
 
-    await writeFile(outfile, compiled);
-    await writeFile(`${outfile}.map`, '');
+    await writeFileAtomic(outfile, compiled);
+    await writeFileAtomic(`${outfile}.map`, '');
 
     const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
     manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/scripts/${file.split(sep).join('/')}`, url: `/scripts-compiled/${outfileName}`, hash });
   }
 
-  await writeFile(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFileAtomic(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   return { manifest };
+}
+
+async function writeFileAtomic(path: string, content: string): Promise<void> {
+  const temporaryPath = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  await writeFile(temporaryPath, content);
+  await rename(temporaryPath, path);
 }
 
 async function findDynamicNodeSourceFiles(directory: string, prefix = ''): Promise<string[]> {
