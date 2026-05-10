@@ -1,17 +1,15 @@
 # Gravity Dig Monorepo
 
-Gravity Dig is a TypeScript monorepo with three deployable apps:
+Gravity Dig is a TypeScript monorepo with two deployable apps:
 
 - `apps/game` - Phaser + Vite game client
 - `apps/editor` - Next.js/React debug editor plus server-side file/Git backend
-- `apps/relay` - small Node.js WebSocket debug relay/session router
 - `packages/debug-protocol` - shared debug message types
 
 Live targets:
 
 - Game: `https://gravity-dig-phaser.sytko.de`
 - Debug editor: `https://gravity-dig-debug.sytko.de`
-- Debug relay: `wss://gravity-dig-relay.sytko.de/debug`
 
 ## Current playable state
 
@@ -50,8 +48,7 @@ apps/
 │       ├── scenes/         # single Phaser scene adapter
 │       ├── ui/             # HUD/touch-control nodes and layout
 │       └── utils/          # small pure helpers
-├── editor/                 # Next.js debug editor + server-only backend APIs
-└── relay/                  # Node.js WebSocket relay at /debug only
+└── editor/                 # Next.js debug editor + server-only backend APIs
 
 packages/
 └── debug-protocol/         # shared message/types package
@@ -61,14 +58,13 @@ packages/
 
 Debug flow:
 
-1. Start relay: `npm run dev:relay`
-2. Start editor: `npm run dev:editor`
-3. Open editor; it auto-connects, generates a `debugSession`, and embeds the game with `?debug=1&debugSession=<id>&debugRelay=<relay-url>&debugEditorApi=<editor-origin>`.
-4. The game registers as role `game`; the editor registers as role `editor`; matching `debugSession` pairs them through the relay.
-5. The game sends `node:tree`, `node:delta`, `node:props`, asset, and exposed-prop metadata to the editor.
-6. Editor UI patches still go to the game through WebSocket for live preview. Persisting those changes is handled by the editor's own Next.js API under `/api/editor/*`.
+1. Start editor: `npm run dev:editor`
+2. Open editor; it generates a `debugSession` and embeds the game with `?debug=1&debugSession=<id>&debugEditorApi=<editor-origin>`.
+3. Editor and embedded game communicate directly via `postMessage`; there is no WebSocket relay in the debug path.
+4. The game sends `node:tree`, `node:delta`, `node:props`, asset, and exposed-prop metadata to the editor.
+5. Editor UI patches go to the embedded game through `postMessage` for live preview. Persisting those changes is handled by the editor's own Next.js API under `/api/editor/*`.
 
-`?debug=0` disables the persisted game debug connection. The relay exposes `/health` for Kubernetes probes.
+`?debug=0` disables the persisted game debug connection.
 
 ## Source migration notes
 
@@ -92,7 +88,6 @@ The C# gameplay code is treated as reference only; Phaser/TypeScript is the cano
 - Browser clients never receive repository tokens or file-system paths beyond safe relative paths; the game only gets a client-safe `debugEditorApi` origin for preview reads.
 - `apps/editor` owns backend responsibilities: pending debug changes, safe file APIs, Git status, commit and push workflow.
 - `apps/editor/src/server/*` is server-only. It validates relative paths, blocks traversal, and only writes under allowlisted repository roots.
-- `apps/relay` stays intentionally dumb: HTTP health/session metadata plus WebSocket routing/cache for debug messages. No Git, no file writes, no secrets.
 - Main editor APIs:
   - `GET|POST|DELETE /api/editor/changes/:sessionId`
   - `POST /api/editor/git/save/:sessionId`
@@ -112,7 +107,7 @@ EDITOR_GIT_AUTHOR_EMAIL=editor@gravity-dig.local
 GITHUB_TOKEN=... # required only for push
 ```
 
-Client-safe environment remains `NEXT_PUBLIC_DEBUG_RELAY_URL` and `NEXT_PUBLIC_GAME_URL` only.
+Client-safe environment remains `NEXT_PUBLIC_GAME_URL` only.
 
 ## Architecture rules
 
@@ -130,23 +125,20 @@ Client-safe environment remains `NEXT_PUBLIC_DEBUG_RELAY_URL` and `NEXT_PUBLIC_G
 npm install
 npm run dev:game
 npm run dev:editor
-npm run dev:relay
 npm run build
 ```
 
 ## Deployment
 
-GitHub Actions builds three GHCR images:
+GitHub Actions builds two GHCR images:
 
 - `ghcr.io/michalsy/gravity-dig-phaser.aikogame`
 - `ghcr.io/michalsy/gravity-dig-phaser.debug-editor`
-- `ghcr.io/michalsy/gravity-dig-phaser.debug-relay`
 
 GitOps/ArgoCD apps:
 
 - `gravity-dig-phaser`
 - `gravity-dig-editor`
-- `gravity-dig-relay`
 
 ## Player Management
 
