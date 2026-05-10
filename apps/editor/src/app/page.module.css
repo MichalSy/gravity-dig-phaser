@@ -1540,3 +1540,32 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   border-bottom: 4px solid transparent;
   border-right: 7px solid #22c55e;
 }
+
+.viewportControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activeHeaderButton {
+  background: rgba(14, 165, 233, 0.28);
+  border-color: rgba(125, 211, 252, 0.62);
+  color: #e0f2fe;
+}
+
+.headerSelect {
+  height: 26px;
+  max-width: 132px;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 7px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 0 7px;
+}
+
+.editorFrameStage {
+  border-color: rgba(34, 197, 94, 0.38);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(34, 197, 94, 0.2) inset;
+}

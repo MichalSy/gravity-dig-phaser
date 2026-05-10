@@ -34,6 +34,10 @@ const PREFAB_JSON_KEYS: Record<string, string> = {
 const PREVIEW_CHANGES_KEY = 'editor:preview-changes';
 const DYNAMIC_NODE_MANIFEST_KEY = 'dynamic-nodes:manifest';
 
+type AppRuntimeLaunchMode = 'play' | 'editor';
+
+const EDITOR_SCENE_KEYS = new Set<keyof typeof SCENE_JSON_KEYS>(['menu', 'loading', 'gameplay', 'gameplayUi']);
+
 export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
   private appRoot!: NodeRoot;
@@ -43,6 +47,8 @@ export class AppScene extends Phaser.Scene {
   private menuNode!: MenuNode;
   private loadingNode!: LoadingNode;
   private gameplayMounted = false;
+  private launchMode: AppRuntimeLaunchMode = 'play';
+  private editorSceneKey: keyof typeof SCENE_JSON_KEYS = 'gameplay';
   private debugConfig = readDebugConnectionConfig();
   private readonly dynamicModuleCache = new Map<string, { hash: string; module: DynamicNodeModule }>();
   private readonly dynamicScriptNodes = new Set<DynamicScriptNode>();
@@ -59,6 +65,7 @@ export class AppScene extends Phaser.Scene {
     this.load.json(SCENE_JSON_KEYS.gameplayUi, 'scenes/gameplay-ui.scene.json');
     for (const [path, key] of Object.entries(PREFAB_JSON_KEYS)) this.load.json(key, path);
     this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'dynamic-nodes-compiled/manifest.json');
+    this.readLaunchParams();
     if (this.debugConfig) {
       const previewUrl = new URL(`/api/editor/changes/${encodeURIComponent(this.debugConfig.sessionId)}/preview`, this.debugConfig.editorApiUrl);
       previewUrl.searchParams.set('cacheBust', Date.now().toString(36));
@@ -78,22 +85,26 @@ export class AppScene extends Phaser.Scene {
     this.input.addPointer(3);
     this.cameras.main.setBackgroundColor('#050816');
 
-    this.appRuntime = new NodeRuntime({ phaserScene: this, mode: NodeRuntimeMode.Play });
+    this.appRuntime = new NodeRuntime({ phaserScene: this, mode: this.launchMode === 'editor' ? NodeRuntimeMode.Editor : NodeRuntimeMode.Play });
     this.sceneFactory = this.createSceneFactory();
     await this.registerDynamicNodeModules();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
-    if (this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig, {
+    if (this.launchMode === 'play' && this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig, {
       createNode: (definition) => this.sceneFactory.createTree(definition),
       hasDynamicModule: (module) => this.hasDynamicNodeModule(module),
       ensureDynamicModule: (module, code) => this.ensureDynamicNodeModule(module, code),
       reloadDynamicModule: (module, code) => this.reloadDynamicNodeModule(module, code),
     }));
 
-    this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: 'App-Root' }));
-    this.menuScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.menu));
-    this.loadingScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.loading));
-    this.menuNode = this.requireSceneNode<MenuNode>(this.menuScene, 'Menu');
-    this.loadingNode = this.requireSceneNode<LoadingNode>(this.loadingScene, 'Loading');
+    this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: this.launchMode === 'editor' ? 'Editor-Root' : 'App-Root' }));
+    if (this.launchMode === 'editor') {
+      this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS[this.editorSceneKey]));
+    } else {
+      this.menuScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.menu));
+      this.loadingScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.loading));
+      this.menuNode = this.requireSceneNode<MenuNode>(this.menuScene, 'Menu');
+      this.loadingNode = this.requireSceneNode<LoadingNode>(this.loadingScene, 'Loading');
+    }
 
     this.appRuntime.init();
     this.appRuntime.resolve();
@@ -101,6 +112,13 @@ export class AppScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.appRuntime.destroy();
     });
+  }
+
+  private readLaunchParams(): void {
+    const params = new URLSearchParams(window.location.search);
+    this.launchMode = params.get('runtimeMode') === 'editor' ? 'editor' : 'play';
+    const scene = params.get('editorScene');
+    if (scene && EDITOR_SCENE_KEYS.has(scene as keyof typeof SCENE_JSON_KEYS)) this.editorSceneKey = scene as keyof typeof SCENE_JSON_KEYS;
   }
 
   private startGame(): void {

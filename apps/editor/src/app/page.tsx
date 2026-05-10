@@ -38,12 +38,28 @@ function editorApi(path: string): string {
   return new URL(apiPath, window.location.origin).toString();
 }
 
+const editorPreviewScenes = [
+  { id: 'menu', label: 'Menu' },
+  { id: 'loading', label: 'Loading' },
+  { id: 'gameplay', label: 'Gameplay' },
+  { id: 'gameplayUi', label: 'Gameplay UI' },
+] as const;
+type EditorPreviewSceneId = (typeof editorPreviewScenes)[number]['id'];
+type ViewportMode = 'editor' | 'play';
+
 function buildDebugGameUrl(sessionId: string): string {
   const url = new URL(defaultGameUrl());
   url.searchParams.set('debug', '1');
   url.searchParams.set('debugSession', sessionId);
   url.searchParams.set('debugRelay', defaultRelayUrl());
   if (typeof window !== 'undefined') url.searchParams.set('debugEditorApi', window.location.origin);
+  return url.toString();
+}
+
+function buildEditorPreviewUrl(scene: EditorPreviewSceneId): string {
+  const url = new URL(defaultGameUrl());
+  url.searchParams.set('runtimeMode', 'editor');
+  url.searchParams.set('editorScene', scene);
   return url.toString();
 }
 
@@ -322,6 +338,8 @@ export default function Home() {
   const [lastEvent, setLastEvent] = useState('Warte auf Game...');
   const [bridgeBinding, setBridgeBinding] = useState('Bridge nicht gebunden');
   const [gameFrameKey, setGameFrameKey] = useState(0);
+  const [viewportMode, setViewportMode] = useState<ViewportMode>('editor');
+  const [editorPreviewScene, setEditorPreviewScene] = useState<EditorPreviewSceneId>('gameplay');
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
   const reconnectTimerRef = useRef<number | undefined>(undefined);
   const socketRef = useRef<WebSocket | null>(null);
@@ -342,6 +360,8 @@ export default function Home() {
   const viewportPanelRef = useRef<HTMLElement | null>(null);
   const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
   const debugGameUrl = useMemo(() => (sessionId ? buildDebugGameUrl(sessionId) : ''), [sessionId]);
+  const editorPreviewUrl = useMemo(() => buildEditorPreviewUrl(editorPreviewScene), [editorPreviewScene]);
+  const viewportUrl = viewportMode === 'play' ? debugGameUrl : editorPreviewUrl;
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
     [selectedNodeId, treeRoots],
@@ -1454,14 +1474,24 @@ export default function Home() {
         <div className={`${styles.columnResizer} ${styles.leftColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
 
         <section ref={viewportPanelRef} className={styles.viewportPanel}>
-          <PanelHeader title="Game" meta={lastEvent} />
+          <PanelHeader title={viewportMode === 'editor' ? 'Scene Editor Preview' : 'Live Game'} meta={viewportMode === 'editor' ? `Editor Mode · ${editorPreviewScene}` : lastEvent}>
+            <div className={styles.viewportControls}>
+              <button type="button" className={`${styles.headerButton} ${viewportMode === 'editor' ? styles.activeHeaderButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
+              <button type="button" className={`${styles.headerButton} ${viewportMode === 'play' ? styles.activeHeaderButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>
+              {viewportMode === 'editor' && (
+                <select className={styles.headerSelect} value={editorPreviewScene} onChange={(event) => setEditorPreviewScene(event.target.value as EditorPreviewSceneId)}>
+                  {editorPreviewScenes.map((scene) => <option key={scene.id} value={scene.id}>{scene.label}</option>)}
+                </select>
+              )}
+            </div>
+          </PanelHeader>
           <div className={styles.viewportBody}>
-            <div className={styles.frameStage}>
+            <div className={`${styles.frameStage} ${viewportMode === 'editor' ? styles.editorFrameStage : ''}`}>
               <iframe
-                key={`${sessionId}-${gameFrameKey}`}
+                key={`${viewportMode}-${viewportMode === 'play' ? `${sessionId}-${gameFrameKey}` : editorPreviewScene}`}
                 className={styles.gameFrame}
-                title="Gravity Dig Game"
-                src={debugGameUrl || 'about:blank'}
+                title={viewportMode === 'editor' ? 'Gravity Dig Scene Editor Preview' : 'Gravity Dig Game'}
+                src={viewportUrl || 'about:blank'}
                 allow="gamepad; fullscreen"
               />
             </div>
