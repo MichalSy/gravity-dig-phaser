@@ -13,7 +13,7 @@ import {
 } from '../game/nodes';
 import { AnimatedImageNode, collectNodesByName, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
-import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
+import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../dynamic-nodes';
 
@@ -21,7 +21,6 @@ const SCENE_JSON_KEYS = {
   menu: 'scene:menu',
   loading: 'scene:loading',
   gameplay: 'scene:gameplay',
-  gameplayUi: 'scene:gameplay-ui',
 } as const;
 
 const PREFAB_JSON_KEYS: Record<string, string> = {
@@ -36,7 +35,7 @@ const DYNAMIC_NODE_MANIFEST_KEY = 'dynamic-nodes:manifest';
 
 type AppRuntimeLaunchMode = 'play' | 'editor';
 
-const EDITOR_SCENE_KEYS = new Set<keyof typeof SCENE_JSON_KEYS>(['menu', 'loading', 'gameplay', 'gameplayUi']);
+const EDITOR_SCENE_KEYS = new Set<keyof typeof SCENE_JSON_KEYS>(['menu', 'loading', 'gameplay']);
 
 export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
@@ -62,7 +61,6 @@ export class AppScene extends Phaser.Scene {
     this.load.json(SCENE_JSON_KEYS.menu, 'scenes/menu.scene.json');
     this.load.json(SCENE_JSON_KEYS.loading, 'scenes/loading.scene.json');
     this.load.json(SCENE_JSON_KEYS.gameplay, 'scenes/gameplay.scene.json');
-    this.load.json(SCENE_JSON_KEYS.gameplayUi, 'scenes/gameplay-ui.scene.json');
     for (const [path, key] of Object.entries(PREFAB_JSON_KEYS)) this.load.json(key, path);
     this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'dynamic-nodes-compiled/manifest.json');
     this.readLaunchParams();
@@ -144,7 +142,6 @@ export class AppScene extends Phaser.Scene {
 
   private mountGameplayScenes(): void {
     this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.gameplay));
-    this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.gameplayUi));
   }
 
   private async registerDynamicNodeModules(): Promise<void> {
@@ -233,6 +230,7 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.MiningToolNode, (definition) => new MiningToolNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.StatusHudNode, (definition) => new StatusHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.BottomHudNode, (definition) => new BottomHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.TouchControlsNode, (definition) => new TouchControlsNode(optionsFrom(definition)))

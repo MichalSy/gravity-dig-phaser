@@ -24,6 +24,26 @@
           "intervalMs": 1500,
           "enabled": true
         }
+      },
+      {
+        "name": "UI.Gameplay",
+        "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
+        "children": [
+          {
+            "name": "InputModeDetector",
+            "nodeTypeId": "993ead47-0d83-553f-a782-6bc1d2506851"
+          },
+          {
+            "prefab": "prefabs/status-hud.prefab.json"
+          },
+          {
+            "prefab": "prefabs/bottom-hud.prefab.json"
+          },
+          {
+            "name": "UI.TouchControls",
+            "nodeTypeId": "a690aad8-ce49-5365-9c2d-0d636d5dcb77"
+          }
+        ]
       }
     ],
     "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"

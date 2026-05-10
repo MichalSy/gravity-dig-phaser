@@ -4,7 +4,7 @@ import { GAME_ANIMATION_SETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAsset
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode, ShipNode } from '../game/nodes';
 import { GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
-import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode } from '../ui/nodes';
+import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { AnimatedImageNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../dynamic-nodes';
@@ -14,7 +14,6 @@ const sceneFiles = {
   menu: 'scenes/menu.scene.json',
   loading: 'scenes/loading.scene.json',
   gameplay: 'scenes/gameplay.scene.json',
-  gameplayUi: 'scenes/gameplay-ui.scene.json',
 } as const;
 
 type RuntimeMode = 'editor' | 'play';
@@ -156,11 +155,6 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     if (this.needsGameplayRuntime(message.scene)) this.addGameplayRuntimeNodes(runtime);
     const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles[message.scene]);
-    if (message.scene === 'gameplayUi') {
-      const dependencyScene = this.createScene(await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.gameplay));
-      this.currentEditorRoot.addChild(dependencyScene);
-      dependencyScene.applySceneProps({ active: false });
-    }
     this.currentEditorRoot.addChild(this.createScene(scene));
     runtime.resolve();
 
@@ -214,9 +208,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private async mountGameplayScenes(root: NodeRoot): Promise<void> {
     try {
       const gameplay = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.gameplay);
-      const ui = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.gameplayUi);
       root.addChild(this.createScene(gameplay));
-      root.addChild(this.createScene(ui));
       this.runtime?.resolve();
     } catch (error) {
       console.error('[Gravity Dig Runtime] gameplay mount failed', error);
@@ -225,7 +217,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   }
 
   private needsGameplayRuntime(scene: RuntimeSceneId): boolean {
-    return scene === 'gameplay' || scene === 'gameplayUi';
+    return scene === 'gameplay';
   }
 
   private addGameplayRuntimeNodes(runtime: NodeRuntime): void {
@@ -312,6 +304,7 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.MiningToolNode, (definition) => new MiningToolNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.StatusHudNode, (definition) => new StatusHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.BottomHudNode, (definition) => new BottomHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.TouchControlsNode, (definition) => new TouchControlsNode(optionsFrom(definition)))

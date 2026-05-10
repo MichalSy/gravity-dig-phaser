@@ -827,7 +827,7 @@ function resolveSourceFile(nodePath: string[]): { filePath: string; nodePath: st
     Menu: 'apps/game/public/scenes/menu.scene.json',
     Loading: 'apps/game/public/scenes/loading.scene.json',
     Gameplay: 'apps/game/public/scenes/gameplay.scene.json',
-    'UI.Gameplay': 'apps/game/public/scenes/gameplay-ui.scene.json',
+    'UI.Gameplay': 'apps/game/public/scenes/gameplay.scene.json',
   };
   const filePath = sceneMap[first];
   if (!filePath) throw new EditorBackendError(`Unknown source root '${first}' for node path '${nodePath.join('/')}'`, 422);

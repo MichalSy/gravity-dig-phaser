@@ -42,7 +42,6 @@ const editorPreviewScenes = [
   { id: 'menu', label: 'Menu' },
   { id: 'loading', label: 'Loading' },
   { id: 'gameplay', label: 'Gameplay' },
-  { id: 'gameplayUi', label: 'Gameplay UI' },
 ] as const;
 type EditorPreviewSceneOption = (typeof editorPreviewScenes)[number];
 type EditorPreviewSceneId = EditorPreviewSceneOption['id'];
