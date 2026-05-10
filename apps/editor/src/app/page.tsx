@@ -3937,7 +3937,7 @@ function delay(ms: number): Promise<void> {
 
 function findNodePath(nodes: DebugNodeDescriptor[], id: string, parentPath: string[] = []): string[] | undefined {
   for (const node of nodes) {
-    const path = isAppRootNode(node) ? parentPath : [...parentPath, node.name];
+    const path = isAppRootNode(node) || isEditorRuntimeRootNode(node) || isPlayRuntimeRootNode(node) ? parentPath : [...parentPath, node.name];
     if (node.id === id) return path;
     const childPath = findNodePath(node.children, id, path);
     if (childPath) return childPath;

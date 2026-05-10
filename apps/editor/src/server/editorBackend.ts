@@ -887,18 +887,19 @@ function normalizeAssetPath(assetPath: string): string | undefined {
 }
 
 function resolveSourceFile(nodePath: string[]): { filePath: string; nodePath: string[] } {
-  const first = nodePath[0];
+  const normalizedNodePath = stripRuntimeRootPath(nodePath);
+  const first = normalizedNodePath[0];
   const prefabMap: Record<string, string> = {
     Player: 'apps/game/public/prefabs/player.prefab.json',
     Ship: 'apps/game/public/prefabs/ship.prefab.json',
     'UI.StatusHud': 'apps/game/public/prefabs/status-hud.prefab.json',
     'UI.BottomHud': 'apps/game/public/prefabs/bottom-hud.prefab.json',
   };
-  if (prefabMap[first]) return { filePath: prefabMap[first], nodePath };
-  if (nodePath.includes('Player')) return { filePath: prefabMap.Player, nodePath: nodePath.slice(nodePath.indexOf('Player')) };
-  if (nodePath.includes('Ship')) return { filePath: prefabMap.Ship, nodePath: nodePath.slice(nodePath.indexOf('Ship')) };
-  if (nodePath.includes('UI.StatusHud')) return { filePath: prefabMap['UI.StatusHud'], nodePath: nodePath.slice(nodePath.indexOf('UI.StatusHud')) };
-  if (nodePath.includes('UI.BottomHud')) return { filePath: prefabMap['UI.BottomHud'], nodePath: nodePath.slice(nodePath.indexOf('UI.BottomHud')) };
+  if (prefabMap[first]) return { filePath: prefabMap[first], nodePath: normalizedNodePath };
+  if (normalizedNodePath.includes('Player')) return { filePath: prefabMap.Player, nodePath: normalizedNodePath.slice(normalizedNodePath.indexOf('Player')) };
+  if (normalizedNodePath.includes('Ship')) return { filePath: prefabMap.Ship, nodePath: normalizedNodePath.slice(normalizedNodePath.indexOf('Ship')) };
+  if (normalizedNodePath.includes('UI.StatusHud')) return { filePath: prefabMap['UI.StatusHud'], nodePath: normalizedNodePath.slice(normalizedNodePath.indexOf('UI.StatusHud')) };
+  if (normalizedNodePath.includes('UI.BottomHud')) return { filePath: prefabMap['UI.BottomHud'], nodePath: normalizedNodePath.slice(normalizedNodePath.indexOf('UI.BottomHud')) };
   const sceneMap: Record<string, string> = {
     Menu: 'apps/game/public/scenes/menu.scene.json',
     'Scene.Menu': 'apps/game/public/scenes/menu.scene.json',
@@ -910,7 +911,13 @@ function resolveSourceFile(nodePath: string[]): { filePath: string; nodePath: st
   };
   const filePath = sceneMap[first];
   if (!filePath) throw new EditorBackendError(`Unknown source root '${first}' for node path '${nodePath.join('/')}'`, 422);
-  return { filePath, nodePath };
+  return { filePath, nodePath: normalizedNodePath };
+}
+
+function stripRuntimeRootPath(nodePath: string[]): string[] {
+  const first = nodePath[0] ?? '';
+  if (first === 'App-Root' || first === 'Play-Runtime-Root' || (first.startsWith('Editor-') && first.endsWith('-Root'))) return nodePath.slice(1);
+  return nodePath;
 }
 
 function findNodeByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): SceneNodeJsonLike | undefined {
