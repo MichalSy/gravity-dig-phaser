@@ -12,6 +12,26 @@
         "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
         "children": [
           {
+            "name": "Menu.Background",
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+            "props": {
+              "assetId": "title-screen",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0,
+              "position": {
+                "x": 640,
+                "y": 360
+              },
+              "scale": {
+                "x": 0.625,
+                "y": 0.625
+              }
+            }
+          },
+          {
             "name": "Menu",
             "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
             "props": {
@@ -19,26 +39,6 @@
               "scrollFactor": 0
             },
             "children": [
-              {
-                "name": "Menu.Background",
-                "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-                "props": {
-                  "assetId": "title-screen",
-                  "origin": {
-                    "x": 0.5,
-                    "y": 0.5
-                  },
-                  "scrollFactor": 0,
-                  "position": {
-                    "x": 640,
-                    "y": 360
-                  },
-                  "scale": {
-                    "x": 0.625,
-                    "y": 0.625
-                  }
-                }
-              },
               {
                 "name": "Menu.PlayButton",
                 "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
@@ -56,7 +56,8 @@
                   "scale": {
                     "x": 0.15375,
                     "y": 0.128125
-                  }
+                  },
+                  "rotation": 0.628
                 }
               },
               {
