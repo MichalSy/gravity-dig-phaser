@@ -4,29 +4,35 @@
     "name": "Gameplay",
     "children": [
       {
-        "name": "Level",
-        "nodeTypeId": "2ed70856-b481-58e1-a75c-db6e48d2fcdd"
+        "name": "GameRoot",
+        "nodeTypeId": "297cb39e-5ac2-51ea-a2c4-6f16fa58de77",
+        "children": [
+          {
+            "name": "Level",
+            "nodeTypeId": "2ed70856-b481-58e1-a75c-db6e48d2fcdd"
+          },
+          {
+            "name": "World",
+            "nodeTypeId": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1"
+          },
+          {
+            "prefab": "prefabs/ship.prefab.json"
+          },
+          {
+            "prefab": "prefabs/player.prefab.json"
+          },
+          {
+            "name": "ExamplePulseScript",
+            "nodeTypeId": "dynamic.example-pulse",
+            "props": {
+              "intervalMs": 1500,
+              "enabled": true
+            }
+          }
+        ]
       },
       {
-        "name": "World",
-        "nodeTypeId": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1"
-      },
-      {
-        "prefab": "prefabs/ship.prefab.json"
-      },
-      {
-        "prefab": "prefabs/player.prefab.json"
-      },
-      {
-        "name": "ExamplePulseScript",
-        "nodeTypeId": "dynamic.example-pulse",
-        "props": {
-          "intervalMs": 1500,
-          "enabled": true
-        }
-      },
-      {
-        "name": "UI.Gameplay",
+        "name": "UIRoot",
         "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
         "children": [
           {

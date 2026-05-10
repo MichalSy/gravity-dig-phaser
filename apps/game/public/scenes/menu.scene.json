@@ -4,8 +4,18 @@
     "name": "Scene.Menu",
     "children": [
       {
-        "name": "Menu",
-        "nodeTypeId": "aa985ee7-5dc3-59a4-bafb-11f49470a224"
+        "name": "Menu.GameRoot",
+        "nodeTypeId": "297cb39e-5ac2-51ea-a2c4-6f16fa58de77"
+      },
+      {
+        "name": "Menu.UIRoot",
+        "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
+        "children": [
+          {
+            "name": "Menu",
+            "nodeTypeId": "aa985ee7-5dc3-59a4-bafb-11f49470a224"
+          }
+        ]
       }
     ],
     "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodeDeleteMessage, DebugNodeMoveMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
-import { GameNode, SCENE_PROP_RECORDS, type NodeContext, type PointLike, type SceneNodeJson } from '../nodes';
+import { GameNode, NODE_TYPE_IDS, SCENE_PROP_RECORDS, type NodeContext, type PointLike, type SceneNodeJson } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
 import { captureDebugNodeTree, diffDebugNodeTrees, type DebugNodeTreeSnapshot } from './debugNodeTree';
 
@@ -31,6 +31,26 @@ interface SelectedNodeDragState {
   lastSentAt: number;
   lastSentSignature: string;
 }
+
+const SYSTEM_SCENE_ROOT_TYPE_IDS = new Set<string>([NODE_TYPE_IDS.GameRootNode, NODE_TYPE_IDS.UIRootNode]);
+const GAME_ONLY_TYPE_IDS = new Set<string>([
+  NODE_TYPE_IDS.LevelNode,
+  NODE_TYPE_IDS.GameWorldNode,
+  NODE_TYPE_IDS.ShipNode,
+  NODE_TYPE_IDS.PlayerNode,
+  NODE_TYPE_IDS.PlayerMovementControllerNode,
+  NODE_TYPE_IDS.PlayerAnimatorNode,
+  NODE_TYPE_IDS.MiningToolNode,
+  NODE_TYPE_IDS.CollisionRectNode,
+]);
+const UI_ONLY_TYPE_IDS = new Set<string>([
+  NODE_TYPE_IDS.MenuNode,
+  NODE_TYPE_IDS.LoadingNode,
+  NODE_TYPE_IDS.InputModeDetectorNode,
+  NODE_TYPE_IDS.StatusHudNode,
+  NODE_TYPE_IDS.BottomHudNode,
+  NODE_TYPE_IDS.TouchControlsNode,
+]);
 
 export class DebugBridgeNode extends GameNode {
   private readonly config: DebugConnectionConfig;
@@ -464,6 +484,12 @@ export class DebugBridgeNode extends GameNode {
       return;
     }
 
+    const validationError = this.validateParentForNodeType(parent, message.definition.nodeTypeId);
+    if (validationError) {
+      this.sendNodeCreateAck(message, false, validationError);
+      return;
+    }
+
     try {
       await this.ensureDebugImageSources(message.definition);
       const node = this.liveAuthoring.createNode(message.definition as SceneNodeJson);
@@ -562,6 +588,10 @@ export class DebugBridgeNode extends GameNode {
       this.sendNodeDeleteAck(message, false, 'Root/Persistent Nodes können live nicht gelöscht werden.');
       return;
     }
+    if (this.isSystemSceneRoot(node)) {
+      this.sendNodeDeleteAck(message, false, 'GameRoot/UIRoot sind System-Nodes und können nicht gelöscht werden.');
+      return;
+    }
     const name = node.debugName();
     const instanceId = node.instanceId;
     const deletedRefs = this.collectNodeTreeRefs(node);
@@ -606,6 +636,10 @@ export class DebugBridgeNode extends GameNode {
       this.sendNodeMoveAck(message, false, 'Root/Persistent Nodes können live nicht verschoben werden.');
       return;
     }
+    if (this.isSystemSceneRoot(node)) {
+      this.sendNodeMoveAck(message, false, 'GameRoot/UIRoot sind System-Nodes und können nicht verschoben werden.');
+      return;
+    }
     if (node === target || this.isNodeDescendant(target, node)) {
       this.sendNodeMoveAck(message, false, 'Node kann nicht in sich selbst oder seinen eigenen Subtree verschoben werden.');
       return;
@@ -624,6 +658,12 @@ export class DebugBridgeNode extends GameNode {
       this.sendNodeMoveAck(message, false, 'Target Index konnte nicht bestimmt werden.');
       return;
     }
+    const validationError = this.validateParentForNodeType(newParent, node.nodeTypeId);
+    if (validationError) {
+      this.sendNodeMoveAck(message, false, validationError);
+      return;
+    }
+
     if (oldParent === newParent && oldIndex >= 0 && oldIndex < insertIndex) insertIndex -= 1;
     if (oldParent === newParent && oldIndex === insertIndex) {
       this.sendNodeMoveAck(message, true);
@@ -648,6 +688,35 @@ export class DebugBridgeNode extends GameNode {
       parent = parent.parent;
     }
     return false;
+  }
+
+  private isSystemSceneRoot(node: GameNode): boolean {
+    return SYSTEM_SCENE_ROOT_TYPE_IDS.has(node.nodeTypeId);
+  }
+
+  private validateParentForNodeType(parent: GameNode, nodeTypeId: string | undefined): string | undefined {
+    if (!nodeTypeId) return 'Node-Typ fehlt.';
+    if (SYSTEM_SCENE_ROOT_TYPE_IDS.has(nodeTypeId)) return 'GameRoot/UIRoot werden automatisch verwaltet und können nicht manuell erstellt oder verschoben werden.';
+    if (parent.nodeTypeId === NODE_TYPE_IDS.SceneNode) return 'Direkt unter einer Szene sind nur die System-Nodes GameRoot und UIRoot erlaubt.';
+
+    const scopeRoot = this.findSceneScopeRoot(parent);
+    if (!scopeRoot) return undefined;
+    if (scopeRoot.nodeTypeId === NODE_TYPE_IDS.UIRootNode && GAME_ONLY_TYPE_IDS.has(nodeTypeId)) {
+      return 'Game/World-Nodes dürfen nicht unter UIRoot liegen.';
+    }
+    if (scopeRoot.nodeTypeId === NODE_TYPE_IDS.GameRootNode && UI_ONLY_TYPE_IDS.has(nodeTypeId)) {
+      return 'UI-Nodes dürfen nicht unter GameRoot liegen.';
+    }
+    return undefined;
+  }
+
+  private findSceneScopeRoot(node: GameNode): GameNode | undefined {
+    let current: GameNode | undefined = node;
+    while (current) {
+      if (SYSTEM_SCENE_ROOT_TYPE_IDS.has(current.nodeTypeId)) return current;
+      current = current.parent;
+    }
+    return undefined;
   }
 
   private sendNodeMoveAck(message: DebugNodeMoveMessage, applied: boolean, rejected?: string): void {

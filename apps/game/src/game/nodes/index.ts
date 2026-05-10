@@ -1,3 +1,4 @@
+export * from './GameRootNode';
 export * from './GameWorldNode';
 export * from './LevelGeneratorManagerNode';
 export * from './LevelNode';

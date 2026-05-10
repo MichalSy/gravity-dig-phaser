@@ -60,6 +60,36 @@ const genericCreateNodeOptions = [
   { id: 'animated-image', label: 'AnimatedImageNode', nodeTypeId: '5a0cd663-64c3-5f02-a579-9915605564be', className: 'AnimatedImageNode', props: { animationSetId: 'character', animationId: 'idle.east', sizeMode: 'content', origin: { x: 0.5, y: 0.5 } } },
   { id: 'collision-rect', label: 'CollisionRectNode', nodeTypeId: 'f3f82d6c-c31e-56bc-afd6-b5892604eaf5', className: 'CollisionRectNode', props: { size: { width: 64, height: 64 }, sizeMode: 'explicit' } },
 ] as const;
+const systemSceneRootClassNames = new Set(['GameRootNode', 'UIRootNode']);
+const sceneNodeClassNames = new Set(['SceneNode']);
+const gameOnlyCreateOptionIds = new Set(['collision-rect']);
+
+function isSystemSceneRootNode(node: Pick<DebugNodeDescriptor, 'className'>): boolean {
+  return systemSceneRootClassNames.has(node.className);
+}
+
+function findNodeScopeRoot(roots: readonly DebugNodeDescriptor[], node: DebugNodeDescriptor): DebugNodeDescriptor | undefined {
+  const path = findDescriptorPath(roots, node.id);
+  return path?.find((candidate) => isSystemSceneRootNode(candidate));
+}
+
+function findDescriptorPath(nodes: readonly DebugNodeDescriptor[], id: string, trail: DebugNodeDescriptor[] = []): DebugNodeDescriptor[] | undefined {
+  for (const node of nodes) {
+    const nextTrail = [...trail, node];
+    if (node.id === id) return nextTrail;
+    const childPath = findDescriptorPath(node.children, id, nextTrail);
+    if (childPath) return childPath;
+  }
+  return undefined;
+}
+
+function canCreateOptionUnder(parent: DebugNodeDescriptor, option: GenericCreateNodeOption, roots: readonly DebugNodeDescriptor[]): boolean {
+  if (sceneNodeClassNames.has(parent.className)) return false;
+  const scopeRoot = findNodeScopeRoot(roots, parent);
+  if (scopeRoot?.className === 'UIRootNode' && gameOnlyCreateOptionIds.has(option.id)) return false;
+  return true;
+}
+
 type GenericCreateNodeOption = (typeof genericCreateNodeOptions)[number];
 type HierarchyDropPlacement = 'before' | 'after' | 'child';
 const maxConcurrentThumbnailLoads = 5;
@@ -1565,7 +1595,7 @@ export default function Home() {
           </div>
         </aside>
       </section>
-      {nodeCreateMenu && <NodeCreateContextMenu menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
+      {nodeCreateMenu && <NodeCreateContextMenu roots={treeRoots} menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
       {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
@@ -2515,13 +2545,18 @@ function NodeTreeItem({
   const hasChildren = node.children.length > 0;
   const effectiveActive = isEffectivelyActive(node);
   const alwaysExpanded = isAppRootNode(node);
+  const isSystemRoot = isSystemSceneRootNode(node);
+  const isSceneNode = sceneNodeClassNames.has(node.className);
+  const canDragNode = !alwaysExpanded && !isSystemRoot;
+  const canCreateChild = !isSceneNode;
+  const canDeleteNode = !alwaysExpanded && !isSystemRoot;
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
   function handleDragOver(event: ReactDragEvent<HTMLLIElement>): void {
     const draggedNode = draggedHierarchyNode();
     if (draggedNode || hasHierarchyNodeDragType(event)) {
-      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded) return;
+      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isSystemSceneRootNode(draggedNode)) return;
       event.preventDefault();
       event.stopPropagation();
       event.dataTransfer.dropEffect = 'move';
@@ -2536,7 +2571,7 @@ function NodeTreeItem({
   function handleDrop(event: ReactDragEvent<HTMLLIElement>): void {
     const draggedNode = draggedHierarchyNode();
     if (draggedNode || hasHierarchyNodeDragType(event)) {
-      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded) return;
+      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isSystemSceneRootNode(draggedNode)) return;
       event.preventDefault();
       event.stopPropagation();
       onMoveHierarchyNode(draggedNode, node, placementForHierarchyDrop(event));
@@ -2555,7 +2590,7 @@ function NodeTreeItem({
   }
 
   return (
-    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onSelectNode(node.id); onOpenCreateMenu(node, event.clientX, event.clientY); }}>
+    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onSelectNode(node.id); if (canCreateChild) onOpenCreateMenu(node, event.clientX, event.clientY); }}>
       {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'before' && <HierarchyDropIndicator placement="before" />}
       <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
         <button
@@ -2572,9 +2607,9 @@ function NodeTreeItem({
         <button
           type="button"
           className={styles.nodeContent}
-          draggable={!alwaysExpanded}
+          draggable={canDragNode}
           onDragStart={(event) => {
-            if (alwaysExpanded) return;
+            if (!canDragNode) return;
             event.stopPropagation();
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData(hierarchyNodeDragMimeType, node.id);
@@ -2591,19 +2626,21 @@ function NodeTreeItem({
           {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
         </button>
-        <button
-          type="button"
-          className={styles.nodeActionButton}
-          title={`Child unter ${node.name} erstellen`}
-          aria-label={`Child unter ${node.name} erstellen`}
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpenCreateMenu(node, event.clientX, event.clientY);
-          }}
-        >
-          <Plus size={13} />
-        </button>
-        {!alwaysExpanded && (
+        {canCreateChild && (
+          <button
+            type="button"
+            className={styles.nodeActionButton}
+            title={`Child unter ${node.name} erstellen`}
+            aria-label={`Child unter ${node.name} erstellen`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpenCreateMenu(node, event.clientX, event.clientY);
+            }}
+          >
+            <Plus size={13} />
+          </button>
+        )}
+        {canDeleteNode && (
           <button
             type="button"
             className={styles.nodeActionButton}
@@ -2630,13 +2667,13 @@ function HierarchyDropIndicator({ placement }: { placement: HierarchyDropPlaceme
   return <div className={`${styles.hierarchyDropIndicator} ${styles[`hierarchyDrop${capitalizePlacement(placement)}`]}`}><span /></div>;
 }
 
-function NodeCreateContextMenu({ menu, onCreate, onClose }: { menu: { node: DebugNodeDescriptor; x: number; y: number }; onCreate(parent: DebugNodeDescriptor, option: GenericCreateNodeOption): void; onClose(): void }) {
+function NodeCreateContextMenu({ roots, menu, onCreate, onClose }: { roots: DebugNodeDescriptor[]; menu: { node: DebugNodeDescriptor; x: number; y: number }; onCreate(parent: DebugNodeDescriptor, option: GenericCreateNodeOption): void; onClose(): void }) {
   const x = Math.min(menu.x, typeof window === 'undefined' ? menu.x : window.innerWidth - 230);
   const y = Math.min(menu.y, typeof window === 'undefined' ? menu.y : window.innerHeight - 210);
   return (
     <div className={styles.contextMenu} style={{ left: x, top: y }} onClick={(event) => event.stopPropagation()} onContextMenu={(event) => event.preventDefault()}>
       <div className={styles.contextMenuHeader}>Create Child in <strong>{menu.node.name}</strong></div>
-      {genericCreateNodeOptions.map((option) => (
+      {genericCreateNodeOptions.filter((option) => canCreateOptionUnder(menu.node, option, roots)).map((option) => (
         <button key={option.id} type="button" className={styles.contextMenuItem} onClick={() => { onCreate(menu.node, option); onClose(); }}>
           <span>{option.label}</span>
           <small>{option.className}</small>

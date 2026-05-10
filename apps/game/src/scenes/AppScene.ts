@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import {
+  GameRootNode,
   GameWorldNode,
   LevelGeneratorManagerNode,
   LevelNode,
@@ -230,6 +231,7 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.MiningToolNode, (definition) => new MiningToolNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.StatusHudNode, (definition) => new StatusHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.BottomHudNode, (definition) => new BottomHudNode(optionsFrom(definition)))

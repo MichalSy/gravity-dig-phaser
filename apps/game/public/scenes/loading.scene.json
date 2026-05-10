@@ -4,11 +4,21 @@
     "name": "Scene.Loading",
     "children": [
       {
-        "name": "Loading",
-        "props": {
-          "active": false
-        },
-        "nodeTypeId": "dcb8bfef-f40b-539b-928c-eead650c1b6f"
+        "name": "Loading.GameRoot",
+        "nodeTypeId": "297cb39e-5ac2-51ea-a2c4-6f16fa58de77"
+      },
+      {
+        "name": "Loading.UIRoot",
+        "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
+        "children": [
+          {
+            "name": "Loading",
+            "props": {
+              "active": false
+            },
+            "nodeTypeId": "dcb8bfef-f40b-539b-928c-eead650c1b6f"
+          }
+        ]
       }
     ],
     "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
