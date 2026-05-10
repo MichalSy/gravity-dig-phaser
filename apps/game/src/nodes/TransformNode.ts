@@ -212,7 +212,7 @@ export class TransformNode extends GameNode {
         this.sizeMode = 'explicit';
         return true;
       case 'sizeMode':
-        if (value !== 'content' && value !== 'explicit') return false;
+        if (value !== 'content' && value !== 'explicit' && value !== 'fill') return false;
         this.sizeMode = value;
         return true;
       case 'parentAnchor':

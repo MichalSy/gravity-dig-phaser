@@ -51,7 +51,7 @@ export interface DebugOverlayLayerRenderContext extends DebugOverlayRenderContex
 
 export type NodeDebugProps = Record<string, string | number | boolean | null>;
 
-export type NodeSizeMode = 'explicit' | 'content';
+export type NodeSizeMode = 'explicit' | 'content' | 'fill';
 export type NodeBoundsMode = 'content' | 'none';
 
 export interface GameNodeOptions {
@@ -234,6 +234,7 @@ export abstract class GameNode {
 
     this.layoutResult = undefined;
     this.prepareLayout(deltaMs);
+    this.updateFillSizeFromParent();
     this.measureSelf();
     for (const child of this.children) child.measureTree(deltaMs);
     this.updateContentSizeFromChildren();
@@ -242,6 +243,7 @@ export abstract class GameNode {
   arrangeTree(): void {
     if (!this.isEffectivelyActive()) return;
 
+    this.updateFillSizeFromParent();
     const localScale = this.getLocalScale();
     const parentLayout = this.parent?.layoutResult;
     const parentWorldScale = parentLayout?.worldScale ?? this.parent?.getWorldScale() ?? { x: 1, y: 1 };
@@ -421,6 +423,11 @@ export abstract class GameNode {
     const bounds = this.unionChildBounds(childBounds, true);
     this.contentBounds = bounds;
     this.size = { width: bounds.width, height: bounds.height };
+  }
+
+  private updateFillSizeFromParent(): void {
+    if (this.sizeMode !== 'fill' || !this.parent) return;
+    this.size = { ...this.parent.size };
   }
 
   private getChildContentBounds(getBounds: (child: GameNode) => NodeDebugBounds | undefined, includeHidden = false): NodeDebugBounds[] {
@@ -671,7 +678,7 @@ export abstract class GameNode {
         this.sizeMode = 'explicit';
         return true;
       case 'sizeMode':
-        if (value !== 'content' && value !== 'explicit') return false;
+        if (value !== 'content' && value !== 'explicit' && value !== 'fill') return false;
         this.sizeMode = value;
         return true;
       case 'parentAnchor':
