@@ -56,7 +56,10 @@ export class TransformNode extends GameNode {
   scrollFactor: number;
 
   constructor(options: TransformNodeOptions = {}) {
-    super(options);
+    super({
+      ...options,
+      className: options.className ?? 'TransformNode',
+    });
     this.visible = options.visible ?? true;
     const scale = typeof options.scale === 'object' ? options.scale : undefined;
     const uniformScale = typeof options.scale === 'number' ? options.scale : 1;

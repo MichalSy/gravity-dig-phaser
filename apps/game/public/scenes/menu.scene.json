@@ -15,7 +15,8 @@
             "name": "Menu",
             "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
             "props": {
-              "sizeMode": "fill"
+              "sizeMode": "fill",
+              "scrollFactor": 0
             },
             "children": [
               {
