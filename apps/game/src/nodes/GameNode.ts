@@ -354,8 +354,7 @@ export abstract class GameNode {
     this.size = { width: bounds.width, height: bounds.height };
   }
 
-  private getChildContentBounds(getBounds: (child: GameNode) => NodeDebugBounds | undefined): NodeDebugBounds[] {
-    const includeHidden = GameNode.debugLayoutEnabled;
+  private getChildContentBounds(getBounds: (child: GameNode) => NodeDebugBounds | undefined, includeHidden = GameNode.debugLayoutEnabled): NodeDebugBounds[] {
     return this.children
       .filter((child) => includeHidden || child.isDebugVisible())
       .map((child) => getBounds(child))
@@ -671,7 +670,7 @@ export abstract class GameNode {
   private getAnchoredChildContentBounds(): NodeDebugBounds | undefined {
     if (this.sizeMode !== 'content' || this.children.length === 0) return undefined;
 
-    const childBounds = this.getChildContentBounds((child) => child.getBoundsInParentSpace());
+    const childBounds = this.getChildContentBounds((child) => child.getBoundsInParentSpace(), false);
     if (childBounds.length === 0) return undefined;
     return this.unionChildBounds(childBounds, false);
   }
