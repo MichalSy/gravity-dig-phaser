@@ -80,6 +80,10 @@ export class DebugBridgeNode extends GameNode {
     return this.overlay ? [this.overlay] : [];
   }
 
+  publishTreeSnapshot(): void {
+    this.sendTreeSnapshot();
+  }
+
   update(deltaMs: number): void {
     this.propsElapsedMs += deltaMs;
 

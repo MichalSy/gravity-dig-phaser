@@ -44,6 +44,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private playRoot?: NodeRoot;
   private playMenuScene?: GameNode;
   private playLoadingScene?: GameNode;
+  private debugBridge?: DebugBridgeNode;
   private playGameplayMounted = false;
   private gameplayPersistentMounted = false;
   private editorApiBase?: string;
@@ -101,6 +102,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     }
 
     this.runtime.resolve();
+    this.debugBridge?.publishTreeSnapshot();
     window.parent?.postMessage({ type: 'gravity-dig:runtime:started', mode: message.mode, scene: message.mode === 'play' ? 'menu' : message.scene }, window.location.origin);
   }
 
@@ -115,6 +117,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.currentEditorRoot = undefined;
     this.playRoot = undefined;
+    this.debugBridge = undefined;
     this.playMenuScene = undefined;
     this.playLoadingScene = undefined;
     this.playGameplayMounted = false;
@@ -239,7 +242,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   }
 
   private addDebugBridge(runtime: NodeRuntime, config: { sessionId: string; relayUrl: string; editorApiUrl: string }): void {
-    runtime.addPersistentNode(new DebugBridgeNode({ enabled: true, ...config }, {
+    this.debugBridge = runtime.addPersistentNode(new DebugBridgeNode({ enabled: true, ...config }, {
       createNode: (definition) => {
         if (!this.factory) throw new Error('Runtime factory is not ready');
         return this.factory.createTree(definition);
