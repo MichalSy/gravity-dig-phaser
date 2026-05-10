@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
 
+function publicAssetPath(path: string): string {
+  const base = import.meta.env.BASE_URL || '/';
+  return new URL(path.replace(/^\//u, ''), window.location.origin + base).toString();
+}
+
 export class LoadingOverlayView {
   private overlay?: HTMLDivElement;
   private progress?: HTMLDivElement;
@@ -20,7 +25,7 @@ export class LoadingOverlayView {
     });
 
     const background = document.createElement('img');
-    background.src = '/assets/ui/menu/loading_screen.webp';
+    background.src = publicAssetPath('/assets/ui/menu/loading_screen.webp');
     background.alt = '';
     background.decoding = 'async';
     Object.assign(background.style, {

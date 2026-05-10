@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { LoadingOverlayView } from '../loading/LoadingOverlayView';
 import { GAME_ANIMATION_SETS, GAME_GRAPHIC_ASSETS, loadGameAssets } from '../../assets/AssetLoader';
-import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext, type NodeRuntime } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, NodeRuntimeMode, type GameNodeOptions, type NodeContext, type NodeRuntime } from '../../nodes';
 
 const MIN_LOADING_MS = 900;
 
@@ -18,13 +18,14 @@ export class LoadingNode extends GameNode {
   private readonly mountGameplay: () => void;
 
   constructor(mountGameplay: () => void, options: GameNodeOptions = {}) {
-    super({ name: 'Loading', active: false, className: 'LoadingNode', ...options });
+    super({ name: 'Loading', className: 'LoadingNode', ...options });
     this.mountGameplay = mountGameplay;
   }
 
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.runtime = ctx.runtime;
+    if (this.runtime.mode === NodeRuntimeMode.Editor) this.mountEditorPreview();
   }
 
   destroy(): void {
@@ -34,6 +35,10 @@ export class LoadingNode extends GameNode {
   }
 
   start(): void {
+    if (this.runtime.mode === NodeRuntimeMode.Editor) {
+      this.mountEditorPreview();
+      return;
+    }
     if (this.loading) return;
 
     this.loading = true;
@@ -56,6 +61,11 @@ export class LoadingNode extends GameNode {
 
   update(): void {
     if (this.loading) this.overlay.keepOnTop();
+  }
+
+  private mountEditorPreview(): void {
+    this.overlay.mount();
+    this.setProgress(0);
   }
 
   private areGameAssetsLoaded(): boolean {

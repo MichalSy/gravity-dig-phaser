@@ -13,9 +13,6 @@
         "children": [
           {
             "name": "Loading",
-            "props": {
-              "active": false
-            },
             "nodeTypeId": "dcb8bfef-f40b-539b-928c-eead650c1b6f"
           }
         ]

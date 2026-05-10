@@ -158,9 +158,6 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.currentEditorRoot.addChild(this.createScene(scene));
     runtime.resolve();
 
-    if (message.scene === 'loading') {
-      runtime.getNode<LoadingNode>('Loading')?.start();
-    }
   }
 
   private async startPlayMode(message: StartRuntimeMessage): Promise<void> {
