@@ -39,6 +39,14 @@ const prefabFiles: Record<string, string> = {
 class EditorRuntimeScene extends Phaser.Scene {
   private runtime?: NodeRuntime;
   private factory?: SceneNodeFactoryRegistry;
+  private currentMode?: RuntimeMode;
+  private currentEditorRoot?: NodeRoot;
+  private playRoot?: NodeRoot;
+  private playMenuScene?: GameNode;
+  private playLoadingScene?: GameNode;
+  private playGameplayMounted = false;
+  private gameplayPersistentMounted = false;
+  private editorApiBase?: string;
   private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
 
   constructor() {
@@ -79,50 +87,152 @@ class EditorRuntimeScene extends Phaser.Scene {
   }
 
   private async startUnsafe(message: StartRuntimeMessage): Promise<void> {
+    this.editorApiBase = message.editorApiBase;
+    await this.ensureRuntime(message);
+    if (!this.runtime) throw new Error('Runtime konnte nicht initialisiert werden');
+
+    if (message.mode === 'play') {
+      await this.startPlayMode(message);
+    } else {
+      await this.showEditorScene(message);
+    }
+
+    this.runtime.resolve();
+    window.parent?.postMessage({ type: 'gravity-dig:runtime:started', mode: message.mode, scene: message.mode === 'play' ? 'menu' : message.scene }, window.location.origin);
+  }
+
+  private async ensureRuntime(message: StartRuntimeMessage): Promise<void> {
+    const mustRecreate = !this.runtime || this.currentMode !== message.mode;
+    if (!mustRecreate) {
+      await this.refreshFactory(message.editorApiBase);
+      return;
+    }
+
     this.runtime?.destroy();
     this.children.removeAll(true);
+    this.currentEditorRoot = undefined;
+    this.playRoot = undefined;
+    this.playMenuScene = undefined;
+    this.playLoadingScene = undefined;
+    this.playGameplayMounted = false;
+    this.gameplayPersistentMounted = false;
     this.dynamicModules.clear();
-
-    await this.loadDynamicModules(message.editorApiBase);
-    const prefabs = await this.loadPrefabs(message.editorApiBase);
-    const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles[message.scene]);
 
     const mode = message.mode === 'editor' ? NodeRuntimeMode.Editor : NodeRuntimeMode.Play;
     this.runtime = new NodeRuntime({ phaserScene: this, mode });
+    this.currentMode = message.mode;
     this.runtime.registerImageAssets([...MENU_GRAPHIC_ASSETS, ...GAME_GRAPHIC_ASSETS]);
     this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
-    this.factory = this.createFactory(prefabs);
+    await this.refreshFactory(message.editorApiBase);
 
-    const needsGameplayRuntime = this.needsGameplayRuntime(message);
     if (message.sessionId && message.relayUrl && message.editorApiBase) {
       this.addDebugBridge(this.runtime, { sessionId: message.sessionId, relayUrl: message.relayUrl, editorApiUrl: message.editorApiBase });
     }
-    if (needsGameplayRuntime) this.addGameplayRuntimeNodes(this.runtime);
-
-    const root = this.runtime.addRoot(new NodeRoot({ rootName: 'Editor-Runtime-Root' }));
-    if (message.scene === 'gameplayUi') {
-      const gameplay = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.gameplay);
-      root.addChild(this.createScene(gameplay));
-    }
-    root.addChild(this.createScene(scene));
-    if (message.mode === 'play' && message.scene === 'gameplay') {
-      const ui = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.gameplayUi);
-      root.addChild(this.createScene(ui));
-    }
-
     this.runtime.init();
-    this.runtime.resolve();
-    window.parent?.postMessage({ type: 'gravity-dig:runtime:started', mode: message.mode, scene: message.scene }, window.location.origin);
   }
 
-  private needsGameplayRuntime(message: StartRuntimeMessage): boolean {
-    return message.scene === 'gameplay' || message.scene === 'gameplayUi';
+  private async refreshFactory(editorApiBase: string | undefined): Promise<void> {
+    await this.loadDynamicModules(editorApiBase);
+    const prefabs = await this.loadPrefabs(editorApiBase);
+    this.factory = this.createFactory(prefabs);
+  }
+
+  private async showEditorScene(message: StartRuntimeMessage): Promise<void> {
+    const runtime = this.requireRuntime();
+    if (this.playRoot) {
+      runtime.removeRoot(this.playRoot);
+      this.playRoot = undefined;
+    }
+    if (this.currentEditorRoot) runtime.removeRoot(this.currentEditorRoot);
+
+    this.cameras.main.setBackgroundColor('#050816');
+    this.currentEditorRoot = runtime.addRoot(new NodeRoot({ rootName: `Editor-${message.scene}-Root` }));
+
+    if (this.needsGameplayRuntime(message.scene)) this.addGameplayRuntimeNodes(runtime);
+    const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles[message.scene]);
+    if (message.scene === 'gameplayUi') {
+      const dependencyScene = this.createScene(await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.gameplay));
+      this.currentEditorRoot.addChild(dependencyScene);
+      dependencyScene.applySceneProps({ active: false });
+    }
+    this.currentEditorRoot.addChild(this.createScene(scene));
+    runtime.resolve();
+
+    if (message.scene === 'loading') {
+      runtime.getNode<LoadingNode>('Loading')?.start();
+    }
+  }
+
+  private async startPlayMode(message: StartRuntimeMessage): Promise<void> {
+    const runtime = this.requireRuntime();
+    if (this.currentEditorRoot) {
+      runtime.removeRoot(this.currentEditorRoot);
+      this.currentEditorRoot = undefined;
+    }
+    if (this.playRoot) return;
+
+    this.cameras.main.setBackgroundColor('#050816');
+    this.playRoot = runtime.addRoot(new NodeRoot({ rootName: 'Play-Runtime-Root' }));
+    const menu = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.menu);
+    const loading = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.loading);
+    this.playMenuScene = this.playRoot.addChild(this.createScene(menu));
+    this.playLoadingScene = this.playRoot.addChild(this.createScene(loading));
+  }
+
+  private startGame(): void {
+    const loading = this.runtime?.getNode<LoadingNode>('Loading');
+    const menu = this.runtime?.getNode<MenuNode>('Menu');
+    if (!loading) return;
+    menu?.close();
+    loading.start();
+  }
+
+  private mountGameplay(): void {
+    if (this.playGameplayMounted || !this.playRoot) return;
+    this.playGameplayMounted = true;
+    const runtime = this.requireRuntime();
+    this.addGameplayRuntimeNodes(runtime);
+
+    if (this.playMenuScene) {
+      this.playRoot.removeChild(this.playMenuScene);
+      this.playMenuScene = undefined;
+    }
+    if (this.playLoadingScene) {
+      this.playRoot.removeChild(this.playLoadingScene);
+      this.playLoadingScene = undefined;
+    }
+
+    void this.mountGameplayScenes(this.playRoot);
+  }
+
+  private async mountGameplayScenes(root: NodeRoot): Promise<void> {
+    try {
+      const gameplay = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.gameplay);
+      const ui = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.gameplayUi);
+      root.addChild(this.createScene(gameplay));
+      root.addChild(this.createScene(ui));
+      this.runtime?.resolve();
+    } catch (error) {
+      console.error('[Gravity Dig Runtime] gameplay mount failed', error);
+      window.parent?.postMessage({ type: 'gravity-dig:runtime:error', message: error instanceof Error ? error.message : String(error) }, window.location.origin);
+    }
+  }
+
+  private needsGameplayRuntime(scene: RuntimeSceneId): boolean {
+    return scene === 'gameplay' || scene === 'gameplayUi';
   }
 
   private addGameplayRuntimeNodes(runtime: NodeRuntime): void {
+    if (this.gameplayPersistentMounted) return;
+    this.gameplayPersistentMounted = true;
     runtime.addPersistentNode(new GameplayInputNode());
     runtime.addPersistentNode(new PlayerStateManagerNode());
     runtime.addPersistentNode(new LevelGeneratorManagerNode());
+  }
+
+  private requireRuntime(): NodeRuntime {
+    if (!this.runtime) throw new Error('Runtime ist nicht bereit');
+    return this.runtime;
   }
 
   private addDebugBridge(runtime: NodeRuntime, config: { sessionId: string; relayUrl: string; editorApiUrl: string }): void {
@@ -160,7 +270,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private async loadDynamicModules(editorApiBase: string | undefined): Promise<void> {
     const manifest = await this.fetchOptionalJson<DynamicNodeManifest>(editorApiBase, 'dynamic-nodes-compiled/manifest.json');
     for (const entry of manifest?.nodes ?? []) {
-      if (!entry.nodeTypeId) continue;
+      if (!entry.nodeTypeId || this.dynamicModules.get(entry.nodeTypeId)?.hash === entry.hash) continue;
       const module = await loadDynamicNodeModule({ hash: entry.hash, url: this.contentUrl(editorApiBase, `dynamic-nodes-compiled/${entry.url.split('/').at(-1) ?? ''}`) });
       if (module) this.dynamicModules.set(entry.nodeTypeId, { hash: entry.hash, module });
     }
@@ -186,8 +296,8 @@ class EditorRuntimeScene extends Phaser.Scene {
       })
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
-      .register(NODE_TYPE_IDS.MenuNode, (definition) => new MenuNode(() => undefined, optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.LoadingNode, (definition) => new LoadingNode(() => undefined, optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.MenuNode, (definition) => new MenuNode(() => this.startGame(), optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.LoadingNode, (definition) => new LoadingNode(() => this.mountGameplay(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.ShipNode, (definition) => new ShipNode(optionsFrom(definition)))
