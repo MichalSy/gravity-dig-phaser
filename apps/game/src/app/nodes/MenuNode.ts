@@ -12,6 +12,8 @@ export class MenuNode extends GameNode {
   private backgroundNode?: ImageNode;
   private versionNode?: TextNode;
   private buttons: ButtonNode[] = [];
+  private versionPositionIsSceneAuthored = false;
+  private versionFontSizeIsSceneAuthored = false;
 
   private readonly onStart: () => void;
 
@@ -64,6 +66,8 @@ export class MenuNode extends GameNode {
   private bindSceneNodes(): void {
     this.backgroundNode = this.findDescendant<ImageNode>((node) => node instanceof ImageNode && node.name === 'Menu.Background');
     this.versionNode = this.findDescendant<TextNode>((node) => node instanceof TextNode && node.name === 'Menu.Version');
+    this.versionPositionIsSceneAuthored = Boolean(this.versionNode && (this.versionNode.position.x !== 0 || this.versionNode.position.y !== 0));
+    this.versionFontSizeIsSceneAuthored = Boolean(this.versionNode && this.versionNode.fontSize !== 16);
     this.buttons = this.findDescendants<ButtonNode>((node) => node instanceof ButtonNode)
       .sort((a, b) => this.buttonIndex(a) - this.buttonIndex(b));
     this.buttons.forEach((button) => button.setCallbacks({
@@ -106,16 +110,11 @@ export class MenuNode extends GameNode {
     });
 
     if (this.versionNode) {
-      this.versionNode.position = { x: layout.version.x, y: layout.version.y };
+      if (!this.versionPositionIsSceneAuthored && !this.versionNode.hasScenePropOverride('position')) {
+        this.versionNode.position = { x: layout.version.x, y: layout.version.y };
+      }
       this.versionNode.setText(`v${__APP_VERSION__}`);
-      this.versionNode.setStyle({
-        fontFamily: 'Silkscreen',
-        fontSize: `${layout.version.fontSize}px`,
-        fontStyle: '700',
-        color: '#fff4c7',
-        stroke: '#000000',
-        strokeThickness: 4,
-      });
+      if (!this.versionFontSizeIsSceneAuthored && !this.versionNode.hasScenePropOverride('fontSize')) this.versionNode.setFontSize(layout.version.fontSize);
     }
   }
 

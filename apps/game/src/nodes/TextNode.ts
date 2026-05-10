@@ -5,6 +5,10 @@ import { NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
+const DEFAULT_FONT_FAMILY = 'Silkscreen';
+const DEFAULT_FONT_SIZE = 16;
+const DEFAULT_COLOR = '#ffffff';
+
 function textLocalSize(text: Phaser.GameObjects.Text): { width: number; height: number } {
   return { width: text.width, height: text.height };
 }
@@ -14,8 +18,24 @@ function textLocalBounds(node: TextNode, text: Phaser.GameObjects.Text): NodeDeb
   return { x: -node.origin.x * size.width, y: -node.origin.y * size.height, width: size.width, height: size.height };
 }
 
+function normalizeFontSize(value: unknown, fallback = DEFAULT_FONT_SIZE): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseFloat(value.replace('px', ''));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return fallback;
+}
+
 export interface TextNodeOptions extends TransformNodeOptions {
   text?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontStyle?: string;
+  color?: string;
+  stroke?: string;
+  strokeThickness?: number;
+  align?: string;
   style?: Phaser.Types.GameObjects.Text.TextStyle;
   resolution?: number;
 }
@@ -30,24 +50,43 @@ export class TextNode extends TransformNode {
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Text', {
       text: propString({ label: 'Text' }),
-      resolution: propNumber({ label: 'Resolution', min: 1, step: 1 }),
+      fontFamily: propString({ label: 'Schriftart' }),
+      fontSize: propNumber({ label: 'Schriftgröße', min: 1, step: 1 }),
+      fontStyle: propString({ label: 'Schriftschnitt' }),
+      color: propString({ label: 'Farbe' }),
+      stroke: propString({ label: 'Konturfarbe' }),
+      strokeThickness: propNumber({ label: 'Konturstärke', min: 0, step: 1 }),
+      resolution: propNumber({ label: 'Render Resolution', min: 1, step: 1 }),
     }),
   ];
 
   text: string;
-  style?: Phaser.Types.GameObjects.Text.TextStyle;
+  fontFamily: string;
+  fontSize: number;
+  fontStyle: string;
+  color: string;
+  stroke: string;
+  strokeThickness: number;
+  align: string;
   resolution?: number;
+  private styleExtras: Phaser.Types.GameObjects.Text.TextStyle;
   protected phaserText?: Phaser.GameObjects.Text;
 
   constructor(options: TextNodeOptions = {}) {
     super({
       ...options,
       className: options.className ?? 'TextNode',
-      sizeMode: options.sizeMode ?? 'explicit',
     });
     this.text = options.text ?? '';
-    this.style = options.style;
+    this.fontFamily = options.fontFamily ?? stringStyleValue(options.style?.fontFamily) ?? DEFAULT_FONT_FAMILY;
+    this.fontSize = options.fontSize ?? normalizeFontSize(options.style?.fontSize);
+    this.fontStyle = options.fontStyle ?? stringStyleValue(options.style?.fontStyle) ?? '';
+    this.color = options.color ?? stringStyleValue(options.style?.color) ?? DEFAULT_COLOR;
+    this.stroke = options.stroke ?? stringStyleValue(options.style?.stroke) ?? '#000000';
+    this.strokeThickness = options.strokeThickness ?? normalizeFontSize(options.style?.strokeThickness, 0);
+    this.align = options.align ?? stringStyleValue(options.style?.align) ?? 'left';
     this.resolution = options.resolution;
+    this.styleExtras = { ...(options.style ?? {}) };
   }
 
   get object(): Phaser.GameObjects.Text {
@@ -56,24 +95,23 @@ export class TextNode extends TransformNode {
   }
 
   init(ctx: NodeContext): void {
-    this.phaserText = ctx.phaserScene.add.text(0, 0, this.text, this.style);
-    this.applyTransformTo(this.phaserText);
+    this.phaserText = ctx.phaserScene.add.text(0, 0, this.text, this.buildTextStyle());
     if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
-    this.updateSizeFromText();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
+    this.applyTransformTo(this.phaserText);
   }
 
   override measureSelf(): void {
     if (!this.phaserText) return;
-    this.phaserText.setText(this.text);
-    if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
-    this.updateSizeFromText();
+    this.applyTextContentAndStyle();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
   }
 
   override coreUpdate(): void {
     if (!this.phaserText) return;
 
-    this.phaserText.setText(this.text);
-    if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
+    this.applyTextContentAndStyle();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
     this.applyTransformTo(this.phaserText);
   }
 
@@ -89,18 +127,38 @@ export class TextNode extends TransformNode {
   setText(text: string): void {
     this.text = text;
     this.phaserText?.setText(text);
-    this.updateSizeFromText();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
+  }
+
+  setFontFamily(fontFamily: string): void {
+    this.fontFamily = fontFamily;
+    this.applyTextContentAndStyle();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
+  }
+
+  setFontSize(fontSize: number): void {
+    this.fontSize = fontSize;
+    this.applyTextContentAndStyle();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
   }
 
   setStyle(style: Phaser.Types.GameObjects.Text.TextStyle): void {
-    this.style = style;
-    this.phaserText?.setStyle(style);
-    this.updateSizeFromText();
+    this.styleExtras = { ...this.styleExtras, ...style };
+    this.fontFamily = stringStyleValue(style.fontFamily) ?? this.fontFamily;
+    this.fontSize = normalizeFontSize(style.fontSize, this.fontSize);
+    this.fontStyle = stringStyleValue(style.fontStyle) ?? this.fontStyle;
+    this.color = stringStyleValue(style.color) ?? this.color;
+    this.stroke = stringStyleValue(style.stroke) ?? this.stroke;
+    this.strokeThickness = normalizeFontSize(style.strokeThickness, this.strokeThickness);
+    this.align = stringStyleValue(style.align) ?? this.align;
+    this.applyTextContentAndStyle();
+    if (this.sizeMode === 'content') this.updateSizeFromText();
   }
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
     if (!this.phaserText) return super.getLocalContentBounds();
-    return { ...textLocalBounds(this, this.phaserText), scrollFactor: this.scrollFactor };
+    if (this.sizeMode === 'content') return { ...textLocalBounds(this, this.phaserText), scrollFactor: this.scrollFactor };
+    return super.getLocalContentBounds();
   }
 
   protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {
@@ -130,9 +188,13 @@ export class TextNode extends TransformNode {
       localScaleY: this.getLocalScale().y,
       displayWidth: this.phaserText?.displayWidth ?? null,
       displayHeight: this.phaserText?.displayHeight ?? null,
-      fontFamily: stringStyleValue(this.phaserText?.style.fontFamily ?? this.style?.fontFamily),
-      fontSize: stringStyleValue(this.phaserText?.style.fontSize ?? this.style?.fontSize),
-      color: stringStyleValue(this.phaserText?.style.color ?? this.style?.color),
+      fontFamily: this.fontFamily,
+      fontSize: this.fontSize,
+      fontStyle: this.fontStyle || null,
+      color: this.color,
+      stroke: this.stroke,
+      strokeThickness: this.strokeThickness,
+      resolution: this.resolution ?? null,
       scrollFactor: this.scrollFactor,
     };
   }
@@ -142,6 +204,34 @@ export class TextNode extends TransformNode {
       case 'text':
         if (typeof value !== 'string') return false;
         this.setText(value);
+        return true;
+      case 'fontFamily':
+        if (typeof value !== 'string') return false;
+        this.setFontFamily(value);
+        return true;
+      case 'fontSize':
+        if (typeof value !== 'number') return false;
+        this.setFontSize(value);
+        return true;
+      case 'fontStyle':
+        if (typeof value !== 'string') return false;
+        this.fontStyle = value;
+        this.applyTextContentAndStyle();
+        return true;
+      case 'color':
+        if (typeof value !== 'string') return false;
+        this.color = value;
+        this.applyTextContentAndStyle();
+        return true;
+      case 'stroke':
+        if (typeof value !== 'string') return false;
+        this.stroke = value;
+        this.applyTextContentAndStyle();
+        return true;
+      case 'strokeThickness':
+        if (typeof value !== 'number') return false;
+        this.strokeThickness = value;
+        this.applyTextContentAndStyle();
         return true;
       case 'resolution':
         if (typeof value !== 'number') return false;
@@ -153,10 +243,29 @@ export class TextNode extends TransformNode {
     }
   }
 
+  private buildTextStyle(): Phaser.Types.GameObjects.Text.TextStyle {
+    return {
+      ...this.styleExtras,
+      fontFamily: this.fontFamily,
+      fontSize: `${this.fontSize}px`,
+      fontStyle: this.fontStyle,
+      color: this.color,
+      stroke: this.stroke,
+      strokeThickness: this.strokeThickness,
+      align: this.align,
+    };
+  }
+
+  private applyTextContentAndStyle(): void {
+    if (!this.phaserText) return;
+    this.phaserText.setText(this.text);
+    this.phaserText.setStyle(this.buildTextStyle());
+    if (this.resolution !== undefined) this.phaserText.setResolution(this.resolution);
+  }
+
   private updateSizeFromText(): void {
     if (!this.phaserText) return;
-    const size = textLocalSize(this.phaserText);
-    this.size = size;
+    this.size = textLocalSize(this.phaserText);
   }
 }
 
