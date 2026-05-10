@@ -6,6 +6,7 @@ on:
     paths:
       - 'apps/editor/**'
       - 'apps/game/public/**'
+      - 'apps/game/src/**'
       - 'packages/**'
       - 'package.json'
       - 'package-lock.json'
