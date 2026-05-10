@@ -720,12 +720,15 @@ export default function Home() {
 
   function sendDebugMessage(message: DebugMessage): boolean {
     if (!sessionId) return false;
-    if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
+    const outbound = ('sourceClientId' in message)
+      ? message
+      : ({ ...message, sourceClientId: editorClientIdRef.current } as DebugMessage);
+    if (shouldLogDebugMessage(outbound.type)) console.log('[Gravity Dig Debug][editor->game]', outbound.type, outbound);
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      sendDebugMessage(message);
+      socketRef.current.send(JSON.stringify(outbound));
       return true;
     }
-    runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:debug-message', message }, window.location.origin);
+    runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:debug-message', message: outbound }, window.location.origin);
     return Boolean(runtimeFrameRef.current?.contentWindow);
   }
 
