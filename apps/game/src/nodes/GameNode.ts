@@ -346,21 +346,31 @@ export abstract class GameNode {
   updateContentSizeFromChildren(): void {
     if (this.sizeMode !== 'content' || this.children.length === 0) return;
 
-    const includeHidden = GameNode.debugLayoutEnabled;
-    const childBounds = this.children
-      .filter((child) => includeHidden || child.isDebugVisible())
-      .map((child) => child.getContentBoundsForParentSizing())
-      .filter((bounds): bounds is NodeDebugBounds => Boolean(bounds));
+    const childBounds = this.getChildContentBounds((child) => child.getContentBoundsForParentSizing());
     if (childBounds.length === 0) return;
 
-    const minX = Math.min(0, ...childBounds.map((bounds) => bounds.x));
-    const minY = Math.min(0, ...childBounds.map((bounds) => bounds.y));
-    const maxX = Math.max(0, ...childBounds.map((bounds) => bounds.x + bounds.width));
-    const maxY = Math.max(0, ...childBounds.map((bounds) => bounds.y + bounds.height));
+    const bounds = this.unionChildBounds(childBounds, true);
+    this.contentBounds = bounds;
+    this.size = { width: bounds.width, height: bounds.height };
+  }
+
+  private getChildContentBounds(getBounds: (child: GameNode) => NodeDebugBounds | undefined): NodeDebugBounds[] {
+    const includeHidden = GameNode.debugLayoutEnabled;
+    return this.children
+      .filter((child) => includeHidden || child.isDebugVisible())
+      .map((child) => getBounds(child))
+      .filter((bounds): bounds is NodeDebugBounds => Boolean(bounds));
+  }
+
+  private unionChildBounds(childBounds: readonly NodeDebugBounds[], includeOrigin: boolean): NodeDebugBounds {
+    const originBounds = includeOrigin ? [0] : [];
+    const minX = Math.min(...originBounds, ...childBounds.map((bounds) => bounds.x));
+    const minY = Math.min(...originBounds, ...childBounds.map((bounds) => bounds.y));
+    const maxX = Math.max(...originBounds, ...childBounds.map((bounds) => bounds.x + bounds.width));
+    const maxY = Math.max(...originBounds, ...childBounds.map((bounds) => bounds.y + bounds.height));
     const scrollFactors = childBounds.map((bounds) => bounds.scrollFactor).filter((value): value is number => value !== undefined);
     const scrollFactor = scrollFactors.length > 0 && scrollFactors.every((value) => value === scrollFactors[0]) ? scrollFactors[0] : undefined;
-    this.contentBounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor };
-    this.size = { width: maxX - minX, height: maxY - minY };
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor };
   }
 
   getWorldPosition(): PointLike {
@@ -643,7 +653,11 @@ export abstract class GameNode {
   }
 
   protected getLocalContentBounds(): NodeDebugBounds | undefined {
-    if (this.contentBounds && this.contentBounds.width > 0 && this.contentBounds.height > 0) return this.contentBounds;
+    if (this.contentBounds && this.contentBounds.width > 0 && this.contentBounds.height > 0) {
+      const anchoredChildBounds = this.getAnchoredChildContentBounds();
+      if (anchoredChildBounds) return anchoredChildBounds;
+      return this.contentBounds;
+    }
     if (this.size.width <= 0 || this.size.height <= 0) return undefined;
     return {
       x: -this.origin.x * this.size.width,
@@ -652,6 +666,14 @@ export abstract class GameNode {
       height: this.size.height,
       scrollFactor: this.debugScrollFactor,
     };
+  }
+
+  private getAnchoredChildContentBounds(): NodeDebugBounds | undefined {
+    if (this.sizeMode !== 'content' || this.children.length === 0) return undefined;
+
+    const childBounds = this.getChildContentBounds((child) => child.getBoundsInParentSpace());
+    if (childBounds.length === 0) return undefined;
+    return this.unionChildBounds(childBounds, false);
   }
 }
 
