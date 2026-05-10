@@ -57,7 +57,7 @@
                     "x": 0.15375,
                     "y": 0.128125
                   },
-                  "rotation": -0.628
+                  "rotation": 0
                 }
               },
               {
@@ -92,7 +92,7 @@
                   "scrollFactor": 0,
                   "resolution": 2,
                   "fontFamily": "Silkscreen",
-                  "fontSize": 10,
+                  "fontSize": 20,
                   "fontStyle": "700",
                   "color": "#fff4c7",
                   "stroke": "#000000",
