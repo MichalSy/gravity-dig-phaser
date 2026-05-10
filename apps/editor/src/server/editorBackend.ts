@@ -901,8 +901,11 @@ function resolveSourceFile(nodePath: string[]): { filePath: string; nodePath: st
   if (nodePath.includes('UI.BottomHud')) return { filePath: prefabMap['UI.BottomHud'], nodePath: nodePath.slice(nodePath.indexOf('UI.BottomHud')) };
   const sceneMap: Record<string, string> = {
     Menu: 'apps/game/public/scenes/menu.scene.json',
+    'Scene.Menu': 'apps/game/public/scenes/menu.scene.json',
     Loading: 'apps/game/public/scenes/loading.scene.json',
+    'Scene.Loading': 'apps/game/public/scenes/loading.scene.json',
     Gameplay: 'apps/game/public/scenes/gameplay.scene.json',
+    'Scene.Gameplay': 'apps/game/public/scenes/gameplay.scene.json',
     'UI.Gameplay': 'apps/game/public/scenes/gameplay.scene.json',
   };
   const filePath = sceneMap[first];

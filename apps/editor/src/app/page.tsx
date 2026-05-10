@@ -1535,8 +1535,8 @@ export default function Home() {
           <button className={styles.button} onClick={reloadGameFrame} title="Game mit aktuellem Live-Stand neu laden">
             <RotateCcw size={16} /> Game neu laden
           </button>
-          <button className={styles.button} onClick={openSavePreview} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Push führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Lokale Änderungen prüfen und pushen')}>
-            Git Push ({pendingChangeCount})
+          <button className={styles.button} onClick={openSavePreview} title={gitNeedsRebase ? 'Remote ist voraus: Push führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Lokale Änderungen prüfen')}>
+            Pending Changes ({pendingChangeCount})
           </button>
           <button className={`${styles.button} ${styles.ghost}`} onPointerDown={(event) => event.preventDefault()} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
             Pending verwerfen
@@ -1721,7 +1721,7 @@ function GitSavePreviewDialog({
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
       <div className={styles.gitPreviewDialog} onClick={(event) => event.stopPropagation()}>
         <div className={styles.dialogHeader}>
-          <strong>Git Push Preview · {files.length} Datei{files.length === 1 ? '' : 'en'}</strong>
+          <strong>Pending Changes · {files.length} Datei{files.length === 1 ? '' : 'en'}</strong>
           <span className={styles.dialogStatus}>{status}</span>
         </div>
         <div className={styles.gitPreviewBody}>
