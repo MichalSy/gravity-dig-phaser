@@ -8,6 +8,8 @@ export class UIRootNode extends TransformNode {
   constructor(options: TransformNodeOptions = {}) {
     super({
       ...options,
+      name: options.name ?? 'UIRoot',
+      className: options.className ?? 'UIRootNode',
       sizeMode: options.sizeMode ?? 'explicit',
       boundsMode: options.boundsMode ?? 'none',
       size: {
