@@ -94,6 +94,7 @@ type GenericCreateNodeOption = (typeof genericCreateNodeOptions)[number];
 type HierarchyDropPlacement = 'before' | 'after' | 'child';
 const maxConcurrentThumbnailLoads = 5;
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
+const MonacoDiffEditor = dynamic(() => import('@monaco-editor/react').then((module) => module.DiffEditor), { ssr: false });
 
 interface ThumbnailQueueTask {
   url: string;
@@ -145,6 +146,18 @@ interface EditorGitStatus {
   ahead?: number;
   behind?: number;
   needsRebase?: boolean;
+}
+
+interface EditorGitDiffEntry {
+  path: string;
+  status: string;
+}
+
+interface EditorGitDiffFile {
+  path: string;
+  status: string;
+  original: string;
+  modified: string;
 }
 
 interface PublicFileEntry {
@@ -445,40 +458,14 @@ export default function Home() {
 
   useEffect(() => {
     if (!sessionId) return;
-    let disposed = false;
-
-    function connect(): void {
-      if (disposed) return;
-      setStatus('connecting');
-      const socket = new WebSocket(defaultRelayUrl());
-      socketRef.current = socket;
-
-      socket.addEventListener('open', () => {
-        const hello: DebugMessage = { type: 'hello', role: 'editor', sessionId, clientId: editorClientIdRef.current };
-        console.log('[Gravity Dig Debug][editor->game]', hello.type, hello);
-        socket.send(JSON.stringify(hello));
-        setStatus('connected');
-        setBridgeBinding('Bridge wartet auf Game-Bindung');
-        setLastEvent('Relay verbunden. Game wird im Editor geladen.');
-      });
-
-      socket.addEventListener('message', (event) => {
-        const message = parseDebugMessage(event.data);
-        if (!message) return;
-        if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
-        handleMessage(message);
-      });
-
-      socket.addEventListener('close', () => {
-        if (disposed) return;
-        setStatus('disconnected');
-        reconnectTimerRef.current = window.setTimeout(connect, 1200);
-      });
-
-      socket.addEventListener('error', () => {
-        setStatus('disconnected');
-        setLastEvent('Relay-Verbindung unterbrochen. Verbinde neu...');
-      });
+    function handleRuntimeDebugMessage(event: MessageEvent): void {
+      if (event.origin !== window.location.origin) return;
+      const envelope = event.data as { type?: string; message?: unknown } | undefined;
+      if (envelope?.type !== 'gravity-dig:debug-message') return;
+      const message = parseDebugMessage(envelope.message);
+      if (!message) return;
+      if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
+      handleMessage(message);
     }
 
     function handleMessage(message: DebugMessage): void {
@@ -490,6 +477,13 @@ export default function Home() {
           requestBridgeBinding();
           setLastEvent('Game verbunden. Bridge-Bindung angefragt.');
         }
+        return;
+      }
+
+      if (message.type === 'hello' && message.role === 'game') {
+        setGameCount(1);
+        requestBridgeBinding(true);
+        setLastEvent('Runtime verbunden. Direkte Bridge-Bindung angefragt.');
         return;
       }
 
@@ -586,10 +580,14 @@ export default function Home() {
       }
     }
 
-    connect();
+    setStatus('connected');
+    setGameCount(1);
+    setBridgeBinding('Bridge wartet auf Runtime-Bindung');
+    setLastEvent('Direkte Editor-Bridge bereit. Runtime wird im Editor geladen.');
+    window.addEventListener('message', handleRuntimeDebugMessage);
 
     return () => {
-      disposed = true;
+      window.removeEventListener('message', handleRuntimeDebugMessage);
       if (reconnectTimerRef.current !== undefined) window.clearTimeout(reconnectTimerRef.current);
       socketRef.current?.close();
       socketRef.current = null;
@@ -685,21 +683,21 @@ export default function Home() {
 
   useEffect(() => {
     setSelectedNodeProps(undefined);
-    if (!selectedNodeId || !sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    if (!selectedNodeId || !sessionId || !isBridgeReady()) return;
     const selectSignature = `${sessionId}:${selectedNodeId}`;
     if (lastSelectMessageRef.current === selectSignature) return;
     lastSelectMessageRef.current = selectSignature;
     const selectMessage: DebugMessage = { type: 'node:select', sessionId, nodeId: selectedNodeId, sentAt: Date.now() };
-    socketRef.current.send(JSON.stringify(selectMessage));
+    sendDebugMessage(selectMessage);
   }, [selectedNodeId, sessionId]);
 
   useEffect(() => {
-    if (!selectedNodeId || !sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    if (!selectedNodeId || !sessionId || !isBridgeReady()) return;
     const definition = selectedNodeDefinition;
     const defaultLayerIds = definition?.overlayLayers.map((layer) => layer.id) ?? [];
     const enabledLayerIds = overlayLayerSelections[selectedNodeId] ?? defaultLayerIds;
     const message: DebugMessage = { type: 'debug:overlay-settings', sessionId, nodeId: selectedNodeId, enabledLayerIds, sentAt: Date.now() };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
   }, [overlayLayerSelections, selectedNodeDefinition, selectedNodeId, sessionId]);
 
   async function startRuntimeFrame(): Promise<void> {
@@ -716,8 +714,23 @@ export default function Home() {
       scene: editorPreviewScene,
       editorApiBase: window.location.origin,
       sessionId,
-      relayUrl: defaultRelayUrl(),
+      relayUrl: 'postmessage',
     }, window.location.origin);
+  }
+
+  function sendDebugMessage(message: DebugMessage): boolean {
+    if (!sessionId) return false;
+    if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      sendDebugMessage(message);
+      return true;
+    }
+    runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:debug-message', message }, window.location.origin);
+    return Boolean(runtimeFrameRef.current?.contentWindow);
+  }
+
+  function isBridgeReady(): boolean {
+    return Boolean(sessionId && (socketRef.current?.readyState === WebSocket.OPEN || runtimeFrameRef.current?.contentWindow));
   }
 
   function openGameInTab(): void {
@@ -773,8 +786,10 @@ export default function Home() {
       const status = await response.json() as EditorGitStatus;
       if (!response.ok || !status.ok) throw new Error(`HTTP ${response.status}`);
       setGitNeedsRebase(status.needsRebase === true);
+      setPendingChangeCount(status.status.length);
     } catch {
       setGitNeedsRebase(false);
+      setPendingChangeCount(0);
     }
   }
 
@@ -884,53 +899,52 @@ export default function Home() {
   }
 
   async function openSavePreview(): Promise<void> {
-    await refreshPendingChanges();
+    await refreshGitStatus();
     setSavePreviewOpen(true);
   }
 
-  async function savePendingChanges(): Promise<void> {
+  async function pushGitChanges(): Promise<void> {
     if (!sessionId) return;
     setSavePreviewOpen(false);
-    setGitSaveStatus(gitNeedsRebase ? 'Rebase + Git Save läuft...' : 'Speichere Änderungen nach Git...');
+    setGitSaveStatus(gitNeedsRebase ? 'Rebase + Git Push läuft...' : 'Git Push läuft...');
     try {
-      const response = await fetch(editorApi(`/git/save/${encodeURIComponent(sessionId)}`), {
+      const response = await fetch(editorApi(`/git/push/${encodeURIComponent(sessionId)}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: `editor: save ${pendingChangeCount} pending change${pendingChangeCount === 1 ? '' : 's'}` }),
+        body: JSON.stringify({ message: `editor: update ${pendingChangeCount} file${pendingChangeCount === 1 ? '' : 's'}` }),
       });
       const result = await response.json() as { ok: boolean; commit?: string; message?: string; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(undefined);
       setPendingChangeCount(0);
       setGitNeedsRebase(false);
-      setGitSaveStatus(result.commit ? `Gespeichert: Commit ${result.commit}` : result.message ?? 'Keine Änderungen zu speichern.');
+      setGitSaveStatus(result.commit ? `Gepusht: Commit ${result.commit}` : result.message ?? 'Keine Änderungen zu pushen.');
       void refreshGitStatus();
     } catch (error) {
-      setGitSaveStatus(`Git Save fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+      setGitSaveStatus(`Git Push fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
       void refreshGitStatus();
     }
   }
 
   async function clearPendingChanges(): Promise<void> {
     if (!sessionId) return;
-    setInspectorResetVersion((current) => current + 1);
-    const changeSet = pendingChangeSet ?? await fetchPendingChangeSet();
-    const reverted = revertPendingChanges(changeSet?.changes ?? []);
-    if (reverted.failed > 0) {
-      setGitSaveStatus(`Pending Changes nicht verworfen: ${reverted.failed} Revert-Patch(es) konnten nicht gesendet werden.`);
-      return;
+    setGitSaveStatus('Lokale Änderungen werden verworfen ...');
+    try {
+      const response = await fetch(editorApi('/git/discard'), { method: 'POST', cache: 'no-store' });
+      const result = await response.json().catch(() => undefined) as { ok?: boolean; error?: string } | undefined;
+      if (!response.ok || result?.ok === false) throw new Error(result?.error ?? `HTTP ${response.status}`);
+      setPendingChangeSet(undefined);
+      setPendingChangeCount(0);
+      setSavePreviewOpen(false);
+      setInspectorResetVersion((current) => current + 1);
+      setSelectedNodeProps(undefined);
+      setGitSaveStatus('Lokale Änderungen verworfen. Szene wurde neu geladen.');
+      reloadGameFrame();
+      void refreshGitStatus();
+      void refreshPublicFiles();
+    } catch (error) {
+      setGitSaveStatus(`Verwerfen fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
-    const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ all: true }),
-    });
-    const result = await response.json().catch(() => undefined) as { ok?: boolean; error?: string } | undefined;
-    if (!response.ok || result?.ok === false) throw new Error(result?.error ?? `HTTP ${response.status}`);
-    setPendingChangeSet(undefined);
-    setPendingChangeCount(0);
-    setSavePreviewOpen(false);
-    setGitSaveStatus(reverted.skipped > 0 ? `Pending Changes verworfen. ${reverted.applied} Setting(s) zurückgesetzt, ${reverted.skipped} ohne alten Wert/Node übersprungen.` : `Pending Changes verworfen. ${reverted.applied} Setting(s) zurückgesetzt.`);
   }
 
   async function fetchPendingChangeSet(): Promise<EditorChangeSet | undefined> {
@@ -1028,8 +1042,8 @@ export default function Home() {
   }
 
   function sendNodeDelete(node: DebugNodeDescriptor): void {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      setPatchStatus('Delete nicht gesendet: Relay nicht verbunden.');
+    if (!sessionId || !isBridgeReady()) {
+      setPatchStatus('Delete nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
     if (!boundGameClientIdRef.current) {
@@ -1047,7 +1061,7 @@ export default function Home() {
       instanceId: node.instanceId,
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     if (selectedNodeId === node.id) setSelectedNodeId(undefined);
     setPatchStatus(`Delete gesendet: ${node.name}`);
   }
@@ -1063,20 +1077,20 @@ export default function Home() {
   }
 
   function sendNodePatchMessage(node: DebugNodeDescriptor, props: DebugNodePatch, showStatus: boolean): boolean {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      if (showStatus) setPatchStatus('Patch nicht gesendet: Relay nicht verbunden.');
+    if (!sessionId || !isBridgeReady()) {
+      if (showStatus) setPatchStatus('Patch nicht gesendet: Editor-Bridge nicht verbunden.');
       return false;
     }
 
     const message: DebugMessage = { type: 'node:patch', sessionId, nodeId: node.id, instanceId: node.instanceId, name: node.name, props, sentAt: Date.now() };
     if (shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     if (showStatus) setPatchStatus(`Patch gesendet: ${Object.keys(props).join(', ')}`);
     return true;
   }
 
   function requestBridgeBinding(force = false): void {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    if (!sessionId || !isBridgeReady()) return;
     const message: DebugMessage = {
       type: 'bridge:bind-request',
       sessionId,
@@ -1084,12 +1098,12 @@ export default function Home() {
       force,
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     setBridgeBinding(force ? 'Bridge übernimmt Bindung ...' : 'Bridge-Bindung angefragt ...');
   }
 
   function sendDynamicNodeUpdated(module: DynamicNodeManifestEntry): void {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN || !boundGameClientIdRef.current || !module.nodeTypeId) return;
+    if (!sessionId || !isBridgeReady() || !boundGameClientIdRef.current || !module.nodeTypeId) return;
     const message: DebugMessage = {
       type: 'dynamic-node:updated',
       sessionId,
@@ -1103,12 +1117,12 @@ export default function Home() {
       },
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     setPatchStatus(`Script Update gesendet: ${module.nodeTypeId}`);
   }
 
   async function respondToDynamicNodeModuleRequest(message: Extract<DebugMessage, { type: 'dynamic-node:module-request' }>): Promise<void> {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) return;
+    if (!sessionId || !isBridgeReady()) return;
     try {
       const code = await readPublicTextFile(compiledPathForDynamicModule(message.module));
       const response: DebugMessage = {
@@ -1120,7 +1134,7 @@ export default function Home() {
         code,
         sentAt: Date.now(),
       };
-      socketRef.current.send(JSON.stringify(response));
+      sendDebugMessage(response);
       setLastEvent(`Script-Modul gesendet: ${message.module.nodeTypeId}`);
     } catch (error) {
       const response: DebugMessage = {
@@ -1132,13 +1146,13 @@ export default function Home() {
         error: error instanceof Error ? error.message : String(error),
         sentAt: Date.now(),
       };
-      socketRef.current.send(JSON.stringify(response));
+      sendDebugMessage(response);
     }
   }
 
   async function injectDynamicNode(parentNode: DebugNodeDescriptor, file: PublicFileEntry): Promise<void> {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      setPatchStatus('Node Injection nicht gesendet: Relay nicht verbunden.');
+    if (!sessionId || !isBridgeReady()) {
+      setPatchStatus('Node Injection nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
     if (!boundGameClientIdRef.current) {
@@ -1173,7 +1187,7 @@ export default function Home() {
       },
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
     setPatchStatus(`Node Injection gesendet: ${entry.nodeTypeId} → ${parentNode.name}`);
@@ -1181,8 +1195,8 @@ export default function Home() {
 
 
   function injectImageNode(parentNode: DebugNodeDescriptor, payload: ImageAssetDragPayload): void {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      setPatchStatus('ImageNode Injection nicht gesendet: Relay nicht verbunden.');
+    if (!sessionId || !isBridgeReady()) {
+      setPatchStatus('ImageNode Injection nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
     if (!boundGameClientIdRef.current) {
@@ -1229,7 +1243,7 @@ export default function Home() {
       },
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
     setPatchStatus(`ImageNode Injection gesendet: ${debugImageSource.id} → ${parentNode.name}`);
@@ -1237,8 +1251,8 @@ export default function Home() {
 
 
   function createGenericChildNode(parentNode: DebugNodeDescriptor, option: GenericCreateNodeOption): void {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      setPatchStatus(`${option.label} nicht erstellt: Relay nicht verbunden.`);
+    if (!sessionId || !isBridgeReady()) {
+      setPatchStatus(`${option.label} nicht erstellt: Editor-Bridge nicht verbunden.`);
       return;
     }
     if (!boundGameClientIdRef.current) {
@@ -1261,7 +1275,7 @@ export default function Home() {
       },
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
     setNodeCreateMenu(undefined);
@@ -1270,8 +1284,8 @@ export default function Home() {
 
 
   function moveHierarchyNode(node: DebugNodeDescriptor, targetNode: DebugNodeDescriptor, placement: HierarchyDropPlacement): void {
-    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
-      setPatchStatus('Node Move nicht gesendet: Relay nicht verbunden.');
+    if (!sessionId || !isBridgeReady()) {
+      setPatchStatus('Node Move nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
     if (!boundGameClientIdRef.current) {
@@ -1294,7 +1308,7 @@ export default function Home() {
       placement,
       sentAt: Date.now(),
     };
-    socketRef.current.send(JSON.stringify(message));
+    sendDebugMessage(message);
     setSelectedNodeId(node.id);
     setHierarchyDropTarget(undefined);
     draggedHierarchyNodeRef.current = undefined;
@@ -1493,7 +1507,7 @@ export default function Home() {
     }
   }
 
-  const statusText = status === 'connected' ? 'Relay verbunden' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
+  const statusText = status === 'connected' ? 'Editor-Bridge bereit' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
   const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
   const editorTitle = gitNeedsRebase ? 'Debug Editor · Rebase nötig' : 'Debug Editor';
   const hierarchySections = splitHierarchyRoots(treeRoots, viewportMode);
@@ -1518,8 +1532,8 @@ export default function Home() {
           <button className={styles.button} onClick={reloadGameFrame} title="Game mit aktuellem Live-Stand neu laden">
             <RotateCcw size={16} /> Game neu laden
           </button>
-          <button className={styles.button} onClick={openSavePreview} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Save führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Pending Changes prüfen und speichern')}>
-            Git speichern ({pendingChangeCount})
+          <button className={styles.button} onClick={openSavePreview} disabled={pendingChangeCount === 0} title={gitNeedsRebase ? 'Remote ist voraus: Push führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Lokale Änderungen prüfen und pushen')}>
+            Git Push ({pendingChangeCount})
           </button>
           <button className={`${styles.button} ${styles.ghost}`} onPointerDown={(event) => event.preventDefault()} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
             Pending verwerfen
@@ -1632,7 +1646,7 @@ export default function Home() {
         </aside>
       </section>
       {nodeCreateMenu && <NodeCreateContextMenu roots={treeRoots} menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
-      {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
+      {savePreviewOpen && <GitSavePreviewDialog needsRebase={gitNeedsRebase} onCancel={() => setSavePreviewOpen(false)} onPush={pushGitChanges} />}
       {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
         if (!result.dynamicNodeBuild?.manifest) return;
@@ -1646,47 +1660,94 @@ export default function Home() {
 }
 
 function GitSavePreviewDialog({
-  changeSet,
   needsRebase,
-  onRemoveSetting,
   onCancel,
-  onSave,
+  onPush,
 }: {
-  changeSet: EditorChangeSet;
   needsRebase: boolean;
-  onRemoveSetting(change: EditorSetPropsChange, prop: string, field?: string): void | Promise<void>;
   onCancel(): void;
-  onSave(): void | Promise<void>;
+  onPush(): void | Promise<void>;
 }) {
-  const rows = pendingChangeRows(changeSet);
+  const [files, setFiles] = useState<EditorGitDiffEntry[]>([]);
+  const [selectedPath, setSelectedPath] = useState<string | undefined>();
+  const [selectedFile, setSelectedFile] = useState<EditorGitDiffFile | undefined>();
+  const [status, setStatus] = useState('Lade Git Diff ...');
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadFiles(): Promise<void> {
+      try {
+        const response = await fetch(editorApi('/git/diff'), { cache: 'no-store' });
+        const result = await response.json() as { ok?: boolean; files?: EditorGitDiffEntry[]; error?: string };
+        if (!response.ok || result.ok === false || !result.files) throw new Error(result.error ?? `HTTP ${response.status}`);
+        if (cancelled) return;
+        setFiles(result.files);
+        setSelectedPath((current) => current && result.files?.some((file) => file.path === current) ? current : result.files?.[0]?.path);
+        setStatus(result.files.length === 0 ? 'Keine lokalen Änderungen.' : `${result.files.length} Datei(en) geändert`);
+      } catch (error) {
+        if (!cancelled) setStatus(`Git Diff konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    void loadFiles();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPath) {
+      setSelectedFile(undefined);
+      return;
+    }
+    const path = selectedPath;
+    let cancelled = false;
+    setSelectedFile(undefined);
+    async function loadFile(): Promise<void> {
+      try {
+        const response = await fetch(editorApi(`/git/diff?file=${encodeURIComponent(path)}`), { cache: 'no-store' });
+        const result = await response.json() as { ok?: boolean; file?: EditorGitDiffFile; error?: string };
+        if (!response.ok || result.ok === false || !result.file) throw new Error(result.error ?? `HTTP ${response.status}`);
+        if (!cancelled) setSelectedFile(result.file);
+      } catch (error) {
+        if (!cancelled) setStatus(`Datei-Diff konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    void loadFile();
+    return () => { cancelled = true; };
+  }, [selectedPath]);
+
   return (
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
       <div className={styles.gitPreviewDialog} onClick={(event) => event.stopPropagation()}>
         <div className={styles.dialogHeader}>
-          <strong>Git Save Preview · {rows.length} Setting{rows.length === 1 ? '' : 's'}</strong>
+          <strong>Git Push Preview · {files.length} Datei{files.length === 1 ? '' : 'en'}</strong>
+          <span className={styles.dialogStatus}>{status}</span>
         </div>
         <div className={styles.gitPreviewBody}>
-          {needsRebase && <p className={styles.previewWarning}>Remote ist voraus. Beim Speichern wird zuerst rebased.</p>}
-          {rows.length > 0 ? (
-            <div className={styles.gitPreviewTable}>
-              <div className={styles.gitPreviewTableHeader}>Node</div>
-              <div className={styles.gitPreviewTableHeader}>Prop</div>
-              <div className={styles.gitPreviewTableHeader}>Wert</div>
-              <div className={styles.gitPreviewTableHeader}></div>
-              {rows.map(({ change, prop, field, label, value }) => (
-                <div key={`${change.id}:${prop}:${field ?? ''}`} className={styles.gitPreviewRow}>
-                  <div className={styles.gitPreviewPath}>{change.target.nodePath.join(' / ')}</div>
-                  <div className={styles.gitPreviewProp}>{label}</div>
-                  <code className={styles.gitPreviewValue}>{formatPendingValue(value)}</code>
-                  <button type="button" className={styles.removeSettingButton} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void onRemoveSetting(change, prop, field); }}>Entfernen</button>
-                </div>
-              ))}
+          {needsRebase && <p className={styles.previewWarning}>Remote ist voraus. Beim Push wird nach dem Commit rebased.</p>}
+          <div className={styles.gitDiffLayout}>
+            <aside className={styles.gitDiffFileList}>
+              {files.length > 0 ? files.map((file) => (
+                <button key={file.path} type="button" className={`${styles.gitDiffFileButton} ${file.path === selectedPath ? styles.selectedGitDiffFileButton : ''}`} onClick={() => setSelectedPath(file.path)} title={file.path}>
+                  <span className={styles.gitDiffFileStatus}>{file.status}</span>
+                  <span>{compactPublicPath(file.path)}</span>
+                </button>
+              )) : <p className={styles.empty}>Keine lokalen Änderungen.</p>}
+            </aside>
+            <div className={styles.gitDiffEditorPane}>
+              {selectedFile ? (
+                <MonacoDiffEditor
+                  original={selectedFile.original}
+                  modified={selectedFile.modified}
+                  language={editorLanguageForPath(selectedFile.path)}
+                  theme="vs-dark"
+                  options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, scrollBeyondLastLine: false, renderOverviewRuler: false }}
+                />
+              ) : <p className={styles.empty}>{selectedPath ? 'Lade Datei-Diff ...' : 'Wähle eine Datei.'}</p>}
             </div>
-          ) : <p className={styles.empty}>Keine Settings mehr im Save.</p>}
+          </div>
         </div>
         <div className={styles.gitPreviewFooter}>
           <button type="button" className={`${styles.button} ${styles.ghost}`} onClick={onCancel}>Abbrechen</button>
-          <button type="button" className={styles.button} disabled={rows.length === 0} onClick={onSave}>{needsRebase ? 'Rebase + Speichern' : 'Speichern'}</button>
+          <button type="button" className={styles.button} disabled={files.length === 0} onClick={onPush}>{needsRebase ? 'Rebase + Git Push' : 'Git Push'}</button>
         </div>
       </div>
     </div>
@@ -3486,6 +3547,7 @@ function FragmentRow({ name, value }: { name: string; value: string | number | b
 }
 
 function parseDebugMessage(data: unknown): DebugMessage | undefined {
+  if (typeof data === 'object' && data !== null && 'type' in data) return data as DebugMessage;
   if (typeof data !== 'string') return undefined;
   try {
     return JSON.parse(data) as DebugMessage;

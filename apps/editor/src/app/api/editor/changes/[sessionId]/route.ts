@@ -15,7 +15,7 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { sessionId } = await context.params;
-    const result = appendChangesFromBody(sessionId, await readJson(request));
+    const result = await appendChangesFromBody(sessionId, await readJson(request));
     return jsonNoStore({ ok: true, ...result });
   } catch (error) {
     return jsonError(error);

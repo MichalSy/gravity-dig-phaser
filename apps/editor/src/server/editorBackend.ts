@@ -15,6 +15,13 @@ interface SaveRequest {
   authorEmail?: string;
 }
 
+export interface EditorGitDiffFile {
+  path: string;
+  status: string;
+  original: string;
+  modified: string;
+}
+
 interface StagedAssetUpload {
   id: string;
   sessionId: string;
@@ -94,11 +101,15 @@ export function readChangeSet(sessionId: string): EditorChangeSet {
   return changeSets.get(sessionId) ?? { sessionId, changes: [] };
 }
 
-export function appendChangesFromBody(sessionId: string, body: unknown): { accepted: EditorSetPropsChange[]; changeSet: EditorChangeSet } {
+export async function appendChangesFromBody(sessionId: string, body: unknown): Promise<{ accepted: EditorSetPropsChange[]; changeSet: EditorChangeSet }> {
   const typed = body as Partial<EditorSetPropsChange> | { changes?: Partial<EditorSetPropsChange>[] } | undefined;
   const incoming = Array.isArray((typed as { changes?: unknown })?.changes) ? (typed as { changes: Partial<EditorSetPropsChange>[] }).changes : [typed as Partial<EditorSetPropsChange> | undefined];
   const accepted = incoming.map((change) => normalizeSetPropsChange(sessionId, change)).filter((change): change is EditorSetPropsChange => Boolean(change));
   if (accepted.length === 0) throw new EditorBackendError('No valid setProps changes. Required: kind=setProps, target.nodePath[], props{}.', 400);
+  await withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    for (const change of accepted) await applyChangeToWorkspace(change);
+  });
   return { accepted, changeSet: appendChanges(sessionId, accepted) };
 }
 
@@ -129,25 +140,61 @@ export function removePendingProp(sessionId: string, body: unknown): EditorChang
 }
 
 export async function saveChangesToGit(sessionId: string, request: SaveRequest) {
-  const changeSet = readChangeSet(sessionId);
-  const uploads = assetUploads.get(sessionId) ?? [];
-  if (changeSet.changes.length === 0 && uploads.length === 0) return { sessionId, saved: false, message: 'No pending changes.' };
+  return pushGitChanges(sessionId, request);
+}
+
+export async function pushGitChanges(sessionId: string, request: SaveRequest) {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
-    await syncWorkspaceToOriginUnlocked();
-    for (const change of changeSet.changes) await applyChangeToWorkspace(change);
+    const uploads = assetUploads.get(sessionId) ?? [];
     for (const upload of uploads) await applyAssetUploadToWorkspace(upload);
     await git(['diff', '--check']);
-    const status = (await git(['status', '--short'])).trim();
-    if (!status) return { sessionId, saved: false, message: 'Changes already match git working tree.' };
+    const status = (await git(['status', '--short', '--', 'apps/game/public', 'apps/game/src'])).trim();
+    if (!status) return { sessionId, saved: false, message: 'No local changes.' };
     await git(['config', 'user.name', request.authorName ?? defaultAuthorName]);
     await git(['config', 'user.email', request.authorEmail ?? defaultAuthorEmail]);
-    await git(['add', 'apps/game/public']);
-    const totalChanges = changeSet.changes.length + uploads.length;
-    await git(['commit', '-m', request.message?.trim() || `editor: save ${totalChanges} pending change${totalChanges === 1 ? '' : 's'}`]);
+    await git(['add', 'apps/game/public', 'apps/game/src']);
+    const stagedStatus = (await git(['diff', '--cached', '--name-only'])).trim();
+    if (!stagedStatus) return { sessionId, saved: false, message: 'No staged editor changes.' };
+    const fileCount = stagedStatus.split('\n').filter(Boolean).length;
+    await git(['commit', '-m', request.message?.trim() || `editor: update ${fileCount} file${fileCount === 1 ? '' : 's'}`]);
     const commit = (await git(['rev-parse', '--short', 'HEAD'])).trim();
     await pushWithRebase();
+    clearSession(sessionId);
     return { sessionId, saved: true, commit, files: status.split('\n') };
+  });
+}
+
+export async function discardLocalChanges() {
+  return withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    await git(['restore', '--worktree', '--staged', 'apps/game/public', 'apps/game/src']);
+    await git(['clean', '-fd', '--', 'apps/game/public', 'apps/game/src']);
+    changeSets.clear();
+    assetUploads.clear();
+    return { ok: true, status: (await git(['status', '--short'])).trim().split('\n').filter(Boolean) };
+  });
+}
+
+export async function gitDiff() {
+  return withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    const raw = (await git(['status', '--short', '--', 'apps/game/public', 'apps/game/src'])).trim();
+    const files = raw.split('\n').filter(Boolean).map((line) => ({ status: line.slice(0, 2).trim() || 'M', path: line.slice(3).trim() }));
+    return { ok: true, files };
+  });
+}
+
+export async function gitDiffFile(relativePath: string): Promise<EditorGitDiffFile> {
+  return withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    const safePath = resolveEditablePath(relativePath);
+    const path = safePath.relativePath;
+    const statusLine = (await git(['status', '--short', '--', path])).trim();
+    const status = statusLine ? statusLine.slice(0, 2).trim() || 'M' : 'M';
+    const original = await git(['show', `HEAD:${path}`]).catch(() => '');
+    const modified = await readFile(safePath.absolutePath, 'utf8').catch(() => '');
+    return { path, status, original, modified };
   });
 }
 

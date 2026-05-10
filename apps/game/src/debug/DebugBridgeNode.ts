@@ -77,6 +77,7 @@ export class DebugBridgeNode extends GameNode {
   private readonly pendingCreates = new Map<string, PendingDynamicNodeCreate>();
   private readonly pendingUpdates = new Map<string, PendingDynamicNodeUpdate>();
   private selectedNodeDrag?: SelectedNodeDragState;
+  private postMessageHandler?: (event: MessageEvent) => void;
 
   constructor(config: DebugConnectionConfig, liveAuthoring?: DebugBridgeLiveAuthoring) {
     super({ name: 'DebugBridge', className: 'DebugBridgeNode' });
@@ -133,6 +134,8 @@ export class DebugBridgeNode extends GameNode {
     this.overlay = undefined;
     this.socket?.close();
     this.socket = undefined;
+    if (this.postMessageHandler) window.removeEventListener('message', this.postMessageHandler);
+    this.postMessageHandler = undefined;
     this.ctx = undefined;
     this.lastTree = undefined;
     this.lastAssetSignature = '';
@@ -231,6 +234,10 @@ export class DebugBridgeNode extends GameNode {
 
   private connect(): void {
     this.clearReconnectTimer();
+    if (this.config.relayUrl === 'postmessage') {
+      this.connectPostMessage();
+      return;
+    }
     const socket = new WebSocket(this.config.relayUrl);
     this.socket = socket;
 
@@ -246,31 +253,7 @@ export class DebugBridgeNode extends GameNode {
     socket.addEventListener('message', (event) => {
       const message = this.parseMessage(event.data);
       if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
-      if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
-      if (message.type === 'relay:status' && message.editors > 0) {
-        this.sendAssetList();
-        this.sendNodeDefinitions();
-        this.sendTreeSnapshot();
-        this.sendSelectedNodeProps();
-      }
-      if (message.type === 'bridge:bind-request') this.handleBindRequest(message);
-      if (!this.acceptsEditorMessage(message)) return;
-      if (message.type === 'node:select') {
-        this.selectedNodeId = message.nodeId;
-        this.selectedOverlayLayerIds = undefined;
-        this.lastSelectedPropsSignature = '';
-        this.sendSelectedNodeProps(true);
-      }
-      if (message.type === 'node:patch') this.applyNodePatch(message);
-      if (message.type === 'node:create') void this.applyNodeCreate(message);
-      if (message.type === 'node:delete') this.applyNodeDelete(message);
-      if (message.type === 'node:move') this.applyNodeMove(message);
-      if (message.type === 'dynamic-node:updated') this.requestDynamicNodeUpdate(message);
-      if (message.type === 'dynamic-node:module-response') void this.handleDynamicModuleResponse(message);
-      if (message.type === 'dynamic-node:module-error') this.rejectPendingDynamicModuleRequest(message.requestId, message.error);
-      if (message.type === 'debug:overlay-settings') {
-        this.selectedOverlayLayerIds = message.enabledLayerIds ? new Set(message.enabledLayerIds) : undefined;
-      }
+      this.handleIncomingMessage(message);
     });
 
     socket.addEventListener('close', () => {
@@ -284,11 +267,62 @@ export class DebugBridgeNode extends GameNode {
     });
   }
 
-  private send(message: DebugMessage): void {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
-      this.socket.send(JSON.stringify(message));
+  private connectPostMessage(): void {
+    this.postMessageHandler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const envelope = event.data as { type?: string; message?: unknown } | undefined;
+      if (envelope?.type !== 'gravity-dig:debug-message') return;
+      const message = this.parseMessage(envelope.message);
+      if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
+      this.handleIncomingMessage(message);
+    };
+    window.addEventListener('message', this.postMessageHandler);
+    this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId, clientId: this.clientId });
+    this.sendAssetList();
+    this.sendNodeDefinitions();
+    this.sendTreeSnapshot();
+    console.info('[Gravity Dig Debug] connected via postMessage', this.config);
+  }
+
+  private handleIncomingMessage(message: DebugMessage): void {
+    if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
+    if (message.type === 'relay:status' && message.editors > 0) {
+      this.sendAssetList();
+      this.sendNodeDefinitions();
+      this.sendTreeSnapshot();
+      this.sendSelectedNodeProps();
     }
+    if (message.type === 'bridge:bind-request') this.handleBindRequest(message);
+    if (!this.acceptsEditorMessage(message)) return;
+    if (message.type === 'node:select') {
+      this.selectedNodeId = message.nodeId;
+      this.selectedOverlayLayerIds = undefined;
+      this.lastSelectedPropsSignature = '';
+      this.sendSelectedNodeProps(true);
+    }
+    if (message.type === 'node:patch') this.applyNodePatch(message);
+    if (message.type === 'node:create') void this.applyNodeCreate(message);
+    if (message.type === 'node:delete') this.applyNodeDelete(message);
+    if (message.type === 'node:move') this.applyNodeMove(message);
+    if (message.type === 'dynamic-node:updated') this.requestDynamicNodeUpdate(message);
+    if (message.type === 'dynamic-node:module-response') void this.handleDynamicModuleResponse(message);
+    if (message.type === 'dynamic-node:module-error') this.rejectPendingDynamicModuleRequest(message.requestId, message.error);
+    if (message.type === 'debug:overlay-settings') {
+      this.selectedOverlayLayerIds = message.enabledLayerIds ? new Set(message.enabledLayerIds) : undefined;
+    }
+  }
+
+  private send(message: DebugMessage): void {
+    if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
+    if (this.config.relayUrl === 'postmessage') {
+      window.parent?.postMessage({ type: 'gravity-dig:debug-message', message }, window.location.origin);
+      return;
+    }
+    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
+  }
+
+  private isTransportReady(): boolean {
+    return this.config.relayUrl === 'postmessage' || this.socket?.readyState === WebSocket.OPEN;
   }
 
   private shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -347,7 +381,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private sendAssetListIfChanged(): void {
-    if (!this.ctx || this.socket?.readyState !== WebSocket.OPEN) return;
+    if (!this.ctx || !this.isTransportReady()) return;
     const images = this.ctx.assets.listDebugImages();
     const animations = this.ctx.assets.listDebugAnimations();
     const signature = this.createAssetSignature(images, animations);
@@ -384,7 +418,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private sendTreeDeltas(): void {
-    if (!this.ctx || this.socket?.readyState !== WebSocket.OPEN) return;
+    if (!this.ctx || !this.isTransportReady()) return;
 
     const nextTree = captureDebugNodeTree(this.ctx.runtime, (node) => this.getStableNodeId(node), this);
     if (!this.lastTree) {
@@ -820,7 +854,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private sendNodeProps(nodeId: string, node: GameNode, force = false): void {
-    if (this.socket?.readyState !== WebSocket.OPEN) return;
+    if (!this.isTransportReady()) return;
 
     const message = {
       type: 'node:props' as const,
@@ -856,6 +890,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private parseMessage(data: unknown): DebugMessage | undefined {
+    if (typeof data === 'object' && data !== null && 'type' in data) return data as DebugMessage;
     if (typeof data !== 'string') return undefined;
     try {
       return JSON.parse(data) as DebugMessage;
