@@ -619,7 +619,7 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
 }
 
 export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } }> {
-  const sourceDir = resolve(workspacePath, 'apps/game/public/dynamic-nodes');
+  const sourceDir = await ensureDynamicNodeRoot();
   const outDir = resolve(workspacePath, 'apps/game/public/dynamic-nodes-compiled');
   assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
   assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
