@@ -10,6 +10,14 @@ export interface ImageAssetDefinition {
   meta?: boolean;
 }
 
+export interface DebugImageAssetSourceDefinition {
+  id: string;
+  path: string;
+  url?: string;
+  frameKey?: string;
+  rect?: { x: number; y: number; width: number; height: number };
+}
+
 interface ImageAssetSource {
   path: string;
   url: string;
@@ -49,6 +57,32 @@ export class AssetCatalog {
     return this.images.has(id);
   }
 
+  async ensureDebugImageAsset(definition: DebugImageAssetSourceDefinition): Promise<void> {
+    if (this.images.has(definition.id)) return;
+
+    const sourceImageId = definition.frameKey ? sourceImageIdForFrameId(definition.id) : definition.id;
+    if (!this.images.has(sourceImageId)) await this.registerExternalImage(sourceImageId, definition.path, definition.url);
+
+    if (!definition.frameKey) return;
+    if (this.images.has(definition.id)) return;
+    if (!definition.rect) throw new Error(`Debug image frame '${definition.id}' needs a rect`);
+
+    const texture = this.scene.textures.get(sourceImageId);
+    if (!texture.has(definition.frameKey)) {
+      texture.add(definition.frameKey, 0, definition.rect.x, definition.rect.y, definition.rect.width, definition.rect.height);
+    }
+    this.images.set(definition.id, {
+      kind: ImageAssetKind.Frame,
+      id: definition.id,
+      textureKey: sourceImageId,
+      frameKey: definition.frameKey,
+      sourceImageId,
+      rect: definition.rect,
+      width: definition.rect.width,
+      height: definition.rect.height,
+    } satisfies FrameAsset);
+  }
+
   listDebugImages(): DebugImageAssetDescriptor[] {
     return [...this.images.values()].map((asset) => {
       if (isFrameAsset(asset)) {
@@ -86,6 +120,22 @@ export class AssetCatalog {
       fps: animation.fps,
       loop: animation.loop,
     }));
+  }
+
+  private async registerExternalImage(id: string, path: string, url?: string): Promise<void> {
+    if (this.images.has(id)) return;
+    const resolvedUrl = new URL(url ?? path, window.location.origin).toString();
+    const image = await loadHtmlImage(resolvedUrl);
+    if (!this.scene.textures.exists(id)) this.scene.textures.addImage(id, image);
+    this.images.set(id, {
+      kind: ImageAssetKind.Image,
+      id,
+      textureKey: id,
+      width: image.naturalWidth || image.width,
+      height: image.naturalHeight || image.height,
+    });
+    this.imageSources.set(id, { path, url: resolvedUrl });
+    console.info('[Gravity Dig Assets] registered lazy debug image asset', { id, path, url: resolvedUrl });
   }
 
   private registerImage(definition: ImageAssetDefinition): void {
@@ -160,3 +210,17 @@ export class AssetCatalog {
     }
   }
 }
+
+function sourceImageIdForFrameId(id: string): string {
+  return id.includes('#') ? id.slice(0, id.lastIndexOf('#')) : id;
+}
+
+function loadHtmlImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error(`Image '${url}' konnte nicht geladen werden`));
+    image.src = url;
+  });
+}
+

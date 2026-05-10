@@ -126,6 +126,7 @@ interface ImageAssetDragPayload {
   assetId?: string;
   filePath?: string;
   frameKey?: string;
+  rect?: { x: number; y: number; width: number; height: number };
   label: string;
 }
 
@@ -986,25 +987,22 @@ export default function Home() {
     const resolution = resolveDraggedImageAssetWithDiagnostics(payload, imageAssets);
     const asset = resolution.asset;
     if (!asset) {
-      console.warn('[GravityDigEditor] ImageNode drop konnte kein registriertes ImageAsset finden.', {
+      console.info('[GravityDigEditor] ImageNode drop nutzt Lazy-Asset-Registrierung.', {
         payload,
         publicPath: resolution.publicPath,
-        frameKey: payload.frameKey,
         availableImageAssetCount: imageAssets.length,
         closeCandidates: resolution.closeCandidates,
-        hint: 'ImageNode kann nur Assets verwenden, die das Game im AssetCatalog registriert hat. Public-Datei allein reicht nicht.',
       });
-      setPatchStatus(`ImageNode nicht erstellt: ${payload.label} ist kein registriertes Game-ImageAsset (${resolution.publicPath ?? payload.filePath ?? 'kein Pfad'}). Siehe Browser-Konsole.`);
-      return;
+    } else {
+      console.info('[GravityDigEditor] ImageNode drop resolved.', {
+        payload,
+        publicPath: resolution.publicPath,
+        resolvedAsset: asset,
+        availableImageAssetCount: imageAssets.length,
+      });
     }
 
-    console.info('[GravityDigEditor] ImageNode drop resolved.', {
-      payload,
-      publicPath: resolution.publicPath,
-      resolvedAsset: asset,
-      availableImageAssetCount: imageAssets.length,
-    });
-
+    const debugImageSource = createDebugImageSource(payload, asset, resolution.publicPath);
     const requestId = createSessionId();
     const message: DebugMessage = {
       type: 'node:create',
@@ -1014,9 +1012,10 @@ export default function Home() {
       parentNodeId: parentNode.id,
       definition: {
         nodeTypeId: imageNodeTypeId,
-        name: defaultImageNodeName(asset),
+        name: defaultImageNodeName(asset, debugImageSource.id, payload.label),
         props: {
-          assetId: asset.id,
+          assetId: debugImageSource.id,
+          debugImageSource,
           sizeMode: 'content',
           origin: { x: 0.5, y: 0.5 },
         },
@@ -1026,7 +1025,7 @@ export default function Home() {
     socketRef.current.send(JSON.stringify(message));
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
-    setPatchStatus(`ImageNode Injection gesendet: ${asset.id} → ${parentNode.name}`);
+    setPatchStatus(`ImageNode Injection gesendet: ${debugImageSource.id} → ${parentNode.name}`);
   }
 
   async function dynamicNodeManifestEntryForFile(file: PublicFileEntry): Promise<DynamicNodeManifestEntry | undefined> {
@@ -1747,7 +1746,7 @@ function PublicImageDialog({ file, root, assets, onImageAssetDragStart, onImageA
                   draggable
                   onDragStart={(event) => {
                     const frameAsset = resolveImageAssetForPublicFrame(file.path, frame, assets);
-                    const payload: ImageAssetDragPayload = { assetId: frameAsset?.id, filePath: file.path, frameKey: frame.label, label: frame.label };
+                    const payload: ImageAssetDragPayload = { assetId: frameAsset?.id, filePath: file.path, frameKey: frame.label, rect: frame.rect, label: frame.label };
                     event.dataTransfer.effectAllowed = 'copy';
                     event.dataTransfer.setData(imageAssetDragMimeType, JSON.stringify(payload));
                     event.dataTransfer.setData('text/plain', frameAsset?.id ?? `${file.path}#${frame.label}`);
@@ -3196,6 +3195,7 @@ function readImageAssetDragPayload(event: ReactDragEvent): ImageAssetDragPayload
     if (payload.assetId !== undefined && typeof payload.assetId !== 'string') return undefined;
     if (payload.filePath !== undefined && typeof payload.filePath !== 'string') return undefined;
     if (payload.frameKey !== undefined && typeof payload.frameKey !== 'string') return undefined;
+    if (payload.rect !== undefined && !isDebugAssetRect(payload.rect)) return undefined;
     return payload;
   } catch {
     return undefined;
@@ -3230,6 +3230,26 @@ function findCloseImageAssetCandidates(payload: ImageAssetDragPayload, assets: D
   });
 }
 
+
+function createDebugImageSource(payload: ImageAssetDragPayload, asset: DebugImageAssetDescriptor | undefined, publicPath: string | undefined): { id: string; path: string; url?: string; frameKey?: string; rect?: { x: number; y: number; width: number; height: number } } {
+  const path = publicPath ?? (payload.filePath ? publicAssetPathForFilePath(payload.filePath) : undefined);
+  if (!path) throw new Error(`ImageAsset '${payload.label}' hat keinen Public-Pfad`);
+  const sourceImageId = asset?.kind === 'frame' ? asset.sourceImageId : undefined;
+  const baseId = sourceImageId ?? asset?.id ?? debugImageAssetIdForPublicPath(path);
+  const id = payload.frameKey ? (asset?.id ?? `${baseId}#${payload.frameKey}`) : baseId;
+  return { id, path, url: asset?.url ?? asset?.sourceUrl ?? path, frameKey: payload.frameKey, rect: payload.rect ?? asset?.rect };
+}
+
+function debugImageAssetIdForPublicPath(publicPath: string): string {
+  return `debug:${publicPath.replace(/^\/+/, '').replace(/\.(png|jpe?g|webp|gif)$/i, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()}`;
+}
+
+function isDebugAssetRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
+  if (typeof value !== 'object' || value === null) return false;
+  const rect = value as { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
+  return typeof rect.x === 'number' && typeof rect.y === 'number' && typeof rect.width === 'number' && typeof rect.height === 'number';
+}
+
 function resolveImageAssetForPublicFrame(filePath: string, frame: PublicAtlasFrame, assets: DebugImageAssetDescriptor[]): DebugImageAssetDescriptor | undefined {
   const publicPath = publicAssetPathForFilePath(filePath);
   return assets.find((asset) => asset.kind === 'frame' && asset.frameKey === frame.label && assetPathMatches(asset.sourceUrl, publicPath))
@@ -3255,9 +3275,10 @@ function assetPathMatches(url: string | undefined, publicPath: string): boolean 
   }
 }
 
-function defaultImageNodeName(asset: DebugImageAssetDescriptor): string {
-  const raw = asset.kind === 'frame' ? (asset.frameKey ?? asset.id.split('#').at(-1) ?? asset.id) : asset.id;
-  const suffix = asset.kind === 'frame' ? 'Frame' : 'Image';
+function defaultImageNodeName(asset: DebugImageAssetDescriptor | undefined, fallbackId: string, fallbackLabel: string): string {
+  const isFrame = asset?.kind === 'frame' || fallbackId.includes('#');
+  const raw = asset?.kind === 'frame' ? (asset.frameKey ?? asset.id.split('#').at(-1) ?? asset.id) : (asset?.id ?? fallbackLabel ?? fallbackId);
+  const suffix = isFrame ? 'Frame' : 'Image';
   const clean = raw.split(/[\/#@._-]/).filter(Boolean).map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`).join('');
   return `${clean || suffix}${suffix}`;
 }

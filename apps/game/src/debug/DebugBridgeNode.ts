@@ -325,7 +325,7 @@ export class DebugBridgeNode extends GameNode {
       return;
     }
 
-    this.createInjectedNode(message);
+    await this.createInjectedNode(message);
   }
 
   private async handleDynamicModuleResponse(message: DebugDynamicNodeModuleResponseMessage): Promise<void> {
@@ -337,7 +337,7 @@ export class DebugBridgeNode extends GameNode {
         return;
       }
       this.pendingCreates.delete(message.requestId);
-      this.createInjectedNode(pendingCreate.message);
+      await this.createInjectedNode(pendingCreate.message);
       return;
     }
 
@@ -356,7 +356,7 @@ export class DebugBridgeNode extends GameNode {
     }
   }
 
-  private createInjectedNode(message: DebugNodeCreateMessage): void {
+  private async createInjectedNode(message: DebugNodeCreateMessage): Promise<void> {
     if (!this.liveAuthoring) return;
     const parent = this.nodesById.get(message.parentNodeId) ?? this.nodesByInstanceId.get(message.parentNodeId);
     if (!parent) {
@@ -365,6 +365,7 @@ export class DebugBridgeNode extends GameNode {
     }
 
     try {
+      await this.ensureDebugImageSources(message.definition);
       const node = this.liveAuthoring.createNode(message.definition as SceneNodeJson);
       parent.addChild(node);
       const nodeId = this.getStableNodeId(node);
@@ -373,6 +374,17 @@ export class DebugBridgeNode extends GameNode {
       this.sendNodeCreateAck(message, true, undefined, node, nodeId);
     } catch (error) {
       this.sendNodeCreateAck(message, false, error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async ensureDebugImageSources(definition: DebugNodeCreateMessage['definition']): Promise<void> {
+    const source = debugImageSourceFromProps(definition.props);
+    if (source) {
+      if (!this.ctx) throw new Error('NodeContext fehlt für Debug-Image-Lazy-Load.');
+      await this.ctx.assets.ensureDebugImageAsset(source);
+    }
+    for (const child of definition.children ?? []) {
+      if (isDebugNodeCreateDefinition(child)) await this.ensureDebugImageSources(child);
     }
   }
 
@@ -615,4 +627,36 @@ export class DebugBridgeNode extends GameNode {
     window.clearTimeout(this.reconnectTimer);
     this.reconnectTimer = undefined;
   }
+}
+
+
+interface DebugImageSourcePayload {
+  id: string;
+  path: string;
+  url?: string;
+  frameKey?: string;
+  rect?: { x: number; y: number; width: number; height: number };
+}
+
+function debugImageSourceFromProps(props: Record<string, unknown> | undefined): DebugImageSourcePayload | undefined {
+  const value = props?.debugImageSource;
+  if (typeof value !== 'object' || value === null) return undefined;
+  const source = value as Partial<DebugImageSourcePayload>;
+  if (typeof source.id !== 'string' || typeof source.path !== 'string') return undefined;
+  if (source.url !== undefined && typeof source.url !== 'string') return undefined;
+  if (source.frameKey !== undefined && typeof source.frameKey !== 'string') return undefined;
+  if (source.rect !== undefined && !isDebugAssetRect(source.rect)) return undefined;
+  return { id: source.id, path: source.path, url: source.url, frameKey: source.frameKey, rect: source.rect };
+}
+
+function isDebugNodeCreateDefinition(value: unknown): value is DebugNodeCreateMessage['definition'] {
+  if (typeof value !== 'object' || value === null) return false;
+  const definition = value as { nodeTypeId?: unknown };
+  return typeof definition.nodeTypeId === 'string';
+}
+
+function isDebugAssetRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
+  if (typeof value !== 'object' || value === null) return false;
+  const rect = value as { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
+  return typeof rect.x === 'number' && typeof rect.y === 'number' && typeof rect.width === 'number' && typeof rect.height === 'number';
 }
