@@ -29,7 +29,7 @@ function defaultRelayUrl(): string {
 function defaultGameUrl(): string {
   const configured = process.env.NEXT_PUBLIC_GAME_URL;
   if (configured) return configured;
-  if (typeof window !== 'undefined') return new URL('/game/', window.location.origin).toString();
+  if (typeof window !== 'undefined') return new URL('/game/index.html', window.location.origin).toString();
   return '';
 }
 
