@@ -69,8 +69,6 @@ export class DebugBridgeNode extends GameNode {
   private propsElapsedMs = 0;
   private lastSelectedPropsSignature = '';
   private overlay?: Phaser.GameObjects.Graphics;
-  private readonly clientId = crypto.randomUUID();
-  private boundEditorClientId?: string;
   private readonly pendingCreates = new Map<string, PendingDynamicNodeCreate>();
   private readonly pendingUpdates = new Map<string, PendingDynamicNodeUpdate>();
   private selectedNodeDrag?: SelectedNodeDragState;
@@ -136,7 +134,6 @@ export class DebugBridgeNode extends GameNode {
     this.selectedNodeId = undefined;
     this.selectedOverlayLayerIds = undefined;
     this.lastSelectedPropsSignature = '';
-    this.boundEditorClientId = undefined;
     this.pendingCreates.clear();
     this.pendingUpdates.clear();
     this.nodesById.clear();
@@ -215,8 +212,6 @@ export class DebugBridgeNode extends GameNode {
     this.send({
       type: 'node:patch',
       sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: this.boundEditorClientId,
       nodeId: drag.nodeId,
       instanceId: drag.node.instanceId,
       name: drag.node.debugName(),
@@ -236,7 +231,7 @@ export class DebugBridgeNode extends GameNode {
       this.handleIncomingMessage(message);
     };
     window.addEventListener('message', this.postMessageHandler);
-    this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId, clientId: this.clientId });
+    this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId });
     this.sendAssetList();
     this.sendNodeDefinitions();
     this.sendTreeSnapshot();
@@ -245,8 +240,6 @@ export class DebugBridgeNode extends GameNode {
 
   private handleIncomingMessage(message: DebugMessage): void {
     if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
-    if (message.type === 'bridge:bind-request') this.handleBindRequest(message);
-    if (!this.acceptsEditorMessage(message)) return;
     if (message.type === 'node:select') {
       this.selectedNodeId = message.nodeId;
       this.selectedOverlayLayerIds = undefined;
@@ -276,43 +269,6 @@ export class DebugBridgeNode extends GameNode {
 
   private shouldLogDebugMessage(type: DebugMessage['type']): boolean {
     return type !== 'node:select' && type !== 'node:props' && type !== 'node:patch' && type !== 'node:patch:ack';
-  }
-
-  private handleBindRequest(message: Extract<DebugMessage, { type: 'bridge:bind-request' }>): void {
-    if (this.boundEditorClientId && this.boundEditorClientId !== message.editorClientId && !message.force) {
-      this.send({
-        type: 'bridge:bind-rejected',
-        sessionId: this.config.sessionId,
-        sourceClientId: this.clientId,
-        targetClientId: message.editorClientId,
-        editorClientId: message.editorClientId,
-        gameClientId: this.clientId,
-        reason: `Game ist bereits an Editor ${this.boundEditorClientId} gebunden.`,
-        sentAt: Date.now(),
-      });
-      return;
-    }
-
-    this.boundEditorClientId = message.editorClientId;
-    this.send({
-      type: 'bridge:bind-ack',
-      sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: message.editorClientId,
-      editorClientId: message.editorClientId,
-      gameClientId: this.clientId,
-      sentAt: Date.now(),
-    });
-    this.sendAssetList();
-    this.sendNodeDefinitions();
-    this.sendTreeSnapshot();
-    this.sendSelectedNodeProps(true);
-  }
-
-  private acceptsEditorMessage(message: DebugMessage): boolean {
-    if (message.type === 'hello' || message.type === 'ping' || message.type === 'pong') return true;
-    if (!('sourceClientId' in message) || typeof message.sourceClientId !== 'string') return !this.boundEditorClientId;
-    return !this.boundEditorClientId || message.sourceClientId === this.boundEditorClientId;
   }
 
   private sendAssetList(): void {
@@ -411,16 +367,10 @@ export class DebugBridgeNode extends GameNode {
     }
 
     if (message.module && !this.liveAuthoring.hasDynamicModule(message.module)) {
-      if (!this.boundEditorClientId) {
-        this.sendNodeCreateAck(message, false, 'Kein gebundener Editor für Dynamic-Node-Modul-Request.');
-        return;
-      }
       this.pendingCreates.set(message.requestId, { message, requestedAt: Date.now() });
       this.send({
         type: 'dynamic-node:module-request',
         sessionId: this.config.sessionId,
-        sourceClientId: this.clientId,
-        targetClientId: this.boundEditorClientId,
         requestId: message.requestId,
         module: message.module,
         sentAt: Date.now(),
@@ -498,16 +448,14 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private requestDynamicNodeUpdate(message: Extract<DebugMessage, { type: 'dynamic-node:updated' }>): void {
-    if (!this.liveAuthoring || !this.boundEditorClientId) {
-      this.sendDynamicNodeUpdateAck({ requestId: message.requestId, module: message.module, requestedAt: Date.now() }, false, 0, 'Live Authoring oder gebundener Editor fehlt.');
+    if (!this.liveAuthoring) {
+      this.sendDynamicNodeUpdateAck({ requestId: message.requestId, module: message.module, requestedAt: Date.now() }, false, 0, 'Live Authoring fehlt.');
       return;
     }
     this.pendingUpdates.set(message.requestId, { requestId: message.requestId, module: message.module, requestedAt: Date.now() });
     this.send({
       type: 'dynamic-node:module-request',
       sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: this.boundEditorClientId,
       requestId: message.requestId,
       module: message.module,
       sentAt: Date.now(),
@@ -518,8 +466,6 @@ export class DebugBridgeNode extends GameNode {
     this.send({
       type: 'dynamic-node:update:ack',
       sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: this.boundEditorClientId,
       requestId: pending.requestId,
       module: pending.module,
       applied,
@@ -548,8 +494,6 @@ export class DebugBridgeNode extends GameNode {
     this.send({
       type: 'node:create:ack',
       sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: this.boundEditorClientId,
       requestId: message.requestId,
       parentNodeId: message.parentNodeId,
       nodeId,
@@ -706,8 +650,6 @@ export class DebugBridgeNode extends GameNode {
     this.send({
       type: 'node:move:ack',
       sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: this.boundEditorClientId,
       requestId: message.requestId,
       nodeId: message.nodeId,
       targetNodeId: message.targetNodeId,
@@ -722,8 +664,6 @@ export class DebugBridgeNode extends GameNode {
     this.send({
       type: 'node:delete:ack',
       sessionId: this.config.sessionId,
-      sourceClientId: this.clientId,
-      targetClientId: this.boundEditorClientId,
       requestId: message.requestId,
       nodeId: message.nodeId,
       instanceId: instanceId ?? message.instanceId,

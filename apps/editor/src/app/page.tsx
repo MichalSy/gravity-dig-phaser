@@ -355,8 +355,7 @@ export default function Home() {
   const [viewportMode, setViewportMode] = useState<ViewportMode>('editor');
   const [editorPreviewScene, setEditorPreviewScene] = useState<EditorPreviewSceneId>('gameplay');
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
-  const editorClientIdRef = useRef<string>(createSessionId());
-  const boundGameClientIdRef = useRef<string | undefined>(undefined);
+  const lastRuntimeStartSignatureRef = useRef<string>('');
   const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
   const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
   const draggedImageAssetRef = useRef<ImageAssetDragPayload | undefined>(undefined);
@@ -455,20 +454,7 @@ export default function Home() {
     function handleMessage(message: DebugMessage): void {
       if ('sessionId' in message && message.sessionId !== sessionId) return;
 
-      if (message.type === 'hello' && message.role === 'game') {
-        requestBridgeBinding(true);
-        return;
-      }
-
-      if (message.type === 'bridge:bind-ack') {
-        boundGameClientIdRef.current = message.gameClientId;
-        return;
-      }
-
-      if (message.type === 'bridge:bind-rejected') {
-        boundGameClientIdRef.current = undefined;
-        return;
-      }
+      if (message.type === 'hello' && message.role === 'game') return;
 
       if (message.type === 'dynamic-node:module-request') {
         void respondToDynamicNodeModuleRequest(message);
@@ -578,7 +564,7 @@ export default function Home() {
 
   useEffect(() => {
     void startRuntimeFrame();
-  }, [viewportMode, editorPreviewScene, gameFrameKey, runtimeReadyKey, sessionId]);
+  }, [viewportMode, editorPreviewScene, runtimeReadyKey, sessionId]);
 
   useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
@@ -654,7 +640,10 @@ export default function Home() {
 
   async function startRuntimeFrame(): Promise<void> {
     const frame = runtimeFrameRef.current;
-    if (!frame?.contentWindow) return;
+    if (!frame?.contentWindow || runtimeReadyKey === 0) return;
+    const startSignature = `${sessionId}:${viewportMode}:${editorPreviewScene}:${runtimeReadyKey}`;
+    if (lastRuntimeStartSignatureRef.current === startSignature) return;
+    lastRuntimeStartSignatureRef.current = startSignature;
     try {
       await fetch(editorApi('/dynamic-nodes/build'), { method: 'POST', cache: 'no-store' });
     } catch (error) {
@@ -671,9 +660,7 @@ export default function Home() {
 
   function sendDebugMessage(message: DebugMessage): boolean {
     if (!sessionId) return false;
-    const outbound = ('sourceClientId' in message)
-      ? message
-      : ({ ...message, sourceClientId: editorClientIdRef.current } as DebugMessage);
+    const outbound = message;
     if (shouldLogDebugMessage(outbound.type)) console.log('[Gravity Dig Debug][editor->game]', outbound.type, outbound);
     runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:debug-message', message: outbound }, window.location.origin);
     return Boolean(runtimeFrameRef.current?.contentWindow);
@@ -684,6 +671,8 @@ export default function Home() {
   }
 
   function reloadGameFrame(): void {
+    lastRuntimeStartSignatureRef.current = '';
+    setRuntimeReadyKey(0);
     setGameFrameKey((current) => current + 1);
   }
 
@@ -975,16 +964,10 @@ export default function Home() {
       setPatchStatus('Delete nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
-    if (!boundGameClientIdRef.current) {
-      requestBridgeBinding();
-      setPatchStatus('Delete wartet: Bridge ist noch nicht 1:1 gebunden.');
-      return;
-    }
     const requestId = createSessionId();
     const message: DebugMessage = {
       type: 'node:delete',
       sessionId,
-      targetClientId: boundGameClientIdRef.current,
       requestId,
       nodeId: node.id,
       instanceId: node.instanceId,
@@ -1018,24 +1001,11 @@ export default function Home() {
     return true;
   }
 
-  function requestBridgeBinding(force = false): void {
-    if (!sessionId || !isBridgeReady()) return;
-    const message: DebugMessage = {
-      type: 'bridge:bind-request',
-      sessionId,
-      editorClientId: editorClientIdRef.current,
-      force,
-      sentAt: Date.now(),
-    };
-    sendDebugMessage(message);
-  }
-
   function sendDynamicNodeUpdated(module: DynamicNodeManifestEntry): void {
-    if (!sessionId || !isBridgeReady() || !boundGameClientIdRef.current || !module.nodeTypeId) return;
+    if (!sessionId || !isBridgeReady() || !module.nodeTypeId) return;
     const message: DebugMessage = {
       type: 'dynamic-node:updated',
       sessionId,
-      targetClientId: boundGameClientIdRef.current,
       requestId: createSessionId(),
       module: {
         nodeTypeId: module.nodeTypeId,
@@ -1056,7 +1026,6 @@ export default function Home() {
       const response: DebugMessage = {
         type: 'dynamic-node:module-response',
         sessionId,
-        targetClientId: message.sourceClientId,
         requestId: message.requestId,
         module: message.module,
         code,
@@ -1067,7 +1036,6 @@ export default function Home() {
       const response: DebugMessage = {
         type: 'dynamic-node:module-error',
         sessionId,
-        targetClientId: message.sourceClientId,
         requestId: message.requestId,
         module: message.module,
         error: error instanceof Error ? error.message : String(error),
@@ -1082,12 +1050,6 @@ export default function Home() {
       setPatchStatus('Node Injection nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
-    if (!boundGameClientIdRef.current) {
-      requestBridgeBinding();
-      setPatchStatus('Node Injection wartet: Bridge ist noch nicht 1:1 gebunden.');
-      return;
-    }
-
     const entry = await dynamicNodeManifestEntryForFile(file);
     if (!entry?.nodeTypeId) {
       setPatchStatus(`Keine Script-Manifest-Zuordnung für ${file.name}.`);
@@ -1098,7 +1060,6 @@ export default function Home() {
     const message: DebugMessage = {
       type: 'node:create',
       sessionId,
-      targetClientId: boundGameClientIdRef.current,
       requestId,
       parentNodeId: parentNode.id,
       definition: {
@@ -1126,12 +1087,6 @@ export default function Home() {
       setPatchStatus('ImageNode Injection nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
-    if (!boundGameClientIdRef.current) {
-      requestBridgeBinding();
-      setPatchStatus('ImageNode Injection wartet: Bridge ist noch nicht 1:1 gebunden.');
-      return;
-    }
-
     const resolution = resolveDraggedImageAssetWithDiagnostics(payload, imageAssets);
     const asset = resolution.asset;
     if (!asset) {
@@ -1155,7 +1110,6 @@ export default function Home() {
     const message: DebugMessage = {
       type: 'node:create',
       sessionId,
-      targetClientId: boundGameClientIdRef.current,
       requestId,
       parentNodeId: parentNode.id,
       definition: {
@@ -1182,17 +1136,10 @@ export default function Home() {
       setPatchStatus(`${option.label} nicht erstellt: Editor-Bridge nicht verbunden.`);
       return;
     }
-    if (!boundGameClientIdRef.current) {
-      requestBridgeBinding();
-      setPatchStatus(`${option.label} wartet: Bridge ist noch nicht 1:1 gebunden.`);
-      return;
-    }
-
     const requestId = createSessionId();
     const message: DebugMessage = {
       type: 'node:create',
       sessionId,
-      targetClientId: boundGameClientIdRef.current,
       requestId,
       parentNodeId: parentNode.id,
       definition: {
@@ -1215,11 +1162,6 @@ export default function Home() {
       setPatchStatus('Node Move nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
-    if (!boundGameClientIdRef.current) {
-      requestBridgeBinding();
-      setPatchStatus('Node Move wartet: Bridge ist noch nicht 1:1 gebunden.');
-      return;
-    }
     if (node.id === targetNode.id || containsNode(node, targetNode.id)) {
       setPatchStatus('Node kann nicht in sich selbst oder eigenen Subtree verschoben werden.');
       return;
@@ -1234,7 +1176,6 @@ export default function Home() {
     const message: DebugMessage = {
       type: 'node:move',
       sessionId,
-      targetClientId: boundGameClientIdRef.current,
       requestId,
       nodeId: node.id,
       targetNodeId: targetNode.id,

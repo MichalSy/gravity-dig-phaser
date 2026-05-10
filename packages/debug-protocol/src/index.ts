@@ -7,36 +7,6 @@ export interface DebugHelloMessage {
   clientId?: string;
 }
 
-export interface DebugTargetedMessageFields {
-  sourceClientId?: string;
-  targetClientId?: string;
-}
-
-export interface DebugBridgeBindRequestMessage extends DebugTargetedMessageFields {
-  type: 'bridge:bind-request';
-  sessionId: string;
-  editorClientId: string;
-  force?: boolean;
-  sentAt: number;
-}
-
-export interface DebugBridgeBindAckMessage extends DebugTargetedMessageFields {
-  type: 'bridge:bind-ack';
-  sessionId: string;
-  editorClientId: string;
-  gameClientId: string;
-  sentAt: number;
-}
-
-export interface DebugBridgeBindRejectedMessage extends DebugTargetedMessageFields {
-  type: 'bridge:bind-rejected';
-  sessionId: string;
-  editorClientId: string;
-  gameClientId?: string;
-  reason: string;
-  sentAt: number;
-}
-
 export interface DebugPingMessage {
   type: 'ping';
   sentAt: number;
@@ -111,7 +81,7 @@ export type DebugScenePropValue = string | number | boolean | null | { x: number
 
 export type DebugNodePatch = Record<string, DebugScenePropValue>;
 
-export interface DebugNodePatchMessage extends DebugTargetedMessageFields {
+export interface DebugNodePatchMessage {
   type: 'node:patch';
   sessionId: string;
   nodeId?: string;
@@ -129,7 +99,7 @@ export interface DebugDynamicNodeModuleReference {
   hash: string;
 }
 
-export interface DebugNodeCreateMessage extends DebugTargetedMessageFields {
+export interface DebugNodeCreateMessage {
   type: 'node:create';
   sessionId: string;
   requestId: string;
@@ -145,7 +115,7 @@ export interface DebugNodeCreateMessage extends DebugTargetedMessageFields {
   sentAt: number;
 }
 
-export interface DebugNodeCreateAckMessage extends DebugTargetedMessageFields {
+export interface DebugNodeCreateAckMessage {
   type: 'node:create:ack';
   sessionId: string;
   requestId: string;
@@ -158,7 +128,7 @@ export interface DebugNodeCreateAckMessage extends DebugTargetedMessageFields {
   sentAt: number;
 }
 
-export interface DebugDynamicNodeModuleRequestMessage extends DebugTargetedMessageFields {
+export interface DebugDynamicNodeModuleRequestMessage {
   type: 'dynamic-node:module-request';
   sessionId: string;
   requestId: string;
@@ -166,7 +136,7 @@ export interface DebugDynamicNodeModuleRequestMessage extends DebugTargetedMessa
   sentAt: number;
 }
 
-export interface DebugDynamicNodeModuleResponseMessage extends DebugTargetedMessageFields {
+export interface DebugDynamicNodeModuleResponseMessage {
   type: 'dynamic-node:module-response';
   sessionId: string;
   requestId: string;
@@ -175,7 +145,7 @@ export interface DebugDynamicNodeModuleResponseMessage extends DebugTargetedMess
   sentAt: number;
 }
 
-export interface DebugDynamicNodeModuleErrorMessage extends DebugTargetedMessageFields {
+export interface DebugDynamicNodeModuleErrorMessage {
   type: 'dynamic-node:module-error';
   sessionId: string;
   requestId: string;
@@ -184,7 +154,7 @@ export interface DebugDynamicNodeModuleErrorMessage extends DebugTargetedMessage
   sentAt: number;
 }
 
-export interface DebugDynamicNodeUpdatedMessage extends DebugTargetedMessageFields {
+export interface DebugDynamicNodeUpdatedMessage {
   type: 'dynamic-node:updated';
   sessionId: string;
   requestId: string;
@@ -192,7 +162,7 @@ export interface DebugDynamicNodeUpdatedMessage extends DebugTargetedMessageFiel
   sentAt: number;
 }
 
-export interface DebugDynamicNodeUpdateAckMessage extends DebugTargetedMessageFields {
+export interface DebugDynamicNodeUpdateAckMessage {
   type: 'dynamic-node:update:ack';
   sessionId: string;
   requestId: string;
@@ -203,7 +173,7 @@ export interface DebugDynamicNodeUpdateAckMessage extends DebugTargetedMessageFi
   sentAt: number;
 }
 
-export interface DebugNodeDeleteMessage extends DebugTargetedMessageFields {
+export interface DebugNodeDeleteMessage {
   type: 'node:delete';
   sessionId: string;
   requestId: string;
@@ -212,7 +182,7 @@ export interface DebugNodeDeleteMessage extends DebugTargetedMessageFields {
   sentAt: number;
 }
 
-export interface DebugNodeDeleteAckMessage extends DebugTargetedMessageFields {
+export interface DebugNodeDeleteAckMessage {
   type: 'node:delete:ack';
   sessionId: string;
   requestId: string;
@@ -226,7 +196,7 @@ export interface DebugNodeDeleteAckMessage extends DebugTargetedMessageFields {
 
 export type DebugNodeMovePlacement = 'before' | 'after' | 'child';
 
-export interface DebugNodeMoveMessage extends DebugTargetedMessageFields {
+export interface DebugNodeMoveMessage {
   type: 'node:move';
   sessionId: string;
   requestId: string;
@@ -236,7 +206,7 @@ export interface DebugNodeMoveMessage extends DebugTargetedMessageFields {
   sentAt: number;
 }
 
-export interface DebugNodeMoveAckMessage extends DebugTargetedMessageFields {
+export interface DebugNodeMoveAckMessage {
   type: 'node:move:ack';
   sessionId: string;
   requestId: string;
@@ -431,9 +401,6 @@ export type DebugMessage =
   | DebugPingMessage
   | DebugPongMessage
   | DebugTextMessage
-  | DebugBridgeBindRequestMessage
-  | DebugBridgeBindAckMessage
-  | DebugBridgeBindRejectedMessage
   | DebugNodeDefinitionsMessage
   | DebugNodeTreeMessage
   | DebugNodeDeltaMessage

@@ -46,6 +46,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private playGameplayMounted = false;
   private gameplayPersistentMounted = false;
   private editorApiBase?: string;
+  private lastStartSignature?: string;
   private startQueue: Promise<void> = Promise.resolve();
   private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
 
@@ -89,8 +90,16 @@ class EditorRuntimeScene extends Phaser.Scene {
   }
 
   private async startUnsafe(message: StartRuntimeMessage): Promise<void> {
+    const startSignature = `${message.sessionId ?? ''}:${message.editorApiBase ?? ''}:${message.mode}:${message.scene}`;
+    if (this.lastStartSignature === startSignature) return;
+    this.lastStartSignature = startSignature;
     this.editorApiBase = message.editorApiBase;
-    await this.ensureRuntime(message);
+    try {
+      await this.ensureRuntime(message);
+    } catch (error) {
+      this.lastStartSignature = undefined;
+      throw error;
+    }
     if (!this.runtime) throw new Error('Runtime konnte nicht initialisiert werden');
 
     if (message.mode === 'play') {
