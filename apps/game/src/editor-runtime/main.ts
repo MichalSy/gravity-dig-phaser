@@ -332,9 +332,11 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   private async fetchOptionalJson<T>(editorApiBase: string | undefined, path: string): Promise<T | undefined> {
     const response = await fetch(this.contentUrl(editorApiBase, path), { cache: 'no-store' });
-    if (response.status === 404) return undefined;
+    if (response.status === 404 || response.status === 204) return undefined;
     if (!response.ok) throw new Error(`Editor runtime konnte '${path}' nicht laden: HTTP ${response.status}`);
-    return await response.json() as T;
+    const text = await response.text();
+    if (!text.trim()) return undefined;
+    return JSON.parse(text) as T;
   }
 
   private contentUrl(editorApiBase: string | undefined, path: string): string {
