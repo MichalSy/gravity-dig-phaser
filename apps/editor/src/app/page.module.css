@@ -91,11 +91,6 @@
 
 .secondary { background: rgba(30, 41, 59, 0.92); }
 .ghost { background: transparent; border-color: rgba(148, 163, 184, 0.22); color: #cbd5e1; }
-.badge { padding: 7px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; white-space: nowrap; }
-.disconnected { background: rgba(239, 68, 68, 0.18); color: #fecaca; }
-.connecting { background: rgba(245, 158, 11, 0.18); color: #fde68a; }
-.connected { background: rgba(34, 197, 94, 0.18); color: #bbf7d0; }
-
 .workbench {
   min-height: 0;
   display: grid;

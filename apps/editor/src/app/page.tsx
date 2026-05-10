@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
+import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -322,8 +322,6 @@ function readStoredLayout(): EditorLayoutState {
 
 export default function Home() {
   const [sessionId, setSessionId] = useState('');
-  const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const [gameCount, setGameCount] = useState(0);
   const [treeRoots, setTreeRoots] = useState<DebugNodeDescriptor[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>();
   const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(() => new Set());
@@ -352,8 +350,6 @@ export default function Home() {
   const [openNodeFilePath, setOpenNodeFilePath] = useState<string | undefined>();
   const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public', 'apps/game/src']));
   const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
-  const [lastEvent, setLastEvent] = useState('Warte auf Game...');
-  const [bridgeBinding, setBridgeBinding] = useState('Bridge nicht gebunden');
   const [gameFrameKey, setGameFrameKey] = useState(0);
   const [runtimeReadyKey, setRuntimeReadyKey] = useState(0);
   const [viewportMode, setViewportMode] = useState<ViewportMode>('editor');
@@ -460,23 +456,17 @@ export default function Home() {
       if ('sessionId' in message && message.sessionId !== sessionId) return;
 
       if (message.type === 'hello' && message.role === 'game') {
-        setGameCount(1);
         requestBridgeBinding(true);
-        setLastEvent('Runtime verbunden. Direkte Bridge-Bindung angefragt.');
         return;
       }
 
       if (message.type === 'bridge:bind-ack') {
         boundGameClientIdRef.current = message.gameClientId;
-        setBridgeBinding('Bridge 1:1 gebunden');
-        setLastEvent('Game und Editor sind 1:1 gebunden.');
         return;
       }
 
       if (message.type === 'bridge:bind-rejected') {
         boundGameClientIdRef.current = undefined;
-        setBridgeBinding(`Bridge abgelehnt: ${message.reason}`);
-        setLastEvent(`Bridge abgelehnt: ${message.reason}`);
         return;
       }
 
@@ -511,7 +501,6 @@ export default function Home() {
 
       if (message.type === 'node:definitions') {
         setNodeDefinitions(new Map(message.nodes.map((node) => [node.instanceId, node])));
-        setLastEvent(`Node-Definitionen geladen: ${message.nodes.length}`);
         return;
       }
 
@@ -519,7 +508,6 @@ export default function Home() {
         setImageAssets(message.images);
         setAnimations(message.animations);
         setSelectedAssetId((current) => current && message.images.some((asset) => asset.id === current) ? current : message.images[0]?.id);
-        setLastEvent(`Assets geladen: ${message.images.length} Bilder`);
         return;
       }
 
@@ -527,7 +515,6 @@ export default function Home() {
         setTreeRoots(message.roots);
         setExpandedNodeIds(new Set(collectNodeIds(message.roots)));
         setSelectedNodeId((current) => current ?? message.roots[0]?.id);
-        setLastEvent(`Node Tree geladen: ${countNodes(message.roots)} Nodes`);
         return;
       }
 
@@ -538,7 +525,6 @@ export default function Home() {
           setSelectedNodeId((selected) => (selected && findNode(next, selected) ? selected : next[0]?.id));
           return next;
         });
-        setLastEvent(`${message.deltas.length} Node-Änderung(en)`);
         return;
       }
 
@@ -562,10 +548,6 @@ export default function Home() {
       }
     }
 
-    setStatus('connected');
-    setGameCount(1);
-    setBridgeBinding('Bridge wartet auf Runtime-Bindung');
-    setLastEvent('Direkte Editor-Bridge bereit. Runtime wird im Editor geladen.');
     window.addEventListener('message', handleRuntimeDebugMessage);
 
     return () => {
@@ -588,15 +570,6 @@ export default function Home() {
       const message = event.data as { type?: string; mode?: string; scene?: string } | undefined;
       if (message?.type === 'gravity-dig:runtime:ready') {
         setRuntimeReadyKey((current) => current + 1);
-        setLastEvent('Runtime iframe bereit.');
-        return;
-      }
-      if (message?.type === 'gravity-dig:runtime:started') {
-        setLastEvent(`Runtime gestartet: ${message.mode ?? 'unknown'} · ${message.scene ?? 'unknown'}`);
-        return;
-      }
-      if (message?.type === 'gravity-dig:runtime:error') {
-        setLastEvent(`Runtime Fehler: ${String((message as { message?: unknown }).message ?? 'Unbekannt')}`);
       }
     }
     window.addEventListener('message', handleRuntimeMessage);
@@ -685,7 +658,7 @@ export default function Home() {
     try {
       await fetch(editorApi('/dynamic-nodes/build'), { method: 'POST', cache: 'no-store' });
     } catch (error) {
-      setLastEvent(`Dynamic Scripts konnten nicht kompiliert werden: ${error instanceof Error ? error.message : String(error)}`);
+      setPatchStatus(`Dynamic Scripts konnten nicht kompiliert werden: ${error instanceof Error ? error.message : String(error)}`);
     }
     frame.contentWindow.postMessage({
       type: 'gravity-dig:runtime:start',
@@ -710,28 +683,7 @@ export default function Home() {
     return Boolean(sessionId && runtimeFrameRef.current?.contentWindow);
   }
 
-  function openGameInTab(): void {
-    if (!runtimeUrl) return;
-    window.open(runtimeUrl, '_blank', 'noopener,noreferrer');
-  }
-
   function reloadGameFrame(): void {
-    setGameFrameKey((current) => current + 1);
-  }
-
-  function newSession(): void {
-    setTreeRoots([]);
-    setSelectedNodeId(undefined);
-    setExpandedNodeIds(new Set());
-    setPersistentManagersOpen(false);
-    setSelectedNodeProps(undefined);
-    setImageAssets([]);
-    setAnimations([]);
-    setSelectedAssetId(undefined);
-    setOriginalAssetId(undefined);
-    setGameCount(0);
-    setLastEvent('Neue Session bereit.');
-    setSessionId(createSessionId());
     setGameFrameKey((current) => current + 1);
   }
 
@@ -1076,7 +1028,6 @@ export default function Home() {
       sentAt: Date.now(),
     };
     sendDebugMessage(message);
-    setBridgeBinding(force ? 'Bridge übernimmt Bindung ...' : 'Bridge-Bindung angefragt ...');
   }
 
   function sendDynamicNodeUpdated(module: DynamicNodeManifestEntry): void {
@@ -1112,7 +1063,6 @@ export default function Home() {
         sentAt: Date.now(),
       };
       sendDebugMessage(response);
-      setLastEvent(`Script-Modul gesendet: ${message.module.nodeTypeId}`);
     } catch (error) {
       const response: DebugMessage = {
         type: 'dynamic-node:module-error',
@@ -1512,8 +1462,6 @@ export default function Home() {
     }
   }
 
-  const statusText = status === 'connected' ? 'Editor-Bridge bereit' : status === 'connecting' ? 'Verbinde...' : 'Getrennt';
-  const gameText = gameCount > 0 ? 'Game verbunden' : 'Game lädt...';
   const editorTitle = gitNeedsRebase ? 'Debug Editor · Rebase nötig' : 'Debug Editor';
   const hierarchySections = splitHierarchyRoots(treeRoots, viewportMode);
   const hierarchyNodeCount = viewportMode === 'editor' ? countNodes(hierarchySections.scenes) : countNodes(treeRoots);
@@ -1530,31 +1478,20 @@ export default function Home() {
             <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'editor' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
             <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'play' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>
           </div>
-          <span className={`${styles.badge} ${styles[status]}`}>{statusText}</span>
-          <span className={`${styles.badge} ${gameCount > 0 ? styles.connected : styles.connecting}`}>{gameText}</span>
         </div>
         <div className={styles.actions}>
-          <button className={styles.button} onClick={reloadGameFrame} title="Game mit aktuellem Live-Stand neu laden">
-            <RotateCcw size={16} /> Game neu laden
-          </button>
           <button className={styles.button} onClick={openSavePreview} title={gitNeedsRebase ? 'Remote ist voraus: Push führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Lokale Änderungen prüfen')}>
             Pending Changes ({pendingChangeCount})
           </button>
           <button className={`${styles.button} ${styles.ghost}`} onPointerDown={(event) => event.preventDefault()} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
             Pending verwerfen
           </button>
-          <button className={`${styles.button} ${styles.secondary}`} onClick={openGameInTab}>
-            <ExternalLink size={16} /> Neuer Tab
-          </button>
-          <button className={`${styles.button} ${styles.ghost}`} onClick={newSession}>
-            <RefreshCw size={16} /> Neue Session
-          </button>
         </div>
       </header>
 
       <section ref={workbenchRef} className={styles.workbench}>
         <aside className={styles.panel}>
-          <PanelHeader title="Hierarchy" meta={`${hierarchyNodeCount} Nodes · ${bridgeBinding}`}>
+          <PanelHeader title="Hierarchy" meta={`${hierarchyNodeCount} Nodes`}>
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
             <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
           </PanelHeader>
@@ -1589,7 +1526,7 @@ export default function Home() {
                 onDeleteNode={sendNodeDelete}
               />
             ) : (
-              <p className={styles.empty}>Noch kein Tree. Das Game lädt im Viewport.</p>
+              <p className={styles.empty}>Noch kein Tree. Runtime lädt im Viewport.</p>
             )}
           </div>
         </aside>
@@ -1597,7 +1534,7 @@ export default function Home() {
         <div className={`${styles.columnResizer} ${styles.leftColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Hierarchy Breite ändern" onPointerDown={(event) => startColumnResize('left', event)} />
 
         <section ref={viewportPanelRef} className={styles.viewportPanel}>
-          <PanelHeader title={viewportMode === 'editor' ? 'Scene Editor Preview' : 'Live Game'} meta={viewportMode === 'editor' ? `Editor Mode · ${editorPreviewScene}` : lastEvent} />
+          <PanelHeader title={viewportMode === 'editor' ? 'Scene Editor Preview' : 'Live Game'} meta={viewportMode === 'editor' ? `Editor Mode · ${editorPreviewScene}` : 'Runtime'} />
           <div className={styles.viewportBody}>
             <div className={`${styles.frameStage} ${viewportMode === 'editor' ? styles.editorFrameStage : ''}`}>
               <iframe
