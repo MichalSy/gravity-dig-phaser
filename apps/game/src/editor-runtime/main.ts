@@ -3,7 +3,7 @@ import '../style.css';
 import { GAME_ANIMATION_SETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode, ShipNode } from '../game/nodes';
-import { ButtonNode, GameplayInputNode, LoadingNode, MenuNode } from '../app/nodes';
+import { ButtonNode, GameplayInputNode, LoadingNode, MenuNode, MenuScriptNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { AnimatedImageNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
@@ -178,9 +178,11 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   private startGame(): void {
     const loading = this.runtime?.getNode<LoadingNode>('Loading');
-    const menu = this.runtime?.getNode<MenuNode>('Menu');
     if (!loading) return;
-    menu?.close();
+    if (this.playMenuScene && this.playRoot) {
+      this.playRoot.removeChild(this.playMenuScene);
+      this.playMenuScene = undefined;
+    }
     loading.start();
   }
 
@@ -291,7 +293,8 @@ class EditorRuntimeScene extends Phaser.Scene {
       })
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
-      .register(NODE_TYPE_IDS.MenuNode, (definition) => new MenuNode(() => this.startGame(), optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.MenuNode, (definition) => new MenuNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.MenuScriptNode, (definition) => new MenuScriptNode(() => this.startGame(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LoadingNode, (definition) => new LoadingNode(() => this.mountGameplay(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))

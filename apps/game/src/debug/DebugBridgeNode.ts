@@ -45,6 +45,7 @@ const GAME_ONLY_TYPE_IDS = new Set<string>([
 ]);
 const UI_ONLY_TYPE_IDS = new Set<string>([
   NODE_TYPE_IDS.MenuNode,
+  NODE_TYPE_IDS.MenuScriptNode,
   NODE_TYPE_IDS.ButtonNode,
   NODE_TYPE_IDS.LoadingNode,
   NODE_TYPE_IDS.InputModeDetectorNode,
