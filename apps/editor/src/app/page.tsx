@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
+import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
 import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -51,6 +51,14 @@ const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
 const dynamicNodeDragMimeType = 'application/x-gravity-dig-dynamic-node';
 const imageAssetDragMimeType = 'application/x-gravity-dig-image-asset';
 const imageNodeTypeId = '73e926f5-c280-5131-b820-a89f898e2d48';
+const genericCreateNodeOptions = [
+  { id: 'empty', label: 'Empty / Transform', nodeTypeId: 'b78a74e0-452a-5e20-85f4-579f7c0b1364', className: 'TransformNode', props: { size: { width: 120, height: 80 }, sizeMode: 'explicit' } },
+  { id: 'image', label: 'ImageNode', nodeTypeId: imageNodeTypeId, className: 'ImageNode', props: { assetId: 'debug:assets-ui-menu-menu-button-active', debugImageSource: { id: 'debug:assets-ui-menu-menu-button-active', path: '/assets/ui/menu/menu_button_active.webp', url: '/assets/ui/menu/menu_button_active.webp' }, sizeMode: 'content', origin: { x: 0.5, y: 0.5 } } },
+  { id: 'text', label: 'TextNode', nodeTypeId: '2db287f7-b55c-5c58-be87-c057e8c5d302', className: 'TextNode', props: { text: 'Text', size: { width: 160, height: 40 }, sizeMode: 'explicit' } },
+  { id: 'animated-image', label: 'AnimatedImageNode', nodeTypeId: '5a0cd663-64c3-5f02-a579-9915605564be', className: 'AnimatedImageNode', props: { animationSetId: 'character', animationId: 'idle.east', sizeMode: 'content', origin: { x: 0.5, y: 0.5 } } },
+  { id: 'collision-rect', label: 'CollisionRectNode', nodeTypeId: 'f3f82d6c-c31e-56bc-afd6-b5892604eaf5', className: 'CollisionRectNode', props: { size: { width: 64, height: 64 }, sizeMode: 'explicit' } },
+] as const;
+type GenericCreateNodeOption = (typeof genericCreateNodeOptions)[number];
 const maxConcurrentThumbnailLoads = 5;
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -318,6 +326,7 @@ export default function Home() {
   const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
   const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
   const draggedImageAssetRef = useRef<ImageAssetDragPayload | undefined>(undefined);
+  const [nodeCreateMenu, setNodeCreateMenu] = useState<{ node: DebugNodeDescriptor; x: number; y: number } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
   const workbenchRef = useRef<HTMLElement | null>(null);
@@ -336,6 +345,19 @@ export default function Home() {
     () => (originalAssetId ? imageAssets.find((asset) => asset.id === originalAssetId) : undefined),
     [imageAssets, originalAssetId],
   );
+  useEffect(() => {
+    if (!nodeCreateMenu) return;
+    function closeMenu(): void { setNodeCreateMenu(undefined); }
+    window.addEventListener('click', closeMenu);
+    window.addEventListener('keydown', closeMenu);
+    window.addEventListener('resize', closeMenu);
+    return () => {
+      window.removeEventListener('click', closeMenu);
+      window.removeEventListener('keydown', closeMenu);
+      window.removeEventListener('resize', closeMenu);
+    };
+  }, [nodeCreateMenu]);
+
   const explorerRoots = useMemo(() => [publicFileRoot, nodeFileRoot].filter((root): root is PublicFileEntry => Boolean(root)), [publicFileRoot, nodeFileRoot]);
   const selectedPublicDirectory = useMemo(
     () => findPublicDirectoryInRoots(explorerRoots, selectedPublicDirectoryPath) ?? publicFileRoot ?? nodeFileRoot,
@@ -1028,6 +1050,39 @@ export default function Home() {
     setPatchStatus(`ImageNode Injection gesendet: ${debugImageSource.id} → ${parentNode.name}`);
   }
 
+
+  function createGenericChildNode(parentNode: DebugNodeDescriptor, option: GenericCreateNodeOption): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setPatchStatus(`${option.label} nicht erstellt: Relay nicht verbunden.`);
+      return;
+    }
+    if (!boundGameClientIdRef.current) {
+      requestBridgeBinding();
+      setPatchStatus(`${option.label} wartet: Bridge ist noch nicht 1:1 gebunden.`);
+      return;
+    }
+
+    const requestId = createSessionId();
+    const message: DebugMessage = {
+      type: 'node:create',
+      sessionId,
+      targetClientId: boundGameClientIdRef.current,
+      requestId,
+      parentNodeId: parentNode.id,
+      definition: {
+        nodeTypeId: option.nodeTypeId,
+        name: defaultGenericNodeName(option.className),
+        props: option.props,
+      },
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    setSelectedNodeId(parentNode.id);
+    setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
+    setNodeCreateMenu(undefined);
+    setPatchStatus(`${option.label} Create gesendet → ${parentNode.name}`);
+  }
+
   async function dynamicNodeManifestEntryForFile(file: PublicFileEntry): Promise<DynamicNodeManifestEntry | undefined> {
     const manifest = dynamicNodeManifestRef.current ?? await loadDynamicNodeManifest();
     dynamicNodeManifestRef.current = manifest;
@@ -1271,6 +1326,7 @@ export default function Home() {
                 getDraggedImageAsset={() => draggedImageAssetRef.current}
                 onDropDynamicNode={injectDynamicNode}
                 onDropImageAsset={injectImageNode}
+                onOpenCreateMenu={(node, x, y) => setNodeCreateMenu({ node, x, y })}
                 onDeleteNode={sendNodeDelete}
               />
             ) : (
@@ -1332,6 +1388,7 @@ export default function Home() {
           </div>
         </aside>
       </section>
+      {nodeCreateMenu && <NodeCreateContextMenu menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
       {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
@@ -2100,6 +2157,7 @@ function HierarchyTree({
   getDraggedImageAsset,
   onDropDynamicNode,
   onDropImageAsset,
+  onOpenCreateMenu,
   onDeleteNode,
 }: {
   roots: DebugNodeDescriptor[];
@@ -2115,6 +2173,7 @@ function HierarchyTree({
   getDraggedImageAsset(): ImageAssetDragPayload | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
+  onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots);
@@ -2129,7 +2188,7 @@ function HierarchyTree({
             <span>Persistent Managers</span>
             <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
           </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />}
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />}
         </section>
       )}
 
@@ -2139,7 +2198,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />
       </section>
     </div>
   );
@@ -2157,6 +2216,7 @@ function NodeTree({
   getDraggedImageAsset,
   onDropDynamicNode,
   onDropImageAsset,
+  onOpenCreateMenu,
   onDeleteNode,
 }: {
   nodes: DebugNodeDescriptor[];
@@ -2170,12 +2230,13 @@ function NodeTree({
   getDraggedImageAsset(): ImageAssetDragPayload | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
+  onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />
       ))}
     </ol>
   );
@@ -2193,6 +2254,7 @@ function NodeTreeItem({
   getDraggedImageAsset,
   onDropDynamicNode,
   onDropImageAsset,
+  onOpenCreateMenu,
   onDeleteNode,
 }: {
   node: DebugNodeDescriptor;
@@ -2206,6 +2268,7 @@ function NodeTreeItem({
   getDraggedImageAsset(): ImageAssetDragPayload | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
+  onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const hasChildren = node.children.length > 0;
@@ -2234,7 +2297,7 @@ function NodeTreeItem({
   }
 
   return (
-    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`} onDragOver={handleDragOver} onDrop={handleDrop}>
+    <li className={`${styles.treeItem} ${alwaysExpanded ? styles.rootTreeItem : ''}`} onDragOver={handleDragOver} onDrop={handleDrop} onContextMenu={(event) => { event.preventDefault(); event.stopPropagation(); onSelectNode(node.id); onOpenCreateMenu(node, event.clientX, event.clientY); }}>
       <div className={`${styles.nodeRow} ${!effectiveActive ? styles.inactiveNode : ''} ${!node.active && effectiveActive ? styles.locallyInactiveNode : ''} ${node.id === selectedNodeId ? styles.selectedNode : ''}`}>
         <button
           type="button"
@@ -2255,6 +2318,18 @@ function NodeTreeItem({
           {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
         </button>
+        <button
+          type="button"
+          className={styles.nodeActionButton}
+          title={`Child unter ${node.name} erstellen`}
+          aria-label={`Child unter ${node.name} erstellen`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenCreateMenu(node, event.clientX, event.clientY);
+          }}
+        >
+          <Plus size={13} />
+        </button>
         {!alwaysExpanded && (
           <button
             type="button"
@@ -2270,8 +2345,25 @@ function NodeTreeItem({
           </button>
         )}
       </div>
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onDeleteNode={onDeleteNode} />}
     </li>
+  );
+}
+
+
+function NodeCreateContextMenu({ menu, onCreate, onClose }: { menu: { node: DebugNodeDescriptor; x: number; y: number }; onCreate(parent: DebugNodeDescriptor, option: GenericCreateNodeOption): void; onClose(): void }) {
+  const x = Math.min(menu.x, typeof window === 'undefined' ? menu.x : window.innerWidth - 230);
+  const y = Math.min(menu.y, typeof window === 'undefined' ? menu.y : window.innerHeight - 210);
+  return (
+    <div className={styles.contextMenu} style={{ left: x, top: y }} onClick={(event) => event.stopPropagation()} onContextMenu={(event) => event.preventDefault()}>
+      <div className={styles.contextMenuHeader}>Create Child in <strong>{menu.node.name}</strong></div>
+      {genericCreateNodeOptions.map((option) => (
+        <button key={option.id} type="button" className={styles.contextMenuItem} onClick={() => { onCreate(menu.node, option); onClose(); }}>
+          <span>{option.label}</span>
+          <small>{option.className}</small>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -3273,6 +3365,11 @@ function assetPathMatches(url: string | undefined, publicPath: string): boolean 
   } catch {
     return url === publicPath || url.endsWith(publicPath);
   }
+}
+
+
+function defaultGenericNodeName(className: string): string {
+  return `${className}-${Date.now().toString(36).slice(-5)}`;
 }
 
 function defaultImageNodeName(asset: DebugImageAssetDescriptor | undefined, fallbackId: string, fallbackLabel: string): string {

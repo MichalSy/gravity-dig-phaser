@@ -328,6 +328,63 @@
   color: #fca5a5;
 }
 
+.contextMenu {
+  position: fixed;
+  z-index: 80;
+  width: 220px;
+  display: grid;
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.52), 0 0 0 1px rgba(15, 23, 42, 0.9) inset;
+}
+
+.contextMenuHeader {
+  padding: 5px 7px 7px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.contextMenuHeader strong {
+  display: block;
+  color: #e0f2fe;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextMenuItem {
+  width: 100%;
+  display: grid;
+  gap: 1px;
+  border: 0;
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: transparent;
+  color: #e0f2fe;
+  text-align: left;
+}
+
+.contextMenuItem:hover {
+  background: rgba(14, 165, 233, 0.16);
+}
+
+.contextMenuItem span {
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.contextMenuItem small {
+  color: #7dd3fc;
+  font-size: 9px;
+  opacity: 0.82;
+}
+
 .inspector {
   display: grid;
   gap: 14px;

@@ -23,7 +23,7 @@ export interface TransformNodeOptions extends GameNodeOptions {
   scrollFactor?: number;
 }
 
-export abstract class TransformNode extends GameNode {
+export class TransformNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.TransformNode;
   static override readonly sceneType: string = 'TransformNode';
   static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
@@ -55,7 +55,7 @@ export abstract class TransformNode extends GameNode {
   scaleY: number;
   scrollFactor: number;
 
-  protected constructor(options: TransformNodeOptions = {}) {
+  constructor(options: TransformNodeOptions = {}) {
     super(options);
     this.visible = options.visible ?? true;
     const scale = typeof options.scale === 'object' ? options.scale : undefined;
