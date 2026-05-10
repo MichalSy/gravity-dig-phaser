@@ -75,6 +75,8 @@ const editableFileRoots = [
   'apps/game/public/assets',
   'apps/game/public/scripts',
 ].map((path) => path.replaceAll('/', sep));
+const gitEditorRoots = [...editableFileRoots, `apps${sep}game${sep}src`];
+const gitEditorRootArgs = gitEditorRoots.map((path) => path.split(sep).join('/'));
 
 export function backendStatus() {
   return {
@@ -149,11 +151,11 @@ export async function pushGitChanges(sessionId: string, request: SaveRequest) {
     const uploads = assetUploads.get(sessionId) ?? [];
     for (const upload of uploads) await applyAssetUploadToWorkspace(upload);
     await git(['diff', '--check']);
-    const status = (await git(['status', '--short', '--', 'apps/game/public', 'apps/game/src'])).trim();
+    const status = (await git(['status', '--short', '--', ...gitEditorRootArgs])).trim();
     if (!status) return { sessionId, saved: false, message: 'No local changes.' };
     await git(['config', 'user.name', request.authorName ?? defaultAuthorName]);
     await git(['config', 'user.email', request.authorEmail ?? defaultAuthorEmail]);
-    await git(['add', 'apps/game/public', 'apps/game/src']);
+    await git(['add', ...gitEditorRootArgs]);
     const stagedStatus = (await git(['diff', '--cached', '--name-only'])).trim();
     if (!stagedStatus) return { sessionId, saved: false, message: 'No staged editor changes.' };
     const fileCount = stagedStatus.split('\n').filter(Boolean).length;
@@ -168,8 +170,8 @@ export async function pushGitChanges(sessionId: string, request: SaveRequest) {
 export async function discardLocalChanges() {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
-    await git(['restore', '--worktree', '--staged', 'apps/game/public', 'apps/game/src']);
-    await git(['clean', '-fd', '--', 'apps/game/public', 'apps/game/src']);
+    await git(['restore', '--worktree', '--staged', ...gitEditorRootArgs]);
+    await git(['clean', '-fd', '--', ...gitEditorRootArgs]);
     changeSets.clear();
     assetUploads.clear();
     return { ok: true, status: (await git(['status', '--short'])).trim().split('\n').filter(Boolean) };
@@ -179,8 +181,8 @@ export async function discardLocalChanges() {
 export async function gitDiff() {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
-    const raw = (await git(['status', '--short', '--', 'apps/game/public', 'apps/game/src'])).trim();
-    const files = raw.split('\n').filter(Boolean).map((line) => ({ status: line.slice(0, 2).trim() || 'M', path: line.slice(3).trim() }));
+    const raw = (await git(['status', '--short', '--', ...gitEditorRootArgs])).trim();
+    const files = raw.split('\n').filter(Boolean).map(parseGitStatusLine);
     return { ok: true, files };
   });
 }
@@ -188,10 +190,10 @@ export async function gitDiff() {
 export async function gitDiffFile(relativePath: string): Promise<EditorGitDiffFile> {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
-    const safePath = resolveEditablePath(relativePath);
+    const safePath = resolveGitDiffPath(relativePath);
     const path = safePath.relativePath;
     const statusLine = (await git(['status', '--short', '--', path])).trim();
-    const status = statusLine ? statusLine.slice(0, 2).trim() || 'M' : 'M';
+    const status = statusLine ? parseGitStatusLine(statusLine).status : 'M';
     const original = await git(['show', `HEAD:${path}`]).catch(() => '');
     const modified = await readFile(safePath.absolutePath, 'utf8').catch(() => '');
     return { path, status, original, modified };
@@ -208,7 +210,7 @@ export async function gitStatus() {
       branch: gitBranch,
       head: (await git(['rev-parse', '--short', 'HEAD'])).trim(),
       originHead: (await git(['rev-parse', '--short', `origin/${gitBranch}`])).trim(),
-      status: (await git(['status', '--short'])).trim().split('\n').filter(Boolean),
+      status: (await git(['status', '--short', '--', ...gitEditorRootArgs])).trim().split('\n').filter(Boolean),
       ...divergence,
       needsRebase: divergence.behind > 0,
     };
@@ -920,15 +922,29 @@ function findNodeByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): S
 }
 
 function resolveEditablePath(relativePath: string): { absolutePath: string; relativePath: string } {
+  return resolveWorkspacePathInsideRoots(relativePath, editableFileRoots, 'editable path');
+}
+
+function resolveGitDiffPath(relativePath: string): { absolutePath: string; relativePath: string } {
+  return resolveWorkspacePathInsideRoots(relativePath, gitEditorRoots, 'diff path');
+}
+
+function resolveWorkspacePathInsideRoots(relativePath: string, roots: string[], label: string): { absolutePath: string; relativePath: string } {
   if (!relativePath || isAbsolute(relativePath)) throw new EditorBackendError('path must be a relative repository path', 400);
   const normalized = relativePath.replaceAll('\\', sep).replaceAll('/', sep);
   if (normalized.split(sep).includes('..')) throw new EditorBackendError('path traversal is not allowed', 400);
-  if (!editableFileRoots.some((root) => normalized === root || normalized.startsWith(`${root}${sep}`))) {
-    throw new EditorBackendError(`path must be inside one of: ${editableFileRoots.join(', ')}`, 403);
+  if (!roots.some((root) => normalized === root || normalized.startsWith(`${root}${sep}`))) {
+    throw new EditorBackendError(`${label} must be inside one of: ${roots.join(', ')}`, 403);
   }
   const absolutePath = resolve(workspacePath, normalized);
-  assertInsideRoot(absolutePath, workspacePath, 'path');
+  assertInsideRoot(absolutePath, workspacePath, label);
   return { absolutePath, relativePath: normalized.split(sep).join('/') };
+}
+
+function parseGitStatusLine(line: string): { status: string; path: string } {
+  const status = line.slice(0, 2).trim() || 'M';
+  const path = line.slice(2).trim().replace(/^.* -> /, '');
+  return { status, path };
 }
 
 async function git(args: string[]): Promise<string> {
