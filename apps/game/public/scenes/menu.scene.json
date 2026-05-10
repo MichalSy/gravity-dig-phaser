@@ -13,7 +13,60 @@
         "children": [
           {
             "name": "Menu",
-            "nodeTypeId": "aa985ee7-5dc3-59a4-bafb-11f49470a224"
+            "nodeTypeId": "aa985ee7-5dc3-59a4-bafb-11f49470a224",
+            "children": [
+              {
+                "name": "Menu.Background",
+                "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+                "props": {
+                  "assetId": "title-screen",
+                  "origin": { "x": 0.5, "y": 0.5 },
+                  "scrollFactor": 0
+                }
+              },
+              {
+                "name": "Menu.PlayButton",
+                "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+                "props": {
+                  "action": "start",
+                  "label": "SPIELEN",
+                  "enabled": true,
+                  "normalAssetId": "menu-button-inactive",
+                  "activeAssetId": "menu-button-active",
+                  "scrollFactor": 0
+                }
+              },
+              {
+                "name": "Menu.OptionsButton",
+                "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+                "props": {
+                  "action": "options",
+                  "label": "OPTIONEN",
+                  "enabled": true,
+                  "normalAssetId": "menu-button-inactive",
+                  "activeAssetId": "menu-button-active",
+                  "scrollFactor": 0
+                }
+              },
+              {
+                "name": "Menu.Version",
+                "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+                "props": {
+                  "text": "v0.0.0",
+                  "origin": { "x": 1, "y": 1 },
+                  "scrollFactor": 0,
+                  "style": {
+                    "fontFamily": "Silkscreen",
+                    "fontSize": "16px",
+                    "fontStyle": "700",
+                    "color": "#fff4c7",
+                    "stroke": "#000000",
+                    "strokeThickness": 4
+                  },
+                  "resolution": 2
+                }
+              }
+            ]
           }
         ]
       }
