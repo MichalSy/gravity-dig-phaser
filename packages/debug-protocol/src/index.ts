@@ -56,13 +56,6 @@ export interface DebugTextMessage {
   sentAt: number;
 }
 
-export interface DebugRelayStatusMessage {
-  type: 'relay:status';
-  sessionId: string;
-  games: number;
-  editors: number;
-}
-
 export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Scale' | 'Anchor' | 'AssetId';
 
 export interface DebugSceneNumberConstraints {
@@ -415,7 +408,16 @@ export interface EditorSetPropsChange {
   createdAt: number;
 }
 
-export type EditorChange = EditorSetPropsChange;
+export interface EditorMoveNodeChange {
+  id: string;
+  kind: 'moveNode';
+  sessionId: string;
+  target: EditorChangeTarget;
+  destination: EditorChangeTarget & { placement: DebugNodeMovePlacement };
+  createdAt: number;
+}
+
+export type EditorChange = EditorSetPropsChange | EditorMoveNodeChange;
 
 export interface EditorChangeSet {
   sessionId: string;
@@ -429,7 +431,6 @@ export type DebugMessage =
   | DebugPingMessage
   | DebugPongMessage
   | DebugTextMessage
-  | DebugRelayStatusMessage
   | DebugBridgeBindRequestMessage
   | DebugBridgeBindAckMessage
   | DebugBridgeBindRejectedMessage

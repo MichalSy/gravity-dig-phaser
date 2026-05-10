@@ -25,7 +25,6 @@ interface StartRuntimeMessage {
   scene: RuntimeSceneId;
   editorApiBase?: string;
   sessionId?: string;
-  relayUrl?: string;
 }
 
 const prefabFiles: Record<string, string> = {
@@ -130,8 +129,8 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
     await this.refreshFactory(message.editorApiBase);
 
-    if (message.sessionId && message.relayUrl && message.editorApiBase) {
-      this.addDebugBridge(this.runtime, { sessionId: message.sessionId, relayUrl: message.relayUrl, editorApiUrl: message.editorApiBase });
+    if (message.sessionId && message.editorApiBase) {
+      this.addDebugBridge(this.runtime, { sessionId: message.sessionId, editorApiUrl: message.editorApiBase });
     }
     this.runtime.init();
   }
@@ -238,7 +237,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     return this.runtime;
   }
 
-  private addDebugBridge(runtime: NodeRuntime, config: { sessionId: string; relayUrl: string; editorApiUrl: string }): void {
+  private addDebugBridge(runtime: NodeRuntime, config: { sessionId: string; editorApiUrl: string }): void {
     this.debugBridge = runtime.addPersistentNode(new DebugBridgeNode({ enabled: true, ...config }, {
       createNode: (definition) => {
         if (!this.factory) throw new Error('Runtime factory is not ready');

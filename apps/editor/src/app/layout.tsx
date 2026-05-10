@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Gravity Dig Debug Editor',
-  description: 'Minimal WebSocket debug editor for Gravity Dig.',
+  description: 'Debug editor for Gravity Dig.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

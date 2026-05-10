@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, ExternalLink, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, RefreshCw, RotateCcw, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -13,17 +13,6 @@ function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
 function createSessionId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return `debug-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function isLocalEditorHost(): boolean {
-  if (typeof window === 'undefined') return false;
-  return ['localhost', '127.0.0.1', '0.0.0.0'].includes(window.location.hostname);
-}
-
-function defaultRelayUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_DEBUG_RELAY_URL;
-  if (configured) return configured;
-  return isLocalEditorHost() ? 'ws://localhost:8787/debug' : 'wss://gravity-dig-relay.sytko.de/debug';
 }
 
 function defaultRuntimeUrl(): string {
@@ -247,7 +236,7 @@ function pumpThumbnailQueue(): void {
 }
 
 function countPendingProps(changeSet: EditorChangeSet): number {
-  return pendingChangeRows(changeSet).length;
+  return pendingChangeRows(changeSet).length + changeSet.changes.filter((change) => change.kind === 'moveNode').length;
 }
 
 type PendingChangeRow = {
@@ -259,7 +248,7 @@ type PendingChangeRow = {
 };
 
 function pendingChangeRows(changeSet: EditorChangeSet): PendingChangeRow[] {
-  return changeSet.changes.flatMap((change) => Object.entries(change.props).map(([prop, value]) => {
+  return changeSet.changes.filter((change): change is EditorSetPropsChange => change.kind === 'setProps').flatMap((change) => Object.entries(change.props).map(([prop, value]) => {
     const field = singleFieldName(change);
     return { change, prop, field, label: field ? `${prop}.${field}` : prop, value: field ? fieldValue(value, field) : value };
   }));
@@ -370,8 +359,6 @@ export default function Home() {
   const [viewportMode, setViewportMode] = useState<ViewportMode>('editor');
   const [editorPreviewScene, setEditorPreviewScene] = useState<EditorPreviewSceneId>('gameplay');
   const [layout, setLayout] = useState<EditorLayoutState>(() => readStoredLayout());
-  const reconnectTimerRef = useRef<number | undefined>(undefined);
-  const socketRef = useRef<WebSocket | null>(null);
   const editorClientIdRef = useRef<string>(createSessionId());
   const boundGameClientIdRef = useRef<string | undefined>(undefined);
   const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
@@ -380,6 +367,7 @@ export default function Home() {
   const pendingPublicFileSelectionRef = useRef<string | undefined>(undefined);
   const [nodeCreateMenu, setNodeCreateMenu] = useState<{ node: DebugNodeDescriptor; x: number; y: number } | undefined>();
   const draggedHierarchyNodeRef = useRef<DebugNodeDescriptor | undefined>(undefined);
+  const pendingHierarchyMovesRef = useRef<Map<string, { nodePath: string[]; targetPath: string[]; placement: HierarchyDropPlacement }>>(new Map());
   const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
@@ -471,15 +459,6 @@ export default function Home() {
     function handleMessage(message: DebugMessage): void {
       if ('sessionId' in message && message.sessionId !== sessionId) return;
 
-      if (message.type === 'relay:status') {
-        setGameCount(message.games);
-        if (message.games > 0) {
-          requestBridgeBinding();
-          setLastEvent('Game verbunden. Bridge-Bindung angefragt.');
-        }
-        return;
-      }
-
       if (message.type === 'hello' && message.role === 'game') {
         setGameCount(1);
         requestBridgeBinding(true);
@@ -518,6 +497,9 @@ export default function Home() {
       }
 
       if (message.type === 'node:move:ack') {
+        const pendingMove = pendingHierarchyMovesRef.current.get(message.requestId);
+        pendingHierarchyMovesRef.current.delete(message.requestId);
+        if (message.applied && pendingMove) void persistPendingMove(pendingMove.nodePath, pendingMove.targetPath, pendingMove.placement);
         setPatchStatus(message.applied ? 'Node verschoben.' : `Node verschieben abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
@@ -588,9 +570,6 @@ export default function Home() {
 
     return () => {
       window.removeEventListener('message', handleRuntimeDebugMessage);
-      if (reconnectTimerRef.current !== undefined) window.clearTimeout(reconnectTimerRef.current);
-      socketRef.current?.close();
-      socketRef.current = null;
     };
   }, [sessionId]);
 
@@ -714,7 +693,6 @@ export default function Home() {
       scene: editorPreviewScene,
       editorApiBase: window.location.origin,
       sessionId,
-      relayUrl: 'postmessage',
     }, window.location.origin);
   }
 
@@ -724,16 +702,12 @@ export default function Home() {
       ? message
       : ({ ...message, sourceClientId: editorClientIdRef.current } as DebugMessage);
     if (shouldLogDebugMessage(outbound.type)) console.log('[Gravity Dig Debug][editor->game]', outbound.type, outbound);
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify(outbound));
-      return true;
-    }
     runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:debug-message', message: outbound }, window.location.origin);
     return Boolean(runtimeFrameRef.current?.contentWindow);
   }
 
   function isBridgeReady(): boolean {
-    return Boolean(sessionId && (socketRef.current?.readyState === WebSocket.OPEN || runtimeFrameRef.current?.contentWindow));
+    return Boolean(sessionId && runtimeFrameRef.current?.contentWindow);
   }
 
   function openGameInTab(): void {
@@ -1300,6 +1274,12 @@ export default function Home() {
       setPatchStatus('Node kann nicht in sich selbst oder eigenen Subtree verschoben werden.');
       return;
     }
+    const nodePath = findNodePath(treeRootsRef.current, node.id);
+    const targetPath = findNodePath(treeRootsRef.current, targetNode.id);
+    if (!nodePath || !targetPath) {
+      setPatchStatus('Node Move nicht gespeichert: Node-Pfad nicht gefunden.');
+      return;
+    }
     const requestId = createSessionId();
     const message: DebugMessage = {
       type: 'node:move',
@@ -1311,6 +1291,7 @@ export default function Home() {
       placement,
       sentAt: Date.now(),
     };
+    pendingHierarchyMovesRef.current.set(requestId, { nodePath, targetPath, placement });
     sendDebugMessage(message);
     setSelectedNodeId(node.id);
     setHierarchyDropTarget(undefined);
@@ -1483,6 +1464,27 @@ export default function Home() {
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', stopResize, { once: true });
     window.addEventListener('pointercancel', stopResize, { once: true });
+  }
+
+  async function persistPendingMove(nodePath: string[], targetPath: string[], placement: HierarchyDropPlacement): Promise<void> {
+    if (!sessionId) return;
+    try {
+      const change: Omit<EditorMoveNodeChange, 'id' | 'sessionId' | 'createdAt'> = { kind: 'moveNode', target: { nodePath }, destination: { nodePath: targetPath, placement } };
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(change),
+      });
+      const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPendingChangeSet(result.changeSet);
+      setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
+      setGitSaveStatus(`Hierarchy Move gespeichert: ${nodePath.join(' / ')} → ${placement} ${targetPath.join(' / ')}`);
+      void refreshGitStatus();
+    } catch (error) {
+      setGitSaveStatus(`Hierarchy Move fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async function persistPendingPatch(node: DebugNodeDescriptor, props: DebugNodePatch, previousProps: DebugNodePatch): Promise<void> {
@@ -1738,11 +1740,12 @@ function GitSavePreviewDialog({
             <div className={styles.gitDiffEditorPane}>
               {selectedFile ? (
                 <MonacoDiffEditor
+                  height="100%"
                   original={selectedFile.original}
                   modified={selectedFile.modified}
                   language={editorLanguageForPath(selectedFile.path)}
                   theme="vs-dark"
-                  options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, scrollBeyondLastLine: false, renderOverviewRuler: false }}
+                  options={{ automaticLayout: true, readOnly: true, renderSideBySide: true, minimap: { enabled: false }, scrollBeyondLastLine: false, renderOverviewRuler: false }}
                 />
               ) : <p className={styles.empty}>{selectedPath ? 'Lade Datei-Diff ...' : 'Wähle eine Datei.'}</p>}
             </div>

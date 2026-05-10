@@ -7,7 +7,7 @@ import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'n
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import ts from 'typescript';
-import type { DebugNodePatch, EditorChangeSet, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugNodeMovePlacement, DebugNodePatch, EditorChange, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 
 interface SaveRequest {
   message?: string;
@@ -103,11 +103,11 @@ export function readChangeSet(sessionId: string): EditorChangeSet {
   return changeSets.get(sessionId) ?? { sessionId, changes: [] };
 }
 
-export async function appendChangesFromBody(sessionId: string, body: unknown): Promise<{ accepted: EditorSetPropsChange[]; changeSet: EditorChangeSet }> {
-  const typed = body as Partial<EditorSetPropsChange> | { changes?: Partial<EditorSetPropsChange>[] } | undefined;
-  const incoming = Array.isArray((typed as { changes?: unknown })?.changes) ? (typed as { changes: Partial<EditorSetPropsChange>[] }).changes : [typed as Partial<EditorSetPropsChange> | undefined];
-  const accepted = incoming.map((change) => normalizeSetPropsChange(sessionId, change)).filter((change): change is EditorSetPropsChange => Boolean(change));
-  if (accepted.length === 0) throw new EditorBackendError('No valid setProps changes. Required: kind=setProps, target.nodePath[], props{}.', 400);
+export async function appendChangesFromBody(sessionId: string, body: unknown): Promise<{ accepted: EditorChange[]; changeSet: EditorChangeSet }> {
+  const typed = body as Partial<EditorChange> | { changes?: Partial<EditorChange>[] } | undefined;
+  const incoming = Array.isArray((typed as { changes?: unknown })?.changes) ? (typed as { changes: Partial<EditorChange>[] }).changes : [typed as Partial<EditorChange> | undefined];
+  const accepted = incoming.map((change) => normalizeEditorChange(sessionId, change)).filter((change): change is EditorChange => Boolean(change));
+  if (accepted.length === 0) throw new EditorBackendError('No valid editor changes. Required: kind=setProps or kind=moveNode.', 400);
   await withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
     for (const change of accepted) await applyChangeToWorkspace(change);
@@ -301,9 +301,16 @@ export async function stageAssetUpload(sessionId: string, body: unknown) {
   return { ok: true, sessionId, upload: { id: staged.id, assetPath: staged.assetPath, createdAt: staged.createdAt } };
 }
 
+function normalizeEditorChange(sessionId: string, change: Partial<EditorChange> | undefined): EditorChange | undefined {
+  if (!change || typeof change !== 'object') return undefined;
+  if (change.kind === 'setProps') return normalizeSetPropsChange(sessionId, change as Partial<EditorSetPropsChange>);
+  if (change.kind === 'moveNode') return normalizeMoveNodeChange(sessionId, change as Partial<EditorMoveNodeChange>);
+  return undefined;
+}
+
 function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPropsChange> | undefined): EditorSetPropsChange | undefined {
   if (!change || change.kind !== 'setProps' || !Array.isArray(change.target?.nodePath) || typeof change.props !== 'object' || change.props === null) return undefined;
-  const nodePath = change.target.nodePath.map((part) => String(part).trim()).filter(Boolean);
+  const nodePath = normalizeNodePathInput(change.target.nodePath);
   if (nodePath.length === 0) return undefined;
   return {
     id: change.id ?? randomUUID(),
@@ -317,16 +324,43 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
   };
 }
 
-function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): EditorChangeSet {
+function normalizeMoveNodeChange(sessionId: string, change: Partial<EditorMoveNodeChange> | undefined): EditorMoveNodeChange | undefined {
+  if (!change || change.kind !== 'moveNode' || !Array.isArray(change.target?.nodePath) || !Array.isArray(change.destination?.nodePath)) return undefined;
+  const nodePath = normalizeNodePathInput(change.target.nodePath);
+  const targetPath = normalizeNodePathInput(change.destination.nodePath);
+  const placement = change.destination.placement;
+  if (nodePath.length === 0 || targetPath.length === 0 || !isMovePlacement(placement)) return undefined;
+  return {
+    id: change.id ?? randomUUID(),
+    kind: 'moveNode',
+    sessionId,
+    target: { nodePath },
+    destination: { nodePath: targetPath, placement },
+    createdAt: change.createdAt ?? Date.now(),
+  };
+}
+
+function normalizeNodePathInput(nodePath: readonly unknown[]): string[] {
+  return nodePath.map((part) => String(part).trim()).filter(Boolean);
+}
+
+function isMovePlacement(value: unknown): value is DebugNodeMovePlacement {
+  return value === 'before' || value === 'after' || value === 'child';
+}
+
+function appendChanges(sessionId: string, changes: EditorChange[]): EditorChangeSet {
   const current = readChangeSet(sessionId);
   const byProp = new Map<string, EditorSetPropsChange>();
 
+  const moveChanges = current.changes.filter((change): change is EditorMoveNodeChange => change.kind === 'moveNode');
+
   for (const change of current.changes) {
+    if (change.kind !== 'setProps') continue;
     const prop = singlePropName(change);
     if (prop) byProp.set(changeKey(change.target.nodePath, prop, singleFieldName(change)), change);
   }
 
-  for (const incoming of changes.flatMap(splitChangeByProp)) {
+  for (const incoming of changes.filter((change): change is EditorSetPropsChange => change.kind === 'setProps').flatMap(splitChangeByProp)) {
     const prop = singlePropName(incoming);
     if (!prop) continue;
     const field = singleFieldName(incoming);
@@ -348,7 +382,9 @@ function appendChanges(sessionId: string, changes: EditorSetPropsChange[]): Edit
     });
   }
 
-  const next: EditorChangeSet = { ...current, sessionId, changes: [...byProp.values()], updatedAt: Date.now() };
+  const incomingMoves = changes.filter((change): change is EditorMoveNodeChange => change.kind === 'moveNode');
+  const nextMoves = [...moveChanges, ...incomingMoves];
+  const next: EditorChangeSet = { ...current, sessionId, changes: [...byProp.values(), ...nextMoves], updatedAt: Date.now() };
   if (next.changes.length === 0) changeSets.delete(sessionId);
   else changeSets.set(sessionId, next);
   return readChangeSet(sessionId);
@@ -556,7 +592,11 @@ async function pushWithRebase(): Promise<void> {
   }
 }
 
-async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<void> {
+async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
+  if (change.kind === 'moveNode') {
+    await applyMoveNodeToWorkspace(change);
+    return;
+  }
   const source = resolveSourceFile(change.target.nodePath);
   const filePath = resolveEditablePath(source.filePath);
   const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
@@ -573,6 +613,48 @@ async function applyChangeToWorkspace(change: EditorSetPropsChange): Promise<voi
     } else {
       node.props[key] = value;
     }
+  }
+  await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
+}
+
+async function applyMoveNodeToWorkspace(change: EditorMoveNodeChange): Promise<void> {
+  const source = resolveSourceFile(change.target.nodePath);
+  const destination = resolveSourceFile(change.destination.nodePath);
+  if (source.filePath !== destination.filePath) throw new EditorBackendError('Hierarchy move across source files is not supported yet.', 422);
+
+  const filePath = resolveEditablePath(source.filePath);
+  const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
+  const nodeLocation = findNodeLocationByPath(file.root, source.nodePath);
+  const destinationLocation = findNodeLocationByPath(file.root, destination.nodePath);
+  if (!nodeLocation?.parent) throw new EditorBackendError(`Could not locate movable node path '${change.target.nodePath.join('/')}' in ${source.filePath}`, 422);
+  if (!destinationLocation) throw new EditorBackendError(`Could not locate move destination '${change.destination.nodePath.join('/')}' in ${destination.filePath}`, 422);
+  const movingNode = nodeLocation.node;
+  const destinationNode = destinationLocation.node;
+  if (movingNode === destinationNode || isDescendantNode(destinationNode, movingNode)) throw new EditorBackendError('Node cannot be moved into itself or its own subtree.', 422);
+
+  const newParent = change.destination.placement === 'child' ? destinationNode : destinationLocation.parent;
+  if (!newParent) throw new EditorBackendError('Root-level hierarchy moves are not supported.', 422);
+  if (newParent === nodeLocation.parent) {
+    const children = [...(nodeLocation.parent.children ?? [])];
+    let insertIndex = change.destination.placement === 'child'
+      ? 0
+      : children.indexOf(destinationNode) + (change.destination.placement === 'after' ? 1 : 0);
+    if (insertIndex < 0) throw new EditorBackendError('Move destination index could not be resolved.', 422);
+    const [removed] = children.splice(nodeLocation.index, 1);
+    if (nodeLocation.index < insertIndex) insertIndex -= 1;
+    children.splice(insertIndex, 0, removed);
+    nodeLocation.parent.children = children;
+  } else {
+    const sourceChildren = [...(nodeLocation.parent.children ?? [])];
+    const targetChildren = [...(newParent.children ?? [])];
+    const [removed] = sourceChildren.splice(nodeLocation.index, 1);
+    const insertIndex = change.destination.placement === 'child'
+      ? 0
+      : targetChildren.indexOf(destinationNode) + (change.destination.placement === 'after' ? 1 : 0);
+    if (insertIndex < 0) throw new EditorBackendError('Move destination index could not be resolved.', 422);
+    targetChildren.splice(insertIndex, 0, removed);
+    nodeLocation.parent.children = sourceChildren;
+    newParent.children = targetChildren;
   }
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
 }
@@ -920,15 +1002,33 @@ function stripRuntimeRootPath(nodePath: string[]): string[] {
   return nodePath;
 }
 
+interface SceneNodeLocation {
+  node: SceneNodeJsonLike;
+  parent?: SceneNodeJsonLike;
+  index: number;
+}
+
 function findNodeByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): SceneNodeJsonLike | undefined {
+  return findNodeLocationByPath(root, nodePath)?.node;
+}
+
+function findNodeLocationByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): SceneNodeLocation | undefined {
   if (root.name !== nodePath[0]) return undefined;
+  if (nodePath.length === 1) return { node: root, index: -1 };
   let current: SceneNodeJsonLike = root;
-  for (const part of nodePath.slice(1)) {
+  for (const part of nodePath.slice(1, -1)) {
     const child = current.children?.find((candidate) => candidate.name === part);
     if (!child) return undefined;
     current = child;
   }
-  return current;
+  const leafName = nodePath.at(-1);
+  const index = current.children?.findIndex((candidate) => candidate.name === leafName) ?? -1;
+  const node = index >= 0 ? current.children?.[index] : undefined;
+  return node ? { node, parent: current, index } : undefined;
+}
+
+function isDescendantNode(candidate: SceneNodeJsonLike, ancestor: SceneNodeJsonLike): boolean {
+  return (ancestor.children ?? []).some((child) => child === candidate || isDescendantNode(candidate, child));
 }
 
 function resolveEditablePath(relativePath: string): { absolutePath: string; relativePath: string } {

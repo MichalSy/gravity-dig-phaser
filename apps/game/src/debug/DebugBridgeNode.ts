@@ -55,9 +55,6 @@ const UI_ONLY_TYPE_IDS = new Set<string>([
 export class DebugBridgeNode extends GameNode {
   private readonly config: DebugConnectionConfig;
   private readonly liveAuthoring?: DebugBridgeLiveAuthoring;
-  private socket?: WebSocket;
-  private reconnectTimer?: number;
-  private reconnectAttempts = 0;
   private ctx?: NodeContext;
   private lastTree?: DebugNodeTreeSnapshot;
   private treeCheckElapsedMs = 0;
@@ -123,7 +120,6 @@ export class DebugBridgeNode extends GameNode {
 
   destroy(): void {
     GameNode.debugLayoutEnabled = false;
-    this.clearReconnectTimer();
     this.ctx?.phaserScene.events.off(Phaser.Scenes.Events.POST_UPDATE, this.afterSceneUpdate, this);
     this.ctx?.phaserScene.input.off(Phaser.Input.Events.POINTER_DOWN, this.handlePointerDown, this);
     this.ctx?.phaserScene.input.off(Phaser.Input.Events.POINTER_MOVE, this.handlePointerMove, this);
@@ -132,8 +128,6 @@ export class DebugBridgeNode extends GameNode {
     this.selectedNodeDrag = undefined;
     this.overlay?.destroy();
     this.overlay = undefined;
-    this.socket?.close();
-    this.socket = undefined;
     if (this.postMessageHandler) window.removeEventListener('message', this.postMessageHandler);
     this.postMessageHandler = undefined;
     this.ctx = undefined;
@@ -233,41 +227,6 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private connect(): void {
-    this.clearReconnectTimer();
-    if (this.config.relayUrl === 'postmessage') {
-      this.connectPostMessage();
-      return;
-    }
-    const socket = new WebSocket(this.config.relayUrl);
-    this.socket = socket;
-
-    socket.addEventListener('open', () => {
-      this.reconnectAttempts = 0;
-      this.send({ type: 'hello', role: 'game', sessionId: this.config.sessionId, clientId: this.clientId });
-      this.sendAssetList();
-      this.sendNodeDefinitions();
-      this.sendTreeSnapshot();
-      console.info('[Gravity Dig Debug] connected', this.config);
-    });
-
-    socket.addEventListener('message', (event) => {
-      const message = this.parseMessage(event.data);
-      if (!message || !('sessionId' in message) || message.sessionId !== this.config.sessionId) return;
-      this.handleIncomingMessage(message);
-    });
-
-    socket.addEventListener('close', () => {
-      if (this.socket !== socket) return;
-      this.scheduleReconnect();
-    });
-
-    socket.addEventListener('error', () => {
-      if (this.socket !== socket) return;
-      console.warn('[Gravity Dig Debug] WebSocket error');
-    });
-  }
-
-  private connectPostMessage(): void {
     this.postMessageHandler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const envelope = event.data as { type?: string; message?: unknown } | undefined;
@@ -286,12 +245,6 @@ export class DebugBridgeNode extends GameNode {
 
   private handleIncomingMessage(message: DebugMessage): void {
     if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][editor->game]', message.type, message);
-    if (message.type === 'relay:status' && message.editors > 0) {
-      this.sendAssetList();
-      this.sendNodeDefinitions();
-      this.sendTreeSnapshot();
-      this.sendSelectedNodeProps();
-    }
     if (message.type === 'bridge:bind-request') this.handleBindRequest(message);
     if (!this.acceptsEditorMessage(message)) return;
     if (message.type === 'node:select') {
@@ -314,15 +267,11 @@ export class DebugBridgeNode extends GameNode {
 
   private send(message: DebugMessage): void {
     if (this.shouldLogDebugMessage(message.type)) console.log('[Gravity Dig Debug][game->editor]', message.type, message);
-    if (this.config.relayUrl === 'postmessage') {
-      window.parent?.postMessage({ type: 'gravity-dig:debug-message', message }, window.location.origin);
-      return;
-    }
-    if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
+    window.parent?.postMessage({ type: 'gravity-dig:debug-message', message }, window.location.origin);
   }
 
   private isTransportReady(): boolean {
-    return this.config.relayUrl === 'postmessage' || this.socket?.readyState === WebSocket.OPEN;
+    return true;
   }
 
   private shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -361,7 +310,7 @@ export class DebugBridgeNode extends GameNode {
   }
 
   private acceptsEditorMessage(message: DebugMessage): boolean {
-    if (message.type === 'relay:status' || message.type === 'hello' || message.type === 'ping' || message.type === 'pong') return true;
+    if (message.type === 'hello' || message.type === 'ping' || message.type === 'pong') return true;
     if (!('sourceClientId' in message) || typeof message.sourceClientId !== 'string') return !this.boundEditorClientId;
     return !this.boundEditorClientId || message.sourceClientId === this.boundEditorClientId;
   }
@@ -897,19 +846,6 @@ export class DebugBridgeNode extends GameNode {
     } catch {
       return undefined;
     }
-  }
-
-  private scheduleReconnect(): void {
-    this.socket = undefined;
-    const delayMs = Math.min(10_000, 1_000 * 2 ** this.reconnectAttempts);
-    this.reconnectAttempts += 1;
-    this.reconnectTimer = window.setTimeout(() => this.connect(), delayMs);
-  }
-
-  private clearReconnectTimer(): void {
-    if (this.reconnectTimer === undefined) return;
-    window.clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = undefined;
   }
 }
 
