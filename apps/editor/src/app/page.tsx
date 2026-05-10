@@ -49,6 +49,8 @@ function buildDebugGameUrl(sessionId: string): string {
 
 const layoutStorageKey = 'gravity-dig-debug-editor-layout-v1';
 const dynamicNodeDragMimeType = 'application/x-gravity-dig-dynamic-node';
+const imageAssetDragMimeType = 'application/x-gravity-dig-image-asset';
+const imageNodeTypeId = '73e926f5-c280-5131-b820-a89f898e2d48';
 const maxConcurrentThumbnailLoads = 5;
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -118,6 +120,13 @@ interface PublicAtlasFrame {
   id: string;
   label: string;
   rect: { x: number; y: number; width: number; height: number };
+}
+
+interface ImageAssetDragPayload {
+  assetId?: string;
+  filePath?: string;
+  frameKey?: string;
+  label: string;
 }
 
 interface NodeSourceFileContent {
@@ -307,6 +316,7 @@ export default function Home() {
   const boundGameClientIdRef = useRef<string | undefined>(undefined);
   const dynamicNodeManifestRef = useRef<DynamicNodeManifest | undefined>(undefined);
   const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
+  const draggedImageAssetRef = useRef<ImageAssetDragPayload | undefined>(undefined);
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
   const workbenchRef = useRef<HTMLElement | null>(null);
@@ -435,6 +445,7 @@ export default function Home() {
 
       if (message.type === 'node:create:ack') {
         setPatchStatus(message.applied ? `Node injected: ${message.name ?? message.nodeId ?? message.requestId}` : `Node Injection abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+        if (message.applied && message.nodeId) setSelectedNodeId(message.nodeId);
         return;
       }
 
@@ -960,6 +971,48 @@ export default function Home() {
     setPatchStatus(`Node Injection gesendet: ${entry.nodeTypeId} → ${parentNode.name}`);
   }
 
+
+  function injectImageNode(parentNode: DebugNodeDescriptor, payload: ImageAssetDragPayload): void {
+    if (!sessionId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      setPatchStatus('ImageNode Injection nicht gesendet: Relay nicht verbunden.');
+      return;
+    }
+    if (!boundGameClientIdRef.current) {
+      requestBridgeBinding();
+      setPatchStatus('ImageNode Injection wartet: Bridge ist noch nicht 1:1 gebunden.');
+      return;
+    }
+
+    const asset = resolveDraggedImageAsset(payload, imageAssets);
+    if (!asset) {
+      setPatchStatus(`Kein geladenes ImageAsset für ${payload.label} gefunden. Game/Assets neu laden?`);
+      return;
+    }
+
+    const requestId = createSessionId();
+    const message: DebugMessage = {
+      type: 'node:create',
+      sessionId,
+      targetClientId: boundGameClientIdRef.current,
+      requestId,
+      parentNodeId: parentNode.id,
+      definition: {
+        nodeTypeId: imageNodeTypeId,
+        name: defaultImageNodeName(asset),
+        props: {
+          assetId: asset.id,
+          sizeMode: 'content',
+          origin: { x: 0.5, y: 0.5 },
+        },
+      },
+      sentAt: Date.now(),
+    };
+    socketRef.current.send(JSON.stringify(message));
+    setSelectedNodeId(parentNode.id);
+    setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
+    setPatchStatus(`ImageNode Injection gesendet: ${asset.id} → ${parentNode.name}`);
+  }
+
   async function dynamicNodeManifestEntryForFile(file: PublicFileEntry): Promise<DynamicNodeManifestEntry | undefined> {
     const manifest = dynamicNodeManifestRef.current ?? await loadDynamicNodeManifest();
     dynamicNodeManifestRef.current = manifest;
@@ -1199,7 +1252,10 @@ export default function Home() {
                 onTogglePersistentManagers={() => setPersistentManagersOpen((current) => !current)}
                 isDynamicNodeDragActive={() => Boolean(draggedDynamicNodeRef.current)}
                 getDraggedDynamicNode={() => draggedDynamicNodeRef.current}
+                isImageAssetDragActive={() => Boolean(draggedImageAssetRef.current)}
+                getDraggedImageAsset={() => draggedImageAssetRef.current}
                 onDropDynamicNode={injectDynamicNode}
+                onDropImageAsset={injectImageNode}
                 onDeleteNode={sendNodeDelete}
               />
             ) : (
@@ -1248,6 +1304,8 @@ export default function Home() {
             void loadDynamicNodeManifest().then((manifest) => { dynamicNodeManifestRef.current = manifest; }).catch(() => undefined);
           }}
           onDynamicNodeDragEnd={() => { draggedDynamicNodeRef.current = undefined; }}
+          onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }}
+          onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }}
         />
 
         <div className={`${styles.columnResizer} ${styles.rightColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
@@ -1260,7 +1318,7 @@ export default function Home() {
         </aside>
       </section>
       {savePreviewOpen && pendingChangeSet && <GitSavePreviewDialog changeSet={pendingChangeSet} needsRebase={gitNeedsRebase} onRemoveSetting={removePendingSetting} onCancel={() => setSavePreviewOpen(false)} onSave={savePendingChanges} />}
-      {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} onClose={() => setPreviewPublicFilePath(undefined)} />}
+      {previewPublicFilePath && publicFileRoot && <PublicImageDialog file={findPublicFile(publicFileRoot, previewPublicFilePath)} root={publicFileRoot} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
         if (!result.dynamicNodeBuild?.manifest) return;
         dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
@@ -1339,6 +1397,8 @@ function PublicAssetExplorer({
   onStartFolderResize,
   onDynamicNodeDragStart,
   onDynamicNodeDragEnd,
+  onImageAssetDragStart,
+  onImageAssetDragEnd,
 }: {
   roots: PublicFileEntry[];
   selectedDirectory?: PublicFileEntry;
@@ -1358,6 +1418,8 @@ function PublicAssetExplorer({
   onStartFolderResize(event: ReactPointerEvent<HTMLDivElement>): void;
   onDynamicNodeDragStart(file: PublicFileEntry): void;
   onDynamicNodeDragEnd(): void;
+  onImageAssetDragStart(payload: ImageAssetDragPayload): void;
+  onImageAssetDragEnd(): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const files = selectedDirectory?.children?.filter((entry) => entry.kind === 'file') ?? [];
@@ -1403,15 +1465,26 @@ function PublicAssetExplorer({
                 key={file.path}
                 type="button"
                 className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`}
-                draggable={isDynamicNodeFile(file)}
+                draggable={isDynamicNodeFile(file) || isImageFile(file)}
                 onDragStart={(event) => {
-                  if (!isDynamicNodeFile(file)) return;
+                  if (isDynamicNodeFile(file)) {
+                    event.dataTransfer.effectAllowed = 'copy';
+                    event.dataTransfer.setData(dynamicNodeDragMimeType, JSON.stringify(file));
+                    event.dataTransfer.setData('text/plain', file.path);
+                    onDynamicNodeDragStart(file);
+                    return;
+                  }
+                  if (!isImageFile(file)) return;
+                  const payload: ImageAssetDragPayload = { filePath: file.path, label: file.name };
                   event.dataTransfer.effectAllowed = 'copy';
-                  event.dataTransfer.setData(dynamicNodeDragMimeType, JSON.stringify(file));
+                  event.dataTransfer.setData(imageAssetDragMimeType, JSON.stringify(payload));
                   event.dataTransfer.setData('text/plain', file.path);
-                  onDynamicNodeDragStart(file);
+                  onImageAssetDragStart(payload);
                 }}
-                onDragEnd={onDynamicNodeDragEnd}
+                onDragEnd={() => {
+                  onDynamicNodeDragEnd();
+                  onImageAssetDragEnd();
+                }}
                 onClick={() => onSelectFile(file.path)}
                 onDoubleClick={() => { if (isCodePreviewFile(file)) onOpenFile(file.path); }}
                 title={file.path}
@@ -1601,7 +1674,7 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
   );
 }
 
-function PublicImageDialog({ file, root, onClose }: { file?: PublicFileEntry; root: PublicFileEntry; onClose(): void }) {
+function PublicImageDialog({ file, root, assets, onImageAssetDragStart, onImageAssetDragEnd, onClose }: { file?: PublicFileEntry; root: PublicFileEntry; assets: DebugImageAssetDescriptor[]; onImageAssetDragStart(payload: ImageAssetDragPayload): void; onImageAssetDragEnd(): void; onClose(): void }) {
   const [frames, setFrames] = useState<PublicAtlasFrame[]>([]);
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<'frame' | 'atlas'>('frame');
@@ -1629,6 +1702,7 @@ function PublicImageDialog({ file, root, onClose }: { file?: PublicFileEntry; ro
   if (!file || !src) return null;
   const selectedFrame = selectedFrameId ? frames.find((frame) => frame.id === selectedFrameId) : undefined;
   const showAtlasViewer = frames.length > 0;
+  const atlasAsset = file ? resolveImageAssetForPublicFile(file.path, assets, 'image') : undefined;
 
   return (
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
@@ -1650,7 +1724,22 @@ function PublicImageDialog({ file, root, onClose }: { file?: PublicFileEntry; ro
             <aside className={styles.frameList}>
               <div className={styles.frameListHeader}>{frames.length} Frames</div>
               {frames.map((frame) => (
-                <button key={frame.id} type="button" className={`${styles.frameListItem} ${frame.id === selectedFrame?.id ? styles.selectedFrameListItem : ''}`} onClick={() => setSelectedFrameId(frame.id)}>
+                <button
+                  key={frame.id}
+                  type="button"
+                  className={`${styles.frameListItem} ${frame.id === selectedFrame?.id ? styles.selectedFrameListItem : ''}`}
+                  draggable
+                  onDragStart={(event) => {
+                    const frameAsset = resolveImageAssetForPublicFrame(file.path, frame, assets);
+                    const payload: ImageAssetDragPayload = { assetId: frameAsset?.id, filePath: file.path, frameKey: frame.label, label: frame.label };
+                    event.dataTransfer.effectAllowed = 'copy';
+                    event.dataTransfer.setData(imageAssetDragMimeType, JSON.stringify(payload));
+                    event.dataTransfer.setData('text/plain', frameAsset?.id ?? `${file.path}#${frame.label}`);
+                    onImageAssetDragStart(payload);
+                  }}
+                  onDragEnd={onImageAssetDragEnd}
+                  onClick={() => setSelectedFrameId(frame.id)}
+                >
                   <PublicFramePreview src={src} frame={frame} compact />
                   <span>{frame.label}</span>
                   <small>{frame.rect.width}×{frame.rect.height}</small>
@@ -1672,7 +1761,20 @@ function PublicImageDialog({ file, root, onClose }: { file?: PublicFileEntry; ro
             </section>
           </div>
         ) : (
-          <img className={styles.originalAssetImage} src={src} alt={file.name} />
+          <img
+            className={styles.originalAssetImage}
+            src={src}
+            alt={file.name}
+            draggable
+            onDragStart={(event) => {
+              const payload: ImageAssetDragPayload = { assetId: atlasAsset?.id, filePath: file.path, label: file.name };
+              event.dataTransfer.effectAllowed = 'copy';
+              event.dataTransfer.setData(imageAssetDragMimeType, JSON.stringify(payload));
+              event.dataTransfer.setData('text/plain', atlasAsset?.id ?? file.path);
+              onImageAssetDragStart(payload);
+            }}
+            onDragEnd={onImageAssetDragEnd}
+          />
         )}
       </div>
     </div>
@@ -1979,7 +2081,10 @@ function HierarchyTree({
   onTogglePersistentManagers,
   isDynamicNodeDragActive,
   getDraggedDynamicNode,
+  isImageAssetDragActive,
+  getDraggedImageAsset,
   onDropDynamicNode,
+  onDropImageAsset,
   onDeleteNode,
 }: {
   roots: DebugNodeDescriptor[];
@@ -1991,7 +2096,10 @@ function HierarchyTree({
   onTogglePersistentManagers(): void;
   isDynamicNodeDragActive(): boolean;
   getDraggedDynamicNode(): PublicFileEntry | undefined;
+  isImageAssetDragActive(): boolean;
+  getDraggedImageAsset(): ImageAssetDragPayload | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
+  onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots);
@@ -2006,7 +2114,7 @@ function HierarchyTree({
             <span>Persistent Managers</span>
             <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
           </button>
-          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />}
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />}
         </section>
       )}
 
@@ -2016,7 +2124,7 @@ function HierarchyTree({
           <span>Scenes</span>
           <span className={styles.hierarchyGroupCount}>{countNodes(scenes)}</span>
         </div>
-        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />
+        <NodeTree nodes={scenes} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />
       </section>
     </div>
   );
@@ -2030,7 +2138,10 @@ function NodeTree({
   onToggleNode,
   isDynamicNodeDragActive,
   getDraggedDynamicNode,
+  isImageAssetDragActive,
+  getDraggedImageAsset,
   onDropDynamicNode,
+  onDropImageAsset,
   onDeleteNode,
 }: {
   nodes: DebugNodeDescriptor[];
@@ -2040,13 +2151,16 @@ function NodeTree({
   onToggleNode(id: string): void;
   isDynamicNodeDragActive(): boolean;
   getDraggedDynamicNode(): PublicFileEntry | undefined;
+  isImageAssetDragActive(): boolean;
+  getDraggedImageAsset(): ImageAssetDragPayload | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
+  onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />
       ))}
     </ol>
   );
@@ -2060,7 +2174,10 @@ function NodeTreeItem({
   onToggleNode,
   isDynamicNodeDragActive,
   getDraggedDynamicNode,
+  isImageAssetDragActive,
+  getDraggedImageAsset,
   onDropDynamicNode,
+  onDropImageAsset,
   onDeleteNode,
 }: {
   node: DebugNodeDescriptor;
@@ -2070,7 +2187,10 @@ function NodeTreeItem({
   onToggleNode(id: string): void;
   isDynamicNodeDragActive(): boolean;
   getDraggedDynamicNode(): PublicFileEntry | undefined;
+  isImageAssetDragActive(): boolean;
+  getDraggedImageAsset(): ImageAssetDragPayload | undefined;
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
+  onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const hasChildren = node.children.length > 0;
@@ -2080,17 +2200,22 @@ function NodeTreeItem({
   const NodeIcon = iconForNode(node);
 
   function handleDragOver(event: ReactDragEvent<HTMLLIElement>): void {
-    if (!isDynamicNodeDragActive() && !hasDynamicNodeDragType(event)) return;
+    if (!isDynamicNodeDragActive() && !isImageAssetDragActive() && !hasDynamicNodeDragType(event) && !hasImageAssetDragType(event)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }
 
   function handleDrop(event: ReactDragEvent<HTMLLIElement>): void {
+    const imagePayload = readImageAssetDragPayload(event) ?? getDraggedImageAsset();
     const file = readDynamicNodeDragFile(event) ?? getDraggedDynamicNode();
-    if (!file) return;
+    if (!imagePayload && !file) return;
     event.preventDefault();
     event.stopPropagation();
-    void onDropDynamicNode(node, file);
+    if (imagePayload) {
+      void onDropImageAsset(node, imagePayload);
+      return;
+    }
+    if (file) void onDropDynamicNode(node, file);
   }
 
   return (
@@ -2130,7 +2255,7 @@ function NodeTreeItem({
           </button>
         )}
       </div>
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} onDropDynamicNode={onDropDynamicNode} onDeleteNode={onDeleteNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onDeleteNode={onDeleteNode} />}
     </li>
   );
 }
@@ -3040,6 +3165,67 @@ function readDynamicNodeDragFile(event: ReactDragEvent): PublicFileEntry | undef
   } catch {
     return undefined;
   }
+}
+
+function hasImageAssetDragType(event: ReactDragEvent): boolean {
+  return Array.from(event.dataTransfer.types).includes(imageAssetDragMimeType);
+}
+
+function readImageAssetDragPayload(event: ReactDragEvent): ImageAssetDragPayload | undefined {
+  const raw = event.dataTransfer.getData(imageAssetDragMimeType);
+  if (!raw) return undefined;
+  try {
+    const payload = JSON.parse(raw) as ImageAssetDragPayload;
+    if (typeof payload.label !== 'string') return undefined;
+    if (payload.assetId !== undefined && typeof payload.assetId !== 'string') return undefined;
+    if (payload.filePath !== undefined && typeof payload.filePath !== 'string') return undefined;
+    if (payload.frameKey !== undefined && typeof payload.frameKey !== 'string') return undefined;
+    return payload;
+  } catch {
+    return undefined;
+  }
+}
+
+function resolveDraggedImageAsset(payload: ImageAssetDragPayload, assets: DebugImageAssetDescriptor[]): DebugImageAssetDescriptor | undefined {
+  if (payload.assetId) {
+    const asset = assets.find((candidate) => candidate.id === payload.assetId);
+    if (asset) return asset;
+  }
+  if (payload.filePath && payload.frameKey) return resolveImageAssetForPublicFrame(payload.filePath, { id: payload.frameKey, label: payload.frameKey, rect: { x: 0, y: 0, width: 0, height: 0 } }, assets);
+  if (payload.filePath) return resolveImageAssetForPublicFile(payload.filePath, assets, 'image');
+  return undefined;
+}
+
+function resolveImageAssetForPublicFrame(filePath: string, frame: PublicAtlasFrame, assets: DebugImageAssetDescriptor[]): DebugImageAssetDescriptor | undefined {
+  const publicPath = publicAssetPathForFilePath(filePath);
+  return assets.find((asset) => asset.kind === 'frame' && asset.frameKey === frame.label && assetPathMatches(asset.sourceUrl, publicPath))
+    ?? assets.find((asset) => asset.kind === 'frame' && asset.id.endsWith(`#${frame.label}`) && assetPathMatches(asset.sourceUrl, publicPath));
+}
+
+function resolveImageAssetForPublicFile(filePath: string, assets: DebugImageAssetDescriptor[], kind?: DebugImageAssetDescriptor['kind']): DebugImageAssetDescriptor | undefined {
+  const publicPath = publicAssetPathForFilePath(filePath);
+  return assets.find((asset) => (kind ? asset.kind === kind : true) && assetPathMatches(asset.url ?? asset.sourceUrl, publicPath));
+}
+
+function publicAssetPathForFilePath(filePath: string): string {
+  const stripped = filePath.replace(/^apps\/game\/public\/?/, '');
+  return `/${stripped.replace(/^\/+/, '')}`;
+}
+
+function assetPathMatches(url: string | undefined, publicPath: string): boolean {
+  if (!url) return false;
+  try {
+    return new URL(url, 'https://gravity-dig.local').pathname === publicPath;
+  } catch {
+    return url === publicPath || url.endsWith(publicPath);
+  }
+}
+
+function defaultImageNodeName(asset: DebugImageAssetDescriptor): string {
+  const raw = asset.kind === 'frame' ? (asset.frameKey ?? asset.id.split('#').at(-1) ?? asset.id) : asset.id;
+  const suffix = asset.kind === 'frame' ? 'Frame' : 'Image';
+  const clean = raw.split(/[\/#@._-]/).filter(Boolean).map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`).join('');
+  return `${clean || suffix}${suffix}`;
 }
 
 function compiledPathForDynamicModule(module: { url?: string; source: string }): string {
