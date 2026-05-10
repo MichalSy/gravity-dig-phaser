@@ -353,30 +353,26 @@ async function startRuntime(): Promise<void> {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: window.innerWidth || GAME_WIDTH,
-    height: window.innerHeight || GAME_HEIGHT,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
     backgroundColor: '#050816',
     pixelArt: false,
     smoothPixelArt: true,
     antialias: true,
     antialiasGL: true,
     input: { activePointers: 4 },
-    scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: GAME_WIDTH, height: GAME_HEIGHT },
     render: { antialias: true, antialiasGL: true },
     scene: [EditorRuntimeScene],
   });
 
   const resizeGameToViewport = (): void => {
-    const viewport = window.visualViewport;
-    const width = Math.max(1, Math.round(viewport?.width ?? window.innerWidth ?? GAME_WIDTH));
-    const height = Math.max(1, Math.round(viewport?.height ?? window.innerHeight ?? GAME_HEIGHT));
     const gameElement = document.getElementById('game');
     if (gameElement) {
-      gameElement.style.width = `${width}px`;
-      gameElement.style.height = `${height}px`;
+      gameElement.style.width = '100vw';
+      gameElement.style.height = '100dvh';
     }
-    if (game.scale.width !== width || game.scale.height !== height) game.scale.resize(width, height);
-    else game.scale.refresh();
+    game.scale.refresh();
   };
 
   window.addEventListener(VIEWPORT_REFRESH_EVENT, resizeGameToViewport);

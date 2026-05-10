@@ -38,9 +38,6 @@ body {
 
 canvas {
   display: block;
-  width: 100vw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
 }
 
 @keyframes gd-loading-panda-spin {
