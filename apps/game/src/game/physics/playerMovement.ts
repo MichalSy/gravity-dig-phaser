@@ -1,6 +1,9 @@
 import { GRAVITY, PLAYER_SIZE } from '../../config/gameConfig';
 import type { PlayerMovementControllerData } from '../nodeData';
 
+const HORIZONTAL_COLLISION_SIZE = { w: PLAYER_SIZE.w, h: PLAYER_SIZE.h - 8 };
+const VERTICAL_COLLISION_SIZE = { w: PLAYER_SIZE.w - 8, h: PLAYER_SIZE.h };
+
 export interface PlayerPhysicsStepArgs {
   player: { x: number; y: number; setPosition(x: number, y: number): unknown };
   data: PlayerMovementControllerData;
@@ -29,7 +32,7 @@ export function stepPlayerPhysics(args: PlayerPhysicsStepArgs): void {
 
 function stabilizeGroundContact(args: PlayerPhysicsStepArgs): void {
   if (args.data.grounded || args.data.velocity.y < 0) return;
-  if (!args.collidesBox(args.player.x, args.player.y + 1, PLAYER_SIZE.w, PLAYER_SIZE.h)) return;
+  if (!args.collidesBox(args.player.x, args.player.y + 1, VERTICAL_COLLISION_SIZE.w, VERTICAL_COLLISION_SIZE.h)) return;
   args.data.grounded = true;
   args.data.velocity.y = 0;
 }
@@ -44,7 +47,8 @@ function moveAxis(args: PlayerPhysicsStepArgs, dx: number, dy: number): void {
   for (let i = 0; i < steps; i += 1) {
     const nextX = args.player.x + stepX;
     const nextY = args.player.y + stepY;
-    if (!args.collidesBox(nextX, nextY, PLAYER_SIZE.w, PLAYER_SIZE.h)) {
+    const collisionSize = dx !== 0 ? HORIZONTAL_COLLISION_SIZE : VERTICAL_COLLISION_SIZE;
+    if (!args.collidesBox(nextX, nextY, collisionSize.w, collisionSize.h)) {
       args.player.setPosition(nextX, nextY);
       continue;
     }

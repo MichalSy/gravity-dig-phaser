@@ -30,7 +30,13 @@
       "fps": 8,
       "loop": false,
       "frames": [
-        { "asset": "player-jump-0" },
+        { "asset": "player-jump-0" }
+      ]
+    },
+    "fall.east": {
+      "fps": 8,
+      "loop": false,
+      "frames": [
         { "asset": "player-jump-1" }
       ]
     }

@@ -28,7 +28,7 @@ export function computePlayerAnimationState(args: {
 
   const airborne = !args.grounded;
   const moving = Math.abs(args.velocity.x) > 1;
-  const animationName = airborne ? 'jump' : moving ? 'walk' : 'idle';
+  const animationName = airborne ? (args.velocity.y < 0 ? 'jump' : 'fall') : moving ? 'walk' : 'idle';
 
   return {
     facing,

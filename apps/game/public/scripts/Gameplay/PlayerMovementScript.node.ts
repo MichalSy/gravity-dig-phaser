@@ -27,6 +27,8 @@ type PlayerStateLike = {
 };
 
 const PLAYER_SIZE = { w: 40, h: 64 };
+const HORIZONTAL_COLLISION_SIZE = { w: PLAYER_SIZE.w, h: PLAYER_SIZE.h - 8 };
+const VERTICAL_COLLISION_SIZE = { w: PLAYER_SIZE.w - 8, h: PLAYER_SIZE.h };
 const GRAVITY = 2640;
 
 export default class PlayerMovementScript extends Core.ScriptNode {
@@ -147,7 +149,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
 
   private stabilizeGroundContact() {
     if (!this.player || this.grounded || this.velocity.y < 0) return;
-    if (!this.levelNode.collidesBox(this.player.x, this.player.y + 1, PLAYER_SIZE.w, PLAYER_SIZE.h)) return;
+    if (!this.levelNode.collidesBox(this.player.x, this.player.y + 1, VERTICAL_COLLISION_SIZE.w, VERTICAL_COLLISION_SIZE.h)) return;
     this.grounded = true;
     this.velocity.y = 0;
   }
@@ -162,7 +164,8 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     for (let i = 0; i < steps; i += 1) {
       const nextX = this.player.x + stepX;
       const nextY = this.player.y + stepY;
-      if (!this.levelNode.collidesBox(nextX, nextY, PLAYER_SIZE.w, PLAYER_SIZE.h)) {
+      const collisionSize = dx !== 0 ? HORIZONTAL_COLLISION_SIZE : VERTICAL_COLLISION_SIZE;
+      if (!this.levelNode.collidesBox(nextX, nextY, collisionSize.w, collisionSize.h)) {
         this.player.setPosition(nextX, nextY);
         continue;
       }
