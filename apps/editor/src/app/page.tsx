@@ -2749,10 +2749,15 @@ function NodeTreeItem({
             onHierarchyDragStart(node);
           }}
           onDragEnd={onHierarchyDragEnd}
-          onClick={() => onSelectNode(node.id)}
-          onDoubleClick={() => {
+          onClick={(event) => {
             onSelectNode(node.id);
-            if (canSelectScriptSource) onSelectScriptSource(node, { openEditor: true });
+            if (event.detail >= 2 && canSelectScriptSource) void onSelectScriptSource(node, { openEditor: true });
+          }}
+          onDoubleClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onSelectNode(node.id);
+            if (canSelectScriptSource) void onSelectScriptSource(node, { openEditor: true });
           }}
         >
           <NodeIcon className={styles.nodeIcon} size={14} />

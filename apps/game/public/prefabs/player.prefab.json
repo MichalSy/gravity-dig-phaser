@@ -5,7 +5,22 @@
     "children": [
       {
         "name": "PlayerMovementController",
-        "nodeTypeId": "2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a"
+        "nodeTypeId": "dynamic.player-movement",
+        "props": {
+          "levelNodeId": null,
+          "inputNodeId": null,
+          "playerStateNodeId": null,
+          "gravity": 2640,
+          "groundAcceleration": 7200,
+          "airAcceleration": 5200,
+          "groundFriction": 8200,
+          "airFriction": 900,
+          "coyoteTimeMs": 120,
+          "jumpBufferMs": 140,
+          "jumpCutMultiplier": 0.45,
+          "maxFallSpeed": 1450,
+          "groundSnapPixels": 4
+        }
       },
       {
         "name": "PlayerBody",

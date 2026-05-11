@@ -10,7 +10,6 @@ import type { TileCell } from '../level';
 import { createMiningToolData, type MiningToolData } from '../nodeData';
 import type { GameWorldNode } from './GameWorldNode';
 import { LevelNode } from './LevelNode';
-import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class MiningToolNode extends GameNode {
@@ -19,7 +18,7 @@ export class MiningToolNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private world!: GameWorldNode;
-  private playerMovementController!: PlayerMovementControllerNode;
+  private playerMovementController!: MovementControllerLike;
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
   private laserView!: MiningLaserView;
@@ -41,7 +40,7 @@ export class MiningToolNode extends GameNode {
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('Level');
     this.world = this.requireNode<GameWorldNode>('World');
-    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('PlayerMovementController');
+    this.playerMovementController = this.requireNode('PlayerMovementController') as unknown as MovementControllerLike;
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.gameplayInput = this.requireNode<GameplayInputNode>('GameplayInput');
   }
@@ -80,7 +79,7 @@ export class MiningToolNode extends GameNode {
     const intent = this.gameplayInput.getMiningIntent({
       playerX: this.world.player.x,
       playerY: this.world.player.y + PLAYER_SIZE.h * 0.18,
-      inputBlocked: this.playerMovementController.inputBlocked,
+      inputBlocked: readMovementInputBlocked(this.playerMovementController),
       miningRange: this.playerState.stats.miningRange,
       gamepadAim: this.data.gamepadAim,
       laserOrigin: origin,
@@ -132,4 +131,15 @@ export class MiningToolNode extends GameNode {
     this.playerState.recordMinedTile(minedType);
     this.laserView.playBlockBreakSound(minedType);
   }
+}
+
+interface MovementControllerLike {
+  inputBlocked?: boolean;
+  callScriptMethod?(name: string, ...args: unknown[]): unknown;
+  getScriptProperty?(name: string): unknown;
+}
+
+function readMovementInputBlocked(controller: MovementControllerLike): boolean {
+  const inputBlocked = controller.inputBlocked ?? controller.callScriptMethod?.('isInputBlocked') ?? controller.getScriptProperty?.('inputBlocked');
+  return inputBlocked === true;
 }

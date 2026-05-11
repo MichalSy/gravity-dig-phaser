@@ -3,7 +3,6 @@ import { NODE_TYPE_IDS, AnimatedImageNode, GameNode, type GameNodeOptions, type 
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerAnimatorData, type PlayerAnimatorData } from '../nodeData';
 import { MiningToolNode } from './MiningToolNode';
-import { PlayerMovementControllerNode } from './PlayerMovementControllerNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class PlayerAnimatorNode extends GameNode {
@@ -11,7 +10,7 @@ export class PlayerAnimatorNode extends GameNode {
 
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
-  private playerMovementController!: PlayerMovementControllerNode;
+  private playerMovementController!: MovementControllerLike;
   private miningTool!: MiningToolNode;
   private playerImage!: AnimatedImageNode;
   override readonly dependencies = ['World', 'PlayerMovementController', 'MiningTool', 'PlayerImage'] as const;
@@ -27,7 +26,7 @@ export class PlayerAnimatorNode extends GameNode {
 
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
-    this.playerMovementController = this.requireNode<PlayerMovementControllerNode>('PlayerMovementController');
+    this.playerMovementController = this.requireNode('PlayerMovementController') as unknown as MovementControllerLike;
     this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
     this.playerImage = this.requireNode<AnimatedImageNode>('PlayerImage');
   }
@@ -63,8 +62,8 @@ export class PlayerAnimatorNode extends GameNode {
       playerX: player.x,
       aimX,
       previousFacing: this.data.facing,
-      velocity: this.playerMovementController.velocity,
-      grounded: this.playerMovementController.grounded,
+      velocity: readMovementVelocity(this.playerMovementController),
+      grounded: readMovementGrounded(this.playerMovementController),
     });
 
     this.data.facing = animation.facing;
@@ -95,4 +94,22 @@ export class PlayerAnimatorNode extends GameNode {
       detune: Phaser.Math.Between(-30, 30),
     });
   }
+}
+
+interface MovementControllerLike {
+  velocity?: Phaser.Math.Vector2;
+  grounded?: boolean;
+  callScriptMethod?(name: string, ...args: unknown[]): unknown;
+  getScriptProperty?(name: string): unknown;
+}
+
+function readMovementVelocity(controller: MovementControllerLike): Phaser.Math.Vector2 {
+  const velocity = controller.velocity ?? controller.callScriptMethod?.('getVelocity') ?? controller.getScriptProperty?.('velocity');
+  if (velocity && typeof velocity === 'object' && 'x' in velocity && 'y' in velocity) return velocity as Phaser.Math.Vector2;
+  return new Phaser.Math.Vector2(0, 0);
+}
+
+function readMovementGrounded(controller: MovementControllerLike): boolean {
+  const grounded = controller.grounded ?? controller.callScriptMethod?.('isGrounded') ?? controller.getScriptProperty?.('grounded');
+  return grounded === true;
 }
