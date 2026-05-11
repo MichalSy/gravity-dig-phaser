@@ -114,21 +114,22 @@
                     "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
                     "props": {
                       "text": "OPTIONEN",
-                      "fontSize": 18,
-                      "color": "#ffffff",
+                      "fontSize": 116,
+                      "color": "#b25c5c",
                       "align": "center",
                       "resolution": 2,
                       "parentAnchor": "center",
                       "position": {
                         "x": 0,
-                        "y": 0
+                        "y": -7
                       },
                       "origin": {
                         "x": 0.5,
                         "y": 0.5
                       },
                       "sizeMode": "fill",
-                      "boundsMode": "none"
+                      "boundsMode": "none",
+                      "strokeThickness": 24
                     }
                   }
                 ]
