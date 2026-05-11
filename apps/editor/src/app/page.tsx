@@ -149,6 +149,19 @@ interface EditorGitDiffFile {
   modified: string;
 }
 
+interface EditorBackendStatus {
+  ok: boolean;
+  workspace?: {
+    path: string;
+    exists: boolean;
+    phase: string;
+    message: string;
+    busy: boolean;
+    startedAt?: number;
+    updatedAt: number;
+  };
+}
+
 interface PublicFileEntry {
   name: string;
   path: string;
@@ -306,6 +319,7 @@ export default function Home() {
   const [savePreviewOpen, setSavePreviewOpen] = useState(false);
   const [gitSaveStatus, setGitSaveStatus] = useState('');
   const [gitNeedsRebase, setGitNeedsRebase] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<EditorBackendStatus | undefined>();
   const [inspectorResetVersion, setInspectorResetVersion] = useState(0);
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
@@ -523,6 +537,25 @@ export default function Home() {
 
   useEffect(() => {
     void refreshPublicFiles();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pollBackendStatus(): Promise<void> {
+      try {
+        const response = await fetch(editorApi('/status'), { cache: 'no-store' });
+        const status = await response.json() as EditorBackendStatus;
+        if (!cancelled && response.ok && status.ok) setBackendStatus(status);
+      } catch {
+        if (!cancelled) setBackendStatus(undefined);
+      }
+    }
+    void pollBackendStatus();
+    const interval = window.setInterval(() => void pollBackendStatus(), 700);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -1409,6 +1442,8 @@ export default function Home() {
   }
 
   const editorTitle = gitNeedsRebase ? 'Debug Editor · Rebase nötig' : 'Debug Editor';
+  const workspaceMessage = backendStatus?.workspace?.message ?? 'Editor startet ...';
+  const showWorkspaceActivity = !backendStatus?.workspace?.exists || backendStatus?.workspace?.busy || explorerRoots.length === 0;
   const hierarchySections = splitHierarchyRoots(treeRoots, viewportMode);
   const hierarchyNodeCount = viewportMode === 'editor' ? countNodes(hierarchySections.scenes) : countNodes(treeRoots);
 
@@ -1420,6 +1455,7 @@ export default function Home() {
           <h1 className={styles.title}>{editorTitle}</h1>
         </div>
         <div className={styles.statusStack}>
+          {showWorkspaceActivity && <span className={`${styles.workspaceStatus} ${backendStatus?.workspace?.busy ? styles.workspaceStatusBusy : ''}`}>{workspaceMessage}</span>}
           <div className={styles.modeToggle} role="group" aria-label="Viewport Modus">
             <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'editor' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
             <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'play' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>

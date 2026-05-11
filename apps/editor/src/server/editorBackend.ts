@@ -78,6 +78,24 @@ const editableFileRoots = [
 const gitEditorRoots = [...editableFileRoots, `apps${sep}game${sep}src`];
 const gitEditorRootArgs = gitEditorRoots.map((path) => path.split(sep).join('/'));
 
+type WorkspaceActivityPhase = 'ready' | 'cloning' | 'fetching' | 'syncing' | 'building-dynamic-nodes';
+
+const workspaceActivity: { phase: WorkspaceActivityPhase; message: string; busy: boolean; startedAt?: number; updatedAt: number } = {
+  phase: 'ready',
+  message: 'Workspace bereit.',
+  busy: false,
+  updatedAt: Date.now(),
+};
+
+function setWorkspaceActivity(phase: WorkspaceActivityPhase, message: string, busy: boolean): void {
+  const now = Date.now();
+  workspaceActivity.phase = phase;
+  workspaceActivity.message = message;
+  workspaceActivity.busy = busy;
+  workspaceActivity.startedAt = busy ? now : undefined;
+  workspaceActivity.updatedAt = now;
+}
+
 export function backendStatus() {
   return {
     ok: true,
@@ -88,6 +106,11 @@ export function backendStatus() {
       allowedRepoRoots,
       gitRepoUrl: redactRepoUrl(gitRepoUrl),
       gitBranch,
+    },
+    workspace: {
+      path: workspacePath,
+      exists: existsSync(join(workspacePath, '.git')),
+      ...workspaceActivity,
     },
     sessions: [...new Set([...changeSets.keys(), ...assetUploads.keys()])].map((sessionId) => ({
       sessionId,
@@ -203,8 +226,14 @@ export async function gitDiffFile(relativePath: string): Promise<EditorGitDiffFi
 export async function gitStatus() {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
-    await git(['fetch', 'origin', gitBranch]);
-    const divergence = await branchDivergence();
+    setWorkspaceActivity('fetching', 'Git-Status wird geprüft ...', true);
+    let divergence: { ahead: number; behind: number };
+    try {
+      await git(['fetch', 'origin', gitBranch]);
+      divergence = await branchDivergence();
+    } finally {
+      setWorkspaceActivity('ready', 'Git-Workspace bereit.', false);
+    }
     return {
       ok: true,
       branch: gitBranch,
@@ -533,15 +562,25 @@ async function ensureWorkspace(): Promise<void> {
 async function ensureWorkspaceUnlocked(): Promise<void> {
   assertAllowedRepoRoot(workspacePath);
   if (existsSync(join(workspacePath, '.git'))) return;
-  await rm(workspacePath, { recursive: true, force: true });
-  await mkdir(dirname(workspacePath), { recursive: true });
-  await gitOutside(['clone', '--branch', gitBranch, gitRepoUrl, workspacePath]);
+  setWorkspaceActivity('cloning', 'Git-Workspace wird geklont ...', true);
+  try {
+    await rm(workspacePath, { recursive: true, force: true });
+    await mkdir(dirname(workspacePath), { recursive: true });
+    await gitOutside(['clone', '--branch', gitBranch, gitRepoUrl, workspacePath]);
+  } finally {
+    setWorkspaceActivity('ready', existsSync(join(workspacePath, '.git')) ? 'Git-Workspace bereit.' : 'Git-Workspace nicht bereit.', false);
+  }
 }
 
 async function syncWorkspaceToOriginUnlocked(): Promise<void> {
-  await git(['fetch', 'origin', gitBranch]);
-  await git(['checkout', gitBranch]);
-  await git(['reset', '--hard', `origin/${gitBranch}`]);
+  setWorkspaceActivity('syncing', 'Git-Workspace wird mit origin/main synchronisiert ...', true);
+  try {
+    await git(['fetch', 'origin', gitBranch]);
+    await git(['checkout', gitBranch]);
+    await git(['reset', '--hard', `origin/${gitBranch}`]);
+  } finally {
+    setWorkspaceActivity('ready', 'Git-Workspace bereit.', false);
+  }
 }
 
 async function ensurePublicRoot(): Promise<string> {
@@ -808,33 +847,38 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
 }
 
 export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } }> {
-  const sourceDir = await ensureDynamicNodeRoot();
-  const outDir = resolve(workspacePath, 'apps/game/public/scripts-compiled');
-  assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
-  assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
+  setWorkspaceActivity('building-dynamic-nodes', 'Dynamic Node Scripts werden kompiliert ...', true);
+  try {
+    const sourceDir = await ensureDynamicNodeRoot();
+    const outDir = resolve(workspacePath, 'apps/game/public/scripts-compiled');
+    assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
+    assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
 
-  await mkdir(outDir, { recursive: true });
-  const files = await findDynamicNodeSourceFiles(sourceDir);
-  const manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } = { version: 1, nodes: [] };
+    await mkdir(outDir, { recursive: true });
+    const files = await findDynamicNodeSourceFiles(sourceDir);
+    const manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } = { version: 1, nodes: [] };
 
-  for (const file of files) {
-    const sourcePath = join(sourceDir, file);
-    const source = await readFile(sourcePath, 'utf8');
-    const hash = createHash('sha256').update(source).digest('hex').slice(0, 12);
-    const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(sep, '-');
-    const outfileName = `${baseName}.${hash}.js`;
-    const outfile = join(outDir, outfileName);
-    const compiled = transpileDynamicNodeSource(source, baseName);
+    for (const file of files) {
+      const sourcePath = join(sourceDir, file);
+      const source = await readFile(sourcePath, 'utf8');
+      const hash = createHash('sha256').update(source).digest('hex').slice(0, 12);
+      const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(sep, '-');
+      const outfileName = `${baseName}.${hash}.js`;
+      const outfile = join(outDir, outfileName);
+      const compiled = transpileDynamicNodeSource(source, baseName);
 
-    await writeFileAtomic(outfile, compiled);
-    await writeFileAtomic(`${outfile}.map`, '');
+      await writeFileAtomic(outfile, compiled);
+      await writeFileAtomic(`${outfile}.map`, '');
 
-    const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
-    manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/scripts/${file.split(sep).join('/')}`, url: `/scripts-compiled/${outfileName}`, hash });
+      const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
+      manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/scripts/${file.split(sep).join('/')}`, url: `/scripts-compiled/${outfileName}`, hash });
+    }
+
+    await writeFileAtomic(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    return { manifest };
+  } finally {
+    setWorkspaceActivity('ready', 'Git-Workspace bereit.', false);
   }
-
-  await writeFileAtomic(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  return { manifest };
 }
 
 async function writeFileAtomic(path: string, content: string): Promise<void> {
