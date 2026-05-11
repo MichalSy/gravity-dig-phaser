@@ -249,17 +249,11 @@ export async function gitDiffFile(relativePath: string): Promise<EditorGitDiffFi
   });
 }
 
-export async function gitStatus() {
+export async function gitStatus(options: { refreshRemote?: boolean } = {}) {
   return withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
-    setWorkspaceActivity('fetching', 'Git-Status wird geprüft ...', true);
-    let divergence: { ahead: number; behind: number };
-    try {
-      await git(['fetch', 'origin', gitBranch]);
-      divergence = await branchDivergence();
-    } finally {
-      setWorkspaceActivity('ready', 'Git-Workspace bereit.', false);
-    }
+    if (options.refreshRemote) await git(['fetch', 'origin', gitBranch]);
+    const divergence = await branchDivergence();
     return {
       ok: true,
       branch: gitBranch,

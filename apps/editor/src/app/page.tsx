@@ -716,9 +716,10 @@ export default function Home() {
     }
   }
 
-  async function refreshGitStatus(): Promise<void> {
+  async function refreshGitStatus(options: { refreshRemote?: boolean } = {}): Promise<void> {
     try {
-      const response = await fetch(editorApi('/git/status'));
+      const query = options.refreshRemote ? '?remote=1' : '';
+      const response = await fetch(editorApi(`/git/status${query}`), { cache: 'no-store' });
       const status = await response.json() as EditorGitStatus;
       if (!response.ok || !status.ok) throw new Error(`HTTP ${response.status}`);
       setGitNeedsRebase(status.needsRebase === true);
@@ -835,7 +836,7 @@ export default function Home() {
   }
 
   async function openSavePreview(): Promise<void> {
-    await refreshGitStatus();
+    await refreshGitStatus({ refreshRemote: true });
     setSavePreviewOpen(true);
   }
 
@@ -1499,8 +1500,8 @@ export default function Home() {
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
+      setPendingChangeCount(result.changeSet?.changes.length ?? 0);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
-      void refreshGitStatus();
     } catch (error) {
       setGitSaveStatus(`Pending Change fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }

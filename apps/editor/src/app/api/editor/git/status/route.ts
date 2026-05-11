@@ -3,9 +3,11 @@ import { jsonError, jsonNoStore } from '../../_response';
 
 
 export const dynamic = 'force-dynamic';
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    return jsonNoStore(await gitStatus());
+    const url = new URL(request.url);
+    const refreshRemote = url.searchParams.get('remote') === '1';
+    return jsonNoStore(await gitStatus({ refreshRemote }));
   } catch (error) {
     return jsonError(error);
   }
