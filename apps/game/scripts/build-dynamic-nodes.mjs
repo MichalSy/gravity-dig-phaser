@@ -15,66 +15,77 @@ await mkdir(outDir, { recursive: true });
 await mkdir(tempDir, { recursive: true });
 
 const files = await findScriptFiles(sourceDir);
-const manifest = { version: 1, nodes: [] };
+const tempEntryPath = path.join(tempDir, 'dynamic-nodes.entry.ts');
+const tempOutfileName = 'dynamic-nodes.build.js';
+const tempOutfile = path.join(outDir, tempOutfileName);
+const scriptEntries = [];
 
-for (const file of files) {
+for (const [index, file] of files.entries()) {
   const sourcePath = path.join(sourceDir, file);
   const source = await readFile(sourcePath, 'utf8');
   const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(path.sep, '-');
-  const entryPath = path.join(tempDir, `${baseName}.entry.ts`);
-  const tempOutfileName = `${baseName}.build.js`;
-  const tempOutfile = path.join(outDir, tempOutfileName);
-  const relativeSourceImport = path.relative(tempDir, sourcePath).replaceAll(path.sep, '/');
-
-  await writeFile(entryPath, `
-import ScriptClass from './${relativeSourceImport.startsWith('.') ? relativeSourceImport : `../${relativeSourceImport}`}';
-
-function isDynamicPropMarker(value) {
-  return typeof value === 'object' && value !== null && value.__dynamicNodeProp === true;
-}
-
-const probe = new ScriptClass();
-const nodeTypeId = typeof probe.id === 'string' && probe.id.length > 0 ? probe.id : '${baseName}';
-const displayName = typeof probe.name === 'string' && probe.name.length > 0 ? probe.name : nodeTypeId;
-
-function createBehavior() {
-  return new ScriptClass();
-}
-
-export default { nodeTypeId, displayName, createBehavior };
-export { nodeTypeId, displayName, createBehavior };
-`);
-
-  await build({
-    entryPoints: [entryPath],
-    outfile: tempOutfile,
-    bundle: true,
-    format: 'esm',
-    platform: 'browser',
-    target: 'es2022',
-    sourcemap: true,
-    logLevel: 'silent',
-    plugins: [dynamicNodeApiPlugin()],
-  });
-
-  const bundledSource = await readFile(tempOutfile, 'utf8');
-  const hash = createHash('sha256').update(bundledSource).digest('hex').slice(0, 12);
-  const outfileName = `${baseName}.${hash}.js`;
-  const outfile = path.join(outDir, outfileName);
-  const bundledSourceMap = await readFile(`${tempOutfile}.map`, 'utf8');
-  await writeFile(outfile, bundledSource.replace(`//# sourceMappingURL=${tempOutfileName}.map`, `//# sourceMappingURL=${outfileName}.map`));
-  await writeFile(`${outfile}.map`, bundledSourceMap.replaceAll(tempOutfileName, outfileName));
-  await rm(tempOutfile, { force: true });
-  await rm(`${tempOutfile}.map`, { force: true });
-
   const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
   const sourceUrl = `public/scripts/${file.replaceAll(path.sep, '/')}`;
-  manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: sourceUrl, url: `/scripts-compiled/${outfileName}`, hash });
+  const relativeSourceImport = path.relative(tempDir, sourcePath).replaceAll(path.sep, '/');
+  const importPath = relativeSourceImport.startsWith('.') ? relativeSourceImport : `../${relativeSourceImport}`;
+
+  scriptEntries.push({ index, importPath, baseName, declaredNodeTypeId, sourceUrl });
 }
 
+await writeFile(tempEntryPath, `${scriptEntries.map((entry) => `import ScriptClass${entry.index} from './${entry.importPath}';`).join('\n')}
+
+function createDynamicNodeModule(ScriptClass, baseName) {
+  const probe = new ScriptClass();
+  const nodeTypeId = typeof probe.id === 'string' && probe.id.length > 0 ? probe.id : baseName;
+  const displayName = typeof probe.name === 'string' && probe.name.length > 0 ? probe.name : nodeTypeId;
+  return {
+    nodeTypeId,
+    displayName,
+    createBehavior() {
+      return new ScriptClass();
+    },
+  };
+}
+
+const modules = [
+${scriptEntries.map((entry) => `  createDynamicNodeModule(ScriptClass${entry.index}, '${entry.baseName}')`).join(',\n')}
+];
+
+export default { modules };
+export { modules };
+`);
+
+await build({
+  entryPoints: [tempEntryPath],
+  outfile: tempOutfile,
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  sourcemap: true,
+  logLevel: 'silent',
+  plugins: [dynamicNodeApiPlugin()],
+});
+
+const bundledSource = await readFile(tempOutfile, 'utf8');
+const hash = createHash('sha256').update(bundledSource).digest('hex').slice(0, 12);
+const outfileName = `dynamic-nodes.${hash}.js`;
+const outfile = path.join(outDir, outfileName);
+const bundledSourceMap = await readFile(`${tempOutfile}.map`, 'utf8');
+const bundleUrl = `/scripts-compiled/${outfileName}`;
+const manifest = {
+  version: 1,
+  bundle: { url: bundleUrl, hash },
+  nodes: scriptEntries.map((entry) => ({ nodeTypeId: entry.declaredNodeTypeId, source: entry.sourceUrl, url: bundleUrl, hash })),
+};
+
+await writeFile(outfile, bundledSource.replace(`//# sourceMappingURL=${tempOutfileName}.map`, `//# sourceMappingURL=${outfileName}.map`));
+await writeFile(`${outfile}.map`, bundledSourceMap.replaceAll(tempOutfileName, outfileName));
+await rm(tempOutfile, { force: true });
+await rm(`${tempOutfile}.map`, { force: true });
 await writeFile(path.join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 await rm(tempDir, { recursive: true, force: true });
-console.log(`Built ${manifest.nodes.length} script node(s).`);
+console.log(`Built ${manifest.nodes.length} script node(s) into ${outfileName}.`);
 
 async function findScriptFiles(directory, prefix = '') {
   const entries = await readdir(directory, { withFileTypes: true });

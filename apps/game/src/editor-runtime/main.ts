@@ -267,7 +267,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     if (!nodeTypeId) return false;
     const cached = this.dynamicModules.get(nodeTypeId);
     if (cached?.hash === entry.hash) return true;
-    const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash }) : undefined;
+    const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
     this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() }));
@@ -282,7 +282,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     const manifest = await this.fetchOptionalJson<DynamicNodeManifest>(editorApiBase, 'scripts-compiled/manifest.json');
     for (const entry of manifest?.nodes ?? []) {
       if (!entry.nodeTypeId || this.dynamicModules.get(entry.nodeTypeId)?.hash === entry.hash) continue;
-      const module = await loadDynamicNodeModule({ hash: entry.hash, url: this.contentUrl(editorApiBase, `scripts-compiled/${entry.url.split('/').at(-1) ?? ''}`) });
+      const module = await loadDynamicNodeModule({ hash: entry.hash, nodeTypeId: entry.nodeTypeId, url: this.contentUrl(editorApiBase, `scripts-compiled/${entry.url.split('/').at(-1) ?? ''}`) });
       if (module) this.dynamicModules.set(entry.nodeTypeId, { hash: entry.hash, module });
     }
   }

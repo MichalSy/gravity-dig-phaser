@@ -954,7 +954,13 @@ async function readPublicDirectory(absolutePath: string, relativePath: string): 
   return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
 }
 
-export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } }> {
+interface DynamicNodeBuildManifest {
+  version: 1;
+  bundle: { url: string; hash: string };
+  nodes: { nodeTypeId: string; source: string; url: string; hash: string }[];
+}
+
+export async function buildDynamicNodeModules(): Promise<{ manifest: DynamicNodeBuildManifest }> {
   setWorkspaceActivity('building-dynamic-nodes', 'Dynamic Node Scripts werden kompiliert ...', true);
   try {
     const sourceDir = await ensureDynamicNodeRoot();
@@ -964,30 +970,106 @@ export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 
 
     await rm(outDir, { recursive: true, force: true });
     await mkdir(outDir, { recursive: true });
-    const files = await findDynamicNodeSourceFiles(sourceDir);
-    const manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } = { version: 1, nodes: [] };
 
-    for (const file of files) {
+    const files = await findDynamicNodeSourceFiles(sourceDir);
+    const scriptEntries = await Promise.all(files.map(async (file, index) => {
       const sourcePath = join(sourceDir, file);
       const source = await readFile(sourcePath, 'utf8');
       const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(sep, '-');
-      const compiled = transpileDynamicNodeSource(source, baseName);
-      const hash = createHash('sha256').update(compiled).digest('hex').slice(0, 12);
-      const outfileName = `${baseName}.${hash}.js`;
-      const outfile = join(outDir, outfileName);
-
-      await writeFileAtomic(outfile, compiled);
-      await writeFileAtomic(`${outfile}.map`, '');
-
       const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
-      manifest.nodes.push({ nodeTypeId: declaredNodeTypeId, source: `public/scripts/${file.split(sep).join('/')}`, url: `/scripts-compiled/${outfileName}`, hash });
-    }
+      return { index, sourceCode: source, baseName, declaredNodeTypeId, source: `public/scripts/${file.split(sep).join('/')}` };
+    }));
+
+    const bundledSource = transpileDynamicNodeBundleSource(scriptEntries);
+    const hash = createHash('sha256').update(bundledSource).digest('hex').slice(0, 12);
+    const outfileName = `dynamic-nodes.${hash}.js`;
+    const outfile = join(outDir, outfileName);
+    const bundleUrl = `/scripts-compiled/${outfileName}`;
+    await writeFileAtomic(outfile, bundledSource);
+    await writeFileAtomic(`${outfile}.map`, '');
+
+    const manifest: DynamicNodeBuildManifest = {
+      version: 1,
+      bundle: { url: bundleUrl, hash },
+      nodes: scriptEntries.map((entry) => ({ nodeTypeId: entry.declaredNodeTypeId, source: entry.source, url: bundleUrl, hash })),
+    };
 
     await writeFileAtomic(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
     return { manifest };
   } finally {
     setWorkspaceActivity('ready', 'Git-Workspace bereit.', false);
   }
+}
+
+interface DynamicNodeBuildScriptEntry {
+  index: number;
+  sourceCode: string;
+  baseName: string;
+  declaredNodeTypeId: string;
+  source: string;
+}
+
+function transpileDynamicNodeBundleSource(scriptEntries: DynamicNodeBuildScriptEntry[]): string {
+  const source = `${dynamicNodeApiSource()}
+${scriptEntries.map(dynamicNodeBundleFactorySource).join('\n')}
+const modules = [${scriptEntries.map((entry) => `createDynamicNodeModule${entry.index}()`).join(', ')}];
+export default { modules };
+export { modules };
+`;
+
+  const output = ts.transpileModule(source, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ES2022,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      jsx: ts.JsxEmit.ReactJSX,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      sourceMap: false,
+    },
+    fileName: 'dynamic-nodes.bundle.ts',
+    reportDiagnostics: true,
+  });
+  const errors = output.diagnostics?.filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error) ?? [];
+  if (errors.length > 0) throw new EditorBackendError(errors.map(formatTsDiagnostic).join('\n'), 422);
+  return output.outputText;
+}
+
+function dynamicNodeBundleFactorySource(entry: DynamicNodeBuildScriptEntry): string {
+  const scriptSource = stripDynamicNodeApiImports(entry.sourceCode);
+  const namedDefaultClass = scriptSource.match(/export\s+default\s+class\s+([A-Za-z_$][\w$]*)/u)?.[1];
+  if (namedDefaultClass) {
+    return dynamicNodeFactorySource(entry.index, entry.baseName, scriptSource.replace(/export\s+default\s+class\s+([A-Za-z_$][\w$]*)/u, 'class $1'), namedDefaultClass);
+  }
+
+  const anonymousDefaultClass = scriptSource.replace(/export\s+default\s+class\s+/u, 'const __DynamicScriptClass = class ');
+  if (anonymousDefaultClass !== scriptSource) return dynamicNodeFactorySource(entry.index, entry.baseName, anonymousDefaultClass, '__DynamicScriptClass');
+
+  throw new EditorBackendError('Dynamic node source must use `export default class ...`.', 422);
+}
+
+function dynamicNodeFactorySource(index: number, baseName: string, scriptSource: string, className: string): string {
+  return `
+function createDynamicNodeModule${index}() {
+${scriptSource}
+const probe = new ${className}();
+const nodeTypeId = typeof probe.id === 'string' && probe.id.length > 0 ? probe.id : '${baseName}';
+const displayName = typeof probe.name === 'string' && probe.name.length > 0 ? probe.name : nodeTypeId;
+return {
+  nodeTypeId,
+  displayName,
+  createBehavior() { return new ${className}(); },
+};
+}
+`;
+}
+
+function stripDynamicNodeApiImports(source: string): string {
+  return source
+    .replace(/^\s*import\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s+['"]@gravity-dig\/game-core['"];?\s*$/gmu, (_match, namespace: string) => `const ${namespace} = { ScriptNode, prop };`)
+    .replace(/^\s*import\s+\{[^}]*\}\s+from\s+['"]@gravity-dig\/game-core['"];?\s*$/gmu, '')
+    .replace(/^\s*import\s+\{\s*ScriptNode\s*,\s*prop\s*\}\s+from\s+['"]@gravity-dig\/dynamic-node['"];?\s*$/gmu, '')
+    .replace(/^\s*import\s+type\s+\{[^}]*\}\s+from\s+['"]@gravity-dig\/game-core['"];?\s*$/gmu, '');
 }
 
 async function writeFileAtomic(path: string, content: string): Promise<void> {

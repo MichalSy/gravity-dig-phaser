@@ -41,6 +41,22 @@ var prop = {
   nodeRefList: (value = [], options = {}) => marker(value, { type: "NodeRefList", ...options })
 };
 
+// public/scripts/ExamplePulse.node.ts
+var ExamplePulseNode = class extends ScriptNode {
+  id = "dynamic.example-pulse";
+  name = "Example Pulse Script";
+  intervalMs = prop.number(1e3, { min: 100, max: 5e3, step: 100, label: "Interval ms" });
+  enabled = prop.boolean(true, { label: "Enabled" });
+  elapsedMs = 0;
+  update(deltaMs) {
+    if (!this.enabled) return;
+    this.elapsedMs += deltaMs;
+    if (this.elapsedMs < this.intervalMs) return;
+    this.elapsedMs = 0;
+    this.log("pulse", { intervalMs: this.intervalMs });
+  }
+};
+
 // public/scripts/GameMenu/MenuScript.node.ts
 function wrapIndex(value, length) {
   return (value % length + length) % length;
@@ -116,18 +132,26 @@ var MenuScript = class extends ScriptNode {
   }
 };
 
-// node_modules/.script-build/GameMenu-MenuScript.entry.ts
-var probe = new MenuScript();
-var nodeTypeId = typeof probe.id === "string" && probe.id.length > 0 ? probe.id : "GameMenu-MenuScript";
-var displayName = typeof probe.name === "string" && probe.name.length > 0 ? probe.name : nodeTypeId;
-function createBehavior() {
-  return new MenuScript();
+// node_modules/.script-build/dynamic-nodes.entry.ts
+function createDynamicNodeModule(ScriptClass, baseName) {
+  const probe = new ScriptClass();
+  const nodeTypeId = typeof probe.id === "string" && probe.id.length > 0 ? probe.id : baseName;
+  const displayName = typeof probe.name === "string" && probe.name.length > 0 ? probe.name : nodeTypeId;
+  return {
+    nodeTypeId,
+    displayName,
+    createBehavior() {
+      return new ScriptClass();
+    }
+  };
 }
-var GameMenu_MenuScript_entry_default = { nodeTypeId, displayName, createBehavior };
+var modules = [
+  createDynamicNodeModule(ExamplePulseNode, "ExamplePulse"),
+  createDynamicNodeModule(MenuScript, "GameMenu-MenuScript")
+];
+var dynamic_nodes_entry_default = { modules };
 export {
-  createBehavior,
-  GameMenu_MenuScript_entry_default as default,
-  displayName,
-  nodeTypeId
+  dynamic_nodes_entry_default as default,
+  modules
 };
-//# sourceMappingURL=GameMenu-MenuScript.8bc4ce94280e.js.map
+//# sourceMappingURL=dynamic-nodes.8f082cb69cb2.js.map
