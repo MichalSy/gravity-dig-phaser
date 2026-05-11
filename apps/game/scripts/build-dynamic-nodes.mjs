@@ -20,11 +20,10 @@ const manifest = { version: 1, nodes: [] };
 for (const file of files) {
   const sourcePath = path.join(sourceDir, file);
   const source = await readFile(sourcePath, 'utf8');
-  const hash = createHash('sha256').update(source).digest('hex').slice(0, 12);
   const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(path.sep, '-');
   const entryPath = path.join(tempDir, `${baseName}.entry.ts`);
-  const outfileName = `${baseName}.${hash}.js`;
-  const outfile = path.join(outDir, outfileName);
+  const tempOutfileName = `${baseName}.build.js`;
+  const tempOutfile = path.join(outDir, tempOutfileName);
   const relativeSourceImport = path.relative(tempDir, sourcePath).replaceAll(path.sep, '/');
 
   await writeFile(entryPath, `
@@ -48,7 +47,7 @@ export { nodeTypeId, displayName, createBehavior };
 
   await build({
     entryPoints: [entryPath],
-    outfile,
+    outfile: tempOutfile,
     bundle: true,
     format: 'esm',
     platform: 'browser',
@@ -57,6 +56,16 @@ export { nodeTypeId, displayName, createBehavior };
     logLevel: 'silent',
     plugins: [dynamicNodeApiPlugin()],
   });
+
+  const bundledSource = await readFile(tempOutfile, 'utf8');
+  const hash = createHash('sha256').update(bundledSource).digest('hex').slice(0, 12);
+  const outfileName = `${baseName}.${hash}.js`;
+  const outfile = path.join(outDir, outfileName);
+  const bundledSourceMap = await readFile(`${tempOutfile}.map`, 'utf8');
+  await writeFile(outfile, bundledSource.replace(`//# sourceMappingURL=${tempOutfileName}.map`, `//# sourceMappingURL=${outfileName}.map`));
+  await writeFile(`${outfile}.map`, bundledSourceMap.replaceAll(tempOutfileName, outfileName));
+  await rm(tempOutfile, { force: true });
+  await rm(`${tempOutfile}.map`, { force: true });
 
   const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
   const sourceUrl = `public/scripts/${file.replaceAll(path.sep, '/')}`;

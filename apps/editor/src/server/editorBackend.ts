@@ -962,6 +962,7 @@ export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 
     assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
     assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
 
+    await rm(outDir, { recursive: true, force: true });
     await mkdir(outDir, { recursive: true });
     const files = await findDynamicNodeSourceFiles(sourceDir);
     const manifest: { version: 1; nodes: { nodeTypeId: string; source: string; url: string; hash: string }[] } = { version: 1, nodes: [] };
@@ -969,11 +970,11 @@ export async function buildDynamicNodeModules(): Promise<{ manifest: { version: 
     for (const file of files) {
       const sourcePath = join(sourceDir, file);
       const source = await readFile(sourcePath, 'utf8');
-      const hash = createHash('sha256').update(source).digest('hex').slice(0, 12);
       const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(sep, '-');
+      const compiled = transpileDynamicNodeSource(source, baseName);
+      const hash = createHash('sha256').update(compiled).digest('hex').slice(0, 12);
       const outfileName = `${baseName}.${hash}.js`;
       const outfile = join(outDir, outfileName);
-      const compiled = transpileDynamicNodeSource(source, baseName);
 
       await writeFileAtomic(outfile, compiled);
       await writeFileAtomic(`${outfile}.map`, '');
