@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "fonts": [
+    {
+      "key": "silkscreen-latin-700",
+      "family": "Silkscreen",
+      "label": "Silkscreen Bold",
+      "path": "/fonts/silkscreen-latin-700.woff2",
+      "weight": "700"
+    }
+  ]
+}

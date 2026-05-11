@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "npm run build:dynamic-nodes && tsc && vite build",
+    "dev": "npm run build:font-assets && vite",
+    "build": "npm run build:font-assets && npm run build:dynamic-nodes && tsc && vite build",
     "preview": "vite preview",
-    "build:dynamic-nodes": "node scripts/build-dynamic-nodes.mjs"
+    "build:dynamic-nodes": "node scripts/build-dynamic-nodes.mjs",
+    "build:font-assets": "node scripts/build-font-assets.mjs"
   },
   "dependencies": {
     "@gravity-dig/debug-protocol": "*",

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { FontAssetDefinition, ImageAssetDefinition } from '@gravity-dig/game-core';
 import { animationSetMetaKey, type AnimationSetDefinition } from './animationSetMeta';
+import { GENERATED_FONT_ASSETS } from './generatedFontAssets';
 import { imageAtlasMetaKey, imageAtlasMetaPath } from './imageAtlasMeta';
 
 const ASSET_VERSION = Date.now().toString(36);
@@ -54,9 +55,10 @@ export const GAME_ANIMATION_SETS: readonly AnimationSetDefinition[] = [
   { key: 'character', path: '/assets/character/character.animation.json' },
 ];
 
-export const GAME_FONT_ASSETS: readonly FontAssetDefinition[] = [
-  { key: 'silkscreen-700', family: 'Silkscreen', label: 'Silkscreen Bold', path: '/assets/fonts/silkscreen-latin-700.woff2', weight: '700' },
-];
+export const GAME_FONT_ASSETS: readonly FontAssetDefinition[] = GENERATED_FONT_ASSETS.map((font) => ({
+  ...font,
+  path: publicAssetPath(font.path),
+}));
 
 function publicAssetPath(path: string): string {
   if (!path.startsWith('/')) return path;
