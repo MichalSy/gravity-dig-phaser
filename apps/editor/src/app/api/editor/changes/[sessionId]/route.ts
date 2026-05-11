@@ -1,4 +1,4 @@
-import { appendChangesFromBody, clearSession, readChangeSet, removePendingProp } from '../../../../../server/editorBackend';
+import { appendChangesFromBody, clearSession, readChangeSet, removePendingAddNode, removePendingProp } from '../../../../../server/editorBackend';
 import { jsonError, jsonNoStore, readJson } from '../../_response';
 
 
@@ -31,11 +31,14 @@ export async function DELETE(request: Request, context: RouteContext) {
     if (prop && changeId) return jsonNoStore({ ok: true, changeSet: removePendingProp(sessionId, { changeId, prop }) });
 
     const body = await readJson(request);
+    if (body && typeof body === 'object' && (body as { kind?: unknown }).kind === 'addNode') {
+      return jsonNoStore({ ok: true, changeSet: await removePendingAddNode(sessionId, body) });
+    }
     if (body && typeof body === 'object' && (body as { all?: unknown }).all === true) {
       clearSession(sessionId);
       return jsonNoStore({ ok: true });
     }
-    return jsonNoStore({ ok: false, error: 'DELETE requires either query ?changeId=...&prop=... or body { all: true }.' }, { status: 400 });
+    return jsonNoStore({ ok: false, error: 'DELETE requires either query ?changeId=...&prop=..., body { kind: "addNode", parentPath, node } or body { all: true }.' }, { status: 400 });
   } catch (error) {
     return jsonError(error);
   }

@@ -149,6 +149,25 @@ export function clearSession(sessionId: string): void {
   assetUploads.delete(sessionId);
 }
 
+export async function removePendingAddNode(sessionId: string, body: unknown): Promise<EditorChangeSet> {
+  const typed = body as { parentPath?: unknown; node?: Partial<EditorAddNodeChange['node']> } | undefined;
+  const parentPath = Array.isArray(typed?.parentPath) ? normalizeNodePathInput(typed.parentPath) : [];
+  const node = typed?.node;
+  if (parentPath.length === 0 || !node || typeof node.nodeTypeId !== 'string') throw new EditorBackendError('Required: parentPath and node.nodeTypeId.', 400);
+
+  await withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    await removeAddedNodeFromWorkspace(parentPath, node);
+  });
+
+  const current = readChangeSet(sessionId);
+  const changes = current.changes.filter((change) => change.kind !== 'addNode' || !pendingAddMatches(change, parentPath, node));
+  const next: EditorChangeSet = { ...current, changes, updatedAt: Date.now() };
+  if (changes.length === 0) changeSets.delete(sessionId);
+  else changeSets.set(sessionId, next);
+  return readChangeSet(sessionId);
+}
+
 export function removePendingProp(sessionId: string, body: unknown): EditorChangeSet {
   const typed = body as { changeId?: unknown; prop?: unknown } | undefined;
   const changeId = typeof typed?.changeId === 'string' ? typed.changeId.trim() : '';
@@ -690,6 +709,31 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
 }
 
+
+function pendingAddMatches(change: EditorAddNodeChange, parentPath: string[], node: Partial<EditorAddNodeChange['node']>): boolean {
+  return change.target.nodePath.join('\u0000') === parentPath.join('\u0000')
+    && change.node.nodeTypeId === node.nodeTypeId
+    && (node.name === undefined || change.node.name === node.name)
+    && (node.props === undefined || scenePropValuesEqual(change.node.props ?? {}, node.props ?? {}));
+}
+
+async function removeAddedNodeFromWorkspace(parentPath: string[], node: Partial<EditorAddNodeChange['node']>): Promise<void> {
+  const source = resolveSourceFile(parentPath);
+  const filePath = resolveEditablePath(source.filePath);
+  const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
+  const parent = findNodeByPath(file.root, source.nodePath);
+  if (!parent?.children) return;
+  const index = parent.children.findIndex((candidate) => sceneNodeMatchesPendingAdd(candidate, node));
+  if (index < 0) return;
+  parent.children = parent.children.filter((_, childIndex) => childIndex !== index);
+  await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
+}
+
+function sceneNodeMatchesPendingAdd(candidate: SceneNodeJsonLike, node: Partial<EditorAddNodeChange['node']>): boolean {
+  return candidate.nodeTypeId === node.nodeTypeId
+    && (node.name === undefined || candidate.name === node.name)
+    && (node.props === undefined || scenePropValuesEqual(candidate.props ?? {}, node.props ?? {}));
+}
 
 async function applyAddNodeToWorkspace(change: EditorAddNodeChange): Promise<void> {
   const source = resolveSourceFile(change.target.nodePath);

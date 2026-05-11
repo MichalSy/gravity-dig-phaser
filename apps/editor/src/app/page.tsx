@@ -349,6 +349,8 @@ export default function Home() {
   const draggedHierarchyNodeRef = useRef<DebugNodeDescriptor | undefined>(undefined);
   const pendingHierarchyMovesRef = useRef<Map<string, { nodePath: string[]; targetPath: string[]; placement: HierarchyDropPlacement }>>(new Map());
   const pendingNodeCreatesRef = useRef<Map<string, { parentPath: string[]; index?: number; definition: EditorAddNodeChange['node'] }>>(new Map());
+  const pendingCreatedNodesRef = useRef<Map<string, { parentPath: string[]; definition: EditorAddNodeChange['node'] }>>(new Map());
+  const deletedPendingCreatedNodeIdsRef = useRef<Set<string>>(new Set());
   const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
@@ -451,12 +453,16 @@ export default function Home() {
         const pendingCreate = pendingNodeCreatesRef.current.get(message.requestId);
         pendingNodeCreatesRef.current.delete(message.requestId);
         setPatchStatus(message.applied ? `Node injected: ${message.name ?? message.nodeId ?? message.requestId}` : `Node Injection abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
-        if (message.applied && pendingCreate) void persistPendingAddNode(pendingCreate.parentPath, pendingCreate.definition, pendingCreate.index);
+        if (message.applied && pendingCreate) {
+          if (message.nodeId) pendingCreatedNodesRef.current.set(message.nodeId, { parentPath: pendingCreate.parentPath, definition: pendingCreate.definition });
+          void persistPendingAddNode(pendingCreate.parentPath, pendingCreate.definition, pendingCreate.index, message.nodeId);
+        }
         if (message.applied && message.nodeId) setSelectedNodeId(message.nodeId);
         return;
       }
 
       if (message.type === 'node:delete:ack') {
+        if (message.applied) void discardPendingAddForDeletedNode(message.nodeId);
         setPatchStatus(message.applied ? `Node gelöscht: ${message.name ?? message.nodeId}` : `Node löschen abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
@@ -1060,7 +1066,7 @@ export default function Home() {
     pendingNodeCreatesRef.current.set(requestId, { parentPath, index, definition });
   }
 
-  async function persistPendingAddNode(parentPath: string[], definition: EditorAddNodeChange['node'], index?: number): Promise<void> {
+  async function persistPendingAddNode(parentPath: string[], definition: EditorAddNodeChange['node'], index?: number, nodeId?: string): Promise<void> {
     if (!sessionId) return;
     try {
       const change: Omit<EditorAddNodeChange, 'id' | 'sessionId' | 'createdAt'> = { kind: 'addNode', target: { nodePath: parentPath }, index, node: definition };
@@ -1074,9 +1080,34 @@ export default function Home() {
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
       setGitSaveStatus(`Node Create gespeichert: ${parentPath.join(' / ')} / ${definition.name ?? definition.nodeTypeId}`);
-      void refreshGitStatus();
+      if (nodeId && deletedPendingCreatedNodeIdsRef.current.has(nodeId)) await discardPendingAddForDeletedNode(nodeId);
+      else void refreshGitStatus();
     } catch (error) {
       setGitSaveStatus(`Node Create fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function discardPendingAddForDeletedNode(nodeId: string): Promise<void> {
+    if (!sessionId) return;
+    const pendingAdd = pendingCreatedNodesRef.current.get(nodeId);
+    if (!pendingAdd) return;
+    deletedPendingCreatedNodeIdsRef.current.add(nodeId);
+    try {
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+        method: 'DELETE',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'addNode', parentPath: pendingAdd.parentPath, node: pendingAdd.definition }),
+      });
+      const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      pendingCreatedNodesRef.current.delete(nodeId);
+      deletedPendingCreatedNodeIdsRef.current.delete(nodeId);
+      setPendingChangeSet(result.changeSet);
+      setGitSaveStatus(`Pending Node Create entfernt: ${pendingAdd.definition.name ?? pendingAdd.definition.nodeTypeId}`);
+      void refreshGitStatus();
+    } catch (error) {
+      setGitSaveStatus(`Pending Node Create konnte nicht entfernt werden: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
