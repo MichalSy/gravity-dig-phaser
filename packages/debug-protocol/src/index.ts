@@ -107,6 +107,7 @@ export interface DebugNodeCreateMessage {
   index?: number;
   definition: {
     nodeTypeId: string;
+    instanceId?: string;
     name?: string;
     props?: Record<string, unknown>;
     children?: unknown[];
@@ -395,6 +396,7 @@ export interface EditorAddNodeChange {
   index?: number;
   node: {
     nodeTypeId: string;
+    instanceId?: string;
     name?: string;
     props?: Record<string, unknown>;
     children?: unknown[];

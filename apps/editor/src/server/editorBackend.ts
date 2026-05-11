@@ -39,6 +39,7 @@ export class EditorBackendError extends Error {
 interface SceneNodeJsonLike {
   name?: string;
   nodeTypeId?: string;
+  instanceId?: string;
   id?: string;
   prefab?: string;
   props?: Record<string, unknown>;
@@ -392,6 +393,7 @@ function normalizeAddNodeChange(sessionId: string, change: Partial<EditorAddNode
     index: typeof change.index === 'number' && Number.isFinite(change.index) ? Math.max(0, Math.trunc(change.index)) : undefined,
     node: {
       nodeTypeId: change.node.nodeTypeId,
+      instanceId: typeof change.node.instanceId === 'string' ? change.node.instanceId : undefined,
       name: typeof change.node.name === 'string' ? change.node.name : undefined,
       props: typeof change.node.props === 'object' && change.node.props !== null ? change.node.props : undefined,
       children: Array.isArray(change.node.children) ? change.node.children : undefined,
@@ -795,6 +797,7 @@ async function applyAddNodeToWorkspace(change: EditorAddNodeChange): Promise<voi
 function sanitizeSceneNode(node: EditorAddNodeChange['node']): SceneNodeJsonLike {
   const sanitized: SceneNodeJsonLike = {
     name: node.name,
+    instanceId: node.instanceId,
     nodeTypeId: node.nodeTypeId,
   };
   if (node.props && Object.keys(node.props).length > 0) sanitized.props = node.props;

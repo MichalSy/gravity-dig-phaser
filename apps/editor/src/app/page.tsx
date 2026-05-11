@@ -1154,6 +1154,7 @@ export default function Home() {
     const requestId = createSessionId();
     const definition = {
       nodeTypeId: entry.nodeTypeId,
+      instanceId: createSessionId(),
       name: defaultDynamicNodeName(entry),
       props: {},
     };
@@ -1206,6 +1207,7 @@ export default function Home() {
     const requestId = createSessionId();
     const definition = {
       nodeTypeId: imageNodeTypeId,
+      instanceId: createSessionId(),
       name: defaultImageNodeName(asset, assetId, payload.label),
       props: {
         assetId,
@@ -1237,6 +1239,7 @@ export default function Home() {
     const requestId = createSessionId();
     const definition = {
       nodeTypeId: option.nodeTypeId,
+      instanceId: createSessionId(),
       name: defaultGenericNodeName(option.className),
       props: option.props,
     };

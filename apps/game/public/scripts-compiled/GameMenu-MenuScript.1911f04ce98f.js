@@ -48,8 +48,8 @@ function wrapIndex(value, length) {
 var MenuScript = class extends ScriptNode {
   id = "dynamic.menu-script";
   name = "Menu Script";
-  versionNodeId = prop.nodeRef("scene:Scene.Menu/UIRoot/Menu/Menu.Version", { label: "Version Text Node" });
-  buttonNodeIds = prop.nodeRefList(["scene:Scene.Menu/UIRoot/Menu/Menu.PlayButton", "scene:Scene.Menu/UIRoot/Menu/Menu.OptionsButton"], { label: "Button Nodes" });
+  versionNodeId = prop.nodeRef("138dabce-8e4f-4743-94e5-df286ffbf7c8", { label: "Version Text Node" });
+  buttonNodeIds = prop.nodeRefList(["9450b803-e4af-4252-a550-368797b71762", "cd7cc808-d43e-4238-8f3e-d31e1687026f"], { label: "Button Nodes" });
   startAction = prop.string("start", { label: "Start Button Action" });
   startEvent = prop.string("game:start", { label: "Start Event" });
   buttons = [];
@@ -128,4 +128,4 @@ export {
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=GameMenu-MenuScript.0835d3e8c862.js.map
+//# sourceMappingURL=GameMenu-MenuScript.1911f04ce98f.js.map

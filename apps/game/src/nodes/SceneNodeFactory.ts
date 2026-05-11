@@ -5,7 +5,7 @@ import type { GameNode } from './GameNode';
 export interface SceneNodeJson {
   /** Static node type identifier. All ImageNode instances share the same nodeTypeId. */
   nodeTypeId?: string;
-  /** Runtime-only instance identifier. Public JSON must not use this. */
+  /** Stable scene instance identifier. Persist this when another node needs a durable reference. */
   instanceId?: string;
   name?: string;
   prefab?: string;
