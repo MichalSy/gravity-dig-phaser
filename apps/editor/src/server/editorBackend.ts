@@ -82,7 +82,7 @@ type WorkspaceActivityPhase = 'ready' | 'cloning' | 'fetching' | 'syncing' | 'bu
 
 const workspaceActivity: { phase: WorkspaceActivityPhase; message: string; busy: boolean; startedAt?: number; updatedAt: number } = {
   phase: 'ready',
-  message: 'Workspace bereit.',
+  message: 'Git-Workspace noch nicht initialisiert.',
   busy: false,
   updatedAt: Date.now(),
 };
@@ -96,6 +96,16 @@ function setWorkspaceActivity(phase: WorkspaceActivityPhase, message: string, bu
   workspaceActivity.updatedAt = now;
 }
 
+function currentWorkspaceStatus() {
+  const exists = existsSync(join(workspacePath, '.git'));
+  return {
+    path: workspacePath,
+    exists,
+    ...workspaceActivity,
+    message: exists || workspaceActivity.busy ? workspaceActivity.message : 'Git-Workspace noch nicht initialisiert.',
+  };
+}
+
 export function backendStatus() {
   return {
     ok: true,
@@ -107,11 +117,7 @@ export function backendStatus() {
       gitRepoUrl: redactRepoUrl(gitRepoUrl),
       gitBranch,
     },
-    workspace: {
-      path: workspacePath,
-      exists: existsSync(join(workspacePath, '.git')),
-      ...workspaceActivity,
-    },
+    workspace: currentWorkspaceStatus(),
     sessions: [...new Set([...changeSets.keys(), ...assetUploads.keys()])].map((sessionId) => ({
       sessionId,
       changes: changeSets.get(sessionId)?.changes.length ?? 0,
