@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -350,6 +350,7 @@ export default function Home() {
   const pendingHierarchyMovesRef = useRef<Map<string, { nodePath: string[]; targetPath: string[]; placement: HierarchyDropPlacement }>>(new Map());
   const pendingNodeCreatesRef = useRef<Map<string, { parentPath: string[]; index?: number; definition: EditorAddNodeChange['node'] }>>(new Map());
   const pendingCreatedNodesRef = useRef<Map<string, { parentPath: string[]; definition: EditorAddNodeChange['node'] }>>(new Map());
+  const pendingNodeDeletesRef = useRef<Map<string, { nodePath: string[] }>>(new Map());
   const deletedPendingCreatedNodeIdsRef = useRef<Set<string>>(new Set());
   const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
@@ -462,7 +463,9 @@ export default function Home() {
       }
 
       if (message.type === 'node:delete:ack') {
-        if (message.applied) void discardPendingAddForDeletedNode(message.nodeId);
+        const pendingDelete = pendingNodeDeletesRef.current.get(message.requestId);
+        pendingNodeDeletesRef.current.delete(message.requestId);
+        if (message.applied && pendingDelete) void persistPendingDeleteNode(pendingDelete.nodePath);
         setPatchStatus(message.applied ? `Node gelöscht: ${message.name ?? message.nodeId}` : `Node löschen abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
@@ -976,6 +979,11 @@ export default function Home() {
       setPatchStatus('Delete nicht gesendet: Editor-Bridge nicht verbunden.');
       return;
     }
+    const nodePath = findNodePath(treeRootsRef.current, node.id);
+    if (!nodePath) {
+      setPatchStatus('Delete nicht gespeichert: Node-Pfad nicht gefunden.');
+      return;
+    }
     const requestId = createSessionId();
     const message: DebugMessage = {
       type: 'node:delete',
@@ -985,6 +993,7 @@ export default function Home() {
       instanceId: node.instanceId,
       sentAt: Date.now(),
     };
+    pendingNodeDeletesRef.current.set(requestId, { nodePath });
     sendDebugMessage(message);
     if (selectedNodeId === node.id) setSelectedNodeId(undefined);
     setPatchStatus(`Delete gesendet: ${node.name}`);
@@ -1084,6 +1093,26 @@ export default function Home() {
       else void refreshGitStatus();
     } catch (error) {
       setGitSaveStatus(`Node Create fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function persistPendingDeleteNode(nodePath: string[]): Promise<void> {
+    if (!sessionId) return;
+    try {
+      const change: Omit<EditorDeleteNodeChange, 'id' | 'sessionId' | 'createdAt'> = { kind: 'deleteNode', target: { nodePath } };
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(change),
+      });
+      const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPendingChangeSet(result.changeSet);
+      setGitSaveStatus(`Node Delete gespeichert: ${nodePath.join(' / ')}`);
+      void refreshGitStatus();
+    } catch (error) {
+      setGitSaveStatus(`Node Delete fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

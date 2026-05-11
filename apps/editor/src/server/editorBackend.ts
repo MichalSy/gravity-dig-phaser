@@ -7,7 +7,7 @@ import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from 'n
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import ts from 'typescript';
-import type { DebugNodeMovePlacement, DebugNodePatch, EditorAddNodeChange, EditorChange, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugNodeMovePlacement, DebugNodePatch, EditorAddNodeChange, EditorChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 
 interface SaveRequest {
   message?: string;
@@ -136,7 +136,7 @@ export async function appendChangesFromBody(sessionId: string, body: unknown): P
   const typed = body as Partial<EditorChange> | { changes?: Partial<EditorChange>[] } | undefined;
   const incoming = Array.isArray((typed as { changes?: unknown })?.changes) ? (typed as { changes: Partial<EditorChange>[] }).changes : [typed as Partial<EditorChange> | undefined];
   const accepted = incoming.map((change) => normalizeEditorChange(sessionId, change)).filter((change): change is EditorChange => Boolean(change));
-  if (accepted.length === 0) throw new EditorBackendError('No valid editor changes. Required: kind=setProps, kind=moveNode or kind=addNode.', 400);
+  if (accepted.length === 0) throw new EditorBackendError('No valid editor changes. Required: kind=setProps, kind=moveNode, kind=addNode or kind=deleteNode.', 400);
   await withWorkspaceLock(async () => {
     await ensureWorkspaceUnlocked();
     for (const change of accepted) await applyChangeToWorkspace(change);
@@ -360,6 +360,7 @@ function normalizeEditorChange(sessionId: string, change: Partial<EditorChange> 
   if (change.kind === 'setProps') return normalizeSetPropsChange(sessionId, change as Partial<EditorSetPropsChange>);
   if (change.kind === 'moveNode') return normalizeMoveNodeChange(sessionId, change as Partial<EditorMoveNodeChange>);
   if (change.kind === 'addNode') return normalizeAddNodeChange(sessionId, change as Partial<EditorAddNodeChange>);
+  if (change.kind === 'deleteNode') return normalizeDeleteNodeChange(sessionId, change as Partial<EditorDeleteNodeChange>);
   return undefined;
 }
 
@@ -399,6 +400,19 @@ function normalizeAddNodeChange(sessionId: string, change: Partial<EditorAddNode
   };
 }
 
+function normalizeDeleteNodeChange(sessionId: string, change: Partial<EditorDeleteNodeChange> | undefined): EditorDeleteNodeChange | undefined {
+  if (!change || change.kind !== 'deleteNode' || !Array.isArray(change.target?.nodePath)) return undefined;
+  const nodePath = normalizeNodePathInput(change.target.nodePath);
+  if (nodePath.length === 0) return undefined;
+  return {
+    id: change.id ?? randomUUID(),
+    kind: 'deleteNode',
+    sessionId,
+    target: { nodePath },
+    createdAt: change.createdAt ?? Date.now(),
+  };
+}
+
 function normalizeMoveNodeChange(sessionId: string, change: Partial<EditorMoveNodeChange> | undefined): EditorMoveNodeChange | undefined {
   if (!change || change.kind !== 'moveNode' || !Array.isArray(change.target?.nodePath) || !Array.isArray(change.destination?.nodePath)) return undefined;
   const nodePath = normalizeNodePathInput(change.target.nodePath);
@@ -427,8 +441,9 @@ function appendChanges(sessionId: string, changes: EditorChange[]): EditorChange
   const current = readChangeSet(sessionId);
   const byProp = new Map<string, EditorSetPropsChange>();
 
-  const moveChanges = current.changes.filter((change): change is EditorMoveNodeChange => change.kind === 'moveNode');
-  const addChanges = current.changes.filter((change): change is EditorAddNodeChange => change.kind === 'addNode');
+  let moveChanges = current.changes.filter((change): change is EditorMoveNodeChange => change.kind === 'moveNode');
+  let addChanges = current.changes.filter((change): change is EditorAddNodeChange => change.kind === 'addNode');
+  let deleteChanges = current.changes.filter((change): change is EditorDeleteNodeChange => change.kind === 'deleteNode');
 
   for (const change of current.changes) {
     if (change.kind !== 'setProps') continue;
@@ -458,11 +473,27 @@ function appendChanges(sessionId: string, changes: EditorChange[]): EditorChange
     });
   }
 
+  const incomingDeletes = changes.filter((change): change is EditorDeleteNodeChange => change.kind === 'deleteNode');
+  for (const incomingDelete of incomingDeletes) {
+    const deletePath = incomingDelete.target.nodePath;
+    const matchingAdd = addChanges.find((add) => scenePropValuesEqual(addNodePath(add), deletePath));
+    if (matchingAdd) {
+      addChanges = addChanges.filter((add) => add !== matchingAdd);
+      deleteChanges = deleteChanges.filter((change) => !isSameOrDescendantPath(change.target.nodePath, deletePath));
+      moveChanges = moveChanges.filter((change) => !isSameOrDescendantPath(change.target.nodePath, deletePath));
+      for (const [key, change] of byProp) if (isSameOrDescendantPath(change.target.nodePath, deletePath)) byProp.delete(key);
+    } else {
+      deleteChanges = [...deleteChanges.filter((change) => !isSameOrDescendantPath(change.target.nodePath, deletePath)), incomingDelete];
+      moveChanges = moveChanges.filter((change) => !isSameOrDescendantPath(change.target.nodePath, deletePath));
+      for (const [key, change] of byProp) if (isSameOrDescendantPath(change.target.nodePath, deletePath)) byProp.delete(key);
+    }
+  }
+
   const incomingMoves = changes.filter((change): change is EditorMoveNodeChange => change.kind === 'moveNode');
   const incomingAdds = changes.filter((change): change is EditorAddNodeChange => change.kind === 'addNode');
   const nextMoves = [...moveChanges, ...incomingMoves];
   const nextAdds = [...addChanges, ...incomingAdds];
-  const next: EditorChangeSet = { ...current, sessionId, changes: [...byProp.values(), ...nextMoves, ...nextAdds], updatedAt: Date.now() };
+  const next: EditorChangeSet = { ...current, sessionId, changes: [...byProp.values(), ...nextMoves, ...nextAdds, ...deleteChanges], updatedAt: Date.now() };
   if (next.changes.length === 0) changeSets.delete(sessionId);
   else changeSets.set(sessionId, next);
   return readChangeSet(sessionId);
@@ -506,6 +537,14 @@ function singleFieldName(change: EditorSetPropsChange): string | undefined {
 
 function changeKey(nodePath: string[], prop: string, field?: string): string {
   return `${nodePath.join('\u0000')}\u0000${prop}\u0000${field ?? ''}`;
+}
+
+function addNodePath(change: EditorAddNodeChange): string[] {
+  return [...change.target.nodePath, change.node.name ?? change.node.nodeTypeId];
+}
+
+function isSameOrDescendantPath(candidate: readonly string[], path: readonly string[]): boolean {
+  return candidate.length >= path.length && path.every((part, index) => candidate[index] === part);
 }
 
 function fieldValue(value: DebugNodePatch[string], field?: string): unknown {
@@ -689,6 +728,10 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
     await applyAddNodeToWorkspace(change);
     return;
   }
+  if (change.kind === 'deleteNode') {
+    await applyDeleteNodeToWorkspace(change);
+    return;
+  }
   const source = resolveSourceFile(change.target.nodePath);
   const filePath = resolveEditablePath(source.filePath);
   const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
@@ -762,6 +805,18 @@ function sanitizeSceneNode(node: EditorAddNodeChange['node']): SceneNodeJsonLike
 
 function isSceneNodeJsonLike(value: unknown): value is EditorAddNodeChange['node'] {
   return typeof value === 'object' && value !== null && typeof (value as { nodeTypeId?: unknown }).nodeTypeId === 'string';
+}
+
+async function applyDeleteNodeToWorkspace(change: EditorDeleteNodeChange): Promise<void> {
+  const source = resolveSourceFile(change.target.nodePath);
+  const filePath = resolveEditablePath(source.filePath);
+  const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
+  const location = findNodeLocationByPath(file.root, source.nodePath);
+  if (!location?.parent) throw new EditorBackendError(`Could not locate deletable node path '${change.target.nodePath.join('/')}' in ${source.filePath}`, 422);
+  const children = [...(location.parent.children ?? [])];
+  children.splice(location.index, 1);
+  location.parent.children = children;
+  await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
 }
 
 async function applyMoveNodeToWorkspace(change: EditorMoveNodeChange): Promise<void> {

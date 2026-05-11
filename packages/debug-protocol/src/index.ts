@@ -402,7 +402,15 @@ export interface EditorAddNodeChange {
   createdAt: number;
 }
 
-export type EditorChange = EditorSetPropsChange | EditorMoveNodeChange | EditorAddNodeChange;
+export interface EditorDeleteNodeChange {
+  id: string;
+  kind: 'deleteNode';
+  sessionId: string;
+  target: EditorChangeTarget;
+  createdAt: number;
+}
+
+export type EditorChange = EditorSetPropsChange | EditorMoveNodeChange | EditorAddNodeChange | EditorDeleteNodeChange;
 
 export interface EditorChangeSet {
   sessionId: string;
