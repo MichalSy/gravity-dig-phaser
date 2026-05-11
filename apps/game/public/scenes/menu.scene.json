@@ -66,14 +66,14 @@
                     "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
                     "props": {
                       "text": "SPIELEN",
-                      "fontSize": 126,
-                      "color": "#ffffff",
+                      "fontSize": 127,
+                      "color": "#f0e6e6",
                       "align": "center",
                       "resolution": 2,
                       "parentAnchor": "center",
                       "position": {
                         "x": 0,
-                        "y": 0
+                        "y": -9
                       },
                       "origin": {
                         "x": 0.5,
@@ -82,7 +82,8 @@
                       "sizeMode": "fill",
                       "boundsMode": "none",
                       "fontId": "silkscreen-latin-700",
-                      "stroke": "#000000"
+                      "stroke": "#fafafa",
+                      "strokeThickness": 31
                     }
                   }
                 ]
