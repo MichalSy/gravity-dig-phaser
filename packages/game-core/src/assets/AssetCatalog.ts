@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor } from '@gravity-dig/debug-protocol';
+import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor } from '@gravity-dig/debug-protocol';
 import { ImageAssetKind, isFrameAsset, type FrameAsset, type ImageAnimationAsset, type RenderableImageAsset } from './imageAssets';
 import { animationSetMetaKey, type AnimationSetDefinition, type AnimationSetMeta } from './animationSetMeta';
 import { imageAtlasMetaKey, type ImageAtlasMeta } from './imageAtlasMeta';
@@ -8,6 +8,15 @@ export interface ImageAssetDefinition {
   key: string;
   path: string;
   meta?: boolean;
+}
+
+export interface FontAssetDefinition {
+  key: string;
+  family: string;
+  path: string;
+  label?: string;
+  weight?: string;
+  style?: string;
 }
 
 export interface DebugImageAssetSourceDefinition {
@@ -26,6 +35,7 @@ interface ImageAssetSource {
 export class AssetCatalog {
   private readonly images = new Map<string, RenderableImageAsset>();
   private readonly animations = new Map<string, ImageAnimationAsset>();
+  private readonly fonts = new Map<string, FontAssetDefinition>();
   private readonly imageSources = new Map<string, ImageAssetSource>();
   private readonly scene: Phaser.Scene;
 
@@ -41,6 +51,10 @@ export class AssetCatalog {
     for (const definition of definitions) this.registerAnimationSet(definition);
   }
 
+  registerFonts(definitions: readonly FontAssetDefinition[]): void {
+    for (const definition of definitions) this.registerFont(definition);
+  }
+
   image(id: string): RenderableImageAsset {
     const asset = this.images.get(id);
     if (!asset) throw new Error(`Image asset '${id}' is not registered`);
@@ -53,8 +67,16 @@ export class AssetCatalog {
     return asset;
   }
 
+  fontFamily(id: string): string {
+    return this.fonts.get(id)?.family ?? id;
+  }
+
   hasImage(id: string): boolean {
     return this.images.has(id);
+  }
+
+  hasFont(id: string): boolean {
+    return this.fonts.has(id);
   }
 
   async ensureDebugImageAsset(definition: DebugImageAssetSourceDefinition): Promise<void> {
@@ -122,6 +144,17 @@ export class AssetCatalog {
     }));
   }
 
+  listDebugFonts(): DebugFontAssetDescriptor[] {
+    return [...this.fonts.values()].map((font) => ({
+      id: font.key,
+      family: font.family,
+      label: font.label,
+      path: font.path,
+      weight: font.weight,
+      style: font.style,
+    }));
+  }
+
   private async registerExternalImage(id: string, path: string, url?: string): Promise<void> {
     if (this.images.has(id)) return;
     const resolvedUrl = new URL(url ?? path, window.location.origin).toString();
@@ -153,7 +186,7 @@ export class AssetCatalog {
       width,
       height,
     });
-    this.imageSources.set(definition.key, { path: definition.path, url: new URL(definition.path, window.location.origin).toString() });
+    this.imageSources.set(definition.key, { path: definition.path, url: resolveAssetUrl(definition.path) });
 
     if (!definition.meta) return;
 
@@ -189,6 +222,20 @@ export class AssetCatalog {
     }
   }
 
+  private registerFont(definition: FontAssetDefinition): void {
+    if (this.fonts.has(definition.key)) return;
+    this.fonts.set(definition.key, definition);
+    if (typeof FontFace === 'undefined' || !document.fonts) return;
+
+    const face = new FontFace(definition.family, `url(${resolveAssetUrl(definition.path)})`, {
+      weight: definition.weight ?? '400',
+      style: definition.style ?? 'normal',
+      display: 'swap',
+    });
+    document.fonts.add(face);
+    void face.load().catch((error) => console.warn('[Game Core Assets] font failed to load', definition, error));
+  }
+
   private registerAnimationSet(definition: AnimationSetDefinition): void {
     const meta = this.scene.cache.json.get(animationSetMetaKey(definition.key)) as AnimationSetMeta | undefined;
     if (!meta) return;
@@ -213,6 +260,10 @@ export class AssetCatalog {
 
 function sourceImageIdForFrameId(id: string): string {
   return id.includes('#') ? id.slice(0, id.lastIndexOf('#')) : id;
+}
+
+function resolveAssetUrl(path: string): string {
+  return new URL(path, window.location.origin).toString();
 }
 
 function loadHtmlImage(url: string): Promise<HTMLImageElement> {

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import '../style.css';
-import { GAME_ANIMATION_SETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
+import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode, ShipNode } from '../game/nodes';
 import { GameplayInputNode, LoadingNode } from '../app/nodes';
@@ -136,6 +136,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.currentMode = message.mode;
     this.runtime.registerImageAssets([...MENU_GRAPHIC_ASSETS, ...GAME_GRAPHIC_ASSETS]);
     this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
+    this.runtime.registerFontAssets(GAME_FONT_ASSETS);
     await this.refreshFactory(message.editorApiBase);
 
     if (message.sessionId && message.editorApiBase) {

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { LoadingOverlayView } from '../loading/LoadingOverlayView';
-import { GAME_ANIMATION_SETS, GAME_GRAPHIC_ASSETS, loadGameAssets } from '../../assets/AssetLoader';
+import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets } from '../../assets/AssetLoader';
 import { NODE_TYPE_IDS, GameNode, NodeRuntimeMode, type GameNodeOptions, type NodeContext, type NodeRuntime } from '../../nodes';
 
 const MIN_LOADING_MS = 900;
@@ -77,6 +77,7 @@ export class LoadingNode extends GameNode {
     this.setProgress(1);
     this.runtime.registerImageAssets(GAME_GRAPHIC_ASSETS);
     this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
+    this.runtime.registerFontAssets(GAME_FONT_ASSETS);
     this.mountGameplay();
     this.finishLoading();
   }

@@ -275,12 +275,14 @@ export class DebugBridgeNode extends GameNode {
     if (!this.ctx) return;
     const images = this.ctx.assets.listDebugImages();
     const animations = this.ctx.assets.listDebugAnimations();
-    this.lastAssetSignature = this.createAssetSignature(images, animations);
+    const fonts = this.ctx.assets.listDebugFonts();
+    this.lastAssetSignature = this.createAssetSignature(images, animations, fonts);
     this.send({
       type: 'asset:list',
       sessionId: this.config.sessionId,
       images,
       animations,
+      fonts,
       sentAt: Date.now(),
     });
   }
@@ -289,14 +291,15 @@ export class DebugBridgeNode extends GameNode {
     if (!this.ctx || !this.isTransportReady()) return;
     const images = this.ctx.assets.listDebugImages();
     const animations = this.ctx.assets.listDebugAnimations();
-    const signature = this.createAssetSignature(images, animations);
+    const fonts = this.ctx.assets.listDebugFonts();
+    const signature = this.createAssetSignature(images, animations, fonts);
     if (signature === this.lastAssetSignature) return;
     this.lastAssetSignature = signature;
-    this.send({ type: 'asset:list', sessionId: this.config.sessionId, images, animations, sentAt: Date.now() });
+    this.send({ type: 'asset:list', sessionId: this.config.sessionId, images, animations, fonts, sentAt: Date.now() });
   }
 
-  private createAssetSignature(images: { id: string }[], animations: { id: string }[]): string {
-    return `${images.length}:${animations.length}:${images.at(-1)?.id ?? ''}:${animations.at(-1)?.id ?? ''}`;
+  private createAssetSignature(images: { id: string }[], animations: { id: string }[], fonts: { id: string }[]): string {
+    return `${images.length}:${animations.length}:${fonts.length}:${images.at(-1)?.id ?? ''}:${animations.at(-1)?.id ?? ''}:${fonts.at(-1)?.id ?? ''}`;
   }
 
   private sendNodeDefinitions(): void {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
+import { GAME_FONT_ASSETS, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import {
   GameRootNode,
   GameWorldNode,
@@ -87,6 +87,7 @@ export class AppScene extends Phaser.Scene {
     this.sceneFactory = this.createSceneFactory();
     await this.registerDynamicNodeModules();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
+    this.appRuntime.registerFontAssets(GAME_FONT_ASSETS);
     if (this.launchMode === 'play' && this.debugConfig) this.appRuntime.addPersistentNode(new DebugBridgeNode(this.debugConfig, {
       createNode: (definition) => this.sceneFactory.createTree(definition),
       hasDynamicModule: (module) => this.hasDynamicNodeModule(module),

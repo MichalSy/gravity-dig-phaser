@@ -3,7 +3,7 @@ import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/d
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
 import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
-import { exposedPropGroup, propAssetId, propBoolean, propNumber, propString, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propAssetId, propBoolean, propFontId, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 const DEFAULT_BUTTON_WIDTH = 220;
@@ -12,6 +12,8 @@ const DEFAULT_NORMAL_COLOR = 0x334155;
 const DEFAULT_ACTIVE_COLOR = 0x475569;
 const DEFAULT_DISABLED_ALPHA = 0.45;
 const DEFAULT_LABEL_COLOR = '#ffffff';
+const DEFAULT_LABEL_FONT_FAMILY = 'Arial, sans-serif';
+const DEFAULT_LABEL_FONT_SIZE = 18;
 const DEFAULT_FLASH_TINT = 0xfff1a8;
 
 export interface ButtonNodeOptions extends TransformNodeOptions {
@@ -22,6 +24,8 @@ export interface ButtonNodeOptions extends TransformNodeOptions {
   activeAssetId?: string;
   selected?: boolean;
   labelOffsetY?: number;
+  fontId?: string;
+  fontSize?: number;
 }
 
 type ButtonCallback = (button: ButtonNode) => void;
@@ -69,6 +73,8 @@ export class ButtonNode extends TransformNode {
       normalAssetId: propAssetId({ label: 'Normal Image' }),
       activeAssetId: propAssetId({ label: 'Active Image' }),
       labelOffsetY: propNumber({ label: 'Label Offset Y', step: 1 }),
+      fontId: propFontId({ label: 'Font' }),
+      fontSize: propNumber({ label: 'Font Size', min: 1, step: 1 }),
     }),
   ];
 
@@ -79,6 +85,8 @@ export class ButtonNode extends TransformNode {
   normalAssetId: string;
   activeAssetId: string;
   labelOffsetY: number;
+  fontId: string;
+  fontSize: number;
 
   private normalAsset?: RenderableImageAsset;
   private activeAsset?: RenderableImageAsset;
@@ -101,6 +109,8 @@ export class ButtonNode extends TransformNode {
     this.normalAssetId = options.normalAssetId ?? '';
     this.activeAssetId = options.activeAssetId ?? '';
     this.labelOffsetY = options.labelOffsetY ?? 0;
+    this.fontId = options.fontId ?? '';
+    this.fontSize = options.fontSize ?? DEFAULT_LABEL_FONT_SIZE;
   }
 
   init(ctx: NodeContext): void {
@@ -113,6 +123,8 @@ export class ButtonNode extends TransformNode {
     this.phaserLabel = ctx.phaserScene.add.text(0, 0, this.label, {
       color: DEFAULT_LABEL_COLOR,
       align: 'center',
+      fontFamily: this.labelFontFamily(ctx),
+      fontSize: `${this.fontSize}px`,
     }).setOrigin(0.5).setResolution(2);
     this.configureInteractivity();
     if (this.sizeMode === 'content') this.size = backgroundLocalSize(this, this.background);
@@ -190,6 +202,8 @@ export class ButtonNode extends TransformNode {
       normalAssetId: this.normalAssetId,
       activeAssetId: this.activeAssetId,
       labelOffsetY: this.labelOffsetY,
+      fontId: this.fontId,
+      fontSize: this.fontSize,
       scrollFactor: this.scrollFactor,
       effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
@@ -229,6 +243,16 @@ export class ButtonNode extends TransformNode {
         if (typeof value !== 'number') return false;
         this.labelOffsetY = value;
         return true;
+      case 'fontId':
+        if (typeof value !== 'string') return false;
+        this.fontId = value;
+        this.applyLabelStyle();
+        return true;
+      case 'fontSize':
+        if (typeof value !== 'number') return false;
+        this.fontSize = value;
+        this.applyLabelStyle();
+        return true;
       default:
         return super.applySceneProp(key, value);
     }
@@ -255,6 +279,18 @@ export class ButtonNode extends TransformNode {
     background.setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
     this.phaserLabel?.setText(this.label).setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
     if (this.sizeMode === 'content') this.size = backgroundLocalSize(this, background);
+  }
+
+  private labelFontFamily(ctx?: NodeContext): string {
+    if (!this.fontId) return DEFAULT_LABEL_FONT_FAMILY;
+    return ctx?.assets.fontFamily(this.fontId) ?? this.assets.fontFamily(this.fontId);
+  }
+
+  private applyLabelStyle(): void {
+    this.phaserLabel?.setStyle({
+      fontFamily: this.labelFontFamily(),
+      fontSize: `${this.fontSize}px`,
+    });
   }
 
   private applyButtonTransform(): void {

@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -323,6 +323,7 @@ export default function Home() {
   const [inspectorResetVersion, setInspectorResetVersion] = useState(0);
   const [imageAssets, setImageAssets] = useState<DebugImageAssetDescriptor[]>([]);
   const [animations, setAnimations] = useState<DebugImageAnimationDescriptor[]>([]);
+  const [fonts, setFonts] = useState<DebugFontAssetDescriptor[]>([]);
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>();
   const [originalAssetId, setOriginalAssetId] = useState<string | undefined>();
   const [publicFileRoot, setPublicFileRoot] = useState<PublicFileEntry | undefined>();
@@ -491,6 +492,7 @@ export default function Home() {
       if (message.type === 'asset:list') {
         setImageAssets(message.images);
         setAnimations(message.animations);
+        setFonts(message.fonts ?? []);
         setSelectedAssetId((current) => current && message.images.some((asset) => asset.id === current) ? current : message.images[0]?.id);
         return;
       }
@@ -1628,7 +1630,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector roots={treeRoots} node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector roots={treeRoots} node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} fonts={fonts} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -2234,6 +2236,7 @@ function PublicDirectoryTree({
 function AssetExplorer({
   assets,
   animations,
+  fonts,
   selectedAssetId,
   selectedAsset,
   onSelectAsset,
@@ -2243,6 +2246,7 @@ function AssetExplorer({
 }: {
   assets: DebugImageAssetDescriptor[];
   animations: DebugImageAnimationDescriptor[];
+  fonts: DebugFontAssetDescriptor[];
   selectedAssetId?: string;
   selectedAsset?: DebugImageAssetDescriptor;
   onSelectAsset(id: string): void;
@@ -2252,7 +2256,7 @@ function AssetExplorer({
 }) {
   return (
     <section className={styles.assetExplorer}>
-      <PanelHeader title="Asset Explorer" meta={`${assets.length} Images · ${animations.length} Animations`} />
+      <PanelHeader title="Asset Explorer" meta={`${assets.length} Images · ${animations.length} Animations · ${fonts.length} Fonts`} />
       <div ref={bodyRef} className={styles.assetExplorerBody}>
         <div className={styles.assetGrid}>
           {assets.length > 0 ? assets.map((asset) => (
@@ -2835,6 +2839,7 @@ function Inspector({
   resetVersion,
   overlayLayerSelection,
   assets,
+  fonts,
   onPatch,
   onOverlayLayerSelectionChange,
   onSelectAsset,
@@ -2847,6 +2852,7 @@ function Inspector({
   resetVersion: number;
   overlayLayerSelection?: string[];
   assets: DebugImageAssetDescriptor[];
+  fonts: DebugFontAssetDescriptor[];
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
   onOverlayLayerSelectionChange(node: DebugNodeDescriptor, layerIds: string[]): void;
   onSelectAsset(id: string): void;
@@ -2869,7 +2875,7 @@ function Inspector({
         </div>
       </div>
       <OverlayLayersDropdown node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
-      <ExposedPropsSection roots={roots} node={node} definition={definition} debugProps={debugProps} resetVersion={resetVersion} assets={assets} onPatch={onPatch} />
+      <ExposedPropsSection roots={roots} node={node} definition={definition} debugProps={debugProps} resetVersion={resetVersion} assets={assets} fonts={fonts} onPatch={onPatch} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
         <FragmentRow name={node.instanceId ? 'instanceId' : 'runtimeId'} value={node.instanceId ?? node.id} />
         <FragmentRow name="index" value={node.index} />
@@ -2948,6 +2954,7 @@ function ExposedPropsSection({
   debugProps,
   resetVersion,
   assets,
+  fonts,
   onPatch,
 }: {
   roots: DebugNodeDescriptor[];
@@ -2956,6 +2963,7 @@ function ExposedPropsSection({
   debugProps?: DebugNodePropsMessage;
   resetVersion: number;
   assets: DebugImageAssetDescriptor[];
+  fonts: DebugFontAssetDescriptor[];
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
 }) {
   const [localOverrides, setLocalOverrides] = useState<DebugNodePatch>({});
@@ -2994,6 +3002,7 @@ function ExposedPropsSection({
               debugProps={debugProps}
               resetVersion={resetVersion}
               assets={assets}
+              fonts={fonts}
               roots={roots}
               onCommit={(value) => patchProp(key, value)}
             />
@@ -3020,6 +3029,7 @@ function EditablePropRow({
   debugProps,
   resetVersion,
   assets,
+  fonts,
   roots,
   onCommit,
 }: {
@@ -3029,6 +3039,7 @@ function EditablePropRow({
   debugProps?: DebugNodePropsMessage;
   resetVersion: number;
   assets: DebugImageAssetDescriptor[];
+  fonts: DebugFontAssetDescriptor[];
   roots: DebugNodeDescriptor[];
   onCommit(value: DebugNodePatch[string]): void;
 }) {
@@ -3172,6 +3183,18 @@ function EditablePropRow({
         <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.value)}>
           <option value="">Asset wählen</option>
           {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.id}</option>)}
+        </select>
+      </>
+    );
+  }
+
+  if (prop.type === 'FontId') {
+    return (
+      <>
+        <span>{label}</span>
+        <select className={styles.editorInput} value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onChange={(event) => commit(event.currentTarget.value)}>
+          <option value="">Default Font</option>
+          {fonts.map((font) => <option key={font.id} value={font.id}>{font.label ?? font.family}</option>)}
         </select>
       </>
     );
@@ -3433,7 +3456,7 @@ function originPresetValue(point: { x: number | string; y: number | string }): s
 }
 
 function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): DebugNodePatch[string] | undefined {
-  if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
+  if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'FontId' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
   if (prop.type === 'NodeRef') return value === null || typeof value === 'string' ? value : undefined;
   if (prop.type === 'NodeRefList') return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? value : undefined;
   if (prop.type === 'Boolean') return typeof value === 'boolean' ? value : undefined;
@@ -3480,7 +3503,7 @@ function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, n
   if (key === 'scaleX') return local?.scaleX;
   if (key === 'scaleY') return local?.scaleY;
   if (key === 'scale') return local ? { x: local.scaleX, y: local.scaleY } : undefined;
-  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'String' || prop.type === 'NodeRef' || prop.type === 'NodeRefList' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
+  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'FontId' || prop.type === 'String' || prop.type === 'NodeRef' || prop.type === 'NodeRefList' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
   return props?.[key];
 }
 
