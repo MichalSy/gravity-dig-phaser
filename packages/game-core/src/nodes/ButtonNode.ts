@@ -107,6 +107,7 @@ export class ButtonNode extends TransformNode {
   }
 
   override ensureRequiredChildren(): void {
+    this.markEditorTreeMetadata({ defaultCollapsed: true });
     const label = this.ensureLabelNode();
     this.configureManagedLabel(label);
   }
@@ -301,7 +302,6 @@ export class ButtonNode extends TransformNode {
       origin: { x: 0.5, y: 0.5 },
       sizeMode: 'fill',
       boundsMode: 'none',
-      scrollFactor: 1,
     });
     return this.addChild(label);
   }
@@ -313,6 +313,7 @@ export class ButtonNode extends TransformNode {
   private configureManagedLabel(label: TextNode): void {
     label.markEditorTreeMetadata({ locked: true, defaultCollapsed: true, ownedRole: LABEL_CHILD_ROLE });
     label.parentAnchor = 'center';
+    label.inheritScrollFactor();
     label.sizeMode = 'fill';
     label.boundsMode = 'none';
     label.origin = { x: 0.5, y: 0.5 };

@@ -80,8 +80,7 @@
                         "y": 0.5
                       },
                       "sizeMode": "fill",
-                      "boundsMode": "none",
-                      "scrollFactor": 1
+                      "boundsMode": "none"
                     }
                   }
                 ]
@@ -126,8 +125,7 @@
                         "y": 0.5
                       },
                       "sizeMode": "fill",
-                      "boundsMode": "none",
-                      "scrollFactor": 1
+                      "boundsMode": "none"
                     }
                   }
                 ]

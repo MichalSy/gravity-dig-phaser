@@ -84,6 +84,11 @@ export class TransformNode extends GameNode {
     return this.parent instanceof TransformNode ? this.parent.getEffectiveScrollFactor() : this.scrollFactor;
   }
 
+  inheritScrollFactor(): void {
+    this.inheritsScrollFactor = true;
+    this.scrollFactor = this.parent instanceof TransformNode ? this.parent.getEffectiveScrollFactor() : 1;
+  }
+
   getPhaserTransform(): {
     x: number;
     y: number;
