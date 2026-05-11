@@ -1486,13 +1486,13 @@ export default function Home() {
           <h1 className={styles.title}>{editorTitle}</h1>
         </div>
         <div className={styles.statusStack}>
-          {showWorkspaceActivity && <span className={`${styles.workspaceStatus} ${backendStatus?.workspace?.busy ? styles.workspaceStatusBusy : ''}`}>{workspaceMessage}</span>}
           <div className={styles.modeToggle} role="group" aria-label="Viewport Modus">
             <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'editor' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('editor')}>Edit</button>
             <button type="button" className={`${styles.modeToggleButton} ${viewportMode === 'play' ? styles.activeModeToggleButton : ''}`} onClick={() => setViewportMode('play')}>Play</button>
           </div>
         </div>
         <div className={styles.actions}>
+          {showWorkspaceActivity && <span className={`${styles.workspaceStatus} ${backendStatus?.workspace?.busy ? styles.workspaceStatusBusy : ''}`}>{workspaceMessage}</span>}
           <button className={styles.button} onClick={openSavePreview} title={gitNeedsRebase ? 'Remote ist voraus: Push führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Lokale Änderungen prüfen')}>
             Git Changes ({pendingChangeCount})
           </button>

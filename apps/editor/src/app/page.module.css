@@ -36,7 +36,7 @@
 .actions { justify-content: flex-end; justify-self: end; }
 
 .workspaceStatus {
-  max-width: 280px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
