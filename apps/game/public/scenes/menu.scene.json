@@ -67,7 +67,7 @@
                     "props": {
                       "text": "SPIELEN",
                       "fontSize": 127,
-                      "color": "#f0e6e6",
+                      "color": "#ffffff",
                       "align": "center",
                       "resolution": 2,
                       "parentAnchor": "center",
@@ -82,7 +82,7 @@
                       "sizeMode": "fill",
                       "boundsMode": "none",
                       "fontId": "silkscreen-latin-700",
-                      "stroke": "#fafafa",
+                      "stroke": "#000000",
                       "strokeThickness": 31
                     }
                   }
@@ -115,7 +115,7 @@
                     "props": {
                       "text": "OPTIONEN",
                       "fontSize": 116,
-                      "color": "#b25c5c",
+                      "color": "#ffffff",
                       "align": "center",
                       "resolution": 2,
                       "parentAnchor": "center",
@@ -129,7 +129,8 @@
                       },
                       "sizeMode": "fill",
                       "boundsMode": "none",
-                      "strokeThickness": 24
+                      "strokeThickness": 24,
+                      "stroke": "#000000"
                     }
                   }
                 ]
