@@ -1401,6 +1401,78 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   accent-color: #0ea5e9;
 }
 
+.nodeReferenceListEditor {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.nodeReferenceDropZone {
+  min-width: 0;
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed rgba(125, 211, 252, 0.34);
+  border-radius: 9px;
+  padding: 6px 7px;
+  background: rgba(2, 6, 23, 0.52);
+  color: #bae6fd;
+}
+
+.nodeReferenceDropZoneFilled {
+  border-style: solid;
+  background: rgba(14, 165, 233, 0.1);
+}
+
+.nodeReferenceDropZoneActive {
+  border-color: rgba(34, 211, 238, 0.9);
+  background: rgba(14, 165, 233, 0.22);
+}
+
+.nodeReferenceLabel {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.nodeReferenceLabel strong {
+  color: #e0f2fe;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeReferenceLabel small {
+  color: rgba(186, 230, 253, 0.68);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeReferenceClearButton {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 7px;
+  padding: 0;
+  background: rgba(127, 29, 29, 0.2);
+  color: #fecaca;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nodeReferenceClearButton:hover {
+  border-color: rgba(248, 113, 113, 0.72);
+  background: rgba(127, 29, 29, 0.34);
+}
+
 .vectorEditorStack,
 .sizeEditorStack {
   min-width: 0;

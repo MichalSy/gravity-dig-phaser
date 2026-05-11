@@ -108,9 +108,12 @@
                 "name": "Menu.Script",
                 "nodeTypeId": "dynamic.menu-script",
                 "props": {
-                  "versionNodeName": "Menu.Version",
+                  "versionNodeId": "scene:Scene.Menu/UIRoot/Menu/Menu.Version",
+                  "buttonNodeIds": [
+                    "scene:Scene.Menu/UIRoot/Menu/Menu.PlayButton",
+                    "scene:Scene.Menu/UIRoot/Menu/Menu.OptionsButton"
+                  ],
                   "startAction": "start",
-                  "buttonNames": "Menu.PlayButton,Menu.OptionsButton",
                   "startEvent": "game:start"
                 }
               }

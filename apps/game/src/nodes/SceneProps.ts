@@ -43,6 +43,8 @@ export const SCENE_PROP_RECORDS = {
   },
   Anchor: { type: 'Anchor', label: 'Anchor', editor: 'anchor-grid', options: ANCHORS },
   AssetId: { type: 'AssetId', label: 'Asset', editor: 'asset-picker' },
+  NodeRef: { type: 'NodeRef', label: 'Node Reference', editor: 'node-ref' },
+  NodeRefList: { type: 'NodeRefList', label: 'Node References', editor: 'node-ref-list' },
 } satisfies Record<string, DebugScenePropRecordDefinition>;
 
 export type ExposedPropMap = Record<string, DebugScenePropDefinition>;
@@ -97,6 +99,14 @@ export function propAssetId(options: Omit<DebugScenePropDefinition, 'type'> = {}
   return { type: 'AssetId', ...options };
 }
 
+export function propNodeRef(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
+  return { type: 'NodeRef', ...options };
+}
+
+export function propNodeRefList(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
+  return { type: 'NodeRefList', ...options };
+}
+
 export function validateScenePropValue(definition: DebugScenePropDefinition, value: unknown): DebugScenePropValue | undefined {
   if (definition.readOnly) return undefined;
 
@@ -104,6 +114,10 @@ export function validateScenePropValue(definition: DebugScenePropDefinition, val
     case 'String':
     case 'AssetId':
       return typeof value === 'string' ? value : undefined;
+    case 'NodeRef':
+      return value === null || typeof value === 'string' ? value : undefined;
+    case 'NodeRefList':
+      return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? value : undefined;
     case 'Number':
       return typeof value === 'number' && Number.isFinite(value) ? clampNumber(value, definition) : undefined;
     case 'Boolean':

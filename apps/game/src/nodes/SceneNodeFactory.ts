@@ -78,7 +78,7 @@ export class SceneNodeFactoryRegistry {
   private createTreeAtPath(definition: SceneNodeJson, parentPath: string[]): GameNode {
     const resolvedDefinition = this.resolvePrefab(definition);
     const nodePath = [...parentPath, resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed'];
-    const effectiveDefinition = this.applyPreviewProps(resolvedDefinition, nodePath);
+    const effectiveDefinition = this.withStableInstanceId(this.applyPreviewProps(resolvedDefinition, nodePath), nodePath);
     const factory = this.resolveFactory(effectiveDefinition);
     const node = factory(effectiveDefinition);
     applyInitialProps(node, effectiveDefinition.props);
@@ -109,6 +109,14 @@ export class SceneNodeFactoryRegistry {
       props: matchingChanges.reduce<Record<string, unknown>>((props, change) => ({ ...props, ...change.props }), { ...(definition.props ?? {}) }),
     };
   }
+
+  private withStableInstanceId(definition: SceneNodeJson, nodePath: string[]): SceneNodeJson {
+    return definition.instanceId ? definition : { ...definition, instanceId: stableSceneNodeInstanceId(nodePath) };
+  }
+}
+
+export function stableSceneNodeInstanceId(nodePath: readonly string[]): string {
+  return `scene:${nodePath.map((part) => encodeURIComponent(part)).join('/')}`;
 }
 
 export function getDefinitionNodeTypeId(definition: SceneNodeJson): string | undefined {

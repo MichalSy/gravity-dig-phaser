@@ -49,7 +49,7 @@ export interface DebugOverlayLayerRenderContext extends DebugOverlayRenderContex
   layer: DebugOverlayLayerDescriptor;
 }
 
-export type NodeDebugProps = Record<string, string | number | boolean | null>;
+export type NodeDebugProps = Record<string, string | number | boolean | null | string[]>;
 
 export type NodeSizeMode = 'explicit' | 'content' | 'fill';
 export type NodeBoundsMode = 'content' | 'none';

@@ -36,7 +36,9 @@ var prop = {
   string: (value, options = {}) => marker(value, { type: "String", ...options }),
   number: (value, options = {}) => marker(value, { type: "Number", ...options }),
   boolean: (value, options = {}) => marker(value, { type: "Boolean", ...options }),
-  assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options })
+  assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options }),
+  nodeRef: (value = null, options = {}) => marker(value, { type: "NodeRef", ...options }),
+  nodeRefList: (value = [], options = {}) => marker(value, { type: "NodeRefList", ...options })
 };
 
 // public/scripts/GameMenu/MenuScript.node.ts
@@ -46,8 +48,8 @@ function wrapIndex(value, length) {
 var MenuScript = class extends ScriptNode {
   id = "dynamic.menu-script";
   name = "Menu Script";
-  versionNodeName = prop.string("Menu.Version", { label: "Version Text Node" });
-  buttonNames = prop.string("Menu.PlayButton,Menu.OptionsButton", { label: "Button Nodes" });
+  versionNodeId = prop.nodeRef("scene:Scene.Menu/UIRoot/Menu/Menu.Version", { label: "Version Text Node" });
+  buttonNodeIds = prop.nodeRefList(["scene:Scene.Menu/UIRoot/Menu/Menu.PlayButton", "scene:Scene.Menu/UIRoot/Menu/Menu.OptionsButton"], { label: "Button Nodes" });
   startAction = prop.string("start", { label: "Start Button Action" });
   startEvent = prop.string("game:start", { label: "Start Event" });
   buttons = [];
@@ -65,11 +67,11 @@ var MenuScript = class extends ScriptNode {
     this.keyHandler = void 0;
   }
   setVersionText() {
-    const versionNode = this.getNodesByName(this.versionNodeName)[0];
+    const versionNode = this.versionNodeId ? this.getNodeById(this.versionNodeId) : void 0;
     versionNode?.setText?.(`v${this.getAppVersion()}`);
   }
   bindButtons() {
-    this.buttons = this.buttonNames.split(",").map((name) => name.trim()).filter(Boolean).flatMap((name) => this.getNodesByName(name));
+    this.buttons = this.buttonNodeIds.map((instanceId) => this.getNodeById(instanceId)).filter((button) => Boolean(button));
     this.buttons.forEach((button) => button.setCallbacks?.({
       onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
       onActivate: (activated) => this.activateButton(activated)
@@ -126,4 +128,4 @@ export {
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=GameMenu-MenuScript.a5272748cb5b.js.map
+//# sourceMappingURL=GameMenu-MenuScript.0835d3e8c862.js.map

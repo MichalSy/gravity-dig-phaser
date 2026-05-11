@@ -20,8 +20,8 @@ export default class MenuScript extends ScriptNode {
   id = 'dynamic.menu-script';
   name = 'Menu Script';
 
-  versionNodeName = prop.string('Menu.Version', { label: 'Version Text Node' });
-  buttonNames = prop.string('Menu.PlayButton,Menu.OptionsButton', { label: 'Button Nodes' });
+  versionNodeId = prop.nodeRef('scene:Scene.Menu/UIRoot/Menu/Menu.Version', { label: 'Version Text Node' });
+  buttonNodeIds = prop.nodeRefList(['scene:Scene.Menu/UIRoot/Menu/Menu.PlayButton', 'scene:Scene.Menu/UIRoot/Menu/Menu.OptionsButton'], { label: 'Button Nodes' });
   startAction = prop.string('start', { label: 'Start Button Action' });
   startEvent = prop.string('game:start', { label: 'Start Event' });
 
@@ -43,16 +43,14 @@ export default class MenuScript extends ScriptNode {
   }
 
   private setVersionText() {
-    const versionNode = this.getNodesByName<TextLike>(this.versionNodeName)[0];
+    const versionNode = this.versionNodeId ? this.getNodeById<TextLike>(this.versionNodeId) : undefined;
     versionNode?.setText?.(`v${this.getAppVersion()}`);
   }
 
   private bindButtons() {
-    this.buttons = this.buttonNames
-      .split(',')
-      .map((name) => name.trim())
-      .filter(Boolean)
-      .flatMap((name) => this.getNodesByName<MenuButton>(name));
+    this.buttons = this.buttonNodeIds
+      .map((instanceId) => this.getNodeById<MenuButton>(instanceId))
+      .filter((button): button is MenuButton => Boolean(button));
     this.buttons.forEach((button) => button.setCallbacks?.({
       onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
       onActivate: (activated) => this.activateButton(activated),

@@ -29,5 +29,7 @@ declare module '@gravity-dig/dynamic-node' {
     number(value: number, options?: PropOptions): number;
     boolean(value: boolean, options?: PropOptions): boolean;
     assetId<T extends string>(value: T, options?: PropOptions): T;
+    nodeRef<T extends string | null>(value?: T, options?: PropOptions): T;
+    nodeRefList<T extends string[]>(value?: T, options?: PropOptions): T;
   };
 }

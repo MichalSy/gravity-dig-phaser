@@ -10,8 +10,8 @@
     {
       "nodeTypeId": "dynamic.menu-script",
       "source": "public/scripts/GameMenu/MenuScript.node.ts",
-      "url": "/scripts-compiled/GameMenu-MenuScript.a5272748cb5b.js",
-      "hash": "a5272748cb5b"
+      "url": "/scripts-compiled/GameMenu-MenuScript.0835d3e8c862.js",
+      "hash": "0835d3e8c862"
     }
   ]
 }

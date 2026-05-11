@@ -1625,7 +1625,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {selectedNode ? <Inspector roots={treeRoots} node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -2704,7 +2704,7 @@ function NodeTreeItem({
           onDragStart={(event) => {
             if (!canDragNode) return;
             event.stopPropagation();
-            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.effectAllowed = 'copyMove';
             event.dataTransfer.setData(hierarchyNodeDragMimeType, node.id);
             event.dataTransfer.setData('text/plain', node.name);
             onHierarchyDragStart(node);
@@ -2824,6 +2824,7 @@ function iconForNode(node: DebugNodeDescriptor) {
 }
 
 function Inspector({
+  roots,
   node,
   parentInactive,
   definition,
@@ -2835,6 +2836,7 @@ function Inspector({
   onOverlayLayerSelectionChange,
   onSelectAsset,
 }: {
+  roots: DebugNodeDescriptor[];
   node: DebugNodeDescriptor;
   parentInactive: boolean;
   definition?: DebugSceneNodeDefinition;
@@ -2864,7 +2866,7 @@ function Inspector({
         </div>
       </div>
       <OverlayLayersDropdown node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
-      <ExposedPropsSection node={node} definition={definition} debugProps={debugProps} resetVersion={resetVersion} assets={assets} onPatch={onPatch} />
+      <ExposedPropsSection roots={roots} node={node} definition={definition} debugProps={debugProps} resetVersion={resetVersion} assets={assets} onPatch={onPatch} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>
         <FragmentRow name={node.instanceId ? 'instanceId' : 'runtimeId'} value={node.instanceId ?? node.id} />
         <FragmentRow name="index" value={node.index} />
@@ -2937,6 +2939,7 @@ function OverlayLayersDropdown({
 }
 
 function ExposedPropsSection({
+  roots,
   node,
   definition,
   debugProps,
@@ -2944,6 +2947,7 @@ function ExposedPropsSection({
   assets,
   onPatch,
 }: {
+  roots: DebugNodeDescriptor[];
   node: DebugNodeDescriptor;
   definition?: DebugSceneNodeDefinition;
   debugProps?: DebugNodePropsMessage;
@@ -2987,6 +2991,7 @@ function ExposedPropsSection({
               debugProps={debugProps}
               resetVersion={resetVersion}
               assets={assets}
+              roots={roots}
               onCommit={(value) => patchProp(key, value)}
             />
           ))}
@@ -3012,6 +3017,7 @@ function EditablePropRow({
   debugProps,
   resetVersion,
   assets,
+  roots,
   onCommit,
 }: {
   name: string;
@@ -3020,6 +3026,7 @@ function EditablePropRow({
   debugProps?: DebugNodePropsMessage;
   resetVersion: number;
   assets: DebugImageAssetDescriptor[];
+  roots: DebugNodeDescriptor[];
   onCommit(value: DebugNodePatch[string]): void;
 }) {
   const label = `${prop.label ?? name}${prop.readOnly ? ' · read-only' : ''}`;
@@ -3083,6 +3090,24 @@ function EditablePropRow({
       commit();
       event.currentTarget.blur();
     }
+  }
+
+  if (prop.type === 'NodeRef') {
+    return (
+      <>
+        <span>{label}</span>
+        <NodeReferenceDropZone roots={roots} value={typeof draft === 'string' ? draft : null} disabled={prop.readOnly} onCommit={(next) => commit(next)} />
+      </>
+    );
+  }
+
+  if (prop.type === 'NodeRefList') {
+    return (
+      <>
+        <span>{label}</span>
+        <NodeReferenceListEditor roots={roots} value={Array.isArray(draft) ? draft.filter((entry): entry is string => typeof entry === 'string') : []} disabled={prop.readOnly} onCommit={(next) => commit(next)} />
+      </>
+    );
   }
 
   if (prop.type === 'Boolean') {
@@ -3208,6 +3233,62 @@ function EditablePropRow({
 }
 
 
+
+function NodeReferenceListEditor({ roots, value, disabled = false, onCommit }: { roots: DebugNodeDescriptor[]; value: string[]; disabled?: boolean; onCommit(value: string[]): void }) {
+  function addReference(instanceId: string): void {
+    if (value.includes(instanceId)) return;
+    onCommit([...value, instanceId]);
+  }
+
+  function removeReference(instanceId: string): void {
+    onCommit(value.filter((entry) => entry !== instanceId));
+  }
+
+  return (
+    <div className={styles.nodeReferenceListEditor}>
+      {value.map((instanceId) => (
+        <NodeReferenceDropZone key={instanceId} roots={roots} value={instanceId} disabled={disabled} onCommit={(next) => next === null ? removeReference(instanceId) : onCommit(value.map((entry) => entry === instanceId ? next : entry))} />
+      ))}
+      <NodeReferenceDropZone roots={roots} value={null} disabled={disabled} placeholder="Node hierher ziehen ..." onCommit={(next) => { if (next) addReference(next); }} />
+    </div>
+  );
+}
+
+function NodeReferenceDropZone({ roots, value, disabled = false, placeholder = 'Node hierher ziehen ...', onCommit }: { roots: DebugNodeDescriptor[]; value: string | null; disabled?: boolean; placeholder?: string; onCommit(value: string | null): void }) {
+  const [dragOver, setDragOver] = useState(false);
+  const referencedNode = value ? findNodeByInstanceId(roots, value) : undefined;
+  const hasValue = value !== null && value !== '';
+  const title = referencedNode ? `${referencedNode.name} · ${referencedNode.className}` : hasValue ? `Missing Node: ${value}` : placeholder;
+
+  function handleDragOver(event: ReactDragEvent<HTMLDivElement>): void {
+    if (disabled || !hasHierarchyNodeDragType(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'copy';
+    setDragOver(true);
+  }
+
+  function handleDrop(event: ReactDragEvent<HTMLDivElement>): void {
+    if (disabled || !hasHierarchyNodeDragType(event)) return;
+    const nodeId = readHierarchyNodeDragId(event);
+    const node = nodeId ? findNode(roots, nodeId) : undefined;
+    if (!node?.instanceId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDragOver(false);
+    onCommit(node.instanceId);
+  }
+
+  return (
+    <div className={`${styles.nodeReferenceDropZone} ${dragOver ? styles.nodeReferenceDropZoneActive : ''} ${hasValue ? styles.nodeReferenceDropZoneFilled : ''}`} title={title} onDragOver={handleDragOver} onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
+      <div className={styles.nodeReferenceLabel}>
+        <strong>{referencedNode?.name ?? (hasValue ? 'Missing Node' : 'Keine Referenz')}</strong>
+        <small>{referencedNode?.className ?? (hasValue ? value : placeholder)}</small>
+      </div>
+      {hasValue && !disabled && <button type="button" className={styles.nodeReferenceClearButton} aria-label="Referenz entfernen" title="Referenz entfernen" onClick={(event) => { event.stopPropagation(); onCommit(null); }}>×</button>}
+    </div>
+  );
+}
 
 function degreesToRadians(degrees: number): number {
   return roundRotationNumber((degrees * Math.PI) / 180);
@@ -3350,6 +3431,8 @@ function originPresetValue(point: { x: number | string; y: number | string }): s
 
 function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): DebugNodePatch[string] | undefined {
   if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
+  if (prop.type === 'NodeRef') return value === null || typeof value === 'string' ? value : undefined;
+  if (prop.type === 'NodeRefList') return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? value : undefined;
   if (prop.type === 'Boolean') return typeof value === 'boolean' ? value : undefined;
   if (prop.type === 'Number') return parseFiniteNumber(value);
   if (prop.type === 'Position' || prop.type === 'Origin' || prop.type === 'Scale') {
@@ -3394,7 +3477,7 @@ function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, n
   if (key === 'scaleX') return local?.scaleX;
   if (key === 'scaleY') return local?.scaleY;
   if (key === 'scale') return local ? { x: local.scaleX, y: local.scaleY } : undefined;
-  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'String' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
+  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'String' || prop.type === 'NodeRef' || prop.type === 'NodeRefList' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
   return props?.[key];
 }
 
@@ -3816,6 +3899,10 @@ function assetPathMatches(url: string | undefined, publicPath: string): boolean 
 
 function hasHierarchyNodeDragType(event: ReactDragEvent): boolean {
   return Array.from(event.dataTransfer.types).includes(hierarchyNodeDragMimeType);
+}
+
+function readHierarchyNodeDragId(event: ReactDragEvent): string | undefined {
+  return event.dataTransfer.getData(hierarchyNodeDragMimeType) || undefined;
 }
 
 function placementForHierarchyDrop(event: ReactDragEvent<HTMLElement>): HierarchyDropPlacement {

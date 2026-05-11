@@ -26,7 +26,7 @@ export interface DebugTextMessage {
   sentAt: number;
 }
 
-export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Scale' | 'Anchor' | 'AssetId';
+export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Scale' | 'Anchor' | 'AssetId' | 'NodeRef' | 'NodeRefList';
 
 export interface DebugSceneNumberConstraints {
   min?: number;
@@ -45,7 +45,7 @@ export interface DebugScenePropDefinition extends DebugSceneNumberConstraints {
 export interface DebugScenePropRecordDefinition {
   type: DebugScenePropRecordType;
   label: string;
-  editor: 'text' | 'number' | 'checkbox' | 'xy' | 'size' | 'anchor-grid' | 'asset-picker';
+  editor: 'text' | 'number' | 'checkbox' | 'xy' | 'size' | 'anchor-grid' | 'asset-picker' | 'node-ref' | 'node-ref-list';
   fields?: Record<string, DebugScenePropDefinition>;
   options?: readonly string[];
 }
@@ -77,7 +77,7 @@ export interface DebugNodeDefinitionsMessage {
   sentAt: number;
 }
 
-export type DebugScenePropValue = string | number | boolean | null | { x: number; y: number } | { width: number; height: number };
+export type DebugScenePropValue = string | number | boolean | null | string[] | { x: number; y: number } | { width: number; height: number };
 
 export type DebugNodePatch = Record<string, DebugScenePropValue>;
 
@@ -321,7 +321,7 @@ export interface DebugNodePropsMessage {
   localTransform?: DebugNodeTransform;
   worldTransform?: DebugNodeTransform;
   worldBounds?: DebugNodeBounds;
-  props: Record<string, string | number | boolean | null>;
+  props: Record<string, string | number | boolean | null | string[]>;
   sentAt: number;
 }
 

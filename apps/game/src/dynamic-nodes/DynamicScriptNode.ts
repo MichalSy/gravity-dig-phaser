@@ -319,5 +319,6 @@ function errorMessage(error: unknown): string {
 
 function debugValue(value: unknown): NodeDebugProps[string] {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) return value;
+  if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) return value;
   return value === undefined ? null : JSON.stringify(value);
 }

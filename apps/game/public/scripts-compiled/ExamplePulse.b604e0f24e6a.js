@@ -36,7 +36,9 @@ var prop = {
   string: (value, options = {}) => marker(value, { type: "String", ...options }),
   number: (value, options = {}) => marker(value, { type: "Number", ...options }),
   boolean: (value, options = {}) => marker(value, { type: "Boolean", ...options }),
-  assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options })
+  assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options }),
+  nodeRef: (value = null, options = {}) => marker(value, { type: "NodeRef", ...options }),
+  nodeRefList: (value = [], options = {}) => marker(value, { type: "NodeRefList", ...options })
 };
 
 // public/scripts/ExamplePulse.node.ts
