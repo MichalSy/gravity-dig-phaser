@@ -10,7 +10,7 @@ export default class MenuScript extends Core.ScriptNode {
 
   versionNodeId = Core.prop.nodeRef('138dabce-8e4f-4743-94e5-df286ffbf7c8', { label: 'Version Text Node' });
   buttonNodeIds = Core.prop.nodeRefList(['9450b803-e4af-4252-a550-368797b71762', 'cd7cc808-d43e-4238-8f3e-d31e1687026f'], { label: 'Button Nodes' });
-  startAction = Core.prop.string('start', { label: 'Start Button Action' });
+  startButtonNodeId = Core.prop.nodeRef('9450b803-e4af-4252-a550-368797b71762', { label: 'Start Button' });
   startEvent = Core.prop.string('game:start', { label: 'Start Event' });
 
   private buttons: Core.ButtonNode[] = [];
@@ -40,10 +40,11 @@ export default class MenuScript extends Core.ScriptNode {
     this.buttons = this.buttonNodeIds
       .map((instanceId) => this.getNodeById<Core.ButtonNode>(instanceId))
       .filter((button): button is Core.ButtonNode => Boolean(button));
-    this.buttons.forEach((button) => button.setCallbacks?.({
-      onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
-      onActivate: (activated) => this.activateButton(activated),
-    }));
+    this.buttons.forEach((button) => {
+      button.setCallbacks?.({ onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)) });
+      button.setClickAction?.(() => button.flash?.());
+    });
+    this.startButton()?.setClickAction?.(() => this.emit(this.startEvent));
     this.syncButtonSelection();
   }
 
@@ -76,15 +77,15 @@ export default class MenuScript extends Core.ScriptNode {
 
   private activateCurrent() {
     const button = this.buttons[this.activeIndex];
-    if (button) this.activateButton(button);
-  }
-
-  private activateButton(button: Core.ButtonNode) {
-    if (button.enabled === false) return;
-    if (button.action === this.startAction) {
+    if (!button || button.enabled === false) return;
+    if (button.instanceId === this.startButtonNodeId) {
       this.emit(this.startEvent);
       return;
     }
     button.flash?.();
+  }
+
+  private startButton() {
+    return this.startButtonNodeId ? this.getNodeById<Core.ButtonNode>(this.startButtonNodeId) : undefined;
   }
 }

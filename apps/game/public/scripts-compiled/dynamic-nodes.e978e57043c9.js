@@ -66,7 +66,7 @@ var MenuScript = class extends ScriptNode {
   name = "Menu Script";
   versionNodeId = prop.nodeRef("138dabce-8e4f-4743-94e5-df286ffbf7c8", { label: "Version Text Node" });
   buttonNodeIds = prop.nodeRefList(["9450b803-e4af-4252-a550-368797b71762", "cd7cc808-d43e-4238-8f3e-d31e1687026f"], { label: "Button Nodes" });
-  startAction = prop.string("start", { label: "Start Button Action" });
+  startButtonNodeId = prop.nodeRef("9450b803-e4af-4252-a550-368797b71762", { label: "Start Button" });
   startEvent = prop.string("game:start", { label: "Start Event" });
   buttons = [];
   activeIndex = 0;
@@ -89,10 +89,11 @@ var MenuScript = class extends ScriptNode {
   bindButtons() {
     this.buttons.forEach((button) => button.setCallbacks?.({}));
     this.buttons = this.buttonNodeIds.map((instanceId) => this.getNodeById(instanceId)).filter((button) => Boolean(button));
-    this.buttons.forEach((button) => button.setCallbacks?.({
-      onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
-      onActivate: (activated) => this.activateButton(activated)
-    }));
+    this.buttons.forEach((button) => {
+      button.setCallbacks?.({ onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)) });
+      button.setClickAction?.(() => button.flash?.());
+    });
+    this.startButton()?.setClickAction?.(() => this.emit(this.startEvent));
     this.syncButtonSelection();
   }
   bindKeyboard() {
@@ -120,15 +121,15 @@ var MenuScript = class extends ScriptNode {
   }
   activateCurrent() {
     const button = this.buttons[this.activeIndex];
-    if (button) this.activateButton(button);
-  }
-  activateButton(button) {
-    if (button.enabled === false) return;
-    if (button.action === this.startAction) {
+    if (!button || button.enabled === false) return;
+    if (button.instanceId === this.startButtonNodeId) {
       this.emit(this.startEvent);
       return;
     }
     button.flash?.();
+  }
+  startButton() {
+    return this.startButtonNodeId ? this.getNodeById(this.startButtonNodeId) : void 0;
   }
 };
 
@@ -154,4 +155,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.8f082cb69cb2.js.map
+//# sourceMappingURL=dynamic-nodes.e978e57043c9.js.map

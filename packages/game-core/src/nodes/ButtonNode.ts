@@ -3,7 +3,7 @@ import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/d
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
 import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
-import { exposedPropGroup, propAssetId, propBoolean, propString, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propAssetId, propBoolean, type ExposedPropGroup } from './SceneProps';
 import { TextNode } from './TextNode';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
@@ -64,7 +64,6 @@ export class ButtonNode extends TransformNode {
   static override readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Button', {
-      action: propString({ label: 'Action' }),
       enabled: propBoolean({ label: 'Enabled' }),
       selected: propBoolean({ label: 'Selected' }),
       normalAssetId: propAssetId({ label: 'Normal Image' }),
@@ -142,6 +141,10 @@ export class ButtonNode extends TransformNode {
   setCallbacks(callbacks: { onHover?: ButtonCallback; onActivate?: ButtonCallback }): void {
     this.hoverCallback = callbacks.onHover;
     this.activateCallback = callbacks.onActivate;
+  }
+
+  setClickAction(callback?: ButtonCallback): void {
+    this.activateCallback = callback;
   }
 
   setSelected(selected: boolean): void {

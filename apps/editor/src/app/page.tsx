@@ -812,7 +812,7 @@ export default function Home() {
     selectPublicDirectory(directoryPath);
   }
 
-  async function selectScriptSourceForNode(node: DebugNodeDescriptor): Promise<void> {
+  async function selectScriptSourceForNode(node: DebugNodeDescriptor, options: { openEditor?: boolean } = {}): Promise<void> {
     if (!node.nodeTypeId) {
       setPatchStatus(`Keine Script-Datei für ${node.name}: nodeTypeId fehlt.`);
       return;
@@ -827,7 +827,8 @@ export default function Home() {
       }
       const sourcePath = `apps/game/${entry.source}`;
       selectPublicFileInExplorer(sourcePath);
-      setPatchStatus(`Script selektiert: ${compactPublicPath(sourcePath)}`);
+      if (options.openEditor) setOpenNodeFilePath(sourcePath);
+      setPatchStatus(options.openEditor ? `Script geöffnet: ${compactPublicPath(sourcePath)}` : `Script selektiert: ${compactPublicPath(sourcePath)}`);
     } catch (error) {
       setPatchStatus(`Script-Datei konnte nicht selektiert werden: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -2520,7 +2521,7 @@ function HierarchyTree({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
-  onSelectScriptSource(node: DebugNodeDescriptor): void;
+  onSelectScriptSource(node: DebugNodeDescriptor, options?: { openEditor?: boolean }): void;
   draggedHierarchyNode(): DebugNodeDescriptor | undefined;
   hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
   onHierarchyDragStart(node: DebugNodeDescriptor): void;
@@ -2608,7 +2609,7 @@ function NodeTree({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
-  onSelectScriptSource(node: DebugNodeDescriptor): void;
+  onSelectScriptSource(node: DebugNodeDescriptor, options?: { openEditor?: boolean }): void;
   draggedHierarchyNode(): DebugNodeDescriptor | undefined;
   hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
   onHierarchyDragStart(node: DebugNodeDescriptor): void;
@@ -2660,7 +2661,7 @@ function NodeTreeItem({
   onDropDynamicNode(parent: DebugNodeDescriptor, file: PublicFileEntry): void | Promise<void>;
   onDropImageAsset(parent: DebugNodeDescriptor, payload: ImageAssetDragPayload): void | Promise<void>;
   onOpenCreateMenu(node: DebugNodeDescriptor, x: number, y: number): void;
-  onSelectScriptSource(node: DebugNodeDescriptor): void;
+  onSelectScriptSource(node: DebugNodeDescriptor, options?: { openEditor?: boolean }): void;
   draggedHierarchyNode(): DebugNodeDescriptor | undefined;
   hierarchyDropTarget?: { targetId: string; placement: HierarchyDropPlacement };
   onHierarchyDragStart(node: DebugNodeDescriptor): void;
@@ -2749,6 +2750,10 @@ function NodeTreeItem({
           }}
           onDragEnd={onHierarchyDragEnd}
           onClick={() => onSelectNode(node.id)}
+          onDoubleClick={() => {
+            onSelectNode(node.id);
+            if (canSelectScriptSource) onSelectScriptSource(node, { openEditor: true });
+          }}
         >
           <NodeIcon className={styles.nodeIcon} size={14} />
           <span className={styles.nodeName}>{node.name}</span>
