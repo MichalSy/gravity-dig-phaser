@@ -1028,7 +1028,7 @@ function transpileDynamicNodeSource(source: string, baseName: string): string {
 }
 
 function toDynamicNodeModuleSource(source: string, baseName: string): string {
-  const withoutApiImport = source.replace(/^\s*import\s+\{\s*ScriptNode\s*,\s*prop\s*\}\s+from\s+['"]@gravity-dig\/dynamic-node['"];?\s*$/mu, dynamicNodeApiSource());
+  const withoutApiImport = replaceDynamicNodeApiImports(source);
   const namedDefaultClass = withoutApiImport.match(/export\s+default\s+class\s+([A-Za-z_$][\w$]*)/u)?.[1];
   if (namedDefaultClass) {
     return `${withoutApiImport.replace(/export\s+default\s+class\s+([A-Za-z_$][\w$]*)/u, 'class $1')}
@@ -1042,6 +1042,21 @@ ${dynamicNodeModuleFooter('__DynamicScriptClass', baseName)}
 `;
 
   throw new EditorBackendError('Dynamic node source must use `export default class ...`.', 422);
+}
+
+function replaceDynamicNodeApiImports(source: string): string {
+  let apiInjected = false;
+  const injectApi = (namespace?: string): string => {
+    if (apiInjected) return namespace ? `const ${namespace} = { ScriptNode, prop };` : '';
+    apiInjected = true;
+    return `${dynamicNodeApiSource()}${namespace ? `\nconst ${namespace} = { ScriptNode, prop };` : ''}`;
+  };
+
+  return source
+    .replace(/^\s*import\s+\*\s+as\s+([A-Za-z_$][\w$]*)\s+from\s+['"]@gravity-dig\/game-core['"];?\s*$/gmu, (_match, namespace: string) => injectApi(namespace))
+    .replace(/^\s*import\s+\{[^}]*\}\s+from\s+['"]@gravity-dig\/game-core['"];?\s*$/gmu, () => injectApi())
+    .replace(/^\s*import\s+\{\s*ScriptNode\s*,\s*prop\s*\}\s+from\s+['"]@gravity-dig\/dynamic-node['"];?\s*$/gmu, () => injectApi())
+    .replace(/^\s*import\s+type\s+\{[^}]*\}\s+from\s+['"]@gravity-dig\/game-core['"];?\s*$/gmu, '');
 }
 
 function dynamicNodeModuleFooter(className: string, baseName: string): string {
