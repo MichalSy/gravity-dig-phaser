@@ -7,20 +7,23 @@
         "name": "PlayerMovementController",
         "nodeTypeId": "dynamic.player-movement",
         "props": {
-          "levelNodeId": "scene:Gameplay/GameRoot/Level",
-          "inputNodeId": "66f252d6-74cb-4626-9f0d-46ae08bb9569",
-          "playerStateNodeId": "afd901e7-2d18-4621-b368-d64b8cae1b8f",
-          "gravity": 2640,
-          "groundAcceleration": 7200,
-          "airAcceleration": 5200,
-          "groundFriction": 8200,
-          "airFriction": 900,
-          "coyoteTimeMs": 120,
-          "jumpBufferMs": 140,
-          "jumpCutMultiplier": 0.45,
-          "maxFallSpeed": 1450,
-          "groundSnapPixels": 4
-        }
+          "levelNodeId": "b79d5555-5726-4ce6-be4c-b62b505320ba",
+          "inputNodeId": null,
+          "playerStateNodeId": null,
+          "gravity": 2500,
+          "groundAcceleration": 32000,
+          "airAcceleration": 26000,
+          "groundFriction": 36000,
+          "airFriction": 2200,
+          "coyoteTimeMs": 140,
+          "jumpBufferMs": 150,
+          "jumpCutMultiplier": 0.56,
+          "maxFallSpeed": 1500,
+          "groundSnapPixels": 6,
+          "moveSpeedScale": 1.22,
+          "jumpVelocityScale": 1.18
+        },
+        "instanceId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
       },
       {
         "name": "PlayerBody",
@@ -51,18 +54,22 @@
               },
               "scale": 0.9
             },
-            "nodeTypeId": "5a0cd663-64c3-5f02-a579-9915605564be"
+            "nodeTypeId": "5a0cd663-64c3-5f02-a579-9915605564be",
+            "instanceId": "fe8c9a25-c18c-4154-aa84-e4272055d66b"
           }
         ],
-        "nodeTypeId": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5"
+        "nodeTypeId": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5",
+        "instanceId": "f131026e-98c2-47a6-92d5-a98ac4cc87cd"
       },
       {
         "name": "PlayerAnimator",
-        "nodeTypeId": "dbfe2289-a994-52dd-88f8-1b680fc914f6"
+        "nodeTypeId": "dbfe2289-a994-52dd-88f8-1b680fc914f6",
+        "instanceId": "53f8874d-9d86-4687-8d07-897cc51a9ee2"
       },
       {
         "name": "MiningTool",
-        "nodeTypeId": "4474d3aa-d38e-5ece-bc0c-f5103f507781"
+        "nodeTypeId": "4474d3aa-d38e-5ece-bc0c-f5103f507781",
+        "instanceId": "ed3da883-3ca5-42e9-a032-7adaa6a51b97"
       }
     ],
     "nodeTypeId": "5eed5534-1ab9-52de-a092-be4f7dab9549"

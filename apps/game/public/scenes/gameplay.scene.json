@@ -9,7 +9,8 @@
         "children": [
           {
             "name": "Level",
-            "nodeTypeId": "2ed70856-b481-58e1-a75c-db6e48d2fcdd"
+            "nodeTypeId": "2ed70856-b481-58e1-a75c-db6e48d2fcdd",
+            "instanceId": "b79d5555-5726-4ce6-be4c-b62b505320ba"
           },
           {
             "name": "World",
