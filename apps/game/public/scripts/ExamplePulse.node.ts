@@ -1,4 +1,4 @@
-import { ScriptNode, prop } from '@gravity-dig/dynamic-node';
+import { ScriptNode, prop } from '@gravity-dig/game-core';
 
 export default class ExamplePulseNode extends ScriptNode {
   id = 'dynamic.example-pulse';

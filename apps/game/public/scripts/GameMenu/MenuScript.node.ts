@@ -1,5 +1,4 @@
-import { ScriptNode, prop } from '@gravity-dig/dynamic-node';
-import type { ButtonNode, TextNode } from '@gravity-dig/game-core';
+import { ScriptNode, prop, type ButtonNode, type TextNode } from '@gravity-dig/game-core';
 
 function wrapIndex(value: number, length: number): number {
   return ((value % length) + length) % length;

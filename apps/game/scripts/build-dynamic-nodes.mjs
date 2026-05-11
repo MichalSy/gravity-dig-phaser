@@ -81,10 +81,10 @@ async function findScriptFiles(directory, prefix = '') {
 
 function dynamicNodeApiPlugin() {
   return {
-    name: 'gravity-dig-dynamic-node-api',
+    name: 'gravity-dig-script-node-api',
     setup(build) {
-      build.onResolve({ filter: /^@gravity-dig\/dynamic-node$/ }, () => ({ path: 'dynamic-node-api', namespace: 'dynamic-node-api' }));
-      build.onLoad({ filter: /.*/, namespace: 'dynamic-node-api' }, () => ({
+      build.onResolve({ filter: /^@gravity-dig\/game-core$/ }, () => ({ path: 'script-node-api', namespace: 'script-node-api' }));
+      build.onLoad({ filter: /.*/, namespace: 'script-node-api' }, () => ({
         loader: 'ts',
         contents: `
 export class ScriptNode {

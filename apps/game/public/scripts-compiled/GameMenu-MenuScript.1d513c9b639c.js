@@ -1,4 +1,4 @@
-// dynamic-node-api:dynamic-node-api
+// script-node-api:script-node-api
 var ScriptNode = class {
   log(message, ...values) {
     this.__dynamicNodeContext?.log(message, ...values);
@@ -130,4 +130,4 @@ export {
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=GameMenu-MenuScript.b30bc774c1e9.js.map
+//# sourceMappingURL=GameMenu-MenuScript.1d513c9b639c.js.map

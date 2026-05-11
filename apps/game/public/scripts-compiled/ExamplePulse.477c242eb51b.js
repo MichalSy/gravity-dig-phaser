@@ -1,4 +1,4 @@
-// dynamic-node-api:dynamic-node-api
+// script-node-api:script-node-api
 var ScriptNode = class {
   log(message, ...values) {
     this.__dynamicNodeContext?.log(message, ...values);
@@ -71,4 +71,4 @@ export {
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=ExamplePulse.b604e0f24e6a.js.map
+//# sourceMappingURL=ExamplePulse.477c242eb51b.js.map

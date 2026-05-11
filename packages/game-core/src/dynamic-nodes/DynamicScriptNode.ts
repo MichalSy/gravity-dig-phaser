@@ -1,12 +1,7 @@
-import type { DebugSceneNodeDefinition, DebugScenePropDefinition, DebugScenePropGroup, DebugScenePropValue } from '@gravity-dig/debug-protocol';
+import type { DebugSceneNodeDefinition, DebugScenePropDefinition, DebugScenePropGroup } from '@gravity-dig/debug-protocol';
 import { GameNode, type GameNodeOptions, type NodeContext, type NodeDebugProps } from '../nodes/GameNode';
 import { validateScenePropValue, type ScenePatchResult } from '../nodes/SceneProps';
-
-export interface DynamicPropMarker {
-  __dynamicNodeProp: true;
-  value: DebugScenePropValue;
-  definition: DebugScenePropDefinition;
-}
+import type { DynamicPropMarker } from './DynamicNodeApi';
 
 export interface DynamicScriptBehavior {
   id?: string;
