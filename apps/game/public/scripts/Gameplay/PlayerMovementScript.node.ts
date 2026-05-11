@@ -181,6 +181,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     this.velocity.y = this.playerState.stats.jumpVelocity;
     this.grounded = false;
     this.coyoteTimerSeconds = 0;
+    this.emit('player:jump');
   }
 
   private requireResolvedNode<T>(instanceId: string | null, fallbackName: string): T {

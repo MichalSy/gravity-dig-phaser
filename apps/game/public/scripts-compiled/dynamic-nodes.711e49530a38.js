@@ -259,6 +259,7 @@ var PlayerMovementScript = class extends ScriptNode {
     this.velocity.y = this.playerState.stats.jumpVelocity;
     this.grounded = false;
     this.coyoteTimerSeconds = 0;
+    this.emit("player:jump");
   }
   requireResolvedNode(instanceId, fallbackName) {
     const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
@@ -290,4 +291,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.f3c55e268c18.js.map
+//# sourceMappingURL=dynamic-nodes.711e49530a38.js.map

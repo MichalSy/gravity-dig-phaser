@@ -188,6 +188,7 @@ export class AppScene extends Phaser.Scene {
   private createScriptActions(): Record<string, () => void> {
     return {
       'game:start': () => this.startGame(),
+      'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
     };
   }
 
