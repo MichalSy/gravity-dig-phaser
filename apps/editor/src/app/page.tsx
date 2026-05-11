@@ -953,7 +953,7 @@ export default function Home() {
     if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
     const nextChangeSet = result.changeSet ?? { sessionId, changes: [] };
     setPendingChangeSet(nextChangeSet);
-    setPendingChangeCount(nextChangeSet.changes.length);
+    void refreshGitStatus();
     setInspectorResetVersion((current) => current + 1);
     setGitSaveStatus(`Setting '${label}' entfernt und zurückgesetzt.`);
   }
@@ -1527,8 +1527,8 @@ export default function Home() {
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
-      setPendingChangeCount(result.changeSet?.changes.length ?? 0);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
+      void refreshGitStatus();
     } catch (error) {
       setGitSaveStatus(`Pending Change fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
