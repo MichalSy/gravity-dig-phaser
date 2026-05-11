@@ -44,6 +44,7 @@ export const SCENE_PROP_RECORDS = {
   Anchor: { type: 'Anchor', label: 'Anchor', editor: 'anchor-grid', options: ANCHORS },
   AssetId: { type: 'AssetId', label: 'Asset', editor: 'asset-picker' },
   FontId: { type: 'FontId', label: 'Font', editor: 'font-picker' },
+  Color: { type: 'Color', label: 'Color', editor: 'color-picker' },
   NodeRef: { type: 'NodeRef', label: 'Node Reference', editor: 'node-ref' },
   NodeRefList: { type: 'NodeRefList', label: 'Node References', editor: 'node-ref-list' },
 } satisfies Record<string, DebugScenePropRecordDefinition>;
@@ -104,6 +105,10 @@ export function propFontId(options: Omit<DebugScenePropDefinition, 'type'> = {})
   return { type: 'FontId', ...options };
 }
 
+export function propColor(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
+  return { type: 'Color', ...options };
+}
+
 export function propNodeRef(options: Omit<DebugScenePropDefinition, 'type'> = {}): DebugScenePropDefinition {
   return { type: 'NodeRef', ...options };
 }
@@ -119,6 +124,7 @@ export function validateScenePropValue(definition: DebugScenePropDefinition, val
     case 'String':
     case 'AssetId':
     case 'FontId':
+    case 'Color':
       return typeof value === 'string' ? value : undefined;
     case 'NodeRef':
       return value === null || typeof value === 'string' ? value : undefined;

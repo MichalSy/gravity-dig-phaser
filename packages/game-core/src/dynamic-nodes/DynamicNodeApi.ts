@@ -81,6 +81,9 @@ export const prop = {
   assetId<T extends string>(value: T, options: PropOptions = {}): T {
     return marker(value, { type: 'AssetId', ...options }) as unknown as T;
   },
+  color<T extends string>(value: T, options: PropOptions = {}): T {
+    return marker(value, { type: 'Color', ...options }) as unknown as T;
+  },
   nodeRef<T extends string | null>(value: T = null as T, options: PropOptions = {}): T {
     return marker(value, { type: 'NodeRef', ...options }) as unknown as T;
   },

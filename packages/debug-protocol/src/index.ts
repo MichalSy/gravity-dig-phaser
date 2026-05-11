@@ -26,7 +26,7 @@ export interface DebugTextMessage {
   sentAt: number;
 }
 
-export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Scale' | 'Anchor' | 'AssetId' | 'FontId' | 'NodeRef' | 'NodeRefList';
+export type DebugScenePropRecordType = 'String' | 'Number' | 'Boolean' | 'Position' | 'Size' | 'Origin' | 'Scale' | 'Anchor' | 'AssetId' | 'FontId' | 'Color' | 'NodeRef' | 'NodeRefList';
 
 export interface DebugSceneNumberConstraints {
   min?: number;
@@ -45,7 +45,7 @@ export interface DebugScenePropDefinition extends DebugSceneNumberConstraints {
 export interface DebugScenePropRecordDefinition {
   type: DebugScenePropRecordType;
   label: string;
-  editor: 'text' | 'number' | 'checkbox' | 'xy' | 'size' | 'anchor-grid' | 'asset-picker' | 'font-picker' | 'node-ref' | 'node-ref-list';
+  editor: 'text' | 'number' | 'checkbox' | 'xy' | 'size' | 'anchor-grid' | 'asset-picker' | 'font-picker' | 'color-picker' | 'node-ref' | 'node-ref-list';
   fields?: Record<string, DebugScenePropDefinition>;
   options?: readonly string[];
 }

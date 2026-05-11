@@ -3204,6 +3204,15 @@ function EditablePropRow({
     );
   }
 
+  if (prop.type === 'Color') {
+    return (
+      <>
+        <span>{label}</span>
+        <ColorPicker value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onChange={scheduleCommit} onCommit={(next) => commit(next)} />
+      </>
+    );
+  }
+
   if (prop.type === 'Anchor') {
     return (
       <>
@@ -3318,6 +3327,36 @@ function NodeReferenceDropZone({ roots, value, disabled = false, placeholder = '
       {hasValue && !disabled && <button type="button" className={styles.nodeReferenceClearButton} aria-label="Referenz entfernen" title="Referenz entfernen" onClick={(event) => { event.stopPropagation(); onCommit(null); }}>×</button>}
     </div>
   );
+}
+
+function ColorPicker({
+  value,
+  disabled,
+  onChange,
+  onCommit,
+}: {
+  value: string;
+  disabled?: boolean;
+  onChange(value: string): void;
+  onCommit(value: string): void;
+}) {
+  const colorValue = colorInputValue(value);
+  return (
+    <div className={styles.colorPicker}>
+      <input className={styles.colorPickerSwatch} type="color" value={colorValue} disabled={disabled} aria-label="Farbe wählen" onChange={(event) => onCommit(event.currentTarget.value)} />
+      <input className={styles.editorInput} type="text" value={value} placeholder="#ffffff" disabled={disabled} onChange={(event) => onChange(event.currentTarget.value)} onBlur={(event) => onCommit(event.currentTarget.value)} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} />
+    </div>
+  );
+}
+
+function colorInputValue(value: string): string {
+  const trimmed = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed;
+  if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
+    const [, r, g, b] = trimmed;
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  return '#ffffff';
 }
 
 function degreesToRadians(degrees: number): number {
@@ -3460,7 +3499,7 @@ function originPresetValue(point: { x: number | string; y: number | string }): s
 }
 
 function coerceEditableValue(prop: DebugScenePropDefinition, value: unknown): DebugNodePatch[string] | undefined {
-  if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'FontId' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
+  if (prop.type === 'String' || prop.type === 'AssetId' || prop.type === 'FontId' || prop.type === 'Color' || prop.type === 'Anchor') return typeof value === 'string' ? value : undefined;
   if (prop.type === 'NodeRef') return value === null || typeof value === 'string' ? value : undefined;
   if (prop.type === 'NodeRefList') return Array.isArray(value) && value.every((entry) => typeof entry === 'string') ? value : undefined;
   if (prop.type === 'Boolean') return typeof value === 'boolean' ? value : undefined;
@@ -3507,7 +3546,7 @@ function currentEditablePropValue(key: string, prop: DebugScenePropDefinition, n
   if (key === 'scaleX') return local?.scaleX;
   if (key === 'scaleY') return local?.scaleY;
   if (key === 'scale') return local ? { x: local.scaleX, y: local.scaleY } : undefined;
-  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'FontId' || prop.type === 'String' || prop.type === 'NodeRef' || prop.type === 'NodeRefList' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
+  if (prop.type === 'Anchor' || prop.type === 'AssetId' || prop.type === 'FontId' || prop.type === 'Color' || prop.type === 'String' || prop.type === 'NodeRef' || prop.type === 'NodeRefList' || prop.type === 'Number' || prop.type === 'Boolean') return props?.[key];
   return props?.[key];
 }
 

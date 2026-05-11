@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
 import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
-import { exposedPropGroup, propFontId, propNumber, propString, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propColor, propFontId, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 const DEFAULT_FONT_FAMILY = 'Silkscreen';
@@ -51,14 +51,11 @@ export class TextNode extends TransformNode {
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Text', {
       text: propString({ label: 'Text' }),
-      fontId: propFontId({ label: 'Font' }),
-      fontFamily: propString({ label: 'Schriftart' }),
+      fontId: propFontId({ label: 'Schrift' }),
       fontSize: propNumber({ label: 'Schriftgröße', min: 1, step: 1 }),
-      fontStyle: propString({ label: 'Schriftschnitt' }),
-      color: propString({ label: 'Farbe' }),
-      stroke: propString({ label: 'Konturfarbe' }),
+      color: propColor({ label: 'Farbe' }),
+      stroke: propColor({ label: 'Konturfarbe' }),
       strokeThickness: propNumber({ label: 'Konturstärke', min: 0, step: 1 }),
-      resolution: propNumber({ label: 'Render Resolution', min: 1, step: 1 }),
     }),
   ];
 
