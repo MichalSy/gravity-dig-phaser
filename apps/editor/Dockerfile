@@ -2,10 +2,12 @@ FROM node:25-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 COPY packages/debug-protocol/package.json packages/debug-protocol/package.json
+COPY packages/game-core/package.json packages/game-core/package.json
 COPY apps/editor/package.json apps/editor/package.json
 COPY apps/game/package.json apps/game/package.json
 RUN npm ci
 COPY packages/debug-protocol packages/debug-protocol
+COPY packages/game-core packages/game-core
 COPY apps/game apps/game
 COPY apps/editor apps/editor
 ENV NEXT_TELEMETRY_DISABLED=1

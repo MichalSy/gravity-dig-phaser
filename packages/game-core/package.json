@@ -1,0 +1,20 @@
+{
+  "name": "@gravity-dig/game-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./nodes": "./src/nodes/index.ts",
+    "./dynamic-nodes": "./src/dynamic-nodes/index.ts",
+    "./assets": "./src/assets/AssetCatalog.ts"
+  },
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@gravity-dig/debug-protocol": "*",
+    "phaser": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

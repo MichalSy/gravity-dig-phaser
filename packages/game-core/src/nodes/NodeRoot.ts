@@ -1,12 +1,12 @@
 import { GameNode, type GameNodeOptions } from './GameNode';
-import { NODE_TYPE_IDS } from './NodeTypeIds';
+import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
 
 export interface NodeRootOptions extends GameNodeOptions {
   rootName: string;
 }
 
 export class NodeRoot extends GameNode {
-  static override readonly nodeTypeId: string = NODE_TYPE_IDS.NodeRoot;
+  static override readonly nodeTypeId: string = CORE_NODE_TYPE_IDS.NodeRoot;
 
   readonly rootName: string;
 

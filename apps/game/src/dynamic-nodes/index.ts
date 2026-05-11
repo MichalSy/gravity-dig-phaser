@@ -1,2 +1,1 @@
-export * from './DynamicNodeLoader';
-export * from './DynamicScriptNode';
+export * from '@gravity-dig/game-core';

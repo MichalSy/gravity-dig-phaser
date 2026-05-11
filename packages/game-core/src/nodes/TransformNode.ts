@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
 import { GameNode, type DebugOverlayLayerRenderContext, type GameNodeOptions, type NodeDebugProps } from './GameNode';
-import { NODE_TYPE_IDS } from './NodeTypeIds';
+import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
 import { type Anchor, type PointLike, type SizeLike } from './Anchor';
 import { exposedPropGroup, propAnchor, propBoolean, propNumber, propOrigin, propPosition, propScale, propSize, propString, type ExposedPropGroup } from './SceneProps';
 
@@ -24,7 +24,7 @@ export interface TransformNodeOptions extends GameNodeOptions {
 }
 
 export class TransformNode extends GameNode {
-  static override readonly nodeTypeId: string = NODE_TYPE_IDS.TransformNode;
+  static override readonly nodeTypeId: string = CORE_NODE_TYPE_IDS.TransformNode;
   static override readonly sceneType: string = 'TransformNode';
   static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
     { id: 'transform.bounds', label: 'Transform Bounds', source: 'TransformNode' },

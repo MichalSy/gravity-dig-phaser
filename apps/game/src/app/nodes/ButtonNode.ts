@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
-import { isFrameAsset, type RenderableImageAsset } from '../../assets/imageAssets';
-import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes/GameNode';
-import { NODE_TYPE_IDS } from '../../nodes/NodeTypeIds';
-import { exposedPropGroup, propAssetId, propBoolean, propString, type ExposedPropGroup } from '../../nodes/SceneProps';
-import { TransformNode, type TransformNodeOptions } from '../../nodes/TransformNode';
+import { isFrameAsset, type RenderableImageAsset } from '../../nodes';
+import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
+import { NODE_TYPE_IDS } from '../../nodes';
+import { exposedPropGroup, propAssetId, propBoolean, propString, type ExposedPropGroup } from '../../nodes';
+import { TransformNode, type TransformNodeOptions } from '../../nodes';
 
 export interface ButtonNodeOptions extends TransformNodeOptions {
   action?: string;

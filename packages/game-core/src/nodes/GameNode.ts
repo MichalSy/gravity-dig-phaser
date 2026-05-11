@@ -3,7 +3,7 @@ import type { DebugNodeBounds, DebugNodePatch, DebugNodePoint, DebugNodeTransfor
 import type { AssetCatalog } from '../assets/AssetCatalog';
 import { anchorOffset, type Anchor, type PointLike, type SizeLike } from './Anchor';
 import type { NodeRuntime } from './NodeRuntime';
-import { NODE_TYPE_IDS } from './NodeTypeIds';
+import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
 import { exposedPropGroup, flattenExposedPropGroups, propBoolean, type ExposedPropGroup, type ScenePatchResult, validateScenePropValue } from './SceneProps';
 
 function clampChildIndex(index: number, length: number): number {
@@ -88,7 +88,7 @@ export interface NodeLayoutResult {
 
 export abstract class GameNode {
   static debugLayoutEnabled = false;
-  static readonly nodeTypeId: string = NODE_TYPE_IDS.GameNode;
+  static readonly nodeTypeId: string = CORE_NODE_TYPE_IDS.GameNode;
   static readonly sceneType: string = 'GameNode';
   static readonly exposedPropGroups: readonly ExposedPropGroup[] = [
     exposedPropGroup('State', {
@@ -794,7 +794,7 @@ function cloneBounds(bounds: NodeDebugBounds): NodeDebugBounds {
 }
 
 function getNodeTypeId(node: GameNode): string {
-  return ((node.constructor as typeof GameNode).nodeTypeId) ?? NODE_TYPE_IDS.GameNode;
+  return ((node.constructor as typeof GameNode).nodeTypeId) ?? CORE_NODE_TYPE_IDS.GameNode;
 }
 
 function collectNodeConstructors(constructor: typeof GameNode): (typeof GameNode)[] {

@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@gravity-dig/debug-protocol": "*",
-    "phaser": "^4.1.0"
+    "phaser": "^4.1.0",
+    "@gravity-dig/game-core": "*"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

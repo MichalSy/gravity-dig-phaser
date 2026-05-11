@@ -1,12 +1,12 @@
 import type { DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
 import type { DebugOverlayLayerRenderContext, NodeDebugBounds, NodeDebugProps } from './GameNode';
-import { NODE_TYPE_IDS } from './NodeTypeIds';
+import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 export interface CollisionRectNodeOptions extends TransformNodeOptions {}
 
 export class CollisionRectNode extends TransformNode {
-  static override readonly nodeTypeId: string = NODE_TYPE_IDS.CollisionRectNode;
+  static override readonly nodeTypeId: string = CORE_NODE_TYPE_IDS.CollisionRectNode;
   static override readonly sceneType = 'CollisionRectNode';
   static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
     { id: 'collision.rect', label: 'Collision Rect', source: 'CollisionRectNode' },

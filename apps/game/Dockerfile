@@ -3,8 +3,10 @@ WORKDIR /app
 COPY package*.json ./
 COPY apps/game/package.json apps/game/package.json
 COPY packages/debug-protocol/package.json packages/debug-protocol/package.json
+COPY packages/game-core/package.json packages/game-core/package.json
 RUN npm ci
 COPY packages/debug-protocol packages/debug-protocol
+COPY packages/game-core packages/game-core
 COPY apps/game apps/game
 ARG VITE_APP_VERSION=0.0.0
 ENV VITE_APP_VERSION=$VITE_APP_VERSION

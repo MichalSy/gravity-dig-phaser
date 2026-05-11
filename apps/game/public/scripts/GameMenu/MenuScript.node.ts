@@ -1,4 +1,5 @@
 import { ScriptNode, prop } from '@gravity-dig/dynamic-node';
+import type { TextNode } from '@gravity-dig/game-core';
 
 type MenuButton = {
   action?: string;
@@ -6,10 +7,6 @@ type MenuButton = {
   setCallbacks?(callbacks: { onHover?: (button: MenuButton) => void; onActivate?: (button: MenuButton) => void }): void;
   setSelected?(selected: boolean): void;
   flash?(durationMs?: number): void;
-};
-
-type TextLike = {
-  setText?(text: string): void;
 };
 
 function wrapIndex(value: number, length: number): number {
@@ -43,7 +40,7 @@ export default class MenuScript extends ScriptNode {
   }
 
   private setVersionText() {
-    const versionNode = this.versionNodeId ? this.getNodeById<TextLike>(this.versionNodeId) : undefined;
+    const versionNode = this.versionNodeId ? this.getNodeById<TextNode>(this.versionNodeId) : undefined;
     versionNode?.setText?.(`v${this.getAppVersion()}`);
   }
 
