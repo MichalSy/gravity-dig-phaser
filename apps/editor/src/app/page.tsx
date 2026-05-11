@@ -708,10 +708,8 @@ export default function Home() {
       const status = await response.json() as EditorGitStatus;
       if (!response.ok || !status.ok) throw new Error(`HTTP ${response.status}`);
       setGitNeedsRebase(status.needsRebase === true);
-      setPendingChangeCount(status.status.length);
     } catch {
       setGitNeedsRebase(false);
-      setPendingChangeCount(0);
     }
   }
 
