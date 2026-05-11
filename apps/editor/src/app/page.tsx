@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
+import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, Waypoints } from 'lucide-react';
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
@@ -2854,15 +2854,55 @@ function iconForNode(node: DebugNodeDescriptor) {
   const className = node.className.toLowerCase();
   const name = node.name.toLowerCase();
 
-  if (className.includes('scenenode')) return Layers;
-  if (className.includes('collisionrectnode')) return Square;
-  if (className.includes('animatedimagenode')) return Frame;
-  if (className.includes('imagenode') || name.includes('image')) return ImageIcon;
-  if (className.includes('textnode')) return TypeIcon;
-  if (className.includes('input')) return Gamepad2;
-  if (className.includes('mining')) return Crosshair;
-  if (className.includes('touch')) return MousePointer2;
-  if (className.includes('hud') || name.includes('hud') || name.startsWith('ui.')) return Boxes;
+  if (className === 'noderoot') return FolderTree;
+  if (className === 'gamerootnode') return Component;
+  if (className === 'uirootnode') return PanelBottom;
+  if (className === 'scenenode') return Layers;
+  if (className === 'transformnode') return Waypoints;
+  if (className === 'dynamicscriptnode' || node.nodeTypeId?.startsWith('dynamic.') === true) return FileCode2;
+  if (className === 'buttonnode') return MousePointerClick;
+  if (className === 'textnode') return TypeIcon;
+  if (className === 'imagenode') return ImageIcon;
+  if (className === 'animatedimagenode') return ImagePlay;
+  if (className === 'collisionrectnode') return SquareDashed;
+
+  if (className === 'debugbridgenode') return Bug;
+  if (className === 'gameplayinputnode') return Joystick;
+  if (className === 'inputmodedetectornode') return Keyboard;
+  if (className === 'playerstatemanagernode') return Brain;
+  if (className === 'levelgeneratormanagernode') return Cpu;
+  if (className === 'loadingnode') return LoaderCircle;
+
+  if (className === 'levelnode') return MapIcon;
+  if (className === 'gameworldnode') return Route;
+  if (className === 'shipnode') return Rocket;
+  if (className === 'playernode') return Bot;
+  if (className === 'playermovementcontrollernode') return Activity;
+  if (className === 'playeranimatornode') return Sparkles;
+  if (className === 'miningtoolnode') return Pickaxe;
+
+  if (className === 'statushudnode') return Gauge;
+  if (className === 'bottomhudnode') return RectangleHorizontal;
+  if (className === 'touchcontrolsnode') return Smartphone;
+
+  if (className.includes('scene')) return Layers;
+  if (className.includes('script')) return FileCode2;
+  if (className.includes('button')) return MousePointerClick;
+  if (className.includes('collision') || className.includes('rect')) return SquareDashed;
+  if (className.includes('animated')) return ImagePlay;
+  if (className.includes('image') || name.includes('image')) return ImageIcon;
+  if (className.includes('text')) return TypeIcon;
+  if (className.includes('input')) return Joystick;
+  if (className.includes('mining')) return Pickaxe;
+  if (className.includes('touch')) return Smartphone;
+  if (className.includes('hud') || name.includes('hud') || name.startsWith('ui.')) return Gauge;
+  if (className.includes('ship')) return ShipWheel;
+  if (className.includes('level') || className.includes('world')) return MapIcon;
+  if (className.includes('player')) return Bot;
+  if (className.includes('manager')) return Cpu;
+  if (className.includes('controller')) return Crosshair;
+  if (className.includes('debug')) return RadioTower;
+  if (className.includes('root')) return FolderTree;
   if (className.includes('node')) return Box;
   return Box;
 }
