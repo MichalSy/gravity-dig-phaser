@@ -1,13 +1,5 @@
 import { ScriptNode, prop } from '@gravity-dig/dynamic-node';
-import type { TextNode } from '@gravity-dig/game-core';
-
-type MenuButton = {
-  action?: string;
-  enabled?: boolean;
-  setCallbacks?(callbacks: { onHover?: (button: MenuButton) => void; onActivate?: (button: MenuButton) => void }): void;
-  setSelected?(selected: boolean): void;
-  flash?(durationMs?: number): void;
-};
+import type { ButtonNode, TextNode } from '@gravity-dig/game-core';
 
 function wrapIndex(value: number, length: number): number {
   return ((value % length) + length) % length;
@@ -22,7 +14,7 @@ export default class MenuScript extends ScriptNode {
   startAction = prop.string('start', { label: 'Start Button Action' });
   startEvent = prop.string('game:start', { label: 'Start Event' });
 
-  private buttons: MenuButton[] = [];
+  private buttons: ButtonNode[] = [];
   private activeIndex = 0;
   private keyHandler?: (event: KeyboardEvent) => void;
 
@@ -47,8 +39,8 @@ export default class MenuScript extends ScriptNode {
   private bindButtons() {
     this.buttons.forEach((button) => button.setCallbacks?.({}));
     this.buttons = this.buttonNodeIds
-      .map((instanceId) => this.getNodeById<MenuButton>(instanceId))
-      .filter((button): button is MenuButton => Boolean(button));
+      .map((instanceId) => this.getNodeById<ButtonNode>(instanceId))
+      .filter((button): button is ButtonNode => Boolean(button));
     this.buttons.forEach((button) => button.setCallbacks?.({
       onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
       onActivate: (activated) => this.activateButton(activated),
@@ -88,7 +80,7 @@ export default class MenuScript extends ScriptNode {
     if (button) this.activateButton(button);
   }
 
-  private activateButton(button: MenuButton) {
+  private activateButton(button: ButtonNode) {
     if (button.enabled === false) return;
     if (button.action === this.startAction) {
       this.emit(this.startEvent);
