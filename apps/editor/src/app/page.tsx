@@ -363,6 +363,8 @@ export default function Home() {
   const viewportPanelRef = useRef<HTMLElement | null>(null);
   const runtimeFrameRef = useRef<HTMLIFrameElement | null>(null);
   const assetExplorerBodyRef = useRef<HTMLDivElement | null>(null);
+  const pendingPatchPersistTimersRef = useRef<Map<string, number>>(new Map());
+  const pendingPatchPersistStateRef = useRef<Map<string, { node: DebugNodeDescriptor; props: DebugNodePatch; previousProps: DebugNodePatch }>>(new Map());
   const runtimeUrl = useMemo(() => defaultRuntimeUrl(), []);
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
@@ -426,7 +428,12 @@ export default function Home() {
       setLayout(latestLayout);
       applyLayoutToDocument(latestLayout);
     }, 0);
-    return () => window.clearTimeout(restoreTimer);
+    return () => {
+      window.clearTimeout(restoreTimer);
+      for (const timer of pendingPatchPersistTimersRef.current.values()) window.clearTimeout(timer);
+      pendingPatchPersistTimersRef.current.clear();
+      pendingPatchPersistStateRef.current.clear();
+    };
   }, []);
 
   useEffect(() => {
@@ -946,7 +953,7 @@ export default function Home() {
     if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
     const nextChangeSet = result.changeSet ?? { sessionId, changes: [] };
     setPendingChangeSet(nextChangeSet);
-    void refreshGitStatus();
+    setPendingChangeCount(nextChangeSet.changes.length);
     setInspectorResetVersion((current) => current + 1);
     setGitSaveStatus(`Setting '${label}' entfernt und zurückgesetzt.`);
   }
@@ -1009,7 +1016,27 @@ export default function Home() {
   function sendNodePatch(node: DebugNodeDescriptor, props: DebugNodePatch): void {
     const previousProps = collectPreviousProps(node, props);
     if (!sendNodePatchMessage(node, props, true)) return;
-    void persistPendingPatch(node, props, previousProps);
+    schedulePendingPatchPersist(node, props, previousProps);
+  }
+
+  function schedulePendingPatchPersist(node: DebugNodeDescriptor, props: DebugNodePatch, previousProps: DebugNodePatch): void {
+    const propKeys = Object.keys(props).sort();
+    const key = `${node.id}:${propKeys.join('\u0000')}`;
+    const existing = pendingPatchPersistStateRef.current.get(key);
+    pendingPatchPersistStateRef.current.set(key, {
+      node,
+      props,
+      previousProps: existing?.previousProps ?? previousProps,
+    });
+    const existingTimer = pendingPatchPersistTimersRef.current.get(key);
+    if (existingTimer !== undefined) window.clearTimeout(existingTimer);
+    const timer = window.setTimeout(() => {
+      pendingPatchPersistTimersRef.current.delete(key);
+      const state = pendingPatchPersistStateRef.current.get(key);
+      pendingPatchPersistStateRef.current.delete(key);
+      if (state) void persistPendingPatch(state.node, state.props, state.previousProps);
+    }, 350);
+    pendingPatchPersistTimersRef.current.set(key, timer);
   }
 
   function sendNodePatchMessage(node: DebugNodeDescriptor, props: DebugNodePatch, showStatus: boolean): boolean {
@@ -3209,7 +3236,7 @@ function EditablePropRow({
     return (
       <>
         <span>{label}</span>
-        <ColorPicker value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onChange={scheduleCommit} onCommit={(next) => commit(next)} />
+        <ColorPicker value={typeof draft === 'string' ? draft : ''} disabled={prop.readOnly} onCommit={(next) => commit(next)} />
       </>
     );
   }
@@ -3333,31 +3360,46 @@ function NodeReferenceDropZone({ roots, value, disabled = false, placeholder = '
 function ColorPicker({
   value,
   disabled,
-  onChange,
   onCommit,
 }: {
   value: string;
   disabled?: boolean;
-  onChange(value: string): void;
   onCommit(value: string): void;
 }) {
-  const colorValue = colorInputValue(value);
+  const [text, setText] = useState(value);
+  const normalized = normalizeHexColor(text);
+  const swatchValue = normalized ?? normalizeHexColor(value) ?? '#ffffff';
+
+  useEffect(() => {
+    setText(value);
+  }, [value]);
+
+  function commitText(nextText = text): void {
+    const nextColor = normalizeHexColor(nextText);
+    if (!nextColor) {
+      setText(value);
+      return;
+    }
+    setText(nextColor);
+    onCommit(nextColor);
+  }
+
   return (
     <div className={styles.colorPicker}>
-      <input className={styles.colorPickerSwatch} type="color" value={colorValue} disabled={disabled} aria-label="Farbe wählen" onChange={(event) => onCommit(event.currentTarget.value)} />
-      <input className={styles.editorInput} type="text" value={value} placeholder="#ffffff" disabled={disabled} onChange={(event) => onChange(event.currentTarget.value)} onBlur={(event) => onCommit(event.currentTarget.value)} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} />
+      <input className={styles.colorPickerSwatch} type="color" value={swatchValue} disabled={disabled} aria-label="Farbe wählen" onChange={(event) => { const next = event.currentTarget.value; setText(next); onCommit(next); }} />
+      <input className={styles.editorInput} type="text" value={text} placeholder="#ffffff" disabled={disabled} onChange={(event) => setText(event.currentTarget.value)} onBlur={() => commitText()} onKeyDown={(event) => { if (event.key === 'Enter') commitText(event.currentTarget.value); }} />
     </div>
   );
 }
 
-function colorInputValue(value: string): string {
+function normalizeHexColor(value: string): string | undefined {
   const trimmed = value.trim();
-  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed;
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed.toLowerCase();
   if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
     const [, r, g, b] = trimmed;
-    return `#${r}${r}${g}${g}${b}${b}`;
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
   }
-  return '#ffffff';
+  return undefined;
 }
 
 function degreesToRadians(degrees: number): number {
