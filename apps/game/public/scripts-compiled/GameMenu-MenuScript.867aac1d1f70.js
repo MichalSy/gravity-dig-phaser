@@ -55,7 +55,7 @@ var MenuScript = class extends ScriptNode {
   buttons = [];
   activeIndex = 0;
   keyHandler;
-  init() {
+  resolve() {
     this.setVersionText();
     this.bindButtons();
     this.bindKeyboard();
@@ -71,6 +71,7 @@ var MenuScript = class extends ScriptNode {
     versionNode?.setText?.(`v${this.getAppVersion()}`);
   }
   bindButtons() {
+    this.buttons.forEach((button) => button.setCallbacks?.({}));
     this.buttons = this.buttonNodeIds.map((instanceId) => this.getNodeById(instanceId)).filter((button) => Boolean(button));
     this.buttons.forEach((button) => button.setCallbacks?.({
       onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
@@ -79,6 +80,7 @@ var MenuScript = class extends ScriptNode {
     this.syncButtonSelection();
   }
   bindKeyboard() {
+    if (this.keyHandler) return;
     this.keyHandler = (event) => {
       if (event.code === "ArrowUp" || event.code === "KeyW") this.moveSelection(-1);
       if (event.code === "ArrowDown" || event.code === "KeyS") this.moveSelection(1);
@@ -128,4 +130,4 @@ export {
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=GameMenu-MenuScript.1911f04ce98f.js.map
+//# sourceMappingURL=GameMenu-MenuScript.867aac1d1f70.js.map

@@ -11,6 +11,7 @@ declare module '@gravity-dig/dynamic-node' {
     getAppVersion(): string;
     emit(action: string): void;
     init?(): void;
+    resolve?(): void;
     update?(deltaMs: number): void;
     destroy?(): void;
   }

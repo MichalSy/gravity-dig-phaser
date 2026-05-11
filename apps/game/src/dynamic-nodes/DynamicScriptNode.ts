@@ -12,6 +12,7 @@ export interface DynamicScriptBehavior {
   id?: string;
   name?: string;
   init?(ctx: DynamicScriptContext): void;
+  resolve?(ctx: DynamicScriptContext): void;
   update?(deltaMs: number): void;
   destroy?(): void;
   [key: string]: unknown;
@@ -76,6 +77,12 @@ export class DynamicScriptNode extends GameNode {
     this.scriptContext = scriptContext;
     (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
     this.callScriptLifecycle('init', () => this.behavior.init?.(scriptContext));
+  }
+
+  override resolve(_ctx: NodeContext): void {
+    const scriptContext = this.scriptContext;
+    if (this.scriptFault || !scriptContext) return;
+    this.callScriptLifecycle('resolve', () => this.behavior.resolve?.(scriptContext));
   }
 
   override update(deltaMs: number): void {

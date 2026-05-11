@@ -29,7 +29,7 @@ export default class MenuScript extends ScriptNode {
   private activeIndex = 0;
   private keyHandler?: (event: KeyboardEvent) => void;
 
-  init() {
+  resolve() {
     this.setVersionText();
     this.bindButtons();
     this.bindKeyboard();
@@ -48,6 +48,7 @@ export default class MenuScript extends ScriptNode {
   }
 
   private bindButtons() {
+    this.buttons.forEach((button) => button.setCallbacks?.({}));
     this.buttons = this.buttonNodeIds
       .map((instanceId) => this.getNodeById<MenuButton>(instanceId))
       .filter((button): button is MenuButton => Boolean(button));
@@ -59,6 +60,7 @@ export default class MenuScript extends ScriptNode {
   }
 
   private bindKeyboard() {
+    if (this.keyHandler) return;
     this.keyHandler = (event) => {
       if (event.code === 'ArrowUp' || event.code === 'KeyW') this.moveSelection(-1);
       if (event.code === 'ArrowDown' || event.code === 'KeyS') this.moveSelection(1);
