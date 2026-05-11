@@ -235,41 +235,12 @@ function pumpThumbnailQueue(): void {
   }
 }
 
-function countPendingProps(changeSet: EditorChangeSet): number {
-  return pendingChangeRows(changeSet).length + changeSet.changes.filter((change) => change.kind === 'moveNode' || change.kind === 'addNode').length;
-}
-
-type PendingChangeRow = {
-  change: EditorSetPropsChange;
-  prop: string;
-  field?: string;
-  label: string;
-  value: unknown;
-};
-
-function pendingChangeRows(changeSet: EditorChangeSet): PendingChangeRow[] {
-  return changeSet.changes.filter((change): change is EditorSetPropsChange => change.kind === 'setProps').flatMap((change) => Object.entries(change.props).map(([prop, value]) => {
-    const field = singleFieldName(change);
-    return { change, prop, field, label: field ? `${prop}.${field}` : prop, value: field ? fieldValue(value, field) : value };
-  }));
-}
-
 function singleFieldName(change: EditorSetPropsChange): string | undefined {
   return change.fieldPath?.length === 1 ? change.fieldPath[0] : undefined;
 }
 
-function fieldValue(value: unknown, field: string): unknown {
-  return isObjectRecord(value) ? value[field] : undefined;
-}
-
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function formatPendingValue(value: unknown): string {
-  if (value === null) return 'delete';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
 }
 
 function applyLayoutToDocument(layout: EditorLayoutState): void {
@@ -696,9 +667,8 @@ export default function Home() {
       const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), { cache: 'no-store' });
       const changeSet = await response.json() as EditorChangeSet;
       setPendingChangeSet(changeSet);
-      setPendingChangeCount(countPendingProps(changeSet));
     } catch (error) {
-      setGitSaveStatus(`Pending Changes konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+      setGitSaveStatus(`Editor-Änderungen konnten nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -708,8 +678,10 @@ export default function Home() {
       const status = await response.json() as EditorGitStatus;
       if (!response.ok || !status.ok) throw new Error(`HTTP ${response.status}`);
       setGitNeedsRebase(status.needsRebase === true);
+      setPendingChangeCount(status.status.length);
     } catch {
       setGitNeedsRebase(false);
+      setPendingChangeCount(0);
     }
   }
 
@@ -928,9 +900,8 @@ export default function Home() {
     const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
     if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
     const nextChangeSet = result.changeSet ?? { sessionId, changes: [] };
-    const nextCount = countPendingProps(nextChangeSet);
     setPendingChangeSet(nextChangeSet);
-    setPendingChangeCount(nextCount);
+    void refreshGitStatus();
     setInspectorResetVersion((current) => current + 1);
     setGitSaveStatus(`Setting '${label}' entfernt und zurückgesetzt.`);
   }
@@ -1069,7 +1040,6 @@ export default function Home() {
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
-      setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
       setGitSaveStatus(`Node Create gespeichert: ${parentPath.join(' / ')} / ${definition.name ?? definition.nodeTypeId}`);
       void refreshGitStatus();
     } catch (error) {
@@ -1408,7 +1378,6 @@ export default function Home() {
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
-      setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
       setGitSaveStatus(`Hierarchy Move gespeichert: ${nodePath.join(' / ')} → ${placement} ${targetPath.join(' / ')}`);
       void refreshGitStatus();
     } catch (error) {
@@ -1433,7 +1402,6 @@ export default function Home() {
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
-      setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
       void refreshGitStatus();
     } catch (error) {
@@ -1460,10 +1428,10 @@ export default function Home() {
         </div>
         <div className={styles.actions}>
           <button className={styles.button} onClick={openSavePreview} title={gitNeedsRebase ? 'Remote ist voraus: Push führt nach Review erst Rebase aus.' : (gitSaveStatus || 'Lokale Änderungen prüfen')}>
-            Pending Changes ({pendingChangeCount})
+            Git Changes ({pendingChangeCount})
           </button>
           <button className={`${styles.button} ${styles.ghost}`} onPointerDown={(event) => event.preventDefault()} onClick={clearPendingChanges} disabled={pendingChangeCount === 0}>
-            Pending verwerfen
+            Änderungen verwerfen
           </button>
         </div>
       </header>
@@ -1639,7 +1607,7 @@ function GitSavePreviewDialog({
     <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onCancel}>
       <div className={styles.gitPreviewDialog} onClick={(event) => event.stopPropagation()}>
         <div className={styles.dialogHeader}>
-          <strong>Pending Changes · {files.length} Datei{files.length === 1 ? '' : 'en'}</strong>
+          <strong>Git Changes · {files.length} Datei{files.length === 1 ? '' : 'en'}</strong>
           <span className={styles.dialogStatus}>{status}</span>
         </div>
         <div className={styles.gitPreviewBody}>
