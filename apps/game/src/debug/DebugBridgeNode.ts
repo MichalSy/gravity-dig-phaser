@@ -424,7 +424,7 @@ export class DebugBridgeNode extends GameNode {
     }
 
     try {
-      await this.ensureDebugImageSources(message.definition);
+      await this.ensureImageAssetReferences(message.definition);
       const node = this.liveAuthoring.createNode(message.definition as SceneNodeJson);
       parent.addChild(node);
       const nodeId = this.getStableNodeId(node);
@@ -436,15 +436,24 @@ export class DebugBridgeNode extends GameNode {
     }
   }
 
-  private async ensureDebugImageSources(definition: DebugNodeCreateMessage['definition']): Promise<void> {
-    const source = debugImageSourceFromProps(definition.props);
-    if (source) {
-      if (!this.ctx) throw new Error('NodeContext fehlt für Debug-Image-Lazy-Load.');
-      await this.ctx.assets.ensureDebugImageAsset(source);
+  private async ensureImageAssetReferences(definition: DebugNodeCreateMessage['definition']): Promise<void> {
+    const assetId = imageAssetIdFromProps(definition.props);
+    if (assetId && publicImagePathFromAssetId(assetId) && !this.ctx?.assets.hasImage(assetId)) {
+      if (!this.ctx) throw new Error('NodeContext fehlt für Image-Lazy-Load.');
+      const path = publicImagePathFromAssetId(assetId);
+      if (!path) throw new Error(`Image asset '${assetId}' ist kein Public-Asset-Pfad.`);
+      await this.ctx.assets.ensureDebugImageAsset({ id: assetId, path, url: this.editorPublicFileUrl(path) });
     }
     for (const child of definition.children ?? []) {
-      if (isDebugNodeCreateDefinition(child)) await this.ensureDebugImageSources(child);
+      if (isDebugNodeCreateDefinition(child)) await this.ensureImageAssetReferences(child);
     }
+  }
+
+  private editorPublicFileUrl(publicPath: string): string {
+    const url = new URL('/api/editor/public-files/content', this.config.editorApiUrl);
+    url.searchParams.set('path', publicPath);
+    url.searchParams.set('cacheBust', Date.now().toString(36));
+    return url.toString();
   }
 
   private requestDynamicNodeUpdate(message: Extract<DebugMessage, { type: 'dynamic-node:updated' }>): void {
@@ -798,23 +807,13 @@ function roundPoint(point: PointLike): PointLike {
   return { x: Math.round(point.x), y: Math.round(point.y) };
 }
 
-interface DebugImageSourcePayload {
-  id: string;
-  path: string;
-  url?: string;
-  frameKey?: string;
-  rect?: { x: number; y: number; width: number; height: number };
+function imageAssetIdFromProps(props: Record<string, unknown> | undefined): string | undefined {
+  return typeof props?.assetId === 'string' ? props.assetId : undefined;
 }
 
-function debugImageSourceFromProps(props: Record<string, unknown> | undefined): DebugImageSourcePayload | undefined {
-  const value = props?.debugImageSource;
-  if (typeof value !== 'object' || value === null) return undefined;
-  const source = value as Partial<DebugImageSourcePayload>;
-  if (typeof source.id !== 'string' || typeof source.path !== 'string') return undefined;
-  if (source.url !== undefined && typeof source.url !== 'string') return undefined;
-  if (source.frameKey !== undefined && typeof source.frameKey !== 'string') return undefined;
-  if (source.rect !== undefined && !isDebugAssetRect(source.rect)) return undefined;
-  return { id: source.id, path: source.path, url: source.url, frameKey: source.frameKey, rect: source.rect };
+function publicImagePathFromAssetId(assetId: string): string | undefined {
+  const imagePath = assetId.split('#', 1)[0];
+  return /^\/assets\/.*\.(png|jpe?g|webp|gif)$/iu.test(imagePath) ? imagePath : undefined;
 }
 
 function isDebugNodeCreateDefinition(value: unknown): value is DebugNodeCreateMessage['definition'] {
@@ -823,8 +822,3 @@ function isDebugNodeCreateDefinition(value: unknown): value is DebugNodeCreateMe
   return typeof definition.nodeTypeId === 'string';
 }
 
-function isDebugAssetRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
-  if (typeof value !== 'object' || value === null) return false;
-  const rect = value as { x?: unknown; y?: unknown; width?: unknown; height?: unknown };
-  return typeof rect.x === 'number' && typeof rect.y === 'number' && typeof rect.width === 'number' && typeof rect.height === 'number';
-}

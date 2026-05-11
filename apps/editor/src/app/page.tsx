@@ -44,7 +44,7 @@ const hierarchyNodeDragMimeType = 'application/x-gravity-dig-hierarchy-node';
 const imageNodeTypeId = '73e926f5-c280-5131-b820-a89f898e2d48';
 const genericCreateNodeOptions = [
   { id: 'empty', label: 'Empty / Transform', nodeTypeId: 'b78a74e0-452a-5e20-85f4-579f7c0b1364', className: 'TransformNode', props: { size: { width: 120, height: 80 }, sizeMode: 'explicit' } },
-  { id: 'image', label: 'ImageNode', nodeTypeId: imageNodeTypeId, className: 'ImageNode', props: { assetId: 'debug:assets-ui-menu-menu-button-active', debugImageSource: { id: 'debug:assets-ui-menu-menu-button-active', path: '/assets/ui/menu/menu_button_active.webp', url: '/assets/ui/menu/menu_button_active.webp' }, sizeMode: 'content', origin: { x: 0.5, y: 0.5 } } },
+  { id: 'image', label: 'ImageNode', nodeTypeId: imageNodeTypeId, className: 'ImageNode', props: { assetId: 'menu-button-active', sizeMode: 'content', origin: { x: 0.5, y: 0.5 } } },
   { id: 'text', label: 'TextNode', nodeTypeId: '2db287f7-b55c-5c58-be87-c057e8c5d302', className: 'TextNode', props: { text: 'Text', size: { width: 160, height: 40 }, sizeMode: 'explicit' } },
   { id: 'animated-image', label: 'AnimatedImageNode', nodeTypeId: '5a0cd663-64c3-5f02-a579-9915605564be', className: 'AnimatedImageNode', props: { animationSetId: 'character', animationId: 'idle.east', sizeMode: 'content', origin: { x: 0.5, y: 0.5 } } },
   { id: 'collision-rect', label: 'CollisionRectNode', nodeTypeId: 'f3f82d6c-c31e-56bc-afd6-b5892604eaf5', className: 'CollisionRectNode', props: { size: { width: 64, height: 64 }, sizeMode: 'explicit' } },
@@ -1109,14 +1109,13 @@ export default function Home() {
       });
     }
 
-    const debugImageSource = createDebugImageSource(payload, asset, resolution.publicPath);
+    const assetId = imageNodeAssetId(payload, asset, resolution.publicPath);
     const requestId = createSessionId();
     const definition = {
       nodeTypeId: imageNodeTypeId,
-      name: defaultImageNodeName(asset, debugImageSource.id, payload.label),
+      name: defaultImageNodeName(asset, assetId, payload.label),
       props: {
-        assetId: debugImageSource.id,
-        debugImageSource,
+        assetId,
         sizeMode: 'content',
         origin: { x: 0.5, y: 0.5 },
       },
@@ -1133,7 +1132,7 @@ export default function Home() {
     sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
-    setPatchStatus(`ImageNode Injection gesendet: ${debugImageSource.id} → ${parentNode.name}`);
+    setPatchStatus(`ImageNode Injection gesendet: ${assetId} → ${parentNode.name}`);
   }
 
 
@@ -3679,17 +3678,12 @@ function findCloseImageAssetCandidates(payload: ImageAssetDragPayload, assets: D
 }
 
 
-function createDebugImageSource(payload: ImageAssetDragPayload, asset: DebugImageAssetDescriptor | undefined, publicPath: string | undefined): { id: string; path: string; url?: string; frameKey?: string; rect?: { x: number; y: number; width: number; height: number } } {
+function imageNodeAssetId(payload: ImageAssetDragPayload, asset: DebugImageAssetDescriptor | undefined, publicPath: string | undefined): string {
+  if (asset?.id) return asset.id;
   const path = publicPath ?? (payload.filePath ? publicAssetPathForFilePath(payload.filePath) : undefined);
   if (!path) throw new Error(`ImageAsset '${payload.label}' hat keinen Public-Pfad`);
-  const sourceImageId = asset?.kind === 'frame' ? asset.sourceImageId : undefined;
-  const baseId = sourceImageId ?? asset?.id ?? debugImageAssetIdForPublicPath(path);
-  const id = payload.frameKey ? (asset?.id ?? `${baseId}#${payload.frameKey}`) : baseId;
-  return { id, path, url: asset?.url ?? asset?.sourceUrl ?? path, frameKey: payload.frameKey, rect: payload.rect ?? asset?.rect };
-}
-
-function debugImageAssetIdForPublicPath(publicPath: string): string {
-  return `debug:${publicPath.replace(/^\/+/, '').replace(/\.(png|jpe?g|webp|gif)$/i, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase()}`;
+  if (payload.frameKey) throw new Error(`Atlas-Frame '${payload.frameKey}' ist nicht in der Asset Registry registriert.`);
+  return path;
 }
 
 function isDebugAssetRect(value: unknown): value is { x: number; y: number; width: number; height: number } {
