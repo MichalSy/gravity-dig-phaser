@@ -2646,17 +2646,18 @@ function NodeTreeItem({
   const alwaysExpanded = isAppRootNode(node);
   const isSystemRoot = isSystemSceneRootNode(node);
   const isSceneNode = sceneNodeClassNames.has(node.className);
-  const canDragNode = !alwaysExpanded && !isSystemRoot;
-  const canCreateChild = !isSceneNode;
+  const isLocked = node.editorLocked === true;
+  const canDragNode = !alwaysExpanded && !isSystemRoot && !isLocked;
+  const canCreateChild = !isSceneNode && !isLocked;
   const canSelectScriptSource = node.nodeTypeId?.startsWith('dynamic.') === true;
-  const canDeleteNode = !alwaysExpanded && !isSystemRoot;
+  const canDeleteNode = !alwaysExpanded && !isSystemRoot && !isLocked;
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
   function handleDragOver(event: ReactDragEvent<HTMLLIElement>): void {
     const draggedNode = draggedHierarchyNode();
     if (draggedNode || hasHierarchyNodeDragType(event)) {
-      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isSystemSceneRootNode(draggedNode)) return;
+      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isLocked || isSystemSceneRootNode(draggedNode) || draggedNode.editorLocked) return;
       event.preventDefault();
       event.stopPropagation();
       event.dataTransfer.dropEffect = 'move';
@@ -2664,6 +2665,7 @@ function NodeTreeItem({
       return;
     }
     if (!isDynamicNodeDragActive() && !isImageAssetDragActive() && !hasDynamicNodeDragType(event) && !hasImageAssetDragType(event)) return;
+    if (isLocked) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }
@@ -2671,7 +2673,7 @@ function NodeTreeItem({
   function handleDrop(event: ReactDragEvent<HTMLLIElement>): void {
     const draggedNode = draggedHierarchyNode();
     if (draggedNode || hasHierarchyNodeDragType(event)) {
-      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isSystemSceneRootNode(draggedNode)) return;
+      if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isLocked || isSystemSceneRootNode(draggedNode) || draggedNode.editorLocked) return;
       event.preventDefault();
       event.stopPropagation();
       onMoveHierarchyNode(draggedNode, node, placementForHierarchyDrop(event));
@@ -2680,6 +2682,7 @@ function NodeTreeItem({
     const imagePayload = readImageAssetDragPayload(event) ?? getDraggedImageAsset();
     const file = readDynamicNodeDragFile(event) ?? getDraggedDynamicNode();
     if (!imagePayload && !file) return;
+    if (isLocked) return;
     event.preventDefault();
     event.stopPropagation();
     if (imagePayload) {
@@ -2725,6 +2728,7 @@ function NodeTreeItem({
           {!node.active && <span className={styles.nodeFlag}>inactive</span>}
           {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
+          {isLocked && <span className={styles.nodeFlag}>locked</span>}
         </button>
         {canCreateChild && (
           <button
@@ -3684,8 +3688,18 @@ function splitHierarchyRoots(roots: DebugNodeDescriptor[], mode: ViewportMode): 
   };
 }
 
-function collectNodeIds(nodes: DebugNodeDescriptor[]): string[] {
-  return nodes.flatMap((node) => [node.id, ...collectNodeIds(node.children)]);
+function collectNodeIds(nodes: DebugNodeDescriptor[], options: { includeDefaultCollapsed?: boolean } = {}): string[] {
+  return nodes.flatMap((node) => [
+    ...(node.defaultCollapsed && !options.includeDefaultCollapsed ? [] : [node.id]),
+    ...collectNodeIds(node.children, options),
+  ]);
+}
+
+function collectDefaultCollapsedNodeIds(nodes: DebugNodeDescriptor[]): string[] {
+  return nodes.flatMap((node) => [
+    ...(node.defaultCollapsed ? [node.id] : []),
+    ...collectDefaultCollapsedNodeIds(node.children),
+  ]);
 }
 
 function findPublicDirectory(root: PublicFileEntry, path: string): PublicFileEntry | undefined {
@@ -4061,11 +4075,12 @@ function isEffectivelyActive(node: DebugNodeDescriptor): boolean {
 }
 
 function reconcileExpandedNodeIds(expanded: ReadonlySet<string>, roots: DebugNodeDescriptor[], deltas: DebugNodeDelta[]): Set<string> {
-  const existingIds = new Set(collectNodeIds(roots));
-  const next = new Set([...expanded].filter((id) => existingIds.has(id)));
+  const existingIds = new Set(collectNodeIds(roots, { includeDefaultCollapsed: true }));
+  const defaultCollapsedIds = new Set(collectDefaultCollapsedNodeIds(roots));
+  const next = new Set([...expanded].filter((id) => existingIds.has(id) && !defaultCollapsedIds.has(id)));
 
   for (const delta of deltas) {
-    if (delta.kind === 'added' && delta.node && isEffectivelyActive(delta.node)) next.add(delta.id);
+    if (delta.kind === 'added' && delta.node && isEffectivelyActive(delta.node) && !delta.node.defaultCollapsed) next.add(delta.id);
   }
 
   removeInactiveNodeIds(next, roots);

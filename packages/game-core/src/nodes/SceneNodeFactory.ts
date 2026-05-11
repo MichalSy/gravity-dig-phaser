@@ -83,6 +83,7 @@ export class SceneNodeFactoryRegistry {
     const node = factory(effectiveDefinition);
     applyInitialProps(node, effectiveDefinition.props);
     for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath));
+    node.ensureRequiredChildren();
     return node;
   }
 

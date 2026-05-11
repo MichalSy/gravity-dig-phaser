@@ -531,6 +531,10 @@ export class DebugBridgeNode extends GameNode {
       this.sendNodeDeleteAck(message, false, 'GameRoot/UIRoot sind System-Nodes und können nicht gelöscht werden.');
       return;
     }
+    if (node.getEditorTreeMetadata().locked) {
+      this.sendNodeDeleteAck(message, false, 'Dieser Node ist vom Parent verwaltet und kann nicht gelöscht werden.');
+      return;
+    }
     const name = node.debugName();
     const instanceId = node.instanceId;
     const deletedRefs = this.collectNodeTreeRefs(node);
@@ -577,6 +581,10 @@ export class DebugBridgeNode extends GameNode {
     }
     if (this.isSystemSceneRoot(node)) {
       this.sendNodeMoveAck(message, false, 'GameRoot/UIRoot sind System-Nodes und können nicht verschoben werden.');
+      return;
+    }
+    if (node.getEditorTreeMetadata().locked) {
+      this.sendNodeMoveAck(message, false, 'Dieser Node ist vom Parent verwaltet und kann nicht verschoben werden.');
       return;
     }
     if (node === target || this.isNodeDescendant(target, node)) {

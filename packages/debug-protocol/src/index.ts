@@ -240,6 +240,9 @@ export interface DebugNodeDescriptor {
   active: boolean;
   effectiveActive?: boolean;
   visible: boolean;
+  editorLocked?: boolean;
+  defaultCollapsed?: boolean;
+  ownedRole?: string;
   index: number;
   children: DebugNodeDescriptor[];
 }

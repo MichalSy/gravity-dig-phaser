@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
 import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
-import { exposedPropGroup, propNumber, propString, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propFontId, propNumber, propString, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 const DEFAULT_FONT_FAMILY = 'Silkscreen';
@@ -30,6 +30,7 @@ function normalizeFontSize(value: unknown, fallback = DEFAULT_FONT_SIZE): number
 export interface TextNodeOptions extends TransformNodeOptions {
   text?: string;
   fontFamily?: string;
+  fontId?: string;
   fontSize?: number;
   fontStyle?: string;
   color?: string;
@@ -50,6 +51,7 @@ export class TextNode extends TransformNode {
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Text', {
       text: propString({ label: 'Text' }),
+      fontId: propFontId({ label: 'Font' }),
       fontFamily: propString({ label: 'Schriftart' }),
       fontSize: propNumber({ label: 'Schriftgröße', min: 1, step: 1 }),
       fontStyle: propString({ label: 'Schriftschnitt' }),
@@ -61,6 +63,7 @@ export class TextNode extends TransformNode {
   ];
 
   text: string;
+  fontId: string;
   fontFamily: string;
   fontSize: number;
   fontStyle: string;
@@ -78,6 +81,7 @@ export class TextNode extends TransformNode {
       className: options.className ?? 'TextNode',
     });
     this.text = options.text ?? '';
+    this.fontId = options.fontId ?? '';
     this.fontFamily = options.fontFamily ?? stringStyleValue(options.style?.fontFamily) ?? DEFAULT_FONT_FAMILY;
     this.fontSize = options.fontSize ?? normalizeFontSize(options.style?.fontSize);
     this.fontStyle = options.fontStyle ?? stringStyleValue(options.style?.fontStyle) ?? '';
@@ -188,7 +192,8 @@ export class TextNode extends TransformNode {
       localScaleY: this.getLocalScale().y,
       displayWidth: this.phaserText?.displayWidth ?? null,
       displayHeight: this.phaserText?.displayHeight ?? null,
-      fontFamily: this.fontFamily,
+      fontId: this.fontId,
+      fontFamily: this.effectiveFontFamily(),
       fontSize: this.fontSize,
       fontStyle: this.fontStyle || null,
       color: this.color,
@@ -205,6 +210,12 @@ export class TextNode extends TransformNode {
       case 'text':
         if (typeof value !== 'string') return false;
         this.setText(value);
+        return true;
+      case 'fontId':
+        if (typeof value !== 'string') return false;
+        this.fontId = value;
+        this.applyTextContentAndStyle();
+        if (this.sizeMode === 'content') this.updateSizeFromText();
         return true;
       case 'fontFamily':
         if (typeof value !== 'string') return false;
@@ -247,7 +258,7 @@ export class TextNode extends TransformNode {
   private buildTextStyle(): Phaser.Types.GameObjects.Text.TextStyle {
     return {
       ...this.styleExtras,
-      fontFamily: this.fontFamily,
+      fontFamily: this.effectiveFontFamily(),
       fontSize: `${this.fontSize}px`,
       fontStyle: this.fontStyle,
       color: this.color,
@@ -255,6 +266,10 @@ export class TextNode extends TransformNode {
       strokeThickness: this.strokeThickness,
       align: this.align,
     };
+  }
+
+  private effectiveFontFamily(): string {
+    return this.fontId ? this.assets.fontFamily(this.fontId) : this.fontFamily;
   }
 
   private applyTextContentAndStyle(): void {

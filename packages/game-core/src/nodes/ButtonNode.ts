@@ -3,7 +3,8 @@ import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/d
 import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
 import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
-import { exposedPropGroup, propAssetId, propBoolean, propFontId, propNumber, propString, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propAssetId, propBoolean, propString, type ExposedPropGroup } from './SceneProps';
+import { TextNode } from './TextNode';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 const DEFAULT_BUTTON_WIDTH = 220;
@@ -12,19 +13,25 @@ const DEFAULT_NORMAL_COLOR = 0x334155;
 const DEFAULT_ACTIVE_COLOR = 0x475569;
 const DEFAULT_DISABLED_ALPHA = 0.45;
 const DEFAULT_LABEL_COLOR = '#ffffff';
-const DEFAULT_LABEL_FONT_FAMILY = 'Arial, sans-serif';
 const DEFAULT_LABEL_FONT_SIZE = 18;
 const DEFAULT_FLASH_TINT = 0xfff1a8;
+const LABEL_CHILD_NAME = 'Label';
+const LABEL_CHILD_ROLE = 'button-label';
+const MANAGED_LABEL_REASON = 'managed by ButtonNode';
 
 export interface ButtonNodeOptions extends TransformNodeOptions {
   action?: string;
+  /** Legacy: migrated to the managed Label TextNode child. */
   label?: string;
   enabled?: boolean;
   normalAssetId?: string;
   activeAssetId?: string;
   selected?: boolean;
+  /** Legacy: use the managed Label TextNode transform instead. */
   labelOffsetY?: number;
+  /** Legacy: migrated to the managed Label TextNode child. */
   fontId?: string;
+  /** Legacy: migrated to the managed Label TextNode child. */
   fontSize?: number;
 }
 
@@ -48,15 +55,6 @@ function backgroundLocalBounds(node: ButtonNode, background: ButtonBackground): 
   return { x: -node.origin.x * size.width, y: -node.origin.y * size.height, width: size.width, height: size.height, scrollFactor: node.scrollFactor };
 }
 
-function rotatedOffset(offsetX: number, offsetY: number, scale: { x: number; y: number }, rotation: number): { x: number; y: number } {
-  const x = offsetX * scale.x;
-  const y = offsetY * scale.y;
-  if (rotation === 0) return { x, y };
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
-  return { x: x * cos - y * sin, y: x * sin + y * cos };
-}
-
 export class ButtonNode extends TransformNode {
   static override readonly nodeTypeId: string = CORE_NODE_TYPE_IDS.ButtonNode;
   static override readonly sceneType: string = 'ButtonNode';
@@ -67,31 +65,26 @@ export class ButtonNode extends TransformNode {
     ...TransformNode.exposedPropGroups,
     exposedPropGroup('Button', {
       action: propString({ label: 'Action' }),
-      label: propString({ label: 'Label' }),
       enabled: propBoolean({ label: 'Enabled' }),
       selected: propBoolean({ label: 'Selected' }),
       normalAssetId: propAssetId({ label: 'Normal Image' }),
       activeAssetId: propAssetId({ label: 'Active Image' }),
-      labelOffsetY: propNumber({ label: 'Label Offset Y', step: 1 }),
-      fontId: propFontId({ label: 'Font' }),
-      fontSize: propNumber({ label: 'Font Size', min: 1, step: 1 }),
     }),
   ];
 
   action: string;
-  label: string;
   enabled: boolean;
   selected: boolean;
   normalAssetId: string;
   activeAssetId: string;
-  labelOffsetY: number;
-  fontId: string;
-  fontSize: number;
 
+  private readonly legacyLabel: string;
+  private readonly legacyLabelOffsetY: number;
+  private readonly legacyFontId: string;
+  private readonly legacyFontSize: number;
   private normalAsset?: RenderableImageAsset;
   private activeAsset?: RenderableImageAsset;
   private background?: ButtonBackground;
-  private phaserLabel?: Phaser.GameObjects.Text;
   private hoverCallback?: ButtonCallback;
   private activateCallback?: ButtonCallback;
   private flashUntil = 0;
@@ -103,29 +96,28 @@ export class ButtonNode extends TransformNode {
       origin: options.origin ?? { x: 0.5, y: 0.5 },
     });
     this.action = options.action ?? '';
-    this.label = options.label ?? '';
     this.enabled = options.enabled ?? true;
     this.selected = options.selected ?? false;
     this.normalAssetId = options.normalAssetId ?? '';
     this.activeAssetId = options.activeAssetId ?? '';
-    this.labelOffsetY = options.labelOffsetY ?? 0;
-    this.fontId = options.fontId ?? '';
-    this.fontSize = options.fontSize ?? DEFAULT_LABEL_FONT_SIZE;
+    this.legacyLabel = options.label ?? '';
+    this.legacyLabelOffsetY = options.labelOffsetY ?? 0;
+    this.legacyFontId = options.fontId ?? '';
+    this.legacyFontSize = options.fontSize ?? DEFAULT_LABEL_FONT_SIZE;
+  }
+
+  override ensureRequiredChildren(): void {
+    const label = this.ensureLabelNode();
+    this.configureManagedLabel(label);
   }
 
   init(ctx: NodeContext): void {
-    this.normalAsset = this.normalAssetId ? ctx.assets.image(this.normalAssetId) : undefined;
-    this.activeAsset = this.activeAssetId ? ctx.assets.image(this.activeAssetId) : undefined;
+    this.normalAsset = this.normalAssetId ? this.assets.image(this.normalAssetId) : undefined;
+    this.activeAsset = this.activeAssetId ? this.assets.image(this.activeAssetId) : undefined;
     const asset = this.currentAsset();
     this.background = asset
       ? ctx.phaserScene.add.image(0, 0, asset.textureKey, isFrameAsset(asset) ? asset.frameKey : undefined)
       : ctx.phaserScene.add.rectangle(0, 0, this.size.width || DEFAULT_BUTTON_WIDTH, this.size.height || DEFAULT_BUTTON_HEIGHT, DEFAULT_NORMAL_COLOR);
-    this.phaserLabel = ctx.phaserScene.add.text(0, 0, this.label, {
-      color: DEFAULT_LABEL_COLOR,
-      align: 'center',
-      fontFamily: this.labelFontFamily(ctx),
-      fontSize: `${this.fontSize}px`,
-    }).setOrigin(0.5).setResolution(2);
     this.configureInteractivity();
     if (this.sizeMode === 'content') this.size = backgroundLocalSize(this, this.background);
     this.applyButtonState();
@@ -143,9 +135,7 @@ export class ButtonNode extends TransformNode {
 
   destroy(): void {
     this.background?.destroy();
-    this.phaserLabel?.destroy();
     this.background = undefined;
-    this.phaserLabel = undefined;
   }
 
   setCallbacks(callbacks: { onHover?: ButtonCallback; onActivate?: ButtonCallback }): void {
@@ -165,7 +155,6 @@ export class ButtonNode extends TransformNode {
 
   protected override onEffectiveActiveChanged(active: boolean): void {
     this.background?.setVisible(active && this.visible);
-    this.phaserLabel?.setVisible(active && this.visible);
   }
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
@@ -188,7 +177,7 @@ export class ButtonNode extends TransformNode {
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     const objects: Phaser.GameObjects.GameObject[] = [];
     if (this.background) objects.push(this.background);
-    if (this.phaserLabel) objects.push(this.phaserLabel);
+    objects.push(...super.getSceneObjectsInHierarchy());
     return objects;
   }
 
@@ -196,14 +185,11 @@ export class ButtonNode extends TransformNode {
     return {
       ...super.getDebugProps(),
       action: this.action,
-      label: this.label,
       enabled: this.enabled,
       selected: this.selected,
       normalAssetId: this.normalAssetId,
       activeAssetId: this.activeAssetId,
-      labelOffsetY: this.labelOffsetY,
-      fontId: this.fontId,
-      fontSize: this.fontSize,
+      labelNodeId: this.labelNode()?.instanceId ?? null,
       scrollFactor: this.scrollFactor,
       effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
@@ -214,11 +200,6 @@ export class ButtonNode extends TransformNode {
       case 'action':
         if (typeof value !== 'string') return false;
         this.action = value;
-        return true;
-      case 'label':
-        if (typeof value !== 'string') return false;
-        this.label = value;
-        this.phaserLabel?.setText(value);
         return true;
       case 'enabled':
         if (typeof value !== 'boolean') return false;
@@ -239,19 +220,22 @@ export class ButtonNode extends TransformNode {
         this.activeAssetId = value;
         this.activeAsset = value ? this.assets.image(value) : undefined;
         return true;
+      // Legacy props from older scene files. They are applied to the managed Label child.
+      case 'label':
+        if (typeof value !== 'string') return false;
+        this.ensureLabelNode().setText(value);
+        return true;
       case 'labelOffsetY':
         if (typeof value !== 'number') return false;
-        this.labelOffsetY = value;
+        this.ensureLabelNode().position = { x: 0, y: value };
         return true;
       case 'fontId':
         if (typeof value !== 'string') return false;
-        this.fontId = value;
-        this.applyLabelStyle();
+        this.ensureLabelNode().applySceneProps({ fontId: value });
         return true;
       case 'fontSize':
         if (typeof value !== 'number') return false;
-        this.fontSize = value;
-        this.applyLabelStyle();
+        this.ensureLabelNode().setFontSize(value);
         return true;
       default:
         return super.applySceneProp(key, value);
@@ -277,49 +261,68 @@ export class ButtonNode extends TransformNode {
       background.setSize(this.size.width || DEFAULT_BUTTON_WIDTH, this.size.height || DEFAULT_BUTTON_HEIGHT);
     }
     background.setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
-    this.phaserLabel?.setText(this.label).setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
+    const label = this.labelNode();
+    if (label?.isInitialized) label.object.setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
     if (this.sizeMode === 'content') this.size = backgroundLocalSize(this, background);
   }
 
-  private labelFontFamily(ctx?: NodeContext): string {
-    if (!this.fontId) return DEFAULT_LABEL_FONT_FAMILY;
-    return ctx?.assets.fontFamily(this.fontId) ?? this.assets.fontFamily(this.fontId);
-  }
-
-  private applyLabelStyle(): void {
-    this.phaserLabel?.setStyle({
-      fontFamily: this.labelFontFamily(),
-      fontSize: `${this.fontSize}px`,
-    });
-  }
-
   private applyButtonTransform(): void {
-    const background = this.background;
-    const label = this.phaserLabel;
-    if (!background || !label) return;
-
-    this.applyTransformTo(background);
-    const transform = this.getPhaserTransform();
-    const offset = rotatedOffset(0, this.labelOffsetY, { x: transform.scaleX, y: transform.scaleY }, transform.rotation);
-    label
-      .setOrigin(0.5)
-      .setPosition(transform.x + offset.x, transform.y + offset.y)
-      .setRotation(transform.rotation)
-      .setScale(transform.scaleX, transform.scaleY)
-      .setVisible(transform.visible)
-      .setScrollFactor(transform.scrollFactor);
+    if (!this.background) return;
+    this.applyTransformTo(this.background);
   }
 
   private configureInteractivity(): void {
-    const objects = [this.background, this.phaserLabel].filter((object): object is ButtonBackground | Phaser.GameObjects.Text => Boolean(object));
-    for (const object of objects) {
-      object.removeAllListeners('pointerover');
-      object.removeAllListeners('pointerdown');
-      object.disableInteractive();
-      if (!this.enabled) continue;
-      object.setInteractive({ useHandCursor: true });
-      object.on('pointerover', () => this.hoverCallback?.(this));
-      object.on('pointerdown', () => this.activateCallback?.(this));
-    }
+    const object = this.background;
+    if (!object) return;
+    object.removeAllListeners('pointerover');
+    object.removeAllListeners('pointerdown');
+    object.disableInteractive();
+    if (!this.enabled) return;
+    object.setInteractive({ useHandCursor: true });
+    object.on('pointerover', () => this.hoverCallback?.(this));
+    object.on('pointerdown', () => this.activateCallback?.(this));
+  }
+
+  private ensureLabelNode(): TextNode {
+    const existing = this.labelNode();
+    if (existing) return existing;
+
+    const label = new TextNode({
+      instanceId: `${this.instanceId}:label`,
+      name: LABEL_CHILD_NAME,
+      text: this.legacyLabel,
+      fontId: this.legacyFontId,
+      fontSize: this.legacyFontSize,
+      color: DEFAULT_LABEL_COLOR,
+      align: 'center',
+      resolution: 2,
+      parentAnchor: 'center',
+      position: { x: 0, y: this.legacyLabelOffsetY },
+      origin: { x: 0.5, y: 0.5 },
+      sizeMode: 'fill',
+      boundsMode: 'none',
+      scrollFactor: 1,
+    });
+    return this.addChild(label);
+  }
+
+  private labelNode(): TextNode | undefined {
+    return this.children.find((child): child is TextNode => child instanceof TextNode && (child.getEditorTreeMetadata().ownedRole === LABEL_CHILD_ROLE || child.debugName() === LABEL_CHILD_NAME));
+  }
+
+  private configureManagedLabel(label: TextNode): void {
+    label.markEditorTreeMetadata({ locked: true, defaultCollapsed: true, ownedRole: LABEL_CHILD_ROLE });
+    label.parentAnchor = 'center';
+    label.sizeMode = 'fill';
+    label.boundsMode = 'none';
+    label.origin = { x: 0.5, y: 0.5 };
+    label.markExposedPropReadOnly('active', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('visible', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('parentAnchor', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('size', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('sizeMode', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('origin', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('rotation', MANAGED_LABEL_REASON);
+    label.markExposedPropReadOnly('scale', MANAGED_LABEL_REASON);
   }
 }

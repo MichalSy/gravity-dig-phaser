@@ -11,6 +11,9 @@ interface FlatNodeSnapshot {
   active: boolean;
   effectiveActive: boolean;
   visible: boolean;
+  editorLocked?: boolean;
+  defaultCollapsed?: boolean;
+  ownedRole?: string;
   index: number;
   descriptor: DebugNodeDescriptor;
 }
@@ -82,6 +85,7 @@ function serializeNode(
   getNodeId: (node: GameNode) => string,
 ): DebugNodeDescriptor {
   const id = getNodeId(node);
+  const editorMetadata = node.getEditorTreeMetadata();
   const descriptor: DebugNodeDescriptor = {
     id,
     instanceId: node.instanceId,
@@ -92,6 +96,9 @@ function serializeNode(
     active: node.active,
     effectiveActive: node.isEffectivelyActive(),
     visible: node.isDebugVisible(),
+    editorLocked: editorMetadata.locked,
+    defaultCollapsed: editorMetadata.defaultCollapsed,
+    ownedRole: editorMetadata.ownedRole,
     index,
     children: node.children.map((child, childIndex) => serializeNode(child, id, childIndex, flatNodes, getNodeId)),
   };
@@ -106,6 +113,9 @@ function serializeNode(
     active: descriptor.active,
     effectiveActive: descriptor.effectiveActive ?? descriptor.active,
     visible: descriptor.visible,
+    editorLocked: descriptor.editorLocked,
+    defaultCollapsed: descriptor.defaultCollapsed,
+    ownedRole: descriptor.ownedRole,
     index: descriptor.index,
     descriptor,
   });

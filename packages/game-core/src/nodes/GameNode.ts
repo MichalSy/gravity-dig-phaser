@@ -71,6 +71,12 @@ export interface GameNodeOptions {
   debugScrollFactor?: number;
 }
 
+export interface EditorTreeMetadata {
+  locked?: boolean;
+  defaultCollapsed?: boolean;
+  ownedRole?: string;
+}
+
 export interface NodeLayoutResult {
   measuredSize: SizeLike;
   localScale: PointLike;
@@ -116,6 +122,7 @@ export abstract class GameNode {
   private readonly childNodes: GameNode[] = [];
   private readonly scenePropOverrides = new Set<string>();
   private readonly readOnlyExposedProps = new Map<string, string | undefined>();
+  private editorTreeMetadata: EditorTreeMetadata = {};
   private contentBounds?: NodeDebugBounds;
   private layoutResult?: NodeLayoutResult;
   private nodeContext?: NodeContext;
@@ -193,6 +200,7 @@ export abstract class GameNode {
   init(_ctx: NodeContext): void {}
   resolve(_ctx: NodeContext): void {}
   afterResolved(_ctx: NodeContext): void {}
+  ensureRequiredChildren(): void {}
   prepareLayout(_deltaMs: number): void {}
   measureSelf(): void {}
   coreUpdate(_deltaMs: number): void {}
@@ -204,6 +212,7 @@ export abstract class GameNode {
   initTree(ctx: NodeContext): void {
     if (this.initialized) return;
 
+    this.ensureRequiredChildren();
     this.nodeContext = ctx;
     ctx.runtime.registerNode(this);
     this.init(ctx);
@@ -638,6 +647,14 @@ export abstract class GameNode {
 
   markExposedPropReadOnly(key: string, reason?: string): void {
     this.readOnlyExposedProps.set(key, reason);
+  }
+
+  markEditorTreeMetadata(metadata: EditorTreeMetadata): void {
+    this.editorTreeMetadata = { ...this.editorTreeMetadata, ...metadata };
+  }
+
+  getEditorTreeMetadata(): EditorTreeMetadata {
+    return { ...this.editorTreeMetadata };
   }
 
   private getExposedPropGroups() {
