@@ -1,19 +1,19 @@
-import { ScriptNode, prop, type ButtonNode, type TextNode } from '@gravity-dig/game-core';
+import * as Core from '@gravity-dig/game-core';
 
 function wrapIndex(value: number, length: number): number {
   return ((value % length) + length) % length;
 }
 
-export default class MenuScript extends ScriptNode {
+export default class MenuScript extends Core.ScriptNode {
   id = 'dynamic.menu-script';
   name = 'Menu Script';
 
-  versionNodeId = prop.nodeRef('138dabce-8e4f-4743-94e5-df286ffbf7c8', { label: 'Version Text Node' });
-  buttonNodeIds = prop.nodeRefList(['9450b803-e4af-4252-a550-368797b71762', 'cd7cc808-d43e-4238-8f3e-d31e1687026f'], { label: 'Button Nodes' });
-  startAction = prop.string('start', { label: 'Start Button Action' });
-  startEvent = prop.string('game:start', { label: 'Start Event' });
+  versionNodeId = Core.prop.nodeRef('138dabce-8e4f-4743-94e5-df286ffbf7c8', { label: 'Version Text Node' });
+  buttonNodeIds = Core.prop.nodeRefList(['9450b803-e4af-4252-a550-368797b71762', 'cd7cc808-d43e-4238-8f3e-d31e1687026f'], { label: 'Button Nodes' });
+  startAction = Core.prop.string('start', { label: 'Start Button Action' });
+  startEvent = Core.prop.string('game:start', { label: 'Start Event' });
 
-  private buttons: ButtonNode[] = [];
+  private buttons: Core.ButtonNode[] = [];
   private activeIndex = 0;
   private keyHandler?: (event: KeyboardEvent) => void;
 
@@ -31,15 +31,15 @@ export default class MenuScript extends ScriptNode {
   }
 
   private setVersionText() {
-    const versionNode = this.versionNodeId ? this.getNodeById<TextNode>(this.versionNodeId) : undefined;
+    const versionNode = this.versionNodeId ? this.getNodeById<Core.TextNode>(this.versionNodeId) : undefined;
     versionNode?.setText?.(`v${this.getAppVersion()}`);
   }
 
   private bindButtons() {
     this.buttons.forEach((button) => button.setCallbacks?.({}));
     this.buttons = this.buttonNodeIds
-      .map((instanceId) => this.getNodeById<ButtonNode>(instanceId))
-      .filter((button): button is ButtonNode => Boolean(button));
+      .map((instanceId) => this.getNodeById<Core.ButtonNode>(instanceId))
+      .filter((button): button is Core.ButtonNode => Boolean(button));
     this.buttons.forEach((button) => button.setCallbacks?.({
       onHover: (hovered) => this.setActiveIndex(this.buttons.indexOf(hovered)),
       onActivate: (activated) => this.activateButton(activated),
@@ -79,7 +79,7 @@ export default class MenuScript extends ScriptNode {
     if (button) this.activateButton(button);
   }
 
-  private activateButton(button: ButtonNode) {
+  private activateButton(button: Core.ButtonNode) {
     if (button.enabled === false) return;
     if (button.action === this.startAction) {
       this.emit(this.startEvent);

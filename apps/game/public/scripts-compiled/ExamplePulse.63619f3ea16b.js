@@ -71,4 +71,4 @@ export {
   displayName,
   nodeTypeId
 };
-//# sourceMappingURL=ExamplePulse.477c242eb51b.js.map
+//# sourceMappingURL=ExamplePulse.63619f3ea16b.js.map

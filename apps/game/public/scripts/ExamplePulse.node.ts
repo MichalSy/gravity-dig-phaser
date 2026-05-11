@@ -1,11 +1,11 @@
-import { ScriptNode, prop } from '@gravity-dig/game-core';
+import * as Core from '@gravity-dig/game-core';
 
-export default class ExamplePulseNode extends ScriptNode {
+export default class ExamplePulseNode extends Core.ScriptNode {
   id = 'dynamic.example-pulse';
   name = 'Example Pulse Script';
 
-  intervalMs = prop.number(1000, { min: 100, max: 5000, step: 100, label: 'Interval ms' });
-  enabled = prop.boolean(true, { label: 'Enabled' });
+  intervalMs = Core.prop.number(1000, { min: 100, max: 5000, step: 100, label: 'Interval ms' });
+  enabled = Core.prop.boolean(true, { label: 'Enabled' });
 
   private elapsedMs = 0;
 
