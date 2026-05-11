@@ -7,9 +7,9 @@
         "name": "PlayerMovementController",
         "nodeTypeId": "dynamic.player-movement",
         "props": {
-          "levelNodeId": null,
-          "inputNodeId": null,
-          "playerStateNodeId": null,
+          "levelNodeId": "scene:Gameplay/GameRoot/Level",
+          "inputNodeId": "66f252d6-74cb-4626-9f0d-46ae08bb9569",
+          "playerStateNodeId": "afd901e7-2d18-4621-b368-d64b8cae1b8f",
           "gravity": 2640,
           "groundAcceleration": 7200,
           "airAcceleration": 5200,
