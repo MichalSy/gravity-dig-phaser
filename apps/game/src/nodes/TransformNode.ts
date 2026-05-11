@@ -54,6 +54,7 @@ export class TransformNode extends GameNode {
   scaleX: number;
   scaleY: number;
   scrollFactor: number;
+  private inheritsScrollFactor: boolean;
 
   constructor(options: TransformNodeOptions = {}) {
     super({
@@ -67,6 +68,7 @@ export class TransformNode extends GameNode {
     this.scaleY = roundScale(scale?.y ?? uniformScale);
     this.scale = this.scaleX === this.scaleY ? this.scaleX : 1;
     this.scrollFactor = options.scrollFactor ?? 1;
+    this.inheritsScrollFactor = options.scrollFactor === undefined;
   }
 
   override isDebugVisible(): boolean {
@@ -75,6 +77,11 @@ export class TransformNode extends GameNode {
 
   override getLocalScale(): { x: number; y: number } {
     return { x: this.scaleX, y: this.scaleY };
+  }
+
+  getEffectiveScrollFactor(): number {
+    if (!this.inheritsScrollFactor) return this.scrollFactor;
+    return this.parent instanceof TransformNode ? this.parent.getEffectiveScrollFactor() : this.scrollFactor;
   }
 
   getPhaserTransform(): {
@@ -99,7 +106,7 @@ export class TransformNode extends GameNode {
       originX: this.origin.x,
       originY: this.origin.y,
       visible: this.isEffectivelyActive() && this.visible,
-      scrollFactor: this.scrollFactor,
+      scrollFactor: this.getEffectiveScrollFactor(),
     };
   }
 
@@ -119,7 +126,7 @@ export class TransformNode extends GameNode {
     const bounds = this.getDebugBounds();
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
 
-    graphics.setVisible(true).setScrollFactor(bounds.scrollFactor ?? this.scrollFactor);
+    graphics.setVisible(true).setScrollFactor(bounds.scrollFactor ?? this.getEffectiveScrollFactor());
 
     if (layer.id === 'transform.bounds') {
       graphics
@@ -191,6 +198,7 @@ export class TransformNode extends GameNode {
       localScaleX: this.getLocalScale().x,
       localScaleY: this.getLocalScale().y,
       scrollFactor: this.scrollFactor,
+      effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
   }
 
@@ -239,6 +247,7 @@ export class TransformNode extends GameNode {
       case 'scrollFactor':
         if (typeof value !== 'number') return false;
         this.scrollFactor = value;
+        this.inheritsScrollFactor = false;
         return true;
       default:
         return super.applySceneProp(key, value);

@@ -44,7 +44,7 @@ export class CollisionRectNode extends TransformNode {
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
     ctx.graphics
       .setVisible(true)
-      .setScrollFactor(bounds.scrollFactor ?? this.scrollFactor)
+      .setScrollFactor(bounds.scrollFactor ?? this.getEffectiveScrollFactor())
       .lineStyle(2, 0xef4444, 0.95)
       .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
       .lineStyle(1, 0xfca5a5, 0.85)

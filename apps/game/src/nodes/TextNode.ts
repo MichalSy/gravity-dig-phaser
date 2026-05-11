@@ -157,7 +157,7 @@ export class TextNode extends TransformNode {
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
     if (!this.phaserText) return super.getLocalContentBounds();
-    if (this.sizeMode === 'content') return { ...textLocalBounds(this, this.phaserText), scrollFactor: this.scrollFactor };
+    if (this.sizeMode === 'content') return { ...textLocalBounds(this, this.phaserText), scrollFactor: this.getEffectiveScrollFactor() };
     return super.getLocalContentBounds();
   }
 
@@ -167,7 +167,7 @@ export class TextNode extends TransformNode {
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
     ctx.graphics
       .setVisible(true)
-      .setScrollFactor(bounds.scrollFactor ?? this.scrollFactor)
+      .setScrollFactor(bounds.scrollFactor ?? this.getEffectiveScrollFactor())
       .lineStyle(2, 0xc084fc, 0.95)
       .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
       .lineStyle(1, 0xf0abfc, 0.9)
@@ -196,6 +196,7 @@ export class TextNode extends TransformNode {
       strokeThickness: this.strokeThickness,
       resolution: this.resolution ?? null,
       scrollFactor: this.scrollFactor,
+      effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
   }
 

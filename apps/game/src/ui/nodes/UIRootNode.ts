@@ -12,6 +12,8 @@ export class UIRootNode extends TransformNode {
       className: options.className ?? 'UIRootNode',
       sizeMode: options.sizeMode ?? 'explicit',
       boundsMode: options.boundsMode ?? 'none',
+      scrollFactor: options.scrollFactor ?? 0,
+      debugScrollFactor: options.debugScrollFactor ?? 0,
       size: {
         width: options.size?.width ?? GAME_WIDTH,
         height: options.size?.height ?? GAME_HEIGHT,

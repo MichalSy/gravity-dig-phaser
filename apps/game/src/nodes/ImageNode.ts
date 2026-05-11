@@ -133,7 +133,7 @@ export class ImageNode extends TransformNode {
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
     if (!this.phaserImage) return super.getLocalContentBounds();
-    return { ...visibleImageLocalBounds(this, this.phaserImage), scrollFactor: this.scrollFactor };
+    return { ...visibleImageLocalBounds(this, this.phaserImage), scrollFactor: this.getEffectiveScrollFactor() };
   }
 
   protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {
@@ -142,7 +142,7 @@ export class ImageNode extends TransformNode {
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
     ctx.graphics
       .setVisible(true)
-      .setScrollFactor(bounds.scrollFactor ?? this.scrollFactor)
+      .setScrollFactor(bounds.scrollFactor ?? this.getEffectiveScrollFactor())
       .lineStyle(2, 0x22c55e, 0.95)
       .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height)
       .lineStyle(1, 0xbbf7d0, 0.9)
@@ -170,6 +170,7 @@ export class ImageNode extends TransformNode {
       cropHeight: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.height ?? null : null,
       flipX: this.flipX,
       scrollFactor: this.scrollFactor,
+      effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
   }
 

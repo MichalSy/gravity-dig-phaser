@@ -149,7 +149,7 @@ export class ButtonNode extends TransformNode {
     if (!bounds || bounds.width <= 0 || bounds.height <= 0) return false;
     ctx.graphics
       .setVisible(true)
-      .setScrollFactor(bounds.scrollFactor ?? this.scrollFactor)
+      .setScrollFactor(bounds.scrollFactor ?? this.getEffectiveScrollFactor())
       .lineStyle(2, this.selected ? 0xfacc15 : 0x38bdf8, 0.95)
       .strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
     return true;
@@ -172,6 +172,7 @@ export class ButtonNode extends TransformNode {
       normalAssetId: this.normalAssetId,
       activeAssetId: this.activeAssetId,
       scrollFactor: this.scrollFactor,
+      effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
   }
 
