@@ -9,19 +9,7 @@
         "props": {
           "levelNodeId": "b79d5555-5726-4ce6-be4c-b62b505320ba",
           "inputNodeId": null,
-          "playerStateNodeId": null,
-          "gravity": 2500,
-          "groundAcceleration": 32000,
-          "airAcceleration": 26000,
-          "groundFriction": 36000,
-          "airFriction": 2200,
-          "coyoteTimeMs": 140,
-          "jumpBufferMs": 150,
-          "jumpCutMultiplier": 0.56,
-          "maxFallSpeed": 1500,
-          "groundSnapPixels": 6,
-          "moveSpeedScale": 1.22,
-          "jumpVelocityScale": 1.18
+          "playerStateNodeId": null
         },
         "instanceId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
       },

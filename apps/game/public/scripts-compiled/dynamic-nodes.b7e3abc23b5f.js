@@ -134,57 +134,49 @@ var MenuScript = class extends ScriptNode {
 };
 
 // public/scripts/Gameplay/PlayerMovementScript.node.ts
-var PLAYER_WIDTH = 40;
-var PLAYER_HEIGHT = 64;
-var MAX_DELTA_SECONDS = 1 / 30;
-var SKIN_WIDTH = 0.5;
-var SKIN_HEIGHT = 0.5;
+var PLAYER_SIZE = { w: 40, h: 64 };
+var GRAVITY = 2640;
 var PlayerMovementScript = class extends ScriptNode {
   id = "dynamic.player-movement";
   name = "Player Movement Script";
   levelNodeId = prop.nodeRef(null, { label: "Level Node" });
   inputNodeId = prop.nodeRef(null, { label: "Gameplay Input Node" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State Node" });
-  moveSpeedScale = prop.number(1.22, { min: 0.2, max: 3, step: 0.05, label: "Move Speed Scale" });
-  jumpVelocityScale = prop.number(1.18, { min: 0.2, max: 3, step: 0.05, label: "Jump Velocity Scale" });
-  gravity = prop.number(2500, { min: 0, step: 10, label: "Gravity" });
-  groundAcceleration = prop.number(32e3, { min: 0, step: 100, label: "Ground Acceleration" });
-  airAcceleration = prop.number(26e3, { min: 0, step: 100, label: "Air Acceleration" });
-  groundFriction = prop.number(36e3, { min: 0, step: 100, label: "Ground Friction" });
-  airFriction = prop.number(2200, { min: 0, step: 100, label: "Air Friction" });
-  coyoteTimeMs = prop.number(140, { min: 0, max: 300, step: 10, label: "Coyote Time ms" });
-  jumpBufferMs = prop.number(150, { min: 0, max: 300, step: 10, label: "Jump Buffer ms" });
-  jumpCutMultiplier = prop.number(0.56, { min: 0.1, max: 1, step: 0.05, label: "Jump Cut Multiplier" });
-  maxFallSpeed = prop.number(1500, { min: 200, step: 50, label: "Max Fall Speed" });
-  groundSnapPixels = prop.number(6, { min: 0, max: 12, step: 1, label: "Ground Snap px" });
   velocity = { x: 0, y: 0 };
   grounded = false;
   inputBlocked = false;
-  player;
-  level;
-  input;
+  levelNode;
   playerState;
+  gameplayInput;
+  player;
   coyoteTimerSeconds = 0;
   jumpBufferTimerSeconds = 0;
   jumpHeld = false;
   resolve() {
-    this.level = this.resolveNode(this.levelNodeId, "Level");
-    this.input = this.resolveNode(this.inputNodeId, "GameplayInput");
-    this.playerState = this.resolveNode(this.playerStateNodeId, "PlayerState");
+    this.levelNode = this.requireResolvedNode(this.levelNodeId, "Level");
+    this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
+    this.gameplayInput = this.requireResolvedNode(this.inputNodeId, "GameplayInput");
   }
   setPlayer(player) {
     this.player = player;
     this.resetMotion();
-    this.grounded = this.collidesAt(player.x, player.y + 1);
   }
   resetMotion() {
     this.velocity.x = 0;
     this.velocity.y = 0;
     this.grounded = false;
-    this.inputBlocked = false;
     this.coyoteTimerSeconds = 0;
     this.jumpBufferTimerSeconds = 0;
     this.jumpHeld = false;
+  }
+  blockInput() {
+    this.inputBlocked = true;
+    this.velocity.x = 0;
+    this.jumpHeld = false;
+    this.jumpBufferTimerSeconds = 0;
+  }
+  unblockInput() {
+    this.inputBlocked = false;
   }
   getVelocity() {
     return this.velocity;
@@ -196,107 +188,81 @@ var PlayerMovementScript = class extends ScriptNode {
     return this.inputBlocked;
   }
   update(deltaMs) {
-    if (!this.player || !this.level || !this.input) return;
-    const dt = Math.min(deltaMs / 1e3, MAX_DELTA_SECONDS);
-    this.updateInput(dt);
-    this.updatePhysics(dt);
+    if (!this.player) return;
+    const deltaSeconds = deltaMs / 1e3;
+    this.handleInput(deltaSeconds);
+    this.applyPhysics(deltaSeconds);
   }
-  updateInput(dt) {
-    const menuOpen = this.input?.isMenuOpen?.() === true;
-    this.inputBlocked = menuOpen;
-    if (menuOpen) {
+  handleInput(deltaSeconds) {
+    if (this.inputBlocked) {
       this.velocity.x = 0;
       this.jumpHeld = false;
       this.jumpBufferTimerSeconds = 0;
       return;
     }
-    const intent = this.input?.getPlayerIntent({ previousJumpHeld: this.jumpHeld }) ?? { moveX: 0, jumpPressed: false, jumpHeld: false, interactPressed: false };
-    const targetSpeed = intent.moveX * this.moveSpeed();
-    const acceleration = Math.abs(targetSpeed) > 0.01 ? this.grounded ? this.groundAcceleration : this.airAcceleration : this.grounded ? this.groundFriction : this.airFriction;
-    this.velocity.x = approach(this.velocity.x, targetSpeed, acceleration * dt);
-    if (intent.jumpPressed) this.jumpBufferTimerSeconds = this.jumpBufferMs / 1e3;
-    if (!intent.jumpHeld && this.jumpHeld && this.velocity.y < 0) this.velocity.y *= this.jumpCutMultiplier;
+    const intent = this.gameplayInput.getPlayerIntent({ previousJumpHeld: this.jumpHeld });
+    this.velocity.x = intent.moveX * this.playerState.stats.moveSpeed;
     this.jumpHeld = intent.jumpHeld;
-    if (this.jumpBufferTimerSeconds > 0) this.jumpBufferTimerSeconds = Math.max(0, this.jumpBufferTimerSeconds - dt);
+    if (intent.jumpPressed) this.queueOrPerformJump();
+    if (this.jumpBufferTimerSeconds > 0) this.jumpBufferTimerSeconds -= deltaSeconds;
   }
-  updatePhysics(dt) {
-    const wasGrounded = this.grounded;
-    if (this.jumpBufferTimerSeconds > 0 && (this.grounded || this.coyoteTimerSeconds > 0)) this.jump();
-    this.velocity.y = Math.min(this.maxFallSpeed, this.velocity.y + this.gravity * dt);
-    this.moveHorizontal(this.velocity.x * dt);
-    this.grounded = false;
-    this.moveVertical(this.velocity.y * dt);
-    this.snapToGround();
-    if (this.grounded) this.coyoteTimerSeconds = this.coyoteTimeMs / 1e3;
-    else if (wasGrounded) this.coyoteTimerSeconds = this.coyoteTimeMs / 1e3;
-    else if (this.coyoteTimerSeconds > 0) this.coyoteTimerSeconds = Math.max(0, this.coyoteTimerSeconds - dt);
-    if (this.jumpBufferTimerSeconds > 0 && (this.grounded || this.coyoteTimerSeconds > 0)) this.jump();
-  }
-  jump() {
-    this.velocity.y = this.jumpVelocity();
-    this.grounded = false;
-    this.coyoteTimerSeconds = 0;
-    this.jumpBufferTimerSeconds = 0;
-  }
-  moveHorizontal(dx) {
-    if (!this.player || dx === 0) return;
-    const direction = Math.sign(dx);
-    let remaining = Math.abs(dx);
-    while (remaining > 0) {
-      const step = Math.min(remaining, 2);
-      const nextX = this.player.x + direction * step;
-      if (this.collidesAt(nextX, this.player.y)) {
-        this.velocity.x = 0;
-        return;
-      }
-      this.player.setPosition(nextX, this.player.y);
-      remaining -= step;
-    }
-  }
-  moveVertical(dy) {
-    if (!this.player || dy === 0) return;
-    const direction = Math.sign(dy);
-    let remaining = Math.abs(dy);
-    while (remaining > 0) {
-      const step = Math.min(remaining, 2);
-      const nextY = this.player.y + direction * step;
-      if (this.collidesAt(this.player.x, nextY)) {
-        if (direction > 0) this.grounded = true;
-        this.velocity.y = 0;
-        return;
-      }
-      this.player.setPosition(this.player.x, nextY);
-      remaining -= step;
-    }
-  }
-  snapToGround() {
-    if (!this.player || this.grounded || this.velocity.y < 0 || this.groundSnapPixels <= 0) return;
-    for (let offset = 1; offset <= this.groundSnapPixels; offset += 1) {
-      if (!this.collidesAt(this.player.x, this.player.y + offset)) continue;
-      this.player.setPosition(this.player.x, this.player.y + offset - 1);
-      this.velocity.y = 0;
-      this.grounded = true;
+  queueOrPerformJump() {
+    if (this.grounded || this.coyoteTimerSeconds > 0) {
+      this.jump();
       return;
     }
+    this.jumpBufferTimerSeconds = 0.1;
   }
-  collidesAt(centerX, centerY) {
-    return this.level?.collidesBox(centerX, centerY, PLAYER_WIDTH - SKIN_WIDTH, PLAYER_HEIGHT - SKIN_HEIGHT) === true;
+  applyPhysics(deltaSeconds) {
+    if (!this.player) return;
+    const wasGrounded = this.grounded;
+    this.velocity.y += GRAVITY * deltaSeconds;
+    this.moveAxis(this.velocity.x * deltaSeconds, 0);
+    this.grounded = false;
+    this.moveAxis(0, this.velocity.y * deltaSeconds);
+    this.stabilizeGroundContact();
+    if (wasGrounded && !this.grounded) this.coyoteTimerSeconds = 0.1;
+    if (this.coyoteTimerSeconds > 0) this.coyoteTimerSeconds -= deltaSeconds;
+    if (this.jumpBufferTimerSeconds > 0 && (this.grounded || this.coyoteTimerSeconds > 0)) {
+      this.jump();
+      this.jumpBufferTimerSeconds = 0;
+    }
   }
-  moveSpeed() {
-    return (this.playerState?.stats?.moveSpeed ?? 470) * this.moveSpeedScale;
+  stabilizeGroundContact() {
+    if (!this.player || this.grounded || this.velocity.y < 0) return;
+    if (!this.levelNode.collidesBox(this.player.x, this.player.y + 1, PLAYER_SIZE.w, PLAYER_SIZE.h)) return;
+    this.grounded = true;
+    this.velocity.y = 0;
   }
-  jumpVelocity() {
-    return (this.playerState?.stats?.jumpVelocity ?? -1040) * this.jumpVelocityScale;
+  moveAxis(dx, dy) {
+    if (!this.player || dx === 0 && dy === 0) return;
+    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8);
+    const stepX = dx / steps;
+    const stepY = dy / steps;
+    for (let i = 0; i < steps; i += 1) {
+      const nextX = this.player.x + stepX;
+      const nextY = this.player.y + stepY;
+      if (!this.levelNode.collidesBox(nextX, nextY, PLAYER_SIZE.w, PLAYER_SIZE.h)) {
+        this.player.setPosition(nextX, nextY);
+        continue;
+      }
+      if (dy > 0) this.grounded = true;
+      if (dy !== 0) this.velocity.y = 0;
+      if (dx !== 0) this.velocity.x = 0;
+      break;
+    }
   }
-  resolveNode(instanceId, fallbackName) {
-    return (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+  jump() {
+    this.velocity.y = this.playerState.stats.jumpVelocity;
+    this.grounded = false;
+    this.coyoteTimerSeconds = 0;
+  }
+  requireResolvedNode(instanceId, fallbackName) {
+    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
+    return node;
   }
 };
-function approach(current, target, delta) {
-  if (current < target) return Math.min(target, current + delta);
-  if (current > target) return Math.max(target, current - delta);
-  return target;
-}
 
 // node_modules/.script-build/dynamic-nodes.entry.ts
 function createDynamicNodeModule(ScriptClass, baseName) {
@@ -321,4 +287,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.4527d6e7c6be.js.map
+//# sourceMappingURL=dynamic-nodes.b7e3abc23b5f.js.map
