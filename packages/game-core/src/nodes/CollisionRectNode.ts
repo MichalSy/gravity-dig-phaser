@@ -22,11 +22,11 @@ export class CollisionRectNode extends TransformNode {
   }
 
   get x(): number {
-    return this.getWorldPosition().x;
+    return this.getLiveWorldPosition().x;
   }
 
   get y(): number {
-    return this.getWorldPosition().y;
+    return this.getLiveWorldPosition().y;
   }
 
   setPosition(x: number, y: number): this {

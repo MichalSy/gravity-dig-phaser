@@ -100,12 +100,12 @@ export class TransformNode extends GameNode {
     visible: boolean;
     scrollFactor: number;
   } {
-    const position = this.getWorldPosition();
-    const scale = this.getWorldScale();
+    const position = this.getLiveWorldPosition();
+    const scale = this.getLiveWorldScale();
     return {
       x: position.x,
       y: position.y,
-      rotation: this.getWorldRotation(),
+      rotation: this.getLiveWorldRotation(),
       scaleX: scale.x,
       scaleY: scale.y,
       originX: this.origin.x,

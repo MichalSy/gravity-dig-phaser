@@ -459,14 +459,33 @@ export abstract class GameNode {
 
   getWorldPosition(): PointLike {
     if (this.layoutResult) return { ...this.layoutResult.worldPosition };
+    return this.getLiveWorldPosition();
+  }
+
+  getLiveWorldPosition(): PointLike {
     const parent = this.parent;
     if (!parent) return { ...this.position };
 
-    const parentPosition = parent.getWorldPosition();
-    const parentScale = parent.getWorldScale();
-    const parentRotation = parent.getWorldRotation();
-    const positionInParent = this.getPositionInParent();
+    const parentPosition = parent.getLiveWorldPosition();
+    const parentScale = parent.getLiveWorldScale();
+    const parentRotation = parent.getLiveWorldRotation();
+    const parentAnchorOffset = anchorOffset(this.parentAnchor, parent.size);
+    const parentOriginOffset = parent.getLocalOriginOffset();
+    const positionInParent = {
+      x: parentAnchorOffset.x - parentOriginOffset.x + this.position.x,
+      y: parentAnchorOffset.y - parentOriginOffset.y + this.position.y,
+    };
     return rotatePoint(positionInParent.x * parentScale.x, positionInParent.y * parentScale.y, parentRotation, parentPosition);
+  }
+
+  getLiveWorldScale(): PointLike {
+    const parentScale = this.parent?.getLiveWorldScale() ?? { x: 1, y: 1 };
+    const localScale = this.getLocalScale();
+    return { x: parentScale.x * localScale.x, y: parentScale.y * localScale.y };
+  }
+
+  getLiveWorldRotation(): number {
+    return (this.parent?.getLiveWorldRotation() ?? 0) + this.rotation;
   }
 
   getWorldParentAnchorPosition(): PointLike | undefined {
