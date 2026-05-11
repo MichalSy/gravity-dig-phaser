@@ -387,7 +387,22 @@ export interface EditorMoveNodeChange {
   createdAt: number;
 }
 
-export type EditorChange = EditorSetPropsChange | EditorMoveNodeChange;
+export interface EditorAddNodeChange {
+  id: string;
+  kind: 'addNode';
+  sessionId: string;
+  target: EditorChangeTarget;
+  index?: number;
+  node: {
+    nodeTypeId: string;
+    name?: string;
+    props?: Record<string, unknown>;
+    children?: unknown[];
+  };
+  createdAt: number;
+}
+
+export type EditorChange = EditorSetPropsChange | EditorMoveNodeChange | EditorAddNodeChange;
 
 export interface EditorChangeSet {
   sessionId: string;

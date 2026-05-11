@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Box, Boxes, ChevronDown, ChevronRight, Code2, Crosshair, Eye, EyeOff, File as FileIcon, Folder, FolderOpen, Frame, Gamepad2, Image as ImageIcon, Layers, MousePointer2, Plus, Power, PowerOff, Search, Square, Trash2, Type as TypeIcon } from 'lucide-react';
-import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import type { DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -236,7 +236,7 @@ function pumpThumbnailQueue(): void {
 }
 
 function countPendingProps(changeSet: EditorChangeSet): number {
-  return pendingChangeRows(changeSet).length + changeSet.changes.filter((change) => change.kind === 'moveNode').length;
+  return pendingChangeRows(changeSet).length + changeSet.changes.filter((change) => change.kind === 'moveNode' || change.kind === 'addNode').length;
 }
 
 type PendingChangeRow = {
@@ -363,6 +363,7 @@ export default function Home() {
   const [nodeCreateMenu, setNodeCreateMenu] = useState<{ node: DebugNodeDescriptor; x: number; y: number } | undefined>();
   const draggedHierarchyNodeRef = useRef<DebugNodeDescriptor | undefined>(undefined);
   const pendingHierarchyMovesRef = useRef<Map<string, { nodePath: string[]; targetPath: string[]; placement: HierarchyDropPlacement }>>(new Map());
+  const pendingNodeCreatesRef = useRef<Map<string, { parentPath: string[]; index?: number; definition: EditorAddNodeChange['node'] }>>(new Map());
   const [hierarchyDropTarget, setHierarchyDropTarget] = useState<{ targetId: string; placement: HierarchyDropPlacement } | undefined>();
   const lastSelectMessageRef = useRef<string>('');
   const selectedNodeIdRef = useRef<string | undefined>(undefined);
@@ -462,7 +463,10 @@ export default function Home() {
       }
 
       if (message.type === 'node:create:ack') {
+        const pendingCreate = pendingNodeCreatesRef.current.get(message.requestId);
+        pendingNodeCreatesRef.current.delete(message.requestId);
         setPatchStatus(message.applied ? `Node injected: ${message.name ?? message.nodeId ?? message.requestId}` : `Node Injection abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+        if (message.applied && pendingCreate) void persistPendingAddNode(pendingCreate.parentPath, pendingCreate.definition, pendingCreate.index);
         if (message.applied && message.nodeId) setSelectedNodeId(message.nodeId);
         return;
       }
@@ -1045,6 +1049,36 @@ export default function Home() {
     }
   }
 
+  function trackPendingNodeCreate(requestId: string, parentNode: DebugNodeDescriptor, definition: EditorAddNodeChange['node'], index?: number): void {
+    const parentPath = findNodePath(treeRootsRef.current, parentNode.id);
+    if (!parentPath) {
+      setPatchStatus('Node Create wird nur live angewendet: Parent-Pfad nicht gefunden.');
+      return;
+    }
+    pendingNodeCreatesRef.current.set(requestId, { parentPath, index, definition });
+  }
+
+  async function persistPendingAddNode(parentPath: string[], definition: EditorAddNodeChange['node'], index?: number): Promise<void> {
+    if (!sessionId) return;
+    try {
+      const change: Omit<EditorAddNodeChange, 'id' | 'sessionId' | 'createdAt'> = { kind: 'addNode', target: { nodePath: parentPath }, index, node: definition };
+      const response = await fetch(editorApi(`/changes/${encodeURIComponent(sessionId)}`), {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(change),
+      });
+      const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPendingChangeSet(result.changeSet);
+      setPendingChangeCount(result.changeSet ? countPendingProps(result.changeSet) : 0);
+      setGitSaveStatus(`Node Create gespeichert: ${parentPath.join(' / ')} / ${definition.name ?? definition.nodeTypeId}`);
+      void refreshGitStatus();
+    } catch (error) {
+      setGitSaveStatus(`Node Create fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   async function injectDynamicNode(parentNode: DebugNodeDescriptor, file: PublicFileEntry): Promise<void> {
     if (!sessionId || !isBridgeReady()) {
       setPatchStatus('Node Injection nicht gesendet: Editor-Bridge nicht verbunden.');
@@ -1057,16 +1091,17 @@ export default function Home() {
     }
 
     const requestId = createSessionId();
+    const definition = {
+      nodeTypeId: entry.nodeTypeId,
+      name: defaultDynamicNodeName(entry),
+      props: {},
+    };
     const message: DebugMessage = {
       type: 'node:create',
       sessionId,
       requestId,
       parentNodeId: parentNode.id,
-      definition: {
-        nodeTypeId: entry.nodeTypeId,
-        name: defaultDynamicNodeName(entry),
-        props: {},
-      },
+      definition,
       module: {
         nodeTypeId: entry.nodeTypeId,
         source: entry.source,
@@ -1075,6 +1110,7 @@ export default function Home() {
       },
       sentAt: Date.now(),
     };
+    trackPendingNodeCreate(requestId, parentNode, definition);
     sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
@@ -1107,23 +1143,25 @@ export default function Home() {
 
     const debugImageSource = createDebugImageSource(payload, asset, resolution.publicPath);
     const requestId = createSessionId();
+    const definition = {
+      nodeTypeId: imageNodeTypeId,
+      name: defaultImageNodeName(asset, debugImageSource.id, payload.label),
+      props: {
+        assetId: debugImageSource.id,
+        debugImageSource,
+        sizeMode: 'content',
+        origin: { x: 0.5, y: 0.5 },
+      },
+    };
     const message: DebugMessage = {
       type: 'node:create',
       sessionId,
       requestId,
       parentNodeId: parentNode.id,
-      definition: {
-        nodeTypeId: imageNodeTypeId,
-        name: defaultImageNodeName(asset, debugImageSource.id, payload.label),
-        props: {
-          assetId: debugImageSource.id,
-          debugImageSource,
-          sizeMode: 'content',
-          origin: { x: 0.5, y: 0.5 },
-        },
-      },
+      definition,
       sentAt: Date.now(),
     };
+    trackPendingNodeCreate(requestId, parentNode, definition);
     sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
@@ -1137,18 +1175,20 @@ export default function Home() {
       return;
     }
     const requestId = createSessionId();
+    const definition = {
+      nodeTypeId: option.nodeTypeId,
+      name: defaultGenericNodeName(option.className),
+      props: option.props,
+    };
     const message: DebugMessage = {
       type: 'node:create',
       sessionId,
       requestId,
       parentNodeId: parentNode.id,
-      definition: {
-        nodeTypeId: option.nodeTypeId,
-        name: defaultGenericNodeName(option.className),
-        props: option.props,
-      },
+      definition,
       sentAt: Date.now(),
     };
+    trackPendingNodeCreate(requestId, parentNode, definition);
     sendDebugMessage(message);
     setSelectedNodeId(parentNode.id);
     setExpandedNodeIds((current) => new Set([...current, parentNode.id]));
