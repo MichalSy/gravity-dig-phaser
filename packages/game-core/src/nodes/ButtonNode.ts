@@ -1,10 +1,18 @@
 import Phaser from 'phaser';
 import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
-import { isFrameAsset, type RenderableImageAsset } from '../../nodes';
-import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
-import { NODE_TYPE_IDS } from '../../nodes';
-import { exposedPropGroup, propAssetId, propBoolean, propString, type ExposedPropGroup } from '../../nodes';
-import { TransformNode, type TransformNodeOptions } from '../../nodes';
+import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
+import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
+import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
+import { exposedPropGroup, propAssetId, propBoolean, propNumber, propString, type ExposedPropGroup } from './SceneProps';
+import { TransformNode, type TransformNodeOptions } from './TransformNode';
+
+const DEFAULT_BUTTON_WIDTH = 220;
+const DEFAULT_BUTTON_HEIGHT = 64;
+const DEFAULT_NORMAL_COLOR = 0x334155;
+const DEFAULT_ACTIVE_COLOR = 0x475569;
+const DEFAULT_DISABLED_ALPHA = 0.45;
+const DEFAULT_LABEL_COLOR = '#ffffff';
+const DEFAULT_FLASH_TINT = 0xfff1a8;
 
 export interface ButtonNodeOptions extends TransformNodeOptions {
   action?: string;
@@ -13,16 +21,26 @@ export interface ButtonNodeOptions extends TransformNodeOptions {
   normalAssetId?: string;
   activeAssetId?: string;
   selected?: boolean;
+  labelOffsetY?: number;
 }
 
 type ButtonCallback = (button: ButtonNode) => void;
+type ButtonBackground = Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
 
 function imageLocalSize(image: Phaser.GameObjects.Image): { width: number; height: number } {
   return { width: image.frame.width, height: image.frame.height };
 }
 
-function imageLocalBounds(node: ButtonNode, image: Phaser.GameObjects.Image): NodeDebugBounds {
-  const size = imageLocalSize(image);
+function backgroundLocalSize(node: ButtonNode, background: ButtonBackground): { width: number; height: number } {
+  if (background instanceof Phaser.GameObjects.Image) return imageLocalSize(background);
+  return {
+    width: node.size.width > 0 ? node.size.width : DEFAULT_BUTTON_WIDTH,
+    height: node.size.height > 0 ? node.size.height : DEFAULT_BUTTON_HEIGHT,
+  };
+}
+
+function backgroundLocalBounds(node: ButtonNode, background: ButtonBackground): NodeDebugBounds {
+  const size = backgroundLocalSize(node, background);
   return { x: -node.origin.x * size.width, y: -node.origin.y * size.height, width: size.width, height: size.height, scrollFactor: node.scrollFactor };
 }
 
@@ -36,7 +54,7 @@ function rotatedOffset(offsetX: number, offsetY: number, scale: { x: number; y: 
 }
 
 export class ButtonNode extends TransformNode {
-  static override readonly nodeTypeId: string = NODE_TYPE_IDS.ButtonNode;
+  static override readonly nodeTypeId: string = CORE_NODE_TYPE_IDS.ButtonNode;
   static override readonly sceneType: string = 'ButtonNode';
   static override readonly debugOverlayLayers: readonly DebugOverlayLayerDescriptor[] = [
     { id: 'button.bounds', label: 'Button Bounds', source: 'ButtonNode' },
@@ -50,6 +68,7 @@ export class ButtonNode extends TransformNode {
       selected: propBoolean({ label: 'Selected' }),
       normalAssetId: propAssetId({ label: 'Normal Image' }),
       activeAssetId: propAssetId({ label: 'Active Image' }),
+      labelOffsetY: propNumber({ label: 'Label Offset Y', step: 1 }),
     }),
   ];
 
@@ -59,10 +78,11 @@ export class ButtonNode extends TransformNode {
   selected: boolean;
   normalAssetId: string;
   activeAssetId: string;
+  labelOffsetY: number;
 
-  private normalAsset!: RenderableImageAsset;
-  private activeAsset!: RenderableImageAsset;
-  private phaserImage?: Phaser.GameObjects.Image;
+  private normalAsset?: RenderableImageAsset;
+  private activeAsset?: RenderableImageAsset;
+  private background?: ButtonBackground;
   private phaserLabel?: Phaser.GameObjects.Text;
   private hoverCallback?: ButtonCallback;
   private activateCallback?: ButtonCallback;
@@ -78,32 +98,30 @@ export class ButtonNode extends TransformNode {
     this.label = options.label ?? '';
     this.enabled = options.enabled ?? true;
     this.selected = options.selected ?? false;
-    this.normalAssetId = options.normalAssetId ?? 'menu-button-inactive';
-    this.activeAssetId = options.activeAssetId ?? 'menu-button-active';
+    this.normalAssetId = options.normalAssetId ?? '';
+    this.activeAssetId = options.activeAssetId ?? '';
+    this.labelOffsetY = options.labelOffsetY ?? 0;
   }
 
   init(ctx: NodeContext): void {
-    this.normalAsset = ctx.assets.image(this.normalAssetId);
-    this.activeAsset = ctx.assets.image(this.activeAssetId);
+    this.normalAsset = this.normalAssetId ? ctx.assets.image(this.normalAssetId) : undefined;
+    this.activeAsset = this.activeAssetId ? ctx.assets.image(this.activeAssetId) : undefined;
     const asset = this.currentAsset();
-    this.phaserImage = ctx.phaserScene.add.image(0, 0, asset.textureKey, isFrameAsset(asset) ? asset.frameKey : undefined);
+    this.background = asset
+      ? ctx.phaserScene.add.image(0, 0, asset.textureKey, isFrameAsset(asset) ? asset.frameKey : undefined)
+      : ctx.phaserScene.add.rectangle(0, 0, this.size.width || DEFAULT_BUTTON_WIDTH, this.size.height || DEFAULT_BUTTON_HEIGHT, DEFAULT_NORMAL_COLOR);
     this.phaserLabel = ctx.phaserScene.add.text(0, 0, this.label, {
-      fontFamily: 'Silkscreen',
-      fontSize: '27px',
-      fontStyle: '700',
-      color: '#fff4c7',
-      stroke: '#4d260f',
-      strokeThickness: 5,
+      color: DEFAULT_LABEL_COLOR,
       align: 'center',
     }).setOrigin(0.5).setResolution(2);
     this.configureInteractivity();
-    if (this.sizeMode === 'content') this.size = imageLocalSize(this.phaserImage);
+    if (this.sizeMode === 'content') this.size = backgroundLocalSize(this, this.background);
     this.applyButtonState();
     this.applyButtonTransform();
   }
 
   override measureSelf(): void {
-    if (this.phaserImage && this.sizeMode === 'content') this.size = imageLocalSize(this.phaserImage);
+    if (this.background && this.sizeMode === 'content') this.size = backgroundLocalSize(this, this.background);
   }
 
   override coreUpdate(): void {
@@ -112,9 +130,9 @@ export class ButtonNode extends TransformNode {
   }
 
   destroy(): void {
-    this.phaserImage?.destroy();
+    this.background?.destroy();
     this.phaserLabel?.destroy();
-    this.phaserImage = undefined;
+    this.background = undefined;
     this.phaserLabel = undefined;
   }
 
@@ -134,13 +152,13 @@ export class ButtonNode extends TransformNode {
   }
 
   protected override onEffectiveActiveChanged(active: boolean): void {
-    this.phaserImage?.setVisible(active && this.visible);
+    this.background?.setVisible(active && this.visible);
     this.phaserLabel?.setVisible(active && this.visible);
   }
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
-    if (!this.phaserImage) return super.getLocalContentBounds();
-    return imageLocalBounds(this, this.phaserImage);
+    if (!this.background) return super.getLocalContentBounds();
+    return backgroundLocalBounds(this, this.background);
   }
 
   protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {
@@ -157,7 +175,7 @@ export class ButtonNode extends TransformNode {
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     const objects: Phaser.GameObjects.GameObject[] = [];
-    if (this.phaserImage) objects.push(this.phaserImage);
+    if (this.background) objects.push(this.background);
     if (this.phaserLabel) objects.push(this.phaserLabel);
     return objects;
   }
@@ -171,6 +189,7 @@ export class ButtonNode extends TransformNode {
       selected: this.selected,
       normalAssetId: this.normalAssetId,
       activeAssetId: this.activeAssetId,
+      labelOffsetY: this.labelOffsetY,
       scrollFactor: this.scrollFactor,
       effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
@@ -199,41 +218,53 @@ export class ButtonNode extends TransformNode {
       case 'normalAssetId':
         if (typeof value !== 'string') return false;
         this.normalAssetId = value;
-        this.normalAsset = this.assets.image(value);
+        this.normalAsset = value ? this.assets.image(value) : undefined;
         return true;
       case 'activeAssetId':
         if (typeof value !== 'string') return false;
         this.activeAssetId = value;
-        this.activeAsset = this.assets.image(value);
+        this.activeAsset = value ? this.assets.image(value) : undefined;
+        return true;
+      case 'labelOffsetY':
+        if (typeof value !== 'number') return false;
+        this.labelOffsetY = value;
         return true;
       default:
         return super.applySceneProp(key, value);
     }
   }
 
-  private currentAsset(): RenderableImageAsset {
-    return this.selected && this.enabled ? this.activeAsset : this.normalAsset;
+  private currentAsset(): RenderableImageAsset | undefined {
+    if (this.selected && this.enabled) return this.activeAsset ?? this.normalAsset;
+    return this.normalAsset ?? this.activeAsset;
   }
 
   private applyButtonState(): void {
-    const image = this.phaserImage;
-    if (!image) return;
+    const background = this.background;
+    if (!background) return;
+
     const asset = this.currentAsset();
-    image.setTexture(asset.textureKey, isFrameAsset(asset) ? asset.frameKey : undefined);
-    image.setAlpha(this.enabled ? 1 : 0.45);
-    image.setTint(performance.now() < this.flashUntil ? 0xfff1a8 : 0xffffff);
-    this.phaserLabel?.setText(this.label).setAlpha(this.enabled ? 1 : 0.45);
-    if (this.sizeMode === 'content') this.size = imageLocalSize(image);
+    const isFlashing = performance.now() < this.flashUntil;
+    if (background instanceof Phaser.GameObjects.Image && asset) {
+      background.setTexture(asset.textureKey, isFrameAsset(asset) ? asset.frameKey : undefined);
+      background.setTint(isFlashing ? DEFAULT_FLASH_TINT : 0xffffff);
+    } else if (background instanceof Phaser.GameObjects.Rectangle) {
+      background.setFillStyle(isFlashing ? DEFAULT_FLASH_TINT : this.selected && this.enabled ? DEFAULT_ACTIVE_COLOR : DEFAULT_NORMAL_COLOR);
+      background.setSize(this.size.width || DEFAULT_BUTTON_WIDTH, this.size.height || DEFAULT_BUTTON_HEIGHT);
+    }
+    background.setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
+    this.phaserLabel?.setText(this.label).setAlpha(this.enabled ? 1 : DEFAULT_DISABLED_ALPHA);
+    if (this.sizeMode === 'content') this.size = backgroundLocalSize(this, background);
   }
 
   private applyButtonTransform(): void {
-    const image = this.phaserImage;
+    const background = this.background;
     const label = this.phaserLabel;
-    if (!image || !label) return;
+    if (!background || !label) return;
 
-    this.applyTransformTo(image);
+    this.applyTransformTo(background);
     const transform = this.getPhaserTransform();
-    const offset = rotatedOffset(0, -4, { x: transform.scaleX, y: transform.scaleY }, transform.rotation);
+    const offset = rotatedOffset(0, this.labelOffsetY, { x: transform.scaleX, y: transform.scaleY }, transform.rotation);
     label
       .setOrigin(0.5)
       .setPosition(transform.x + offset.x, transform.y + offset.y)
@@ -244,7 +275,7 @@ export class ButtonNode extends TransformNode {
   }
 
   private configureInteractivity(): void {
-    const objects = [this.phaserImage, this.phaserLabel].filter((object): object is Phaser.GameObjects.Image | Phaser.GameObjects.Text => Boolean(object));
+    const objects = [this.background, this.phaserLabel].filter((object): object is ButtonBackground | Phaser.GameObjects.Text => Boolean(object));
     for (const object of objects) {
       object.removeAllListeners('pointerover');
       object.removeAllListeners('pointerdown');
