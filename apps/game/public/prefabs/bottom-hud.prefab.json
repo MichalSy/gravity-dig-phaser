@@ -76,7 +76,7 @@
             "props": {
               "assetId": "hud-item-rock",
               "parentAnchor": "center",
-              "visible": false,
+              "visible": true,
               "scrollFactor": 0,
               "origin": {
                 "x": 0.5,
@@ -102,21 +102,22 @@
             "name": "UI.SlotLabel0",
             "props": {
               "text": "",
-              "parentAnchor": "top-left",
+              "parentAnchor": "center",
               "visible": true,
               "scrollFactor": 0,
               "origin": {
-                "x": 1,
-                "y": 1
+                "x": 0.5,
+                "y": 0.5
               },
               "position": {
                 "x": 0,
-                "y": 0
+                "y": 97
               },
               "scale": {
                 "x": 1.695349,
                 "y": 1.695349
-              }
+              },
+              "fontSize": 29
             },
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
           }
