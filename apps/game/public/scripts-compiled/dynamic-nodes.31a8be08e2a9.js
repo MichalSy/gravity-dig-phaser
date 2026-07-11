@@ -28,6 +28,9 @@ var ScriptNode = class {
   getRuntimeMode() {
     return this.__dynamicNodeContext?.getRuntimeMode() ?? "play";
   }
+  getViewportSize() {
+    return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 };
+  }
   instantiatePrefab(path, options) {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error("Dynamic node context is not initialized");
@@ -428,12 +431,18 @@ var BottomHudScript = class extends ScriptNode {
     this.syncSlotCount();
     this.updateHud();
   }
+  destroy() {
+    while (this.slots.length > 0) this.removeLastSlot();
+  }
   syncSlotCount() {
     const targetCount = Math.max(0, Math.floor(this.playerState.stats.cargoSlots));
     while (this.slots.length < targetCount) this.addSlot(this.slots.length);
     while (this.slots.length > targetCount) this.removeLastSlot();
     const totalWidth = Math.max(BOTTOM_HUD_WIDTH, this.slotOriginX + Math.max(targetCount - 1, 0) * this.slotStepX + SLOT_WIDTH);
-    this.hudRoot.position = { x: -totalWidth / 2, y: 0 };
+    const viewportScale = clamp(this.getViewportSize().width / 1280, 0.5, 1);
+    this.hudRoot.scaleX = viewportScale;
+    this.hudRoot.scaleY = viewportScale;
+    this.hudRoot.position = { x: -(totalWidth * viewportScale) / 2, y: 0 };
   }
   addSlot(index) {
     const slot = this.instantiatePrefab(this.slotPrefab, {
@@ -547,4 +556,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.8688abb5748a.js.map
+//# sourceMappingURL=dynamic-nodes.31a8be08e2a9.js.map

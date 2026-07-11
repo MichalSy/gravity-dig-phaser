@@ -1142,6 +1142,7 @@ class ScriptNode {
   getNodesByName(name) { return this.__dynamicNodeContext?.getNodesByName(name) ?? []; }
   getAppVersion() { return this.__dynamicNodeContext?.getAppVersion() ?? '0.0.0'; }
   getRuntimeMode() { return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play'; }
+  getViewportSize() { return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 }; }
   instantiatePrefab(path, options) {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error('Dynamic node context is not initialized');

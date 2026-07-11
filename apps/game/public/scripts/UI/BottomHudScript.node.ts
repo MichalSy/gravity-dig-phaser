@@ -12,6 +12,8 @@ type PlayerStateLike = {
 
 type HudRoot = Core.GameNode & {
   position: { x: number; y: number };
+  scaleX: number;
+  scaleY: number;
   addChild<T extends Core.GameNode>(child: T): T;
   removeChild(child: Core.GameNode): void;
 };
@@ -79,6 +81,10 @@ export default class BottomHudScript extends Core.ScriptNode {
     this.updateHud();
   }
 
+  destroy() {
+    while (this.slots.length > 0) this.removeLastSlot();
+  }
+
   private syncSlotCount() {
     const targetCount = Math.max(0, Math.floor(this.playerState.stats.cargoSlots));
 
@@ -86,7 +92,10 @@ export default class BottomHudScript extends Core.ScriptNode {
     while (this.slots.length > targetCount) this.removeLastSlot();
 
     const totalWidth = Math.max(BOTTOM_HUD_WIDTH, this.slotOriginX + Math.max(targetCount - 1, 0) * this.slotStepX + SLOT_WIDTH);
-    this.hudRoot.position = { x: -totalWidth / 2, y: 0 };
+    const viewportScale = clamp(this.getViewportSize().width / 1280, 0.5, 1);
+    this.hudRoot.scaleX = viewportScale;
+    this.hudRoot.scaleY = viewportScale;
+    this.hudRoot.position = { x: -(totalWidth * viewportScale) / 2, y: 0 };
   }
 
   private addSlot(index: number) {

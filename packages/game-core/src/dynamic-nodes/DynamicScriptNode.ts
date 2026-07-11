@@ -22,6 +22,7 @@ export interface DynamicScriptContext {
   getNodesByName(name: string): GameNode[];
   getAppVersion(): string;
   getRuntimeMode(): 'editor' | 'play';
+  getViewportSize(): { width: number; height: number };
   instantiatePrefab(path: string, options?: { name?: string; props?: Record<string, unknown> }): GameNode;
   emit(action: string): void;
 }
@@ -90,6 +91,10 @@ export class DynamicScriptNode extends GameNode {
     this.callScriptLifecycle('update', () => this.behavior.update?.(deltaMs));
   }
 
+  override editorUpdate(deltaMs: number): void {
+    this.update(deltaMs);
+  }
+
   override destroy(): void {
     this.callScriptLifecycle('destroy', () => this.behavior.destroy?.());
     delete (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext;
@@ -123,6 +128,7 @@ export class DynamicScriptNode extends GameNode {
     if (scriptContext) {
       (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
       this.callScriptLifecycle('init', () => this.behavior.init?.(scriptContext));
+      if (this.isResolved) this.callScriptLifecycle('resolve', () => this.behavior.resolve?.(scriptContext));
     }
   }
 
@@ -229,6 +235,7 @@ export class DynamicScriptNode extends GameNode {
       getNodesByName: (name) => ctx.getNodesByName(name),
       getAppVersion: () => __APP_VERSION__,
       getRuntimeMode: () => ctx.runtime.mode,
+      getViewportSize: () => ({ width: ctx.phaserScene.scale.width, height: ctx.phaserScene.scale.height }),
       instantiatePrefab: (path, options) => {
         if (!this.prefabFactory) throw new Error(`Dynamic node '${this.debugName()}' cannot instantiate prefab '${path}'`);
         return this.prefabFactory(path, options);

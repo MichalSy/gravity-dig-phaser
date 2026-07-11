@@ -136,6 +136,9 @@ export class ScriptNode {
   getRuntimeMode() {
     return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play';
   }
+  getViewportSize() {
+    return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 };
+  }
   instantiatePrefab(path, options) {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error('Dynamic node context is not initialized');
