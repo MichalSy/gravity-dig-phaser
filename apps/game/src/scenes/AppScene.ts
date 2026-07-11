@@ -13,7 +13,7 @@ import {
 } from '../game/nodes';
 import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { GameplayInputNode } from '../app/nodes';
-import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
+import { InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
 
@@ -201,6 +201,7 @@ export class AppScene extends Phaser.Scene {
       name: definition.name,
       props: definition.props,
       actions: this.createScriptActions(),
+      instantiatePrefab: (path, options) => this.sceneFactory.createTree({ prefab: path, name: options?.name, props: options?.props }),
     });
     this.dynamicScriptNodes.add(node);
     return node;
@@ -262,7 +263,6 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.StatusHudNode, (definition) => new StatusHudNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.BottomHudNode, (definition) => new BottomHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.TouchControlsNode, (definition) => new TouchControlsNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.ImageNode, (definition) => new ImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof ImageNode>[0]))
       .register(NODE_TYPE_IDS.TextNode, (definition) => new TextNode(optionsFrom(definition)))

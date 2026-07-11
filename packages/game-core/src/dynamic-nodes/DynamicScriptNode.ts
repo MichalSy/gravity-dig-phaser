@@ -22,6 +22,7 @@ export interface DynamicScriptContext {
   getNodesByName(name: string): GameNode[];
   getAppVersion(): string;
   getRuntimeMode(): 'editor' | 'play';
+  instantiatePrefab(path: string, options?: { name?: string; props?: Record<string, unknown> }): GameNode;
   emit(action: string): void;
 }
 
@@ -42,6 +43,7 @@ export interface DynamicScriptNodeOptions extends GameNodeOptions {
   module: DynamicNodeModule;
   props?: Record<string, unknown>;
   actions?: Record<string, (source: DynamicScriptNode) => void>;
+  instantiatePrefab?: (path: string, options?: { name?: string; props?: Record<string, unknown> }) => GameNode;
 }
 
 export class DynamicScriptNode extends GameNode {
@@ -55,12 +57,14 @@ export class DynamicScriptNode extends GameNode {
   private scriptErrorCount = 0;
   private readonly scriptPropOverrides = new Set<string>();
   private readonly actions: Record<string, (source: DynamicScriptNode) => void>;
+  private readonly prefabFactory?: DynamicScriptNodeOptions['instantiatePrefab'];
 
   constructor(options: DynamicScriptNodeOptions) {
     super({ ...options, nodeTypeId: options.nodeTypeId ?? options.module.nodeTypeId, className: options.module.displayName ?? 'DynamicScriptNode' });
     this.module = options.module;
     this.behavior = this.createGuardedBehavior();
     this.actions = options.actions ?? {};
+    this.prefabFactory = options.instantiatePrefab;
     const extracted = this.extractScriptPropsSafely(this.behavior);
     this.scriptPropDefinitions = extracted.definitions;
     for (const [key, value] of Object.entries(options.props ?? {})) {
@@ -225,6 +229,10 @@ export class DynamicScriptNode extends GameNode {
       getNodesByName: (name) => ctx.getNodesByName(name),
       getAppVersion: () => __APP_VERSION__,
       getRuntimeMode: () => ctx.runtime.mode,
+      instantiatePrefab: (path, options) => {
+        if (!this.prefabFactory) throw new Error(`Dynamic node '${this.debugName()}' cannot instantiate prefab '${path}'`);
+        return this.prefabFactory(path, options);
+      },
       emit: (action) => this.callScriptLifecycle(`emit:${action}`, () => this.emitScriptAction(action)),
     };
   }

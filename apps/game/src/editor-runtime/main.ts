@@ -4,7 +4,7 @@ import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAss
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode } from '../game/nodes';
 import { GameplayInputNode } from '../app/nodes';
-import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
+import { InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
@@ -277,7 +277,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
-    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() }));
+    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }); } }));
     return true;
   }
 
@@ -325,7 +325,6 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.StatusHudNode, (definition) => new StatusHudNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.BottomHudNode, (definition) => new BottomHudNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.TouchControlsNode, (definition) => new TouchControlsNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.ImageNode, (definition) => new ImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof ImageNode>[0]))
       .register(NODE_TYPE_IDS.TextNode, (definition) => new TextNode(optionsFrom(definition)))
@@ -334,7 +333,7 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     for (const [nodeTypeId, cached] of this.dynamicModules) {
       const module = cached.module;
-      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() }));
+      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }); } }));
     }
     return factory;
   }

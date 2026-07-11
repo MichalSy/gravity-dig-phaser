@@ -28,6 +28,11 @@ var ScriptNode = class {
   getRuntimeMode() {
     return this.__dynamicNodeContext?.getRuntimeMode() ?? "play";
   }
+  instantiatePrefab(path, options) {
+    const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
+    if (!node) throw new Error("Dynamic node context is not initialized");
+    return node;
+  }
   emit(action) {
     this.__dynamicNodeContext?.emit(action);
   }
@@ -387,6 +392,134 @@ var LoadingScript = class extends ScriptNode {
   }
 };
 
+// public/scripts/UI/BottomHudScript.node.ts
+var SLOT_PREFAB = "prefabs/inventory-slot.prefab.json";
+var SLOT_ORIGIN_X = 362.93;
+var SLOT_STEP_X = 150.698;
+var SLOT_Y = 21.767;
+var BOTTOM_HUD_WIDTH = 960 * 0.42;
+var SLOT_WIDTH = 374 * 0.418605;
+var ENERGY_FRAME_WIDTH = 300;
+var FIRST_SLOT_ASSET = "hud-hp-fuel-atlas#inventoryFirstSlot";
+var BottomHudScript = class extends ScriptNode {
+  id = "dynamic.bottom-hud";
+  name = "Bottom HUD Script";
+  hudRootNodeId = prop.nodeRef(null, { label: "HUD Root" });
+  energyFillNodeId = prop.nodeRef(null, { label: "Energy Fill" });
+  playerStateNodeId = prop.nodeRef(null, { label: "Player State" });
+  slotPrefab = prop.string(SLOT_PREFAB, { label: "Slot Prefab" });
+  slotOriginX = prop.number(SLOT_ORIGIN_X, { label: "Slot Origin X", step: 1e-3 });
+  slotStepX = prop.number(SLOT_STEP_X, { label: "Slot Step X", step: 1e-3 });
+  slotY = prop.number(SLOT_Y, { label: "Slot Y", step: 1e-3 });
+  hudRoot;
+  energyFill;
+  playerState;
+  slots = [];
+  slotItems = [];
+  slotLabels = [];
+  resolve() {
+    this.hudRoot = this.requireResolvedNode(this.hudRootNodeId, "UI.BottomHud");
+    this.energyFill = this.requireResolvedNode(this.energyFillNodeId, "UI.EnergyFill");
+    this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
+    this.syncSlotCount();
+    this.updateHud();
+  }
+  update() {
+    this.syncSlotCount();
+    this.updateHud();
+  }
+  syncSlotCount() {
+    const targetCount = Math.max(0, Math.floor(this.playerState.stats.cargoSlots));
+    while (this.slots.length < targetCount) this.addSlot(this.slots.length);
+    while (this.slots.length > targetCount) this.removeLastSlot();
+    const totalWidth = Math.max(BOTTOM_HUD_WIDTH, this.slotOriginX + Math.max(targetCount - 1, 0) * this.slotStepX + SLOT_WIDTH);
+    this.hudRoot.position = { x: -totalWidth / 2, y: 0 };
+  }
+  addSlot(index) {
+    const slot = this.instantiatePrefab(this.slotPrefab, {
+      name: `UI.Slot${index}`,
+      props: {
+        position: { x: this.slotOriginX + index * this.slotStepX, y: this.slotY },
+        ...index === 0 ? { assetId: FIRST_SLOT_ASSET } : {}
+      }
+    });
+    this.hudRoot.addChild(slot);
+    const item = this.requireChildByName(slot, "Item");
+    const label = this.requireChildByName(slot, "Label");
+    label.resolution = Math.max(2, window.devicePixelRatio || 1);
+    this.slots.push(slot);
+    this.slotItems.push(item);
+    this.slotLabels.push(label);
+  }
+  removeLastSlot() {
+    const slot = this.slots.pop();
+    this.slotItems.pop();
+    this.slotLabels.pop();
+    if (slot) this.hudRoot.removeChild(slot);
+  }
+  updateHud() {
+    const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
+    const energyPct = clamp(this.playerState.run.energy / maxEnergy, 0, 1);
+    const cropWidth = Math.max(1, Math.round(ENERGY_FRAME_WIDTH * energyPct));
+    this.energyFill.visible = energyPct > 0;
+    this.energyFill.image.setCrop(0, 0, cropWidth, 84);
+    this.energyFill.image.setVisible(energyPct > 0);
+    for (let index = 0; index < this.slots.length; index += 1) {
+      const cargo = this.playerState.run.cargo.slots[index];
+      const item = this.slotItems[index];
+      const label = this.slotLabels[index];
+      if (cargo?.itemId) item.image.setTint(ITEM_TINTS[cargo.itemId]);
+      else item.image.clearTint();
+      const text = cargo?.itemId ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : "";
+      if (label.setText) label.setText(text);
+      else label.text = text;
+    }
+  }
+  requireResolvedNode(instanceId, fallbackName) {
+    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
+    return node;
+  }
+  requireChildByName(root, name) {
+    const child = root.children.find((node) => node.debugName() === name);
+    if (!child) throw new Error(`Inventory slot is missing child '${name}'`);
+    return child;
+  }
+};
+var ITEM_SHORT_LABELS = {
+  dirt: "Er",
+  sand: "Sa",
+  clay: "Le",
+  gravel: "Ki",
+  stone: "St",
+  basalt: "Ba",
+  copper: "Cu",
+  iron: "Fe",
+  gold: "Au",
+  diamond: "Di",
+  energy_cell: "EZ",
+  repair_kit: "RK",
+  teleport_bracelet: "TP"
+};
+var ITEM_TINTS = {
+  dirt: 10119749,
+  sand: 14204280,
+  clay: 12150869,
+  gravel: 9407363,
+  stone: 10265519,
+  basalt: 4937059,
+  copper: 14251845,
+  iron: 9741240,
+  gold: 16436245,
+  diamond: 6809849,
+  energy_cell: 8702998,
+  repair_kit: 15680580,
+  teleport_bracelet: 12616956
+};
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 // node_modules/.script-build/dynamic-nodes.entry.ts
 function createDynamicNodeModule(ScriptClass, baseName) {
   const probe = new ScriptClass();
@@ -405,11 +538,12 @@ var modules = [
   createDynamicNodeModule(MenuScript, "GameMenu-MenuScript"),
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
-  createDynamicNodeModule(LoadingScript, "Loading-LoadingScript")
+  createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
+  createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript")
 ];
 var dynamic_nodes_entry_default = { modules };
 export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.2bee51cba910.js.map
+//# sourceMappingURL=dynamic-nodes.fd81338291d0.js.map

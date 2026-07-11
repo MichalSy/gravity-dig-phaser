@@ -136,6 +136,11 @@ export class ScriptNode {
   getRuntimeMode() {
     return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play';
   }
+  instantiatePrefab(path, options) {
+    const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
+    if (!node) throw new Error('Dynamic node context is not initialized');
+    return node;
+  }
   emit(action) {
     this.__dynamicNodeContext?.emit(action);
   }

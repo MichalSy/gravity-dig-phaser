@@ -46,7 +46,6 @@ const UI_ONLY_TYPE_IDS = new Set<string>([
   NODE_TYPE_IDS.ButtonNode,
   NODE_TYPE_IDS.InputModeDetectorNode,
   NODE_TYPE_IDS.StatusHudNode,
-  NODE_TYPE_IDS.BottomHudNode,
   NODE_TYPE_IDS.TouchControlsNode,
 ]);
 

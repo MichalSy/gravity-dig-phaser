@@ -16,7 +16,6 @@ export const NODE_TYPE_IDS = {
   GameRootNode: '297cb39e-5ac2-51ea-a2c4-6f16fa58de77',
   UIRootNode: 'd4b58fdf-c38b-535a-8d9b-f57d36634db0',
   StatusHudNode: '8c796b18-36c2-5771-92b9-6fc488c1d20b',
-  BottomHudNode: 'c046b141-aa97-576b-ba44-fc4eaaa82073',
   TouchControlsNode: 'a690aad8-ce49-5365-9c2d-0d636d5dcb77',
 } as const;
 

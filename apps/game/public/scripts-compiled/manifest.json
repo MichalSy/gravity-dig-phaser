@@ -1,39 +1,45 @@
 {
   "version": 1,
   "bundle": {
-    "url": "/scripts-compiled/dynamic-nodes.2bee51cba910.js",
-    "hash": "2bee51cba910"
+    "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+    "hash": "fd81338291d0"
   },
   "nodes": [
     {
       "nodeTypeId": "dynamic.example-pulse",
       "source": "public/scripts/ExamplePulse.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.2bee51cba910.js",
-      "hash": "2bee51cba910"
+      "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+      "hash": "fd81338291d0"
     },
     {
       "nodeTypeId": "dynamic.menu-script",
       "source": "public/scripts/GameMenu/MenuScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.2bee51cba910.js",
-      "hash": "2bee51cba910"
+      "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+      "hash": "fd81338291d0"
     },
     {
       "nodeTypeId": "dynamic.player-movement",
       "source": "public/scripts/Gameplay/PlayerMovementScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.2bee51cba910.js",
-      "hash": "2bee51cba910"
+      "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+      "hash": "fd81338291d0"
     },
     {
       "nodeTypeId": "dynamic.ship",
       "source": "public/scripts/Gameplay/ShipScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.2bee51cba910.js",
-      "hash": "2bee51cba910"
+      "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+      "hash": "fd81338291d0"
     },
     {
       "nodeTypeId": "dynamic.loading-script",
       "source": "public/scripts/Loading/LoadingScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.2bee51cba910.js",
-      "hash": "2bee51cba910"
+      "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+      "hash": "fd81338291d0"
+    },
+    {
+      "nodeTypeId": "dynamic.bottom-hud",
+      "source": "public/scripts/UI/BottomHudScript.node.ts",
+      "url": "/scripts-compiled/dynamic-nodes.fd81338291d0.js",
+      "hash": "fd81338291d0"
     }
   ]
 }
