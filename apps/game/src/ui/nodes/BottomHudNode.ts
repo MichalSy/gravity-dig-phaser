@@ -3,6 +3,7 @@ import { GameplayInputNode } from '../../app/nodes';
 import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { NODE_TYPE_IDS, collectNodesByName, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
+import type { ItemId } from '../../player/types';
 import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
 import { TEXT, UI_ATLAS } from './uiLayout';
 
@@ -82,6 +83,7 @@ export class BottomHudNode extends TransformNode {
       const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
       const slotItemNode = this.slotItemNodes[i];
       if (slotItemNode.isEffectivelyActive()) {
+        this.updateSlotItemAppearance(slotItemNode, slot?.itemId);
         slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
         slotItemNode.size = { width: itemWidth, height: itemHeight };
         slotItemNode.scaleX = itemWidth / item.frame.width;
@@ -96,7 +98,7 @@ export class BottomHudNode extends TransformNode {
       const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
       if (labelNode.isEffectivelyActive()) {
         labelNode.visible = slotLayout.hasItem;
-        labelNode.text = `x${slot?.quantity ?? 0}`;
+        labelNode.text = slot?.itemId ? `${ITEM_SHORT_LABELS[slot.itemId]} x${slot.quantity}` : '';
         labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
         labelNode.scale = labelScaleX;
         labelNode.scaleX = labelScaleX;
@@ -172,7 +174,27 @@ export class BottomHudNode extends TransformNode {
     node.visible = safePct > 0;
     node.image.setCrop(0, 0, cropWidth, frame.h).setVisible(safePct > 0);
   }
+
+  private updateSlotItemAppearance(node: ImageNode, itemId?: ItemId): void {
+    if (!itemId) {
+      node.image.clearTint();
+      return;
+    }
+    node.image.setTint(ITEM_TINTS[itemId]);
+  }
 }
+
+const ITEM_SHORT_LABELS: Record<ItemId, string> = {
+  dirt: 'Er', sand: 'Sa', clay: 'Le', gravel: 'Ki', stone: 'St', basalt: 'Ba',
+  copper: 'Cu', iron: 'Fe', gold: 'Au', diamond: 'Di',
+  energy_cell: 'EZ', repair_kit: 'RK', teleport_bracelet: 'TP',
+};
+
+const ITEM_TINTS: Record<ItemId, number> = {
+  dirt: 0x9a6a45, sand: 0xd8bd78, clay: 0xb96855, gravel: 0x8f8b83, stone: 0x9ca3af,
+  basalt: 0x4b5563, copper: 0xd97745, iron: 0x94a3b8, gold: 0xfacc15, diamond: 0x67e8f9,
+  energy_cell: 0x84cc16, repair_kit: 0xef4444, teleport_bracelet: 0xc084fc,
+};
 
 function requireSceneNode<T extends GameNode>(nodesByName: ReadonlyMap<string, GameNode>, name: string): T {
   const node = nodesByName.get(name);

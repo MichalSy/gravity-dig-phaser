@@ -177,6 +177,7 @@ export class PlayerStateManagerNode extends GameNode {
       energy: run?.energy ?? null,
       fuel: run?.fuel ?? null,
       cargoSlotsUsed: run ? run.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0)).length : null,
+      cargoContents: run ? run.cargo.slots.flatMap((slot) => slot.itemId && slot.quantity > 0 ? [`${slot.itemId}:${slot.quantity}`] : []) : [],
       maxHealth: this.effectivePlayerStats.maxHealth,
       maxEnergy: this.effectivePlayerStats.maxEnergy,
       energyRegenPerSec: this.effectivePlayerStats.energyRegenPerSec,
