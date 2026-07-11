@@ -28,6 +28,7 @@ const PREFAB_JSON_KEYS: Record<string, string> = {
   'prefabs/ship.prefab.json': 'prefab:ship',
   'prefabs/status-hud.prefab.json': 'prefab:status-hud',
   'prefabs/bottom-hud.prefab.json': 'prefab:bottom-hud',
+  'prefabs/inventory-slot.prefab.json': 'prefab:inventory-slot',
 };
 
 const PREVIEW_CHANGES_KEY = 'editor:preview-changes';

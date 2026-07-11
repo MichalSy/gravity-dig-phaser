@@ -5,7 +5,7 @@ import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { NODE_TYPE_IDS, collectNodesByName, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
 import type { ItemId } from '../../player/types';
 import { computeBottomHudLayout } from '../layout/bottomHudLayout';
-import { TEXT, UI_ATLAS } from './uiLayout';
+import { UI_ATLAS } from './uiLayout';
 
 export class BottomHudNode extends TransformNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.BottomHudNode;
@@ -87,8 +87,10 @@ export class BottomHudNode extends TransformNode {
     this.slotLabelNodes.length = 0;
 
     for (let i = 0; i < 4; i += 1) {
-      const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotItem${i}`);
-      const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `UI.SlotLabel${i}`);
+      const slotNode = requireSceneNode<GameNode>(nodesByName, `UI.Slot${i}`);
+      const slotNodesByName = collectNodesByName(slotNode);
+      const slotItemNode = requireSceneNode<ImageNode>(slotNodesByName, 'Item');
+      const slotLabelNode = requireSceneNode<TextNode>(slotNodesByName, 'Label');
       this.slotItemNodes.push(slotItemNode);
       this.slotLabelNodes.push(slotLabelNode);
     }
@@ -97,7 +99,6 @@ export class BottomHudNode extends TransformNode {
   private configureSlotLabels(): void {
     const resolution = Math.max(2, window.devicePixelRatio || 1);
     for (const labelNode of this.slotLabelNodes) {
-      labelNode.setStyle(TEXT.value);
       labelNode.resolution = resolution;
     }
   }

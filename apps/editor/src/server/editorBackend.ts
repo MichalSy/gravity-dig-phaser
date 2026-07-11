@@ -1250,6 +1250,13 @@ function resolveSourceFile(nodePath: string[]): { filePath: string; nodePath: st
     'UI.StatusHud': 'apps/game/public/prefabs/status-hud.prefab.json',
     'UI.BottomHud': 'apps/game/public/prefabs/bottom-hud.prefab.json',
   };
+  const inventorySlotIndex = normalizedNodePath.findIndex((part) => /^UI\.Slot\d+$/.test(part));
+  if (inventorySlotIndex >= 0 && inventorySlotIndex < normalizedNodePath.length - 1) {
+    return {
+      filePath: 'apps/game/public/prefabs/inventory-slot.prefab.json',
+      nodePath: ['InventorySlot', ...normalizedNodePath.slice(inventorySlotIndex + 1)],
+    };
+  }
   if (prefabMap[first]) return { filePath: prefabMap[first], nodePath: normalizedNodePath };
   if (normalizedNodePath.includes('Player')) return { filePath: prefabMap.Player, nodePath: normalizedNodePath.slice(normalizedNodePath.indexOf('Player')) };
   if (normalizedNodePath.includes('Ship')) return { filePath: prefabMap.Ship, nodePath: normalizedNodePath.slice(normalizedNodePath.indexOf('Ship')) };

@@ -32,6 +32,7 @@ const prefabFiles: Record<string, string> = {
   'prefabs/ship.prefab.json': 'prefabs/ship.prefab.json',
   'prefabs/status-hud.prefab.json': 'prefabs/status-hud.prefab.json',
   'prefabs/bottom-hud.prefab.json': 'prefabs/bottom-hud.prefab.json',
+  'prefabs/inventory-slot.prefab.json': 'prefabs/inventory-slot.prefab.json',
 };
 
 class EditorRuntimeScene extends Phaser.Scene {
