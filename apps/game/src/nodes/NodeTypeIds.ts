@@ -15,7 +15,6 @@ export const NODE_TYPE_IDS = {
   InputModeDetectorNode: '993ead47-0d83-553f-a782-6bc1d2506851',
   GameRootNode: '297cb39e-5ac2-51ea-a2c4-6f16fa58de77',
   UIRootNode: 'd4b58fdf-c38b-535a-8d9b-f57d36634db0',
-  StatusHudNode: '8c796b18-36c2-5771-92b9-6fc488c1d20b',
   TouchControlsNode: 'a690aad8-ce49-5365-9c2d-0d636d5dcb77',
 } as const;
 

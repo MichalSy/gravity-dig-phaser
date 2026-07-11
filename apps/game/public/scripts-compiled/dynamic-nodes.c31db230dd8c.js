@@ -680,6 +680,54 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+// public/scripts/UI/StatusHudScript.node.ts
+var HP_FRAME = { width: 655, height: 95 };
+var FUEL_FRAME = { width: 632, height: 81 };
+var MAX_FUEL = 100;
+var StatusHudScript = class extends ScriptNode {
+  id = "dynamic.status-hud";
+  name = "Status HUD Script";
+  hpFillNodeId = prop.nodeRef(null, { label: "HP Fill" });
+  fuelFillNodeId = prop.nodeRef(null, { label: "Fuel Fill" });
+  playerStateNodeId = prop.nodeRef(null, { label: "Player State" });
+  hpFill;
+  fuelFill;
+  playerState;
+  resolve() {
+    this.hpFill = this.requireResolvedNode(this.hpFillNodeId, "UI.HpFill");
+    this.fuelFill = this.requireResolvedNode(this.fuelFillNodeId, "UI.FuelFill");
+    this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
+    this.updateHud();
+  }
+  update() {
+    this.updateHud();
+  }
+  editorUpdate() {
+    this.updateHud();
+  }
+  updateHud() {
+    const run = this.playerState.getActiveRun();
+    const maxHealth = Math.max(1, this.playerState.stats.maxHealth);
+    this.updateBarFill(this.hpFill, HP_FRAME, (run?.health ?? maxHealth) / maxHealth);
+    this.updateBarFill(this.fuelFill, FUEL_FRAME, (run?.fuel ?? MAX_FUEL) / MAX_FUEL);
+  }
+  updateBarFill(node, frame, pct) {
+    const safePct = clamp2(pct, 0, 1);
+    const visible = safePct > 0;
+    node.visible = visible;
+    node.image.setCrop(0, 0, Math.max(1, Math.round(frame.width * safePct)), frame.height);
+    node.image.setVisible(visible);
+  }
+  requireResolvedNode(instanceId, fallbackName) {
+    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
+    return node;
+  }
+};
+function clamp2(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 // node_modules/.script-build/dynamic-nodes.entry.ts
 function createDynamicNodeModule(ScriptClass, baseName) {
   const probe = new ScriptClass();
@@ -700,11 +748,12 @@ var modules = [
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
   createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
-  createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript")
+  createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript"),
+  createDynamicNodeModule(StatusHudScript, "UI-StatusHudScript")
 ];
 var dynamic_nodes_entry_default = { modules };
 export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.999bfc78f556.js.map
+//# sourceMappingURL=dynamic-nodes.c31db230dd8c.js.map

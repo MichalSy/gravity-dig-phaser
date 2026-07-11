@@ -2,6 +2,8 @@
   "version": 1,
   "root": {
     "name": "UI.StatusHud",
+    "nodeTypeId": "d680dc1d-9215-5d53-a3d7-771f92c1b983",
+    "instanceId": "8df42271-4e87-4db2-92e7-31f726d2ae6c",
     "props": {
       "parentAnchor": "top-left",
       "debugScrollFactor": 0,
@@ -23,6 +25,7 @@
     "children": [
       {
         "name": "UI.StatusFrame",
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
         "props": {
           "assetId": "hud-hp-fuel-atlas#topHud",
           "scrollFactor": 0,
@@ -34,11 +37,12 @@
             "x": 1,
             "y": 1
           }
-        },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+        }
       },
       {
         "name": "UI.HpFill",
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "instanceId": "38178d5e-84aa-441e-95f1-059372d67e7a",
         "props": {
           "assetId": "hud-hp-fuel-atlas#hpBar",
           "scrollFactor": 0,
@@ -50,11 +54,12 @@
             "x": 1,
             "y": 1
           }
-        },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+        }
       },
       {
         "name": "UI.FuelFill",
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "instanceId": "9595055b-0f85-4296-828b-22fcaed7e439",
         "props": {
           "assetId": "hud-hp-fuel-atlas#fuelBar",
           "scrollFactor": 0,
@@ -71,10 +76,18 @@
             "x": 0,
             "y": 1
           }
-        },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+        }
+      },
+      {
+        "name": "StatusHudBehavior",
+        "nodeTypeId": "dynamic.status-hud",
+        "instanceId": "c43dd281-3e7a-4181-b41a-9e113122e62b",
+        "props": {
+          "hpFillNodeId": "38178d5e-84aa-441e-95f1-059372d67e7a",
+          "fuelFillNodeId": "9595055b-0f85-4296-828b-22fcaed7e439",
+          "playerStateNodeId": null
+        }
       }
-    ],
-    "nodeTypeId": "8c796b18-36c2-5771-92b9-6fc488c1d20b"
+    ]
   }
 }
