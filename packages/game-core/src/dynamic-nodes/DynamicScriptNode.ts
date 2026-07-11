@@ -9,6 +9,7 @@ export interface DynamicScriptBehavior {
   init?(ctx: DynamicScriptContext): void;
   resolve?(ctx: DynamicScriptContext): void;
   update?(deltaMs: number): void;
+  editorUpdate?(deltaMs: number): void;
   destroy?(): void;
   [key: string]: unknown;
 }
@@ -92,7 +93,8 @@ export class DynamicScriptNode extends GameNode {
   }
 
   override editorUpdate(deltaMs: number): void {
-    this.update(deltaMs);
+    if (this.scriptFault) return;
+    this.callScriptLifecycle('editorUpdate', () => this.behavior.editorUpdate?.(deltaMs));
   }
 
   override destroy(): void {

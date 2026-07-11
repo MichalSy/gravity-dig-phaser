@@ -144,6 +144,152 @@ var MenuScript = class extends ScriptNode {
   }
 };
 
+// public/scripts/Gameplay/MiningScript.node.ts
+var PLAYER_HEIGHT = 64;
+var MiningScript = class extends ScriptNode {
+  id = "dynamic.mining-tool";
+  name = "Mining Tool Script";
+  levelNodeId = prop.nodeRef(null, { label: "Level Node" });
+  worldNodeId = prop.nodeRef(null, { label: "World Node" });
+  movementScriptNodeId = prop.nodeRef(null, { label: "Movement Script Node" });
+  playerStateNodeId = prop.nodeRef(null, { label: "Player State Node" });
+  inputNodeId = prop.nodeRef(null, { label: "Gameplay Input Node" });
+  laserNodeId = prop.nodeRef(null, { label: "Mining Laser Node" });
+  laserOriginOffsetY = prop.number(PLAYER_HEIGHT * 0.18, { label: "Laser Origin Offset Y", step: 0.1 });
+  levelNode;
+  world;
+  movementController;
+  playerState;
+  gameplayInput;
+  laser;
+  laserOrigin = new Vec2();
+  gamepadAim = new Vec2(1, 0);
+  currentAimWorld = new Vec2(1, 0);
+  miningPressed = false;
+  target;
+  resolve() {
+    this.levelNode = this.requireResolvedNode(this.levelNodeId, "Level");
+    this.world = this.requireResolvedNode(this.worldNodeId, "World");
+    this.movementController = this.requireResolvedNode(this.movementScriptNodeId, "PlayerMovementController");
+    this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
+    this.gameplayInput = this.requireResolvedNode(this.inputNodeId, "GameplayInput");
+    this.laser = this.requireResolvedNode(this.laserNodeId, "MiningLaser");
+  }
+  update(deltaMs) {
+    this.updateMining(deltaMs / 1e3);
+  }
+  destroy() {
+    this.stopFiring();
+  }
+  resetForLevel() {
+    this.laser.resetForLevel();
+    this.stopFiring();
+  }
+  stopFiring() {
+    this.target = void 0;
+    this.miningPressed = false;
+    this.playerState?.setMiningActive(false);
+    this.laser?.clear();
+  }
+  isMiningPressed() {
+    return this.miningPressed;
+  }
+  getAimWorldPoint() {
+    return this.currentAimWorld;
+  }
+  updateMining(deltaSeconds) {
+    const player = this.world.player;
+    const origin = this.laserOrigin.set(player.x, player.y + this.laserOriginOffsetY);
+    const intent = this.gameplayInput.getMiningIntent({
+      playerX: player.x,
+      playerY: player.y + this.laserOriginOffsetY,
+      inputBlocked: readMovementInputBlocked(this.movementController),
+      miningRange: this.playerState.stats.miningRange,
+      gamepadAim: this.gamepadAim,
+      laserOrigin: origin
+    });
+    const aimWorld = this.getUpdatedAimWorld(intent.aimWorld);
+    const target = findFirstMineableTile(origin, aimWorld, this.playerState.stats.miningRange, this.levelNode);
+    const firing = intent.miningPressed;
+    this.miningPressed = firing;
+    this.playerState.setMiningActive(firing);
+    this.target = target;
+    this.laser.clear();
+    if (!target) return;
+    this.laser.showTargetAndBeam(target, origin, firing);
+    if (!firing || !this.playerState.hasMiningEnergy()) return;
+    this.laser.setLaserSound(true);
+    this.playerState.consumeMiningEnergy(deltaSeconds);
+    target.health -= this.playerState.stats.miningDamagePerSec * deltaSeconds;
+    this.laser.updateCrackOverlay(target);
+    if (target.health <= 0) this.mineTile(target);
+  }
+  getUpdatedAimWorld(aimWorld) {
+    if (aimWorld) this.currentAimWorld.copy(aimWorld);
+    return this.currentAimWorld;
+  }
+  mineTile(cell) {
+    const minedType = cell.type;
+    this.levelNode.clearTile(cell);
+    this.laser.removeCrackOverlay(cell);
+    this.playerState.recordMinedTile(minedType);
+    this.laser.playBlockBreakSound(minedType);
+  }
+  requireResolvedNode(instanceId, fallbackName) {
+    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
+    return node;
+  }
+};
+var Vec2 = class _Vec2 {
+  constructor(x = 0, y = 0) {
+    this.x = x;
+    this.y = y;
+  }
+  x;
+  y;
+  set(x, y) {
+    this.x = x;
+    this.y = y;
+    return this;
+  }
+  copy(value) {
+    this.x = value.x;
+    this.y = value.y;
+    return this;
+  }
+  clone() {
+    return new _Vec2(this.x, this.y);
+  }
+  subtract(value) {
+    this.x -= value.x;
+    this.y -= value.y;
+    return this;
+  }
+  lengthSq() {
+    return this.x * this.x + this.y * this.y;
+  }
+  normalize() {
+    const length = Math.hypot(this.x, this.y) || 1;
+    this.x /= length;
+    this.y /= length;
+    return this;
+  }
+};
+function findFirstMineableTile(origin, aimWorld, range, level) {
+  const direction = aimWorld.clone().subtract(origin);
+  if (direction.lengthSq() <= 1) return void 0;
+  direction.normalize();
+  for (let distance = 8; distance <= range; distance += 8) {
+    const cell = level.getCellAtWorld(origin.x + direction.x * distance, origin.y + direction.y * distance);
+    if (cell?.type && cell.type !== "air") return cell.type === "bedrock" ? void 0 : cell;
+  }
+  return void 0;
+}
+function readMovementInputBlocked(controller) {
+  return (controller.inputBlocked ?? controller.callScriptMethod?.("isInputBlocked") ?? controller.getScriptProperty?.("inputBlocked")) === true;
+}
+
 // public/scripts/Gameplay/PlayerMovementScript.node.ts
 var PLAYER_SIZE = { w: 40, h: 64 };
 var HORIZONTAL_COLLISION_SIZE = { w: PLAYER_SIZE.w, h: PLAYER_SIZE.h - 8 };
@@ -431,6 +577,10 @@ var BottomHudScript = class extends ScriptNode {
     this.syncSlotCount();
     this.updateHud();
   }
+  editorUpdate() {
+    this.syncSlotCount();
+    this.updateHud();
+  }
   destroy() {
     while (this.slots.length > 0) this.removeLastSlot();
   }
@@ -546,6 +696,7 @@ function createDynamicNodeModule(ScriptClass, baseName) {
 var modules = [
   createDynamicNodeModule(ExamplePulseNode, "ExamplePulse"),
   createDynamicNodeModule(MenuScript, "GameMenu-MenuScript"),
+  createDynamicNodeModule(MiningScript, "Gameplay-MiningScript"),
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
   createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
@@ -556,4 +707,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.31a8be08e2a9.js.map
+//# sourceMappingURL=dynamic-nodes.999bfc78f556.js.map

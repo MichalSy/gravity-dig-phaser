@@ -48,18 +48,3 @@ export function createPlayerMovementControllerData(): PlayerMovementControllerDa
     inputBlocked: false,
   };
 }
-
-export interface MiningToolData {
-  target?: import('./level').TileCell;
-  currentAimWorld: Phaser.Math.Vector2;
-  laserOrigin: Phaser.Math.Vector2;
-  gamepadAim: Phaser.Math.Vector2;
-}
-
-export function createMiningToolData(): MiningToolData {
-  return {
-    currentAimWorld: new Phaser.Math.Vector2(1, 0),
-    laserOrigin: new Phaser.Math.Vector2(0, 0),
-    gamepadAim: new Phaser.Math.Vector2(1, 0),
-  };
-}

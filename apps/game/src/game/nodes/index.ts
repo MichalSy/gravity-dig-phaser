@@ -2,7 +2,7 @@ export * from './GameRootNode';
 export * from './GameWorldNode';
 export * from './LevelGeneratorManagerNode';
 export * from './LevelNode';
-export * from './MiningToolNode';
+export * from './MiningLaserNode';
 export * from './PlayerMovementControllerNode';
 export * from './PlayerNode';
 export * from './PlayerAnimatorNode';

@@ -5,7 +5,7 @@ import {
   GameWorldNode,
   LevelGeneratorManagerNode,
   LevelNode,
-  MiningToolNode,
+  MiningLaserNode,
   PlayerAnimatorNode,
   PlayerMovementControllerNode,
   PlayerNode,
@@ -258,7 +258,7 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.PlayerNode, (definition) => new PlayerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerMovementControllerNode, (definition) => new PlayerMovementControllerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.MiningToolNode, (definition) => new MiningToolNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.MiningLaserNode, (definition) => new MiningLaserNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))

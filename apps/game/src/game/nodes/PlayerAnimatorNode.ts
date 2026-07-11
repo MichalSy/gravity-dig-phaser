@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { NODE_TYPE_IDS, AnimatedImageNode, GameNode, type GameNodeOptions, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from '../../nodes';
 import { computePlayerAnimationState } from '../gameplayLogic';
 import { createPlayerAnimatorData, type PlayerAnimatorData } from '../nodeData';
-import { MiningToolNode } from './MiningToolNode';
 import { GameWorldNode } from './GameWorldNode';
 
 export class PlayerAnimatorNode extends GameNode {
@@ -11,7 +10,7 @@ export class PlayerAnimatorNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private world!: GameWorldNode;
   private playerMovementController!: MovementControllerLike;
-  private miningTool!: MiningToolNode;
+  private miningTool!: ScriptMethodTarget;
   private playerImage!: AnimatedImageNode;
   override readonly dependencies = ['World', 'PlayerMovementController', 'MiningTool', 'PlayerImage'] as const;
   readonly data: PlayerAnimatorData = createPlayerAnimatorData();
@@ -27,7 +26,7 @@ export class PlayerAnimatorNode extends GameNode {
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
     this.playerMovementController = this.requireNode('PlayerMovementController') as unknown as MovementControllerLike;
-    this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
+    this.miningTool = this.requireNode('MiningTool') as unknown as ScriptMethodTarget;
     this.playerImage = this.requireNode<AnimatedImageNode>('PlayerImage');
   }
 
@@ -57,7 +56,8 @@ export class PlayerAnimatorNode extends GameNode {
       return;
     }
 
-    const aimX = this.miningTool.isMiningPressed() ? this.miningTool.getAimWorldPoint().x : undefined;
+    const aim = this.miningTool.callScriptMethod('getAimWorldPoint') as { x: number } | undefined;
+    const aimX = this.miningTool.callScriptMethod('isMiningPressed') === true ? aim?.x : undefined;
     const animation = computePlayerAnimationState({
       playerX: player.x,
       aimX,
@@ -101,6 +101,10 @@ interface MovementControllerLike {
   grounded?: boolean;
   callScriptMethod?(name: string, ...args: unknown[]): unknown;
   getScriptProperty?(name: string): unknown;
+}
+
+interface ScriptMethodTarget {
+  callScriptMethod(name: string, ...args: unknown[]): unknown;
 }
 
 function readMovementVelocity(controller: MovementControllerLike): Phaser.Math.Vector2 {

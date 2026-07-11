@@ -81,6 +81,11 @@ export default class BottomHudScript extends Core.ScriptNode {
     this.updateHud();
   }
 
+  editorUpdate() {
+    this.syncSlotCount();
+    this.updateHud();
+  }
+
   destroy() {
     while (this.slots.length > 0) this.removeLastSlot();
   }

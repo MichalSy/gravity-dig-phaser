@@ -1,7 +1,7 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
 import { NODE_TYPE_IDS, exposedPropGroup, GameNode, propNumber, type ExposedPropGroup, type NodeDebugProps } from '../../nodes';
 import { ITEM_DEFINITIONS } from '../../player/catalogs/items';
-import { addItem } from '../../player/inventory';
+import { addItem, normalizeInventory } from '../../player/inventory';
 import { createRunState, normalizeRunState } from '../../player/RunState';
 import { loadSaveGame, saveGame } from '../../player/saveGame';
 import { computeEffectiveStats } from '../../player/stats';
@@ -132,6 +132,7 @@ export class PlayerStateManagerNode extends GameNode {
   }
 
   recordMinedTile(tileType: TileType): void {
+    this.syncCargoToStats();
     if (isResourceItem(tileType)) {
       addItem(this.run.cargo, tileType as ItemId, 1);
       this.saveGameState.profile.stats.resourcesMined += 1;
@@ -139,6 +140,15 @@ export class PlayerStateManagerNode extends GameNode {
 
     this.saveGameState.profile.stats.blocksMined += 1;
     this.saveActiveRun();
+  }
+
+  syncCargoToStats(): void {
+    if (!this.activeRunState) return;
+    this.activeRunState.cargo = normalizeInventory(
+      this.activeRunState.cargo,
+      this.effectivePlayerStats.cargoSlots,
+      this.effectivePlayerStats.cargoStackLimit,
+    );
   }
 
   hasCargo(): boolean {
@@ -240,6 +250,7 @@ export class PlayerStateManagerNode extends GameNode {
       case 'sightRadius':
       case 'fuelEfficiency':
         this.effectivePlayerStats[key] = key === 'cargoSlots' || key === 'cargoStackLimit' ? Math.max(1, Math.round(value)) : value;
+        if (key === 'cargoSlots' || key === 'cargoStackLimit') this.syncCargoToStats();
         if (key === 'maxHealth') this.run.health = clamp(this.run.health, 0, this.effectivePlayerStats.maxHealth);
         if (key === 'maxEnergy') this.run.energy = clamp(this.run.energy, 0, this.effectivePlayerStats.maxEnergy);
         return true;

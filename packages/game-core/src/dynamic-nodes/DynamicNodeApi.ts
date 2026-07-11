@@ -75,6 +75,7 @@ export abstract class ScriptNode {
   init?(): void;
   resolve?(): void;
   update?(deltaMs: number): void;
+  editorUpdate?(deltaMs: number): void;
   destroy?(): void;
 }
 

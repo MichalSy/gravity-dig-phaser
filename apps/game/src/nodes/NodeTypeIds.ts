@@ -11,7 +11,7 @@ export const NODE_TYPE_IDS = {
   PlayerNode: '5eed5534-1ab9-52de-a092-be4f7dab9549',
   PlayerMovementControllerNode: '2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a',
   PlayerAnimatorNode: 'dbfe2289-a994-52dd-88f8-1b680fc914f6',
-  MiningToolNode: '4474d3aa-d38e-5ece-bc0c-f5103f507781',
+  MiningLaserNode: 'af263543-8259-4627-8876-247a1ae87d9a',
   InputModeDetectorNode: '993ead47-0d83-553f-a782-6bc1d2506851',
   GameRootNode: '297cb39e-5ac2-51ea-a2c4-6f16fa58de77',
   UIRootNode: 'd4b58fdf-c38b-535a-8d9b-f57d36634db0',

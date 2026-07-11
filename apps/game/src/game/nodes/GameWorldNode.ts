@@ -5,7 +5,6 @@ import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
-import { MiningToolNode } from './MiningToolNode';
 import { PlayerNode } from './PlayerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
@@ -16,7 +15,7 @@ export class GameWorldNode extends GameNode {
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
   private playerNode!: PlayerNode;
-  private miningTool!: MiningToolNode;
+  private miningTool!: ScriptMethodTarget;
   private worldView!: WorldView;
   override readonly dependencies = ['Level', 'PlayerState', 'Player', 'MiningTool'] as const;
   readonly data: GameWorldData = createGameWorldData();
@@ -34,7 +33,7 @@ export class GameWorldNode extends GameNode {
     this.levelNode = this.requireNode<LevelNode>('Level');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
     this.playerNode = this.requireNode<PlayerNode>('Player');
-    this.miningTool = this.requireNode<MiningToolNode>('MiningTool');
+    this.miningTool = this.requireNode('MiningTool') as unknown as ScriptMethodTarget;
   }
 
   afterResolved(): void {
@@ -66,7 +65,7 @@ export class GameWorldNode extends GameNode {
     this.clearSceneObjects();
 
     this.data.level = this.levelNode.generate(seed);
-    this.miningTool.resetForLevel();
+    this.miningTool.callScriptMethod('resetForLevel');
     this.playerState.startRun(this.data.level.planetId, String(seed), restoreActiveRun);
 
     this.data.sceneObjects.push(...this.worldView.createDecorations(this.data.level));
@@ -90,4 +89,8 @@ export class GameWorldNode extends GameNode {
     this.phaserScene.cameras.main.setZoom(1);
     this.phaserScene.cameras.main.startFollow(this.data.player, true, 0.18, 0.18);
   }
+}
+
+interface ScriptMethodTarget {
+  callScriptMethod(name: string, ...args: unknown[]): unknown;
 }
