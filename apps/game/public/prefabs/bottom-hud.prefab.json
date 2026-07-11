@@ -76,7 +76,7 @@
             "props": {
               "assetId": "hud-item-rock",
               "parentAnchor": "center",
-              "visible": true,
+              "visible": false,
               "scrollFactor": 0,
               "origin": {
                 "x": 0.5,
@@ -110,8 +110,8 @@
                 "y": 1
               },
               "position": {
-                "x": 466.326,
-                "y": 124.744
+                "x": 0,
+                "y": 0
               },
               "scale": {
                 "x": 1.695349,
