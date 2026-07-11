@@ -6,6 +6,8 @@
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
     "props": {
       "parentAnchor": "bottom-center",
+      "position": { "x": -410.35, "y": 0 },
+      "scale": { "x": 1, "y": 1 },
       "sizeMode": "content",
       "debugScrollFactor": 0,
       "origin": { "x": 0, "y": 1 }
