@@ -2,7 +2,7 @@
   "version": 1,
   "root": {
     "name": "UI.StatusHud",
-    "nodeTypeId": "d680dc1d-9215-5d53-a3d7-771f92c1b983",
+    "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
     "instanceId": "8df42271-4e87-4db2-92e7-31f726d2ae6c",
     "props": {
       "parentAnchor": "top-left",
