@@ -1,6 +1,6 @@
 import { ImageNode, type ImageNodeOptions } from './ImageNode';
 import { TextNode, type TextNodeOptions } from './TextNode';
-import type { GameNode } from './GameNode';
+import type { GameNode, NodeCreationMetadata } from './GameNode';
 
 export interface SceneNodeJson {
   /** Static node type identifier. All ImageNode instances share the same nodeTypeId. */
@@ -71,18 +71,19 @@ export class SceneNodeFactoryRegistry {
     return this.register(nodeTypeId, (definition) => new TextNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
   }
 
-  createTree(definition: SceneNodeJson): GameNode {
-    return this.createTreeAtPath(definition, []);
+  createTree(definition: SceneNodeJson, creation: NodeCreationMetadata = { origin: 'scene' }): GameNode {
+    return this.createTreeAtPath(definition, [], creation, true);
   }
 
-  private createTreeAtPath(definition: SceneNodeJson, parentPath: string[]): GameNode {
+  private createTreeAtPath(definition: SceneNodeJson, parentPath: string[], creation: NodeCreationMetadata, isRoot: boolean): GameNode {
     const resolvedDefinition = this.resolvePrefab(definition);
     const nodePath = [...parentPath, resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed'];
     const effectiveDefinition = this.withStableInstanceId(this.applyPreviewProps(resolvedDefinition, nodePath), nodePath);
     const factory = this.resolveFactory(effectiveDefinition);
     const node = factory(effectiveDefinition);
+    node.setCreationMetadata({ ...creation, runtimeRoot: creation.origin !== 'scene' && isRoot });
     applyInitialProps(node, effectiveDefinition.props);
-    for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath));
+    for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath, creation, false));
     node.ensureRequiredChildren();
     return node;
   }

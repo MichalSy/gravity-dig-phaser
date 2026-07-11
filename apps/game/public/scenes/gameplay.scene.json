@@ -20,9 +20,6 @@
             "prefab": "prefabs/ship.prefab.json"
           },
           {
-            "prefab": "prefabs/player.prefab.json"
-          },
-          {
             "name": "ExamplePulseScript",
             "nodeTypeId": "dynamic.example-pulse",
             "props": {

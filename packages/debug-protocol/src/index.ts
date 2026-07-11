@@ -243,6 +243,10 @@ export interface DebugNodeDescriptor {
   editorLocked?: boolean;
   defaultCollapsed?: boolean;
   ownedRole?: string;
+  creationOrigin?: 'scene' | 'runtime-code' | 'runtime-script';
+  runtimeRoot?: boolean;
+  prefabPath?: string;
+  createdByInstanceId?: string;
   index: number;
   children: DebugNodeDescriptor[];
 }

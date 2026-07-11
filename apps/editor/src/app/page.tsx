@@ -2764,6 +2764,7 @@ function NodeTreeItem({
           <NodeIcon className={styles.nodeIcon} size={14} />
           <span className={styles.nodeName}>{node.name}</span>
           <span className={styles.nodeMeta}>{node.className}</span>
+          {node.runtimeRoot && <span className={styles.nodeFlag} title={`${node.creationOrigin ?? 'runtime'}${node.prefabPath ? ` · ${node.prefabPath}` : ''}`}>RUNTIME</span>}
           {!node.active && <span className={styles.nodeFlag}>inactive</span>}
           {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}

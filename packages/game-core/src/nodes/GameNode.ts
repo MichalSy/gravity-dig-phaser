@@ -71,6 +71,15 @@ export interface GameNodeOptions {
   debugScrollFactor?: number;
 }
 
+export type NodeCreationOrigin = 'scene' | 'runtime-code' | 'runtime-script';
+
+export interface NodeCreationMetadata {
+  origin: NodeCreationOrigin;
+  runtimeRoot?: boolean;
+  prefabPath?: string;
+  createdByInstanceId?: string;
+}
+
 export interface EditorTreeMetadata {
   locked?: boolean;
   defaultCollapsed?: boolean;
@@ -128,6 +137,7 @@ export abstract class GameNode {
   private nodeContext?: NodeContext;
   private initialized = false;
   private resolved = false;
+  private creationMetadata: NodeCreationMetadata = { origin: 'scene' };
 
   protected constructor(options: GameNodeOptions = {}) {
     this.nodeTypeId = options.nodeTypeId ?? getNodeTypeId(this);
@@ -155,6 +165,14 @@ export abstract class GameNode {
 
   get isResolved(): boolean {
     return this.resolved;
+  }
+
+  setCreationMetadata(metadata: NodeCreationMetadata): void {
+    this.creationMetadata = { ...metadata };
+  }
+
+  getCreationMetadata(): Readonly<NodeCreationMetadata> {
+    return this.creationMetadata;
   }
 
   protected get assets(): AssetCatalog {

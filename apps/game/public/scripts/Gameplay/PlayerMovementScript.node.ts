@@ -6,6 +6,11 @@ type CollisionBody = {
   setPosition(x: number, y: number): unknown;
 };
 
+type PlayerImageNode = {
+  image: unknown;
+  update(deltaMs: number): unknown;
+};
+
 type LevelNodeLike = {
   collidesBox(centerX: number, centerY: number, width: number, height: number): boolean;
 };
@@ -43,6 +48,8 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   inputNodeId = Core.prop.nodeRef(null, { label: 'Gameplay Input Node' });
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State Node' });
   shipScriptNodeId = Core.prop.nodeRef(null, { label: 'Ship Script Node' });
+  bodyNodeId = Core.prop.nodeRef(null, { label: 'Player Body' });
+  imageNodeId = Core.prop.nodeRef(null, { label: 'Player Image' });
 
   velocity = { x: 0, y: 0 };
   grounded = false;
@@ -52,7 +59,8 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   private playerState!: PlayerStateLike;
   private gameplayInput!: GameplayInputLike;
   private shipScript?: ScriptMethodTarget;
-  private player?: CollisionBody;
+  private player!: CollisionBody;
+  private imageNode!: PlayerImageNode;
   private coyoteTimerSeconds = 0;
   private jumpBufferTimerSeconds = 0;
   private jumpHeld = false;
@@ -62,11 +70,15 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     this.playerState = this.requireResolvedNode<PlayerStateLike>(this.playerStateNodeId, 'PlayerState');
     this.gameplayInput = this.requireResolvedNode<GameplayInputLike>(this.inputNodeId, 'GameplayInput');
     this.shipScript = this.resolveNode<ScriptMethodTarget>(this.shipScriptNodeId, 'ShipBehavior');
+    this.player = this.requireResolvedNode<CollisionBody>(this.bodyNodeId, 'PlayerBody');
+    this.imageNode = this.requireResolvedNode<PlayerImageNode>(this.imageNodeId, 'PlayerImage');
   }
 
-  setPlayer(player: CollisionBody) {
-    this.player = player;
+  spawnAt(x: number, y: number) {
+    this.player.setPosition(x, y);
+    this.imageNode.update(0);
     this.resetMotion();
+    return this.imageNode.image;
   }
 
   resetMotion() {
@@ -102,8 +114,6 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   }
 
   update(deltaMs: number) {
-    if (!this.player) return;
-
     const deltaSeconds = deltaMs / 1000;
     this.handleInput(deltaSeconds);
     this.applyPhysics(deltaSeconds);
@@ -136,8 +146,6 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   }
 
   private applyPhysics(deltaSeconds: number) {
-    if (!this.player) return;
-
     const wasGrounded = this.grounded;
     this.velocity.y += GRAVITY * deltaSeconds;
 
@@ -156,14 +164,14 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   }
 
   private stabilizeGroundContact() {
-    if (!this.player || this.grounded || this.velocity.y < 0) return;
+    if (this.grounded || this.velocity.y < 0) return;
     if (!this.levelNode.collidesBox(this.player.x, this.player.y + 1, VERTICAL_COLLISION_SIZE.w, VERTICAL_COLLISION_SIZE.h)) return;
     this.grounded = true;
     this.velocity.y = 0;
   }
 
   private moveAxis(dx: number, dy: number) {
-    if (!this.player || (dx === 0 && dy === 0)) return;
+    if (dx === 0 && dy === 0) return;
 
     const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8);
     const stepX = dx / steps;

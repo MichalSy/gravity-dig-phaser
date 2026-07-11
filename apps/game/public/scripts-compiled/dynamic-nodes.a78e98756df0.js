@@ -302,6 +302,8 @@ var PlayerMovementScript = class extends ScriptNode {
   inputNodeId = prop.nodeRef(null, { label: "Gameplay Input Node" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State Node" });
   shipScriptNodeId = prop.nodeRef(null, { label: "Ship Script Node" });
+  bodyNodeId = prop.nodeRef(null, { label: "Player Body" });
+  imageNodeId = prop.nodeRef(null, { label: "Player Image" });
   velocity = { x: 0, y: 0 };
   grounded = false;
   inputBlocked = false;
@@ -310,6 +312,7 @@ var PlayerMovementScript = class extends ScriptNode {
   gameplayInput;
   shipScript;
   player;
+  imageNode;
   coyoteTimerSeconds = 0;
   jumpBufferTimerSeconds = 0;
   jumpHeld = false;
@@ -318,10 +321,14 @@ var PlayerMovementScript = class extends ScriptNode {
     this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
     this.gameplayInput = this.requireResolvedNode(this.inputNodeId, "GameplayInput");
     this.shipScript = this.resolveNode(this.shipScriptNodeId, "ShipBehavior");
+    this.player = this.requireResolvedNode(this.bodyNodeId, "PlayerBody");
+    this.imageNode = this.requireResolvedNode(this.imageNodeId, "PlayerImage");
   }
-  setPlayer(player) {
-    this.player = player;
+  spawnAt(x, y) {
+    this.player.setPosition(x, y);
+    this.imageNode.update(0);
     this.resetMotion();
+    return this.imageNode.image;
   }
   resetMotion() {
     this.velocity.x = 0;
@@ -350,7 +357,6 @@ var PlayerMovementScript = class extends ScriptNode {
     return this.inputBlocked;
   }
   update(deltaMs) {
-    if (!this.player) return;
     const deltaSeconds = deltaMs / 1e3;
     this.handleInput(deltaSeconds);
     this.applyPhysics(deltaSeconds);
@@ -377,7 +383,6 @@ var PlayerMovementScript = class extends ScriptNode {
     this.jumpBufferTimerSeconds = 0.1;
   }
   applyPhysics(deltaSeconds) {
-    if (!this.player) return;
     const wasGrounded = this.grounded;
     this.velocity.y += GRAVITY * deltaSeconds;
     this.moveAxis(this.velocity.x * deltaSeconds, 0);
@@ -392,13 +397,13 @@ var PlayerMovementScript = class extends ScriptNode {
     }
   }
   stabilizeGroundContact() {
-    if (!this.player || this.grounded || this.velocity.y < 0) return;
+    if (this.grounded || this.velocity.y < 0) return;
     if (!this.levelNode.collidesBox(this.player.x, this.player.y + 1, VERTICAL_COLLISION_SIZE.w, VERTICAL_COLLISION_SIZE.h)) return;
     this.grounded = true;
     this.velocity.y = 0;
   }
   moveAxis(dx, dy) {
-    if (!this.player || dx === 0 && dy === 0) return;
+    if (dx === 0 && dy === 0) return;
     const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8);
     const stepX = dx / steps;
     const stepY = dy / steps;
@@ -427,37 +432,6 @@ var PlayerMovementScript = class extends ScriptNode {
   }
   requireResolvedNode(instanceId, fallbackName) {
     const node = this.resolveNode(instanceId, fallbackName);
-    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
-    return node;
-  }
-};
-
-// public/scripts/Gameplay/PlayerScript.node.ts
-var PlayerScript = class extends ScriptNode {
-  id = "dynamic.player";
-  name = "Player Script";
-  bodyNodeId = prop.nodeRef(null, { label: "Player Body" });
-  imageNodeId = prop.nodeRef(null, { label: "Player Image" });
-  movementScriptNodeId = prop.nodeRef(null, { label: "Movement Script" });
-  body;
-  imageNode;
-  movement;
-  resolve() {
-    this.body = this.requireResolvedNode(this.bodyNodeId, "PlayerBody");
-    this.imageNode = this.requireResolvedNode(this.imageNodeId, "PlayerImage");
-    this.movement = this.requireResolvedNode(this.movementScriptNodeId, "PlayerMovementController");
-  }
-  spawnAt(x, y) {
-    this.body.setPosition(x, y);
-    this.imageNode.update(0);
-    this.movement.callScriptMethod("setPlayer", this.body);
-    return this.imageNode.image;
-  }
-  getImage() {
-    return this.imageNode.image;
-  }
-  requireResolvedNode(instanceId, fallbackName) {
-    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
     if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
     return node;
   }
@@ -777,7 +751,6 @@ var modules = [
   createDynamicNodeModule(MenuScript, "GameMenu-MenuScript"),
   createDynamicNodeModule(MiningScript, "Gameplay-MiningScript"),
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
-  createDynamicNodeModule(PlayerScript, "Gameplay-PlayerScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
   createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
   createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript"),
@@ -788,4 +761,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.19d3e68d1362.js.map
+//# sourceMappingURL=dynamic-nodes.a78e98756df0.js.map

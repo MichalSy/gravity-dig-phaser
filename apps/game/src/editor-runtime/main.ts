@@ -277,7 +277,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
-    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }); } }));
+    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }, { origin: 'runtime-script', prefabPath: path, createdByInstanceId: definition.instanceId }); } }));
     return true;
   }
 
@@ -316,7 +316,16 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
+        ...optionsFrom(definition),
+        instantiatePrefab: (path) => {
+          if (!this.factory) throw new Error('Runtime factory is not ready');
+          return this.factory.createTree(
+            { prefab: path },
+            { origin: 'runtime-code', prefabPath: path, createdByInstanceId: definition.instanceId },
+          );
+        },
+      }))
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.MiningLaserNode, (definition) => new MiningLaserNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
@@ -330,7 +339,7 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     for (const [nodeTypeId, cached] of this.dynamicModules) {
       const module = cached.module;
-      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }); } }));
+      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }, { origin: 'runtime-script', prefabPath: path, createdByInstanceId: definition.instanceId }); } }));
     }
     return factory;
   }

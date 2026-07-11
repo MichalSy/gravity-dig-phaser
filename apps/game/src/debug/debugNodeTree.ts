@@ -86,6 +86,7 @@ function serializeNode(
 ): DebugNodeDescriptor {
   const id = getNodeId(node);
   const editorMetadata = node.getEditorTreeMetadata();
+  const creationMetadata = node.getCreationMetadata();
   const descriptor: DebugNodeDescriptor = {
     id,
     instanceId: node.instanceId,
@@ -99,6 +100,10 @@ function serializeNode(
     editorLocked: editorMetadata.locked,
     defaultCollapsed: editorMetadata.defaultCollapsed,
     ownedRole: editorMetadata.ownedRole,
+    creationOrigin: creationMetadata.origin,
+    runtimeRoot: creationMetadata.runtimeRoot,
+    prefabPath: creationMetadata.prefabPath,
+    createdByInstanceId: creationMetadata.createdByInstanceId,
     index,
     children: node.children.map((child, childIndex) => serializeNode(child, id, childIndex, flatNodes, getNodeId)),
   };

@@ -7,20 +7,25 @@ import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
+export interface GameWorldNodeOptions extends GameNodeOptions {
+  instantiatePrefab(path: string): GameNode;
+}
+
 export class GameWorldNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.GameWorldNode;
 
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
-  private playerBehavior!: ScriptMethodTarget;
-  private miningTool!: ScriptMethodTarget;
+  private playerInstance?: GameNode;
   private worldView!: WorldView;
-  override readonly dependencies = ['Level', 'PlayerState', 'PlayerBehavior', 'MiningTool'] as const;
+  private readonly instantiatePrefab: (path: string) => GameNode;
+  override readonly dependencies = ['Level', 'PlayerState'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
-  constructor(options: GameNodeOptions = {}) {
+  constructor(options: GameWorldNodeOptions) {
     super({ name: 'World', className: 'GameWorldNode', ...options });
+    this.instantiatePrefab = options.instantiatePrefab;
   }
 
   init(ctx: NodeContext): void {
@@ -31,8 +36,6 @@ export class GameWorldNode extends GameNode {
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('Level');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
-    this.playerBehavior = this.requireNode('PlayerBehavior') as unknown as ScriptMethodTarget;
-    this.miningTool = this.requireNode('MiningTool') as unknown as ScriptMethodTarget;
   }
 
   afterResolved(): void {
@@ -42,11 +45,13 @@ export class GameWorldNode extends GameNode {
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     const [sky, tunnel, coreOuter, coreInner] = this.data.sceneObjects;
     const [backwall, foreground] = this.levelNode?.getSceneObjects() ?? [];
-    return [sky, backwall, tunnel, foreground, coreOuter, coreInner].filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
+    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...super.getSceneObjectsInHierarchy()]
+      .filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
   }
 
   destroy(): void {
     this.clearSceneObjects();
+    this.destroyPlayer();
     this.data.player = undefined;
   }
 
@@ -62,14 +67,15 @@ export class GameWorldNode extends GameNode {
 
   createLevel(seed = this.playerState.getActiveRunSeed('gravity-dig-phaser'), restoreActiveRun = true): void {
     this.clearSceneObjects();
+    this.destroyPlayer();
 
     this.data.level = this.levelNode.generate(seed);
-    this.miningTool.callScriptMethod('resetForLevel');
     this.playerState.startRun(this.data.level.planetId, String(seed), restoreActiveRun);
-
     this.data.sceneObjects.push(...this.worldView.createDecorations(this.data.level));
     this.spawnPlayer();
 
+    const miningTool = findNode(this.playerInstance, 'MiningTool') as unknown as ScriptMethodTarget;
+    miningTool.callScriptMethod('resetForLevel');
     emitGameEvent(this.phaserScene, GAME_EVENTS.worldLevelCreated, this.data.level);
   }
 
@@ -80,7 +86,9 @@ export class GameWorldNode extends GameNode {
 
   private spawnPlayer(): void {
     const spawn = spawnToWorld(this.level);
-    this.data.player = this.playerBehavior.callScriptMethod('spawnAt', spawn.x, spawn.y) as Phaser.GameObjects.Image;
+    this.playerInstance = this.addChild(this.instantiatePrefab('prefabs/player.prefab.json'));
+    const movement = findNode(this.playerInstance, 'PlayerMovementController') as unknown as ScriptMethodTarget;
+    this.data.player = movement.callScriptMethod('spawnAt', spawn.x, spawn.y) as Phaser.GameObjects.Image;
 
     const bounds = worldBoundsForLevel(this.level);
     this.phaserScene.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -88,8 +96,35 @@ export class GameWorldNode extends GameNode {
     this.phaserScene.cameras.main.setZoom(1);
     this.phaserScene.cameras.main.startFollow(this.data.player, true, 0.18, 0.18);
   }
+
+  private destroyPlayer(): void {
+    if (!this.playerInstance) return;
+    this.removeChild(this.playerInstance);
+    this.playerInstance = undefined;
+    this.data.player = undefined;
+    this.phaserScene.cameras.main.stopFollow();
+  }
 }
 
 interface ScriptMethodTarget {
   callScriptMethod(name: string, ...args: unknown[]): unknown;
+}
+
+function findNode(root: GameNode | undefined, name: string): GameNode {
+  if (!root) throw new Error(`Cannot find '${name}' without a player instance`);
+  if (root.name === name) return root;
+  for (const child of root.children) {
+    const found = findOptionalNode(child, name);
+    if (found) return found;
+  }
+  throw new Error(`Player prefab node '${name}' was not found`);
+}
+
+function findOptionalNode(root: GameNode, name: string): GameNode | undefined {
+  if (root.name === name) return root;
+  for (const child of root.children) {
+    const found = findOptionalNode(child, name);
+    if (found) return found;
+  }
+  return undefined;
 }
