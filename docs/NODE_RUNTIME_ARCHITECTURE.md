@@ -2,6 +2,8 @@
 
 Gravity Dig uses Phaser for rendering and a small node runtime for gameplay orchestration.
 
+The current public ScriptNode/prefab architecture and the completed 2026-07-11 migration are documented in [`EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md`](./EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md). That document is authoritative where older native-node examples below differ from the current implementation.
+
 ## Core Rule
 
 `AppScene` is the only Phaser scene and only acts as an engine adapter:
@@ -49,13 +51,17 @@ Each `GameNode` supports:
 2. `resolve(ctx)`
    - require other nodes
    - validate dependencies have been registered
-3. `update(deltaMs)`
-   - perform simulation and sync Phaser objects
-4. `destroy()`
+3. `afterResolved()`
+   - run common post-resolution startup in EDIT and PLAY
+   - create runtime composition that must exist in both modes
+4. frame update
+   - `update(deltaMs)` runs only in PLAY
+   - `editorUpdate(deltaMs)` runs only in EDIT
+5. `destroy()`
    - remove listeners
    - destroy Phaser objects owned by the node
 
-`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by `NodeRoot` trees in `order`.
+`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by `NodeRoot` trees in `order`. Scripts initialize and resolve in EDIT; only normal gameplay `update()` is disabled there.
 
 ## Dependencies
 

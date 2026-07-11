@@ -111,12 +111,18 @@ Client-safe environment remains `NEXT_PUBLIC_GAME_URL` only.
 
 ## Architecture rules
 
+Current editor/public ScriptNode architecture and the completed 2026-07-11 migration are documented in [`docs/EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md`](docs/EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md).
+
 - `apps/game/src/main.ts` stays thin.
 - New runtime behavior belongs in one node per file; avoid multi-node catch-all files.
 - Player progress/state belongs in `apps/game/src/player/`, not directly in `AppScene`.
 - Engine-facing orchestration stays in `scenes/AppScene.ts`; app/game/UI flow belongs in runtime nodes.
 - Pure/domain logic lives outside nodes where practical: level pipeline, input intents, physics, mining, world geometry, UI layout.
 - Assets/configs stay in `apps/game/public/` so they are deployable as static files.
+- Reusable gameplay/UI structures are JSON prefabs under `apps/game/public/prefabs/`.
+- Editor-facing behaviors are public `.node.ts` scripts under `apps/game/public/scripts/`.
+- Player and Ship are runtime prefab instances created by `GameWorldNode` after level generation, in deterministic Ship → Player order.
+- Runtime-created trees carry explicit origin metadata and appear as `RUNTIME` in the Hierarchy Explorer.
 - Image rendering uses typed asset records (`ImageAsset`, `FrameAsset`, `ImageAnimationAsset`) resolved by `AssetCatalog`; nodes consume assets instead of parsing atlas metadata themselves.
 
 ## Development
