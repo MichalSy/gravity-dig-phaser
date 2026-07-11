@@ -738,7 +738,7 @@ export default function Home() {
   }
 
   async function refreshPublicFiles(): Promise<void> {
-    setPublicFileStatus('Lade Assets + Nodes ...');
+    setPublicFileStatus('Lade public/ + Source ...');
     try {
       dynamicNodeManifestRef.current = undefined;
       const [publicResult, nodeResult] = await Promise.all([fetchPublicFileTree(), fetchNodeFileTree()]);
@@ -1907,6 +1907,7 @@ function PublicAssetExplorer({
 }
 
 function PublicFileThumbnail({ file }: { file: PublicFileEntry }) {
+  if (isSourceFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>SOURCE</span></div>;
   if (isNodeFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>NODE</span></div>;
   if (isPublicJsonFile(file)) return <div className={styles.fileTileIcon}><Code2 size={30} /><span>JSON</span></div>;
   if (isImageFile(file)) return <QueuedPublicImageThumbnail file={file} />;
@@ -3945,8 +3946,12 @@ function parseAtlasRect(id: string, label: string, value: unknown, tileSize?: nu
 
 function isNodeFile(file: PublicFileEntry): boolean {
   return file.kind === 'file'
-    && (file.path.startsWith('apps/game/src/') || file.path.startsWith('apps/game/public/scripts/'))
+    && file.path.startsWith('apps/game/public/scripts/')
     && ['ts', 'tsx'].includes(file.extension ?? '');
+}
+
+function isSourceFile(file: PublicFileEntry): boolean {
+  return file.kind === 'file' && file.path.startsWith('apps/game/src/');
 }
 
 function isDynamicNodeFile(file: PublicFileEntry): boolean {
@@ -3958,7 +3963,8 @@ function isDynamicNodeFilePath(path: string): boolean {
 }
 
 function isEditableMonacoFile(path: string): boolean {
-  return isDynamicNodeFilePath(path)
+  return path.startsWith('apps/game/src/')
+    || isDynamicNodeFilePath(path)
     || path.startsWith('apps/game/public/assets/')
     || path.startsWith('apps/game/public/scenes/')
     || path.startsWith('apps/game/public/prefabs/')
@@ -4122,7 +4128,7 @@ function isPublicJsonFile(file: PublicFileEntry): boolean {
 }
 
 function isCodePreviewFile(file: PublicFileEntry): boolean {
-  return isNodeFile(file) || isPublicJsonFile(file);
+  return isSourceFile(file) || isNodeFile(file) || isPublicJsonFile(file);
 }
 
 async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<NodeSourceFileContent> {
@@ -4141,6 +4147,7 @@ async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<
 
 function editorLanguageForPath(path: string): string {
   if (path.endsWith('.json')) return 'json';
+  if (path.endsWith('.css')) return 'css';
   return 'typescript';
 }
 

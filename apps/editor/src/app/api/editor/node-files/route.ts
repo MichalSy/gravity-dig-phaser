@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const mode = url.searchParams.get('mode');
     if (mode === 'directories') return jsonNoStore(await listNodeDirectories());
-    if (mode === 'files') return jsonNoStore(await listNodeDirectoryFiles(url.searchParams.get('path') ?? 'apps/game'));
+    if (mode === 'files') return jsonNoStore(await listNodeDirectoryFiles(url.searchParams.get('path') ?? 'apps/game/src'));
     return jsonNoStore(await listNodeFiles());
   } catch (error) {
     return jsonError(error);
