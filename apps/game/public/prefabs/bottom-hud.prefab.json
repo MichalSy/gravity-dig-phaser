@@ -97,6 +97,28 @@
               }
             },
             "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+          },
+          {
+            "name": "UI.SlotLabel0",
+            "props": {
+              "text": "",
+              "parentAnchor": "top-left",
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 1,
+                "y": 1
+              },
+              "position": {
+                "x": 466.326,
+                "y": 124.744
+              },
+              "scale": {
+                "x": 1.695349,
+                "y": 1.695349
+              }
+            },
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
           }
         ]
       },
@@ -261,28 +283,6 @@
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
-      },
-      {
-        "name": "UI.SlotLabel0",
-        "props": {
-          "text": "",
-          "parentAnchor": "top-left",
-          "visible": true,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 1,
-            "y": 1
-          },
-          "position": {
-            "x": 466.326,
-            "y": 124.744
-          },
-          "scale": {
-            "x": 1.695349,
-            "y": 1.695349
-          }
-        },
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
       },
       {
         "name": "UI.SlotLabel1",
