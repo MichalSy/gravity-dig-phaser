@@ -111,7 +111,7 @@
               },
               "position": {
                 "x": 0,
-                "y": 97
+                "y": 100
               },
               "scale": {
                 "x": 1,
@@ -183,8 +183,8 @@
               "text": "",
               "parentAnchor": "top-left",
               "position": {
-                "x": 617.023,
-                "y": 124.744
+                "x": 0,
+                "y": 100
               },
               "visible": true,
               "scrollFactor": 0,
@@ -259,7 +259,7 @@
             "name": "UI.SlotLabel2",
             "props": {
               "text": "",
-              "parentAnchor": "top-left",
+              "parentAnchor": "center",
               "visible": true,
               "scrollFactor": 0,
               "origin": {
@@ -267,13 +267,14 @@
                 "y": 1
               },
               "position": {
-                "x": 767.721,
-                "y": 124.744
+                "x": 0,
+                "y": 100
               },
               "scale": {
-                "x": 1.695349,
-                "y": 1.695349
-              }
+                "x": 1,
+                "y": 1
+              },
+              "fontSize": 45
             },
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
           }
@@ -337,21 +338,22 @@
             "name": "UI.SlotLabel3",
             "props": {
               "text": "",
-              "parentAnchor": "top-left",
+              "parentAnchor": "center",
               "visible": true,
               "scrollFactor": 0,
               "origin": {
-                "x": 1,
-                "y": 1
+                "x": 0.5,
+                "y": 0.5
               },
               "position": {
-                "x": 918.419,
-                "y": 124.744
+                "x": 0,
+                "y": 100
               },
               "scale": {
                 "x": 1.695349,
                 "y": 1.695349
-              }
+              },
+              "fontSize": 45
             },
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
           }
