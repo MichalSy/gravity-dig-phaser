@@ -432,6 +432,37 @@ var PlayerMovementScript = class extends ScriptNode {
   }
 };
 
+// public/scripts/Gameplay/PlayerScript.node.ts
+var PlayerScript = class extends ScriptNode {
+  id = "dynamic.player";
+  name = "Player Script";
+  bodyNodeId = prop.nodeRef(null, { label: "Player Body" });
+  imageNodeId = prop.nodeRef(null, { label: "Player Image" });
+  movementScriptNodeId = prop.nodeRef(null, { label: "Movement Script" });
+  body;
+  imageNode;
+  movement;
+  resolve() {
+    this.body = this.requireResolvedNode(this.bodyNodeId, "PlayerBody");
+    this.imageNode = this.requireResolvedNode(this.imageNodeId, "PlayerImage");
+    this.movement = this.requireResolvedNode(this.movementScriptNodeId, "PlayerMovementController");
+  }
+  spawnAt(x, y) {
+    this.body.setPosition(x, y);
+    this.imageNode.update(0);
+    this.movement.callScriptMethod("setPlayer", this.body);
+    return this.imageNode.image;
+  }
+  getImage() {
+    return this.imageNode.image;
+  }
+  requireResolvedNode(instanceId, fallbackName) {
+    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
+    return node;
+  }
+};
+
 // public/scripts/Gameplay/ShipScript.node.ts
 var SHIP_DOCK_CENTER_X = -288;
 var SHIP_DOCK_CENTER_Y = 240;
@@ -746,6 +777,7 @@ var modules = [
   createDynamicNodeModule(MenuScript, "GameMenu-MenuScript"),
   createDynamicNodeModule(MiningScript, "Gameplay-MiningScript"),
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
+  createDynamicNodeModule(PlayerScript, "Gameplay-PlayerScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
   createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
   createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript"),
@@ -756,4 +788,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.c31db230dd8c.js.map
+//# sourceMappingURL=dynamic-nodes.19d3e68d1362.js.map

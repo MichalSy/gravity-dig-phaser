@@ -2,6 +2,8 @@
   "version": 1,
   "root": {
     "name": "Player",
+    "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+    "instanceId": "dcaed9bf-9bd0-4ba2-8ed2-c37b30215c2f",
     "children": [
       {
         "name": "PlayerMovementController",
@@ -13,6 +15,16 @@
           "shipScriptNodeId": "eec428e5-414c-478a-a58e-73dae9506aa4"
         },
         "instanceId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
+      },
+      {
+        "name": "PlayerBehavior",
+        "nodeTypeId": "dynamic.player",
+        "instanceId": "8f874cbc-b5a3-4ce8-a657-87337981bfcb",
+        "props": {
+          "bodyNodeId": "f131026e-98c2-47a6-92d5-a98ac4cc87cd",
+          "imageNodeId": "fe8c9a25-c18c-4154-aa84-e4272055d66b",
+          "movementScriptNodeId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
+        }
       },
       {
         "name": "PlayerBody",
@@ -73,7 +85,6 @@
           "inputNodeId": null
         }
       }
-    ],
-    "nodeTypeId": "5eed5534-1ab9-52de-a092-be4f7dab9549"
+    ]
   }
 }

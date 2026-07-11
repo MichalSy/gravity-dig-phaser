@@ -28,23 +28,3 @@ export function createPlayerAnimatorData(): PlayerAnimatorData {
     footstepTimerMs: 0,
   };
 }
-
-export interface PlayerMovementControllerData {
-  velocity: Phaser.Math.Vector2;
-  grounded: boolean;
-  coyoteTimerSeconds: number;
-  jumpBufferTimerSeconds: number;
-  jumpHeld: boolean;
-  inputBlocked: boolean;
-}
-
-export function createPlayerMovementControllerData(): PlayerMovementControllerData {
-  return {
-    velocity: new Phaser.Math.Vector2(0, 0),
-    grounded: false,
-    coyoteTimerSeconds: 0,
-    jumpBufferTimerSeconds: 0,
-    jumpHeld: false,
-    inputBlocked: false,
-  };
-}

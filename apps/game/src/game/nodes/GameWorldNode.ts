@@ -5,7 +5,6 @@ import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
-import { PlayerNode } from './PlayerNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export class GameWorldNode extends GameNode {
@@ -14,10 +13,10 @@ export class GameWorldNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
-  private playerNode!: PlayerNode;
+  private playerBehavior!: ScriptMethodTarget;
   private miningTool!: ScriptMethodTarget;
   private worldView!: WorldView;
-  override readonly dependencies = ['Level', 'PlayerState', 'Player', 'MiningTool'] as const;
+  override readonly dependencies = ['Level', 'PlayerState', 'PlayerBehavior', 'MiningTool'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
   constructor(options: GameNodeOptions = {}) {
@@ -32,7 +31,7 @@ export class GameWorldNode extends GameNode {
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('Level');
     this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
-    this.playerNode = this.requireNode<PlayerNode>('Player');
+    this.playerBehavior = this.requireNode('PlayerBehavior') as unknown as ScriptMethodTarget;
     this.miningTool = this.requireNode('MiningTool') as unknown as ScriptMethodTarget;
   }
 
@@ -81,7 +80,7 @@ export class GameWorldNode extends GameNode {
 
   private spawnPlayer(): void {
     const spawn = spawnToWorld(this.level);
-    this.data.player = this.playerNode.spawnAt(spawn.x, spawn.y);
+    this.data.player = this.playerBehavior.callScriptMethod('spawnAt', spawn.x, spawn.y) as Phaser.GameObjects.Image;
 
     const bounds = worldBoundsForLevel(this.level);
     this.phaserScene.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
