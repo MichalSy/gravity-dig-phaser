@@ -148,7 +148,58 @@
             "y": 0.418605
           }
         },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "children": [
+          {
+            "name": "UI.SlotItem1",
+            "props": {
+              "assetId": "hud-item-rock",
+              "parentAnchor": "center",
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "size": {
+                "width": 133,
+                "height": 133
+              },
+              "sizeMode": "content",
+              "scale": {
+                "x": 1,
+                "y": 1
+              }
+            },
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+          },
+          {
+            "name": "UI.SlotLabel1",
+            "props": {
+              "text": "",
+              "parentAnchor": "top-left",
+              "position": {
+                "x": 617.023,
+                "y": 124.744
+              },
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 1,
+                "y": 1
+              },
+              "scale": {
+                "x": 1.695349,
+                "y": 1.695349
+              }
+            },
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
+          }
+        ]
       },
       {
         "name": "UI.SlotFrame2",
@@ -175,7 +226,58 @@
             "y": 0.418605
           }
         },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "children": [
+          {
+            "name": "UI.SlotItem2",
+            "props": {
+              "assetId": "hud-item-rock",
+              "parentAnchor": "center",
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "size": {
+                "width": 133,
+                "height": 133
+              },
+              "sizeMode": "content",
+              "scale": {
+                "x": 1,
+                "y": 1
+              }
+            },
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+          },
+          {
+            "name": "UI.SlotLabel2",
+            "props": {
+              "text": "",
+              "parentAnchor": "top-left",
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 1,
+                "y": 1
+              },
+              "position": {
+                "x": 767.721,
+                "y": 124.744
+              },
+              "scale": {
+                "x": 1.695349,
+                "y": 1.695349
+              }
+            },
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
+          }
+        ]
       },
       {
         "name": "UI.SlotFrame3",
@@ -202,154 +304,58 @@
             "y": 0.418605
           }
         },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
-      },
-      {
-        "name": "UI.SlotItem1",
-        "props": {
-          "assetId": "hud-item-rock",
-          "parentAnchor": "top-left",
-          "position": {
-            "x": 591.907,
-            "y": 99.628
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "children": [
+          {
+            "name": "UI.SlotItem3",
+            "props": {
+              "assetId": "hud-item-rock",
+              "parentAnchor": "center",
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "size": {
+                "width": 133,
+                "height": 133
+              },
+              "sizeMode": "explicit",
+              "scale": {
+                "x": 1,
+                "y": 1
+              }
+            },
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
           },
-          "visible": false,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "size": {
-            "width": 133,
-            "height": 133
-          },
-          "sizeMode": "explicit",
-          "scale": {
-            "x": 0.402868,
-            "y": 0.402868
+          {
+            "name": "UI.SlotLabel3",
+            "props": {
+              "text": "",
+              "parentAnchor": "top-left",
+              "visible": true,
+              "scrollFactor": 0,
+              "origin": {
+                "x": 1,
+                "y": 1
+              },
+              "position": {
+                "x": 918.419,
+                "y": 124.744
+              },
+              "scale": {
+                "x": 1.695349,
+                "y": 1.695349
+              }
+            },
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
           }
-        },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
-      },
-      {
-        "name": "UI.SlotItem2",
-        "props": {
-          "assetId": "hud-item-rock",
-          "parentAnchor": "top-left",
-          "visible": false,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "position": {
-            "x": 742.605,
-            "y": 99.628
-          },
-          "size": {
-            "width": 133,
-            "height": 133
-          },
-          "sizeMode": "explicit",
-          "scale": {
-            "x": 0.402868,
-            "y": 0.402868
-          }
-        },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
-      },
-      {
-        "name": "UI.SlotItem3",
-        "props": {
-          "assetId": "hud-item-rock",
-          "parentAnchor": "top-left",
-          "visible": false,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "position": {
-            "x": 893.302,
-            "y": 99.628
-          },
-          "size": {
-            "width": 133,
-            "height": 133
-          },
-          "sizeMode": "explicit",
-          "scale": {
-            "x": 0.402868,
-            "y": 0.402868
-          }
-        },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
-      },
-      {
-        "name": "UI.SlotLabel1",
-        "props": {
-          "text": "",
-          "parentAnchor": "top-left",
-          "position": {
-            "x": 617.023,
-            "y": 124.744
-          },
-          "visible": true,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 1,
-            "y": 1
-          },
-          "scale": {
-            "x": 1.695349,
-            "y": 1.695349
-          }
-        },
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
-      },
-      {
-        "name": "UI.SlotLabel2",
-        "props": {
-          "text": "",
-          "parentAnchor": "top-left",
-          "visible": true,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 1,
-            "y": 1
-          },
-          "position": {
-            "x": 767.721,
-            "y": 124.744
-          },
-          "scale": {
-            "x": 1.695349,
-            "y": 1.695349
-          }
-        },
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
-      },
-      {
-        "name": "UI.SlotLabel3",
-        "props": {
-          "text": "",
-          "parentAnchor": "top-left",
-          "visible": true,
-          "scrollFactor": 0,
-          "origin": {
-            "x": 1,
-            "y": 1
-          },
-          "position": {
-            "x": 918.419,
-            "y": 124.744
-          },
-          "scale": {
-            "x": 1.695349,
-            "y": 1.695349
-          }
-        },
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
+        ]
       }
     ],
     "nodeTypeId": "c046b141-aa97-576b-ba44-fc4eaaa82073"
