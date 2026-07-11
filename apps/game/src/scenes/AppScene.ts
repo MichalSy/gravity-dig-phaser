@@ -10,7 +10,6 @@ import {
   PlayerMovementControllerNode,
   PlayerNode,
   PlayerStateManagerNode,
-  ShipNode,
 } from '../game/nodes';
 import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { GameplayInputNode } from '../app/nodes';
@@ -212,7 +211,14 @@ export class AppScene extends Phaser.Scene {
       'game:load': (source) => this.loadGameplayAssets(source),
       'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
+      'player:interact-requested': () => this.callDynamicScript('dynamic.ship', 'interact'),
     };
+  }
+
+  private callDynamicScript(nodeTypeId: string, method: string): void {
+    for (const node of this.dynamicScriptNodes) {
+      if (node.nodeTypeId === nodeTypeId && node.isInitialized) node.callScriptMethod(method);
+    }
   }
 
   private async reloadDynamicNodeModule(entry: DynamicNodeManifestEntry | { nodeTypeId?: string; hash: string; url?: string }, code: string): Promise<number> {
@@ -254,7 +260,6 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.ShipNode, (definition) => new ShipNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerNode, (definition) => new PlayerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerMovementControllerNode, (definition) => new PlayerMovementControllerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))

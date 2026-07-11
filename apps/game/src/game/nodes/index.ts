@@ -7,4 +7,3 @@ export * from './PlayerMovementControllerNode';
 export * from './PlayerNode';
 export * from './PlayerAnimatorNode';
 export * from './PlayerStateManagerNode';
-export * from './ShipNode';

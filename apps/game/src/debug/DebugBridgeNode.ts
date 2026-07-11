@@ -36,7 +36,6 @@ const SYSTEM_SCENE_ROOT_TYPE_IDS = new Set<string>([NODE_TYPE_IDS.GameRootNode, 
 const GAME_ONLY_TYPE_IDS = new Set<string>([
   NODE_TYPE_IDS.LevelNode,
   NODE_TYPE_IDS.GameWorldNode,
-  NODE_TYPE_IDS.ShipNode,
   NODE_TYPE_IDS.PlayerNode,
   NODE_TYPE_IDS.PlayerMovementControllerNode,
   NODE_TYPE_IDS.PlayerAnimatorNode,

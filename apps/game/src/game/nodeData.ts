@@ -29,16 +29,6 @@ export function createPlayerAnimatorData(): PlayerAnimatorData {
   };
 }
 
-export interface ShipData {
-  lastMessage: string;
-  lastMessageTimerMs: number;
-}
-
-export function createShipData(): ShipData {
-  return { lastMessage: '', lastMessageTimerMs: 0 };
-}
-
-
 export interface PlayerMovementControllerData {
   velocity: Phaser.Math.Vector2;
   grounded: boolean;

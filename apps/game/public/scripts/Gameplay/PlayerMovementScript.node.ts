@@ -112,6 +112,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
 
     const intent = this.gameplayInput.getPlayerIntent({ previousJumpHeld: this.jumpHeld });
     this.velocity.x = intent.moveX * this.playerState.stats.moveSpeed;
+    if (intent.interactPressed) this.emit('player:interact-requested');
 
     this.jumpHeld = intent.jumpHeld;
     if (intent.jumpPressed) this.queueOrPerformJump();

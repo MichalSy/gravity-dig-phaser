@@ -8,7 +8,6 @@ export const NODE_TYPE_IDS = {
   DebugBridgeNode: 'a37ed60d-ad17-5124-a8b4-d7b0dc4c8b08',
   LevelNode: '2ed70856-b481-58e1-a75c-db6e48d2fcdd',
   GameWorldNode: 'dc19f5fb-ea06-5aab-bd74-2178d2882bf1',
-  ShipNode: 'f65ba170-e819-5f0c-ada5-b93a4dedd173',
   PlayerNode: '5eed5534-1ab9-52de-a092-be4f7dab9549',
   PlayerMovementControllerNode: '2b93fbc2-3345-57ce-a9e9-dbe5a107fd7a',
   PlayerAnimatorNode: 'dbfe2289-a994-52dd-88f8-1b680fc914f6',

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import '../style.css';
 import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
-import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode, ShipNode } from '../game/nodes';
+import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode } from '../game/nodes';
 import { GameplayInputNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
@@ -49,6 +49,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private lastStartSignature?: string;
   private startQueue: Promise<void> = Promise.resolve();
   private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
+  private readonly dynamicScriptNodes = new Set<DynamicScriptNode>();
 
   constructor() {
     super('EditorRuntime');
@@ -203,7 +204,18 @@ class EditorRuntimeScene extends Phaser.Scene {
       },
       'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
+      'player:interact-requested': () => this.callDynamicScript('dynamic.ship', 'interact'),
     };
+  }
+
+  private callDynamicScript(nodeTypeId: string, method: string): void {
+    for (const node of [...this.dynamicScriptNodes]) {
+      if (!node.isInitialized) {
+        this.dynamicScriptNodes.delete(node);
+        continue;
+      }
+      if (node.nodeTypeId === nodeTypeId) node.callScriptMethod(method);
+    }
   }
 
   private mountGameplay(): void {
@@ -276,7 +288,11 @@ class EditorRuntimeScene extends Phaser.Scene {
     const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
-    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() }));
+    this.factory?.register(nodeTypeId, (definition) => {
+      const node = new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() });
+      this.dynamicScriptNodes.add(node);
+      return node;
+    });
     return true;
   }
 
@@ -316,7 +332,6 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.ShipNode, (definition) => new ShipNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerNode, (definition) => new PlayerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerMovementControllerNode, (definition) => new PlayerMovementControllerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))

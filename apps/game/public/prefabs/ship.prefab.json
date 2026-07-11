@@ -28,7 +28,8 @@
             "y": 1
           }
         },
-        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "instanceId": "9c403c67-2191-413b-b140-6d389068add2"
       },
       {
         "name": "ShipPrompt",
@@ -51,9 +52,25 @@
           },
           "visible": false
         },
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "instanceId": "8bfe624f-b374-45a0-a467-d389b1aff3d8"
+      },
+      {
+        "name": "ShipBehavior",
+        "nodeTypeId": "dynamic.ship",
+        "instanceId": "eec428e5-414c-478a-a58e-73dae9506aa4",
+        "props": {
+          "worldNodeId": null,
+          "playerStateNodeId": null,
+          "shipImageNodeId": "9c403c67-2191-413b-b140-6d389068add2",
+          "promptNodeId": "8bfe624f-b374-45a0-a467-d389b1aff3d8",
+          "shipWidth": 548.16,
+          "shipHeight": 336,
+          "promptOffsetY": 57.6,
+          "messageDurationMs": 2200
+        }
       }
     ],
-    "nodeTypeId": "f65ba170-e819-5f0c-ada5-b93a4dedd173"
+    "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364"
   }
 }
