@@ -9,7 +9,8 @@
         "props": {
           "levelNodeId": "b79d5555-5726-4ce6-be4c-b62b505320ba",
           "inputNodeId": null,
-          "playerStateNodeId": null
+          "playerStateNodeId": null,
+          "shipScriptNodeId": "eec428e5-414c-478a-a58e-73dae9506aa4"
         },
         "instanceId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
       },

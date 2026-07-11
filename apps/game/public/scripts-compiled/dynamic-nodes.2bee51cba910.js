@@ -147,12 +147,14 @@ var PlayerMovementScript = class extends ScriptNode {
   levelNodeId = prop.nodeRef(null, { label: "Level Node" });
   inputNodeId = prop.nodeRef(null, { label: "Gameplay Input Node" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State Node" });
+  shipScriptNodeId = prop.nodeRef(null, { label: "Ship Script Node" });
   velocity = { x: 0, y: 0 };
   grounded = false;
   inputBlocked = false;
   levelNode;
   playerState;
   gameplayInput;
+  shipScript;
   player;
   coyoteTimerSeconds = 0;
   jumpBufferTimerSeconds = 0;
@@ -161,6 +163,7 @@ var PlayerMovementScript = class extends ScriptNode {
     this.levelNode = this.requireResolvedNode(this.levelNodeId, "Level");
     this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
     this.gameplayInput = this.requireResolvedNode(this.inputNodeId, "GameplayInput");
+    this.shipScript = this.resolveNode(this.shipScriptNodeId, "ShipBehavior");
   }
   setPlayer(player) {
     this.player = player;
@@ -207,7 +210,7 @@ var PlayerMovementScript = class extends ScriptNode {
     }
     const intent = this.gameplayInput.getPlayerIntent({ previousJumpHeld: this.jumpHeld });
     this.velocity.x = intent.moveX * this.playerState.stats.moveSpeed;
-    if (intent.interactPressed) this.emit("player:interact-requested");
+    if (intent.interactPressed) this.shipScript?.callScriptMethod("interact");
     this.jumpHeld = intent.jumpHeld;
     if (intent.jumpPressed) this.queueOrPerformJump();
     if (this.jumpBufferTimerSeconds > 0) this.jumpBufferTimerSeconds -= deltaSeconds;
@@ -265,8 +268,11 @@ var PlayerMovementScript = class extends ScriptNode {
     this.coyoteTimerSeconds = 0;
     this.emit("player:jump");
   }
+  resolveNode(instanceId, fallbackName) {
+    return (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+  }
   requireResolvedNode(instanceId, fallbackName) {
-    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    const node = this.resolveNode(instanceId, fallbackName);
     if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
     return node;
   }
@@ -406,4 +412,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.85c28702e5d5.js.map
+//# sourceMappingURL=dynamic-nodes.2bee51cba910.js.map

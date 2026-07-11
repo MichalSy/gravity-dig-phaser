@@ -26,6 +26,10 @@ type PlayerStateLike = {
   };
 };
 
+type ScriptMethodTarget = {
+  callScriptMethod(name: string, ...args: unknown[]): unknown;
+};
+
 const PLAYER_SIZE = { w: 40, h: 64 };
 const HORIZONTAL_COLLISION_SIZE = { w: PLAYER_SIZE.w, h: PLAYER_SIZE.h - 8 };
 const VERTICAL_COLLISION_SIZE = { w: PLAYER_SIZE.w - 8, h: PLAYER_SIZE.h };
@@ -38,6 +42,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   levelNodeId = Core.prop.nodeRef(null, { label: 'Level Node' });
   inputNodeId = Core.prop.nodeRef(null, { label: 'Gameplay Input Node' });
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State Node' });
+  shipScriptNodeId = Core.prop.nodeRef(null, { label: 'Ship Script Node' });
 
   velocity = { x: 0, y: 0 };
   grounded = false;
@@ -46,6 +51,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   private levelNode!: LevelNodeLike;
   private playerState!: PlayerStateLike;
   private gameplayInput!: GameplayInputLike;
+  private shipScript?: ScriptMethodTarget;
   private player?: CollisionBody;
   private coyoteTimerSeconds = 0;
   private jumpBufferTimerSeconds = 0;
@@ -55,6 +61,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     this.levelNode = this.requireResolvedNode<LevelNodeLike>(this.levelNodeId, 'Level');
     this.playerState = this.requireResolvedNode<PlayerStateLike>(this.playerStateNodeId, 'PlayerState');
     this.gameplayInput = this.requireResolvedNode<GameplayInputLike>(this.inputNodeId, 'GameplayInput');
+    this.shipScript = this.resolveNode<ScriptMethodTarget>(this.shipScriptNodeId, 'ShipBehavior');
   }
 
   setPlayer(player: CollisionBody) {
@@ -112,7 +119,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
 
     const intent = this.gameplayInput.getPlayerIntent({ previousJumpHeld: this.jumpHeld });
     this.velocity.x = intent.moveX * this.playerState.stats.moveSpeed;
-    if (intent.interactPressed) this.emit('player:interact-requested');
+    if (intent.interactPressed) this.shipScript?.callScriptMethod('interact');
 
     this.jumpHeld = intent.jumpHeld;
     if (intent.jumpPressed) this.queueOrPerformJump();
@@ -185,8 +192,12 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     this.emit('player:jump');
   }
 
+  private resolveNode<T>(instanceId: string | null, fallbackName: string): T | undefined {
+    return (instanceId ? this.getNodeById<T>(instanceId) : undefined) ?? this.getNode<T>(fallbackName);
+  }
+
   private requireResolvedNode<T>(instanceId: string | null, fallbackName: string): T {
-    const node = (instanceId ? this.getNodeById<T>(instanceId) : undefined) ?? this.getNode<T>(fallbackName);
+    const node = this.resolveNode<T>(instanceId, fallbackName);
     if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
     return node;
   }

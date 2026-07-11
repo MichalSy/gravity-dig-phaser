@@ -49,7 +49,6 @@ class EditorRuntimeScene extends Phaser.Scene {
   private lastStartSignature?: string;
   private startQueue: Promise<void> = Promise.resolve();
   private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
-  private readonly dynamicScriptNodes = new Set<DynamicScriptNode>();
 
   constructor() {
     super('EditorRuntime');
@@ -204,18 +203,7 @@ class EditorRuntimeScene extends Phaser.Scene {
       },
       'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
-      'player:interact-requested': () => this.callDynamicScript('dynamic.ship', 'interact'),
     };
-  }
-
-  private callDynamicScript(nodeTypeId: string, method: string): void {
-    for (const node of [...this.dynamicScriptNodes]) {
-      if (!node.isInitialized) {
-        this.dynamicScriptNodes.delete(node);
-        continue;
-      }
-      if (node.nodeTypeId === nodeTypeId) node.callScriptMethod(method);
-    }
   }
 
   private mountGameplay(): void {
@@ -288,11 +276,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
-    this.factory?.register(nodeTypeId, (definition) => {
-      const node = new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() });
-      this.dynamicScriptNodes.add(node);
-      return node;
-    });
+    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions() }));
     return true;
   }
 

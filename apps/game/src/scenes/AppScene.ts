@@ -211,14 +211,7 @@ export class AppScene extends Phaser.Scene {
       'game:load': (source) => this.loadGameplayAssets(source),
       'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
-      'player:interact-requested': () => this.callDynamicScript('dynamic.ship', 'interact'),
     };
-  }
-
-  private callDynamicScript(nodeTypeId: string, method: string): void {
-    for (const node of this.dynamicScriptNodes) {
-      if (node.nodeTypeId === nodeTypeId && node.isInitialized) node.callScriptMethod(method);
-    }
   }
 
   private async reloadDynamicNodeModule(entry: DynamicNodeManifestEntry | { nodeTypeId?: string; hash: string; url?: string }, code: string): Promise<number> {
