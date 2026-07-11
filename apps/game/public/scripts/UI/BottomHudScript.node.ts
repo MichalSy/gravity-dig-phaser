@@ -7,7 +7,7 @@ type CargoSlot = {
 
 type PlayerStateLike = {
   stats: { cargoSlots: number; maxEnergy: number };
-  run: { energy: number; cargo: { slots: CargoSlot[] } };
+  getActiveRun(): { energy: number; cargo: { slots: CargoSlot[] } } | undefined;
 };
 
 type HudRoot = Core.GameNode & {
@@ -116,15 +116,16 @@ export default class BottomHudScript extends Core.ScriptNode {
   }
 
   private updateHud() {
+    const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
-    const energyPct = clamp(this.playerState.run.energy / maxEnergy, 0, 1);
+    const energyPct = clamp((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
     const cropWidth = Math.max(1, Math.round(ENERGY_FRAME_WIDTH * energyPct));
     this.energyFill.visible = energyPct > 0;
     this.energyFill.image.setCrop(0, 0, cropWidth, 84);
     this.energyFill.image.setVisible(energyPct > 0);
 
     for (let index = 0; index < this.slots.length; index += 1) {
-      const cargo = this.playerState.run.cargo.slots[index];
+      const cargo = run?.cargo.slots[index];
       const item = this.slotItems[index];
       const label = this.slotLabels[index];
       if (cargo?.itemId) item.image.setTint(ITEM_TINTS[cargo.itemId]);

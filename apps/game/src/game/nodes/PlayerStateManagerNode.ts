@@ -69,6 +69,10 @@ export class PlayerStateManagerNode extends GameNode {
     return this.activeRunState;
   }
 
+  getActiveRun(): RunState | undefined {
+    return this.activeRunState;
+  }
+
   get stats(): EffectivePlayerStats {
     return this.effectivePlayerStats;
   }

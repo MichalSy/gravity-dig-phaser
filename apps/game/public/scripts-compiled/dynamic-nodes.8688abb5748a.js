@@ -458,14 +458,15 @@ var BottomHudScript = class extends ScriptNode {
     if (slot) this.hudRoot.removeChild(slot);
   }
   updateHud() {
+    const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
-    const energyPct = clamp(this.playerState.run.energy / maxEnergy, 0, 1);
+    const energyPct = clamp((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
     const cropWidth = Math.max(1, Math.round(ENERGY_FRAME_WIDTH * energyPct));
     this.energyFill.visible = energyPct > 0;
     this.energyFill.image.setCrop(0, 0, cropWidth, 84);
     this.energyFill.image.setVisible(energyPct > 0);
     for (let index = 0; index < this.slots.length; index += 1) {
-      const cargo = this.playerState.run.cargo.slots[index];
+      const cargo = run?.cargo.slots[index];
       const item = this.slotItems[index];
       const label = this.slotLabels[index];
       if (cargo?.itemId) item.image.setTint(ITEM_TINTS[cargo.itemId]);
@@ -546,4 +547,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.fd81338291d0.js.map
+//# sourceMappingURL=dynamic-nodes.8688abb5748a.js.map
