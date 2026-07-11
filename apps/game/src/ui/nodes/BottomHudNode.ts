@@ -4,7 +4,7 @@ import { buildHudState } from '../../game/gameplayLogic';
 import { GameWorldNode, PlayerStateManagerNode } from '../../game/nodes';
 import { NODE_TYPE_IDS, collectNodesByName, GameNode, ImageNode, TextNode, TransformNode, type ExposedPropGroup, type NodeContext, type NodeDebugProps, type TransformNodeOptions } from '../../nodes';
 import type { ItemId } from '../../player/types';
-import { computeBottomHudLayout, computeBottomHudSlotLayout } from '../layout/bottomHudLayout';
+import { computeBottomHudLayout } from '../layout/bottomHudLayout';
 import { TEXT, UI_ATLAS } from './uiLayout';
 
 export class BottomHudNode extends TransformNode {
@@ -18,7 +18,6 @@ export class BottomHudNode extends TransformNode {
   private playerState!: PlayerStateManagerNode;
   private gameplayInput!: GameplayInputNode;
   private energyFillNode!: ImageNode;
-  private readonly slotFrameNodes: ImageNode[] = [];
   private readonly slotItemNodes: ImageNode[] = [];
   private readonly slotLabelNodes: TextNode[] = [];
   override readonly dependencies = ['World', 'PlayerState', 'GameplayInput'] as const;
@@ -60,8 +59,6 @@ export class BottomHudNode extends TransformNode {
     const layout = computeBottomHudLayout(viewportWidth, viewportHeight, state);
     const frameWidth = layout.totalWidth;
     const frameHeight = UI_ATLAS.bottomHud.h * layout.atlasScale;
-    const frameX = layout.x;
-    const frameY = layout.dockY;
 
     this.position = { x: -frameWidth / 2, y: 0 };
     if (this.sizeMode === 'explicit') this.size = { width: frameWidth, height: frameHeight };
@@ -70,39 +67,14 @@ export class BottomHudNode extends TransformNode {
 
     for (let i = 0; i < this.slotLabelNodes.length; i += 1) {
       const labelNode = this.slotLabelNodes[i];
-      const item = this.slotItemNodes[i].image;
       const slot = state.cargo.slots[i];
-      const slotLayout = computeBottomHudSlotLayout(layout, state, i);
-
-      const slotFrameNode = this.slotFrameNodes[i];
-      this.placeRegionNode(slotFrameNode, slotLayout.frameX - frameX, slotLayout.frameY - frameY, layout.slotScale, slotLayout.active);
-
-      const itemParentScaleX = 1;
-      const itemParentScaleY = 1;
-      const itemWidth = slotLayout.itemSize / Math.max(itemParentScaleX, Number.EPSILON);
-      const itemHeight = slotLayout.itemSize / Math.max(itemParentScaleY, Number.EPSILON);
       const slotItemNode = this.slotItemNodes[i];
       if (slotItemNode.isEffectivelyActive()) {
         this.updateSlotItemAppearance(slotItemNode, slot?.itemId);
-        slotItemNode.position = { x: slotLayout.itemX - frameX, y: slotLayout.itemY - frameY };
-        slotItemNode.size = { width: itemWidth, height: itemHeight };
-        slotItemNode.scaleX = itemWidth / item.frame.width;
-        slotItemNode.scaleY = itemHeight / item.frame.height;
-        slotItemNode.visible = slotLayout.hasItem;
-        item.setVisible(slotItemNode.visible);
       }
 
-      const labelParentScaleX = 1;
-      const labelParentScaleY = 1;
-      const labelScaleX = slotLayout.labelScale / Math.max(labelParentScaleX, Number.EPSILON);
-      const labelScaleY = slotLayout.labelScale / Math.max(labelParentScaleY, Number.EPSILON);
       if (labelNode.isEffectivelyActive()) {
-        labelNode.visible = slotLayout.hasItem;
         labelNode.text = slot?.itemId ? `${ITEM_SHORT_LABELS[slot.itemId]} x${slot.quantity}` : '';
-        labelNode.position = { x: slotLayout.labelX - frameX, y: slotLayout.labelY - frameY };
-        labelNode.scale = labelScaleX;
-        labelNode.scaleX = labelScaleX;
-        labelNode.scaleY = labelScaleY;
       }
     }
   }
@@ -111,15 +83,12 @@ export class BottomHudNode extends TransformNode {
     const nodesByName = collectNodesByName(this);
     this.energyFillNode = requireSceneNode<ImageNode>(nodesByName, 'UI.EnergyFill');
 
-    this.slotFrameNodes.length = 0;
     this.slotItemNodes.length = 0;
     this.slotLabelNodes.length = 0;
 
     for (let i = 0; i < 4; i += 1) {
-      const slotFrameNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotFrame${i}`);
       const slotItemNode = requireSceneNode<ImageNode>(nodesByName, `UI.SlotItem${i}`);
       const slotLabelNode = requireSceneNode<TextNode>(nodesByName, `UI.SlotLabel${i}`);
-      this.slotFrameNodes.push(slotFrameNode);
       this.slotItemNodes.push(slotItemNode);
       this.slotLabelNodes.push(slotLabelNode);
     }
@@ -144,27 +113,7 @@ export class BottomHudNode extends TransformNode {
   private markHudComputedPropsReadOnly(): void {
     const computedByHudLayout = 'computed by BottomHudNode.update';
     for (const prop of ['position', 'size']) this.markExposedPropReadOnly(prop, computedByHudLayout);
-    for (let i = 0; i < this.slotFrameNodes.length; i += 1) {
-      const frameNode = this.slotFrameNodes[i];
-      for (const prop of ['position', 'size', 'scale', 'visible']) frameNode.markExposedPropReadOnly(prop, computedByHudLayout);
-
-      const itemNode = this.slotItemNodes[i];
-      for (const prop of ['position', 'size', 'scale', 'visible']) itemNode.markExposedPropReadOnly(prop, computedByHudLayout);
-
-      const labelNode = this.slotLabelNodes[i];
-      for (const prop of ['position', 'visible', 'text', 'scale']) labelNode.markExposedPropReadOnly(prop, computedByHudLayout);
-    }
-  }
-
-  private placeRegionNode(node: ImageNode, x: number, y: number, scale: number, visible = true): void {
-    if (!node.isEffectivelyActive()) return;
-    node.position = { x, y };
-    node.scale = scale;
-    node.scaleX = scale;
-    node.scaleY = scale;
-    node.size = { width: node.image.frame.width, height: node.image.frame.height };
-    node.visible = visible;
-    node.image.setCrop().setVisible(visible);
+    for (const labelNode of this.slotLabelNodes) labelNode.markExposedPropReadOnly('text', 'computed from cargo contents');
   }
 
   private updateBarFill(node: ImageNode, frame: { w: number; h: number }, pct: number): void {

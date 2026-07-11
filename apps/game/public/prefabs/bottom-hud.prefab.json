@@ -49,11 +49,24 @@
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryFirstSlot",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 0,
             "y": 0
+          },
+          "position": {
+            "x": 362.93,
+            "y": 21.767
+          },
+          "size": {
+            "width": 374,
+            "height": 372
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.418605,
+            "y": 0.418605
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -63,11 +76,24 @@
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 0,
             "y": 0
+          },
+          "position": {
+            "x": 513.628,
+            "y": 21.767
+          },
+          "size": {
+            "width": 374,
+            "height": 372
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.418605,
+            "y": 0.418605
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -77,11 +103,24 @@
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 0,
             "y": 0
+          },
+          "position": {
+            "x": 664.326,
+            "y": 21.767
+          },
+          "size": {
+            "width": 374,
+            "height": 372
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.418605,
+            "y": 0.418605
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -91,11 +130,24 @@
         "props": {
           "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 0,
             "y": 0
+          },
+          "position": {
+            "x": 815.023,
+            "y": 21.767
+          },
+          "size": {
+            "width": 374,
+            "height": 372
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.418605,
+            "y": 0.418605
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -110,6 +162,19 @@
           "origin": {
             "x": 0.5,
             "y": 0.5
+          },
+          "position": {
+            "x": 441.209,
+            "y": 99.628
+          },
+          "size": {
+            "width": 133,
+            "height": 133
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.402868,
+            "y": 0.402868
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -118,16 +183,25 @@
         "name": "UI.SlotItem1",
         "props": {
           "assetId": "hud-item-rock",
-          "parentAnchor": "center",
+          "parentAnchor": "top-left",
           "position": {
-            "x": 0,
-            "y": 0
+            "x": 591.907,
+            "y": 99.628
           },
           "visible": false,
           "scrollFactor": 0,
           "origin": {
             "x": 0.5,
             "y": 0.5
+          },
+          "size": {
+            "width": 133,
+            "height": 133
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.402868,
+            "y": 0.402868
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -142,6 +216,19 @@
           "origin": {
             "x": 0.5,
             "y": 0.5
+          },
+          "position": {
+            "x": 742.605,
+            "y": 99.628
+          },
+          "size": {
+            "width": 133,
+            "height": 133
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.402868,
+            "y": 0.402868
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -156,6 +243,19 @@
           "origin": {
             "x": 0.5,
             "y": 0.5
+          },
+          "position": {
+            "x": 893.302,
+            "y": 99.628
+          },
+          "size": {
+            "width": 133,
+            "height": 133
+          },
+          "sizeMode": "explicit",
+          "scale": {
+            "x": 0.402868,
+            "y": 0.402868
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
@@ -165,11 +265,19 @@
         "props": {
           "text": "",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 1,
             "y": 1
+          },
+          "position": {
+            "x": 466.326,
+            "y": 124.744
+          },
+          "scale": {
+            "x": 1.695349,
+            "y": 1.695349
           }
         },
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
@@ -178,16 +286,20 @@
         "name": "UI.SlotLabel1",
         "props": {
           "text": "",
-          "parentAnchor": "bottom-right",
+          "parentAnchor": "top-left",
           "position": {
-            "x": -50,
-            "y": -50
+            "x": 617.023,
+            "y": 124.744
           },
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 1,
             "y": 1
+          },
+          "scale": {
+            "x": 1.695349,
+            "y": 1.695349
           }
         },
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
@@ -197,11 +309,19 @@
         "props": {
           "text": "",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 1,
             "y": 1
+          },
+          "position": {
+            "x": 767.721,
+            "y": 124.744
+          },
+          "scale": {
+            "x": 1.695349,
+            "y": 1.695349
           }
         },
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
@@ -211,11 +331,19 @@
         "props": {
           "text": "",
           "parentAnchor": "top-left",
-          "visible": false,
+          "visible": true,
           "scrollFactor": 0,
           "origin": {
             "x": 1,
             "y": 1
+          },
+          "position": {
+            "x": 918.419,
+            "y": 124.744
+          },
+          "scale": {
+            "x": 1.695349,
+            "y": 1.695349
           }
         },
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302"
