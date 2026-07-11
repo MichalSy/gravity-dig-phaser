@@ -11,9 +11,6 @@ type PlayerStateLike = {
 };
 
 type HudRoot = Core.GameNode & {
-  position: { x: number; y: number };
-  scaleX: number;
-  scaleY: number;
   addChild<T extends Core.GameNode>(child: T): T;
   removeChild(child: Core.GameNode): void;
 };
@@ -44,8 +41,6 @@ const SLOT_PREFAB = 'prefabs/inventory-slot.prefab.json';
 const SLOT_ORIGIN_X = 362.93;
 const SLOT_STEP_X = 150.698;
 const SLOT_Y = 21.767;
-const BOTTOM_HUD_WIDTH = 960 * 0.42;
-const SLOT_WIDTH = 374 * 0.418605;
 const ENERGY_FRAME_WIDTH = 300;
 const FIRST_SLOT_ASSET = 'hud-hp-fuel-atlas#inventoryFirstSlot';
 
@@ -96,11 +91,6 @@ export default class BottomHudScript extends Core.ScriptNode {
     while (this.slots.length < targetCount) this.addSlot(this.slots.length);
     while (this.slots.length > targetCount) this.removeLastSlot();
 
-    const totalWidth = Math.max(BOTTOM_HUD_WIDTH, this.slotOriginX + Math.max(targetCount - 1, 0) * this.slotStepX + SLOT_WIDTH);
-    const viewportScale = clamp(this.getViewportSize().width / 1280, 0.5, 1);
-    this.hudRoot.scaleX = viewportScale;
-    this.hudRoot.scaleY = viewportScale;
-    this.hudRoot.position = { x: -(totalWidth * viewportScale) / 2, y: 0 };
   }
 
   private addSlot(index: number) {
@@ -142,9 +132,12 @@ export default class BottomHudScript extends Core.ScriptNode {
       const cargo = run?.cargo.slots[index];
       const item = this.slotItems[index];
       const label = this.slotLabels[index];
-      if (cargo?.itemId) item.image.setTint(ITEM_TINTS[cargo.itemId]);
+      const hasItem = Boolean(cargo?.itemId && cargo.quantity > 0);
+      item.visible = hasItem;
+      item.image.setVisible(hasItem);
+      if (cargo?.itemId && cargo.quantity > 0) item.image.setTint(ITEM_TINTS[cargo.itemId]);
       else item.image.clearTint();
-      const text = cargo?.itemId ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : '';
+      const text = cargo?.itemId && cargo.quantity > 0 ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : '';
       if (label.setText) label.setText(text);
       else label.text = text;
     }

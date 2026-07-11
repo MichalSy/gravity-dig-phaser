@@ -25,7 +25,7 @@
           "size": { "width": 133, "height": 133 },
           "sizeMode": "content",
           "scale": { "x": 1, "y": 1 },
-          "visible": true,
+          "visible": false,
           "scrollFactor": 0,
           "origin": { "x": 0.5, "y": 0.5 }
         }

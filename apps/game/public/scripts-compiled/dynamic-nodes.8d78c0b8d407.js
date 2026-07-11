@@ -551,8 +551,6 @@ var SLOT_PREFAB = "prefabs/inventory-slot.prefab.json";
 var SLOT_ORIGIN_X = 362.93;
 var SLOT_STEP_X = 150.698;
 var SLOT_Y = 21.767;
-var BOTTOM_HUD_WIDTH = 960 * 0.42;
-var SLOT_WIDTH = 374 * 0.418605;
 var ENERGY_FRAME_WIDTH = 300;
 var FIRST_SLOT_ASSET = "hud-hp-fuel-atlas#inventoryFirstSlot";
 var BottomHudScript = class extends ScriptNode {
@@ -593,11 +591,6 @@ var BottomHudScript = class extends ScriptNode {
     const targetCount = Math.max(0, Math.floor(this.playerState.stats.cargoSlots));
     while (this.slots.length < targetCount) this.addSlot(this.slots.length);
     while (this.slots.length > targetCount) this.removeLastSlot();
-    const totalWidth = Math.max(BOTTOM_HUD_WIDTH, this.slotOriginX + Math.max(targetCount - 1, 0) * this.slotStepX + SLOT_WIDTH);
-    const viewportScale = clamp(this.getViewportSize().width / 1280, 0.5, 1);
-    this.hudRoot.scaleX = viewportScale;
-    this.hudRoot.scaleY = viewportScale;
-    this.hudRoot.position = { x: -(totalWidth * viewportScale) / 2, y: 0 };
   }
   addSlot(index) {
     const slot = this.instantiatePrefab(this.slotPrefab, {
@@ -633,9 +626,12 @@ var BottomHudScript = class extends ScriptNode {
       const cargo = run?.cargo.slots[index];
       const item = this.slotItems[index];
       const label = this.slotLabels[index];
-      if (cargo?.itemId) item.image.setTint(ITEM_TINTS[cargo.itemId]);
+      const hasItem = Boolean(cargo?.itemId && cargo.quantity > 0);
+      item.visible = hasItem;
+      item.image.setVisible(hasItem);
+      if (cargo?.itemId && cargo.quantity > 0) item.image.setTint(ITEM_TINTS[cargo.itemId]);
       else item.image.clearTint();
-      const text = cargo?.itemId ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : "";
+      const text = cargo?.itemId && cargo.quantity > 0 ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : "";
       if (label.setText) label.setText(text);
       else label.text = text;
     }
@@ -761,4 +757,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.a78e98756df0.js.map
+//# sourceMappingURL=dynamic-nodes.8d78c0b8d407.js.map
