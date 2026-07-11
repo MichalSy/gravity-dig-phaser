@@ -17,6 +17,7 @@ export class GameWorldNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private playerState!: PlayerStateManagerNode;
+  private shipInstance?: GameNode;
   private playerInstance?: GameNode;
   private worldView!: WorldView;
   private readonly instantiatePrefab: (path: string) => GameNode;
@@ -52,6 +53,7 @@ export class GameWorldNode extends GameNode {
   destroy(): void {
     this.clearSceneObjects();
     this.destroyPlayer();
+    this.destroyShip();
     this.data.player = undefined;
   }
 
@@ -68,10 +70,12 @@ export class GameWorldNode extends GameNode {
   createLevel(seed = this.playerState.getActiveRunSeed('gravity-dig-phaser'), restoreActiveRun = true): void {
     this.clearSceneObjects();
     this.destroyPlayer();
+    this.destroyShip();
 
     this.data.level = this.levelNode.generate(seed);
     this.playerState.startRun(this.data.level.planetId, String(seed), restoreActiveRun);
     this.data.sceneObjects.push(...this.worldView.createDecorations(this.data.level));
+    this.spawnShip();
     this.spawnPlayer();
 
     const miningTool = findNode(this.playerInstance, 'MiningTool') as unknown as ScriptMethodTarget;
@@ -82,6 +86,10 @@ export class GameWorldNode extends GameNode {
   private clearSceneObjects(): void {
     for (const object of this.data.sceneObjects) object.destroy();
     this.data.sceneObjects.length = 0;
+  }
+
+  private spawnShip(): void {
+    this.shipInstance = this.addChild(this.instantiatePrefab('prefabs/ship.prefab.json'));
   }
 
   private spawnPlayer(): void {
@@ -95,6 +103,12 @@ export class GameWorldNode extends GameNode {
     this.phaserScene.cameras.main.setRoundPixels(true);
     this.phaserScene.cameras.main.setZoom(1);
     this.phaserScene.cameras.main.startFollow(this.data.player, true, 0.18, 0.18);
+  }
+
+  private destroyShip(): void {
+    if (!this.shipInstance) return;
+    this.removeChild(this.shipInstance);
+    this.shipInstance = undefined;
   }
 
   private destroyPlayer(): void {

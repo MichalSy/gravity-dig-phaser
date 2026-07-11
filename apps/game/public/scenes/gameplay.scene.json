@@ -17,9 +17,6 @@
             "nodeTypeId": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1"
           },
           {
-            "prefab": "prefabs/ship.prefab.json"
-          },
-          {
             "name": "ExamplePulseScript",
             "nodeTypeId": "dynamic.example-pulse",
             "props": {
