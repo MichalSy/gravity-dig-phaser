@@ -54,6 +54,10 @@ export abstract class ScriptNode {
     return this.__dynamicNodeContext?.getAppVersion() ?? '0.0.0';
   }
 
+  getRuntimeMode(): 'editor' | 'play' {
+    return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play';
+  }
+
   emit(action: string): void {
     this.__dynamicNodeContext?.emit(action);
   }

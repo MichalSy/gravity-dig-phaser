@@ -133,6 +133,9 @@ export class ScriptNode {
   getAppVersion() {
     return this.__dynamicNodeContext?.getAppVersion() ?? '0.0.0';
   }
+  getRuntimeMode() {
+    return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play';
+  }
   emit(action) {
     this.__dynamicNodeContext?.emit(action);
   }

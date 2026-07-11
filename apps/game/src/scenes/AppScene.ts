@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_FONT_ASSETS, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
+import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import {
   GameRootNode,
   GameWorldNode,
@@ -12,8 +12,8 @@ import {
   PlayerStateManagerNode,
   ShipNode,
 } from '../game/nodes';
-import { AnimatedImageNode, ButtonNode, collectNodesByName, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
-import { GameplayInputNode, LoadingNode } from '../app/nodes';
+import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
+import { GameplayInputNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
@@ -44,7 +44,6 @@ export class AppScene extends Phaser.Scene {
   private sceneFactory!: SceneNodeFactoryRegistry;
   private menuScene!: GameNode;
   private loadingScene!: GameNode;
-  private loadingNode!: LoadingNode;
   private gameplayMounted = false;
   private launchMode: AppRuntimeLaunchMode = 'play';
   private editorSceneKey: keyof typeof SCENE_JSON_KEYS = 'gameplay';
@@ -100,8 +99,6 @@ export class AppScene extends Phaser.Scene {
       this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS[this.editorSceneKey]));
     } else {
       this.menuScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.menu));
-      this.loadingScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.loading));
-      this.loadingNode = this.requireSceneNode<LoadingNode>(this.loadingScene, 'Loading');
     }
 
     this.appRuntime.init();
@@ -121,7 +118,31 @@ export class AppScene extends Phaser.Scene {
 
   private startGame(): void {
     this.appRoot.removeChild(this.menuScene);
-    this.loadingNode.start();
+    this.loadingScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.loading));
+    this.appRuntime.resolve();
+  }
+
+  private loadGameplayAssets(source: DynamicScriptNode): void {
+    const setProgress = (progress: number): void => { source.callScriptMethod('setProgress', progress); };
+    const complete = (): void => {
+      this.load.off('progress', setProgress);
+      this.appRuntime.registerImageAssets(GAME_GRAPHIC_ASSETS);
+      this.appRuntime.registerAnimationSets(GAME_ANIMATION_SETS);
+      this.appRuntime.registerFontAssets(GAME_FONT_ASSETS);
+      source.callScriptMethod('complete');
+    };
+
+    setProgress(0);
+    if (this.textures.exists('tiles') && this.cache.json.exists('dev-planet')) {
+      setProgress(1);
+      complete();
+      return;
+    }
+
+    this.load.on('progress', setProgress);
+    this.load.once('complete', complete);
+    loadGameAssets(this);
+    this.load.start();
   }
 
   private mountGameplay(): void {
@@ -185,9 +206,11 @@ export class AppScene extends Phaser.Scene {
     return node;
   }
 
-  private createScriptActions(): Record<string, () => void> {
+  private createScriptActions(): Record<string, (source: DynamicScriptNode) => void> {
     return {
       'game:start': () => this.startGame(),
+      'game:load': (source) => this.loadGameplayAssets(source),
+      'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
     };
   }
@@ -229,7 +252,6 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.LoadingNode, (definition) => new LoadingNode(() => this.mountGameplay(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.ShipNode, (definition) => new ShipNode(optionsFrom(definition)))
@@ -254,11 +276,6 @@ export class AppScene extends Phaser.Scene {
     return payload?.changes?.filter((change) => change.kind === 'setProps' && Array.isArray(change.target.nodePath)) ?? [];
   }
 
-  private requireSceneNode<T extends GameNode>(root: GameNode, name: string): T {
-    const node = collectNodesByName(root).get(name);
-    if (!node) throw new Error(`Scene '${root.debugName()}' is missing node '${name}'`);
-    return node as T;
-  }
 }
 
 function optionsFrom(definition: SceneNodeJson): Record<string, unknown> {

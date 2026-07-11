@@ -2,7 +2,6 @@ import { CORE_NODE_TYPE_IDS } from '@gravity-dig/game-core';
 
 export const NODE_TYPE_IDS = {
   ...CORE_NODE_TYPE_IDS,
-  LoadingNode: 'dcb8bfef-f40b-539b-928c-eead650c1b6f',
   GameplayInputNode: 'c981faaa-6359-537c-ad47-d1605cde3381',
   LevelGeneratorManagerNode: 'f4b370e7-bd23-556e-bf1e-3f959ae224da',
   PlayerStateManagerNode: 'fe16c9f8-414b-51dd-bd4f-9cb56ff9eb03',

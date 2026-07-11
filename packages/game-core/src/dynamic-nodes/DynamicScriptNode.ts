@@ -21,6 +21,7 @@ export interface DynamicScriptContext {
   requireNodeById(instanceId: string): GameNode;
   getNodesByName(name: string): GameNode[];
   getAppVersion(): string;
+  getRuntimeMode(): 'editor' | 'play';
   emit(action: string): void;
 }
 
@@ -40,7 +41,7 @@ const guardedFunction = Symbol('dynamic-script-guarded-function');
 export interface DynamicScriptNodeOptions extends GameNodeOptions {
   module: DynamicNodeModule;
   props?: Record<string, unknown>;
-  actions?: Record<string, () => void>;
+  actions?: Record<string, (source: DynamicScriptNode) => void>;
 }
 
 export class DynamicScriptNode extends GameNode {
@@ -53,7 +54,7 @@ export class DynamicScriptNode extends GameNode {
   private scriptFault?: ScriptFault;
   private scriptErrorCount = 0;
   private readonly scriptPropOverrides = new Set<string>();
-  private readonly actions: Record<string, () => void>;
+  private readonly actions: Record<string, (source: DynamicScriptNode) => void>;
 
   constructor(options: DynamicScriptNodeOptions) {
     super({ ...options, nodeTypeId: options.nodeTypeId ?? options.module.nodeTypeId, className: options.module.displayName ?? 'DynamicScriptNode' });
@@ -223,6 +224,7 @@ export class DynamicScriptNode extends GameNode {
       requireNodeById: (instanceId) => ctx.requireNodeById(instanceId),
       getNodesByName: (name) => ctx.getNodesByName(name),
       getAppVersion: () => __APP_VERSION__,
+      getRuntimeMode: () => ctx.runtime.mode,
       emit: (action) => this.callScriptLifecycle(`emit:${action}`, () => this.emitScriptAction(action)),
     };
   }
@@ -305,7 +307,7 @@ export class DynamicScriptNode extends GameNode {
       console.warn(`[DynamicNode:${this.debugName()}] unknown script action '${action}'`);
       return;
     }
-    handler();
+    handler(this);
   }
 }
 

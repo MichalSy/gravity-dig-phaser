@@ -1165,6 +1165,7 @@ class ScriptNode {
   }
   getNodesByName(name) { return this.__dynamicNodeContext?.getNodesByName(name) ?? []; }
   getAppVersion() { return this.__dynamicNodeContext?.getAppVersion() ?? '0.0.0'; }
+  getRuntimeMode() { return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play'; }
   emit(action) { this.__dynamicNodeContext?.emit(action); }
 }
 function marker(value, definition) { return { __dynamicNodeProp: true, value, definition }; }

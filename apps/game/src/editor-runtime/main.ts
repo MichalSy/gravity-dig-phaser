@@ -3,7 +3,7 @@ import '../style.css';
 import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningToolNode, PlayerAnimatorNode, PlayerMovementControllerNode, PlayerNode, PlayerStateManagerNode, ShipNode } from '../game/nodes';
-import { GameplayInputNode, LoadingNode } from '../app/nodes';
+import { GameplayInputNode } from '../app/nodes';
 import { BottomHudNode, InputModeDetectorNode, StatusHudNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
@@ -180,24 +180,28 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
     this.playRoot = runtime.addRoot(new NodeRoot({ rootName: 'Play-Runtime-Root' }));
     const menu = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.menu);
-    const loading = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.loading);
     this.playMenuScene = this.playRoot.addChild(this.createScene(menu));
-    this.playLoadingScene = this.playRoot.addChild(this.createScene(loading));
   }
 
-  private startGame(): void {
-    const loading = this.runtime?.getNode<LoadingNode>('Loading');
-    if (!loading) return;
+  private async startGame(): Promise<void> {
     if (this.playMenuScene && this.playRoot) {
       this.playRoot.removeChild(this.playMenuScene);
       this.playMenuScene = undefined;
     }
-    loading.start();
+    if (!this.playRoot || this.playLoadingScene) return;
+    const loading = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.loading);
+    this.playLoadingScene = this.playRoot.addChild(this.createScene(loading));
+    this.runtime?.resolve();
   }
 
-  private createScriptActions(): Record<string, () => void> {
+  private createScriptActions(): Record<string, (source: DynamicScriptNode) => void> {
     return {
-      'game:start': () => this.startGame(),
+      'game:start': () => { void this.startGame(); },
+      'game:load': (source) => {
+        source.callScriptMethod('setProgress', 1);
+        source.callScriptMethod('complete');
+      },
+      'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
     };
   }
@@ -310,7 +314,6 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.LoadingNode, (definition) => new LoadingNode(() => this.mountGameplay(), optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.ShipNode, (definition) => new ShipNode(optionsFrom(definition)))

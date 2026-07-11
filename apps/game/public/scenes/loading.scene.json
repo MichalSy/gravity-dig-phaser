@@ -2,22 +2,79 @@
   "version": 1,
   "root": {
     "name": "Scene.Loading",
+    "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4",
     "children": [
-      {
-        "name": "GameRoot",
-        "nodeTypeId": "297cb39e-5ac2-51ea-a2c4-6f16fa58de77"
-      },
+      { "name": "GameRoot", "nodeTypeId": "297cb39e-5ac2-51ea-a2c4-6f16fa58de77" },
       {
         "name": "UIRoot",
         "nodeTypeId": "d4b58fdf-c38b-535a-8d9b-f57d36634db0",
         "children": [
           {
-            "name": "Loading",
-            "nodeTypeId": "dcb8bfef-f40b-539b-928c-eead650c1b6f"
+            "name": "Loading.Background",
+            "instanceId": "5070129e-4596-4cca-b6ab-5549d9611c70",
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+            "props": {
+              "assetId": "loading-screen",
+              "origin": { "x": 0.5, "y": 0.5 },
+              "position": { "x": 640, "y": 360 },
+              "scale": { "x": 0.625, "y": 0.625 },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "Loading.Content",
+            "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+            "props": { "sizeMode": "fill", "scrollFactor": 0 },
+            "children": [
+              {
+                "name": "Loading.Label",
+                "instanceId": "c6677b09-e229-42c8-acb2-d96beb4b6928",
+                "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+                "props": {
+                  "text": "LOADING",
+                  "fontId": "silkscreen-latin-700",
+                  "fontSize": 34,
+                  "color": "#fff4c7",
+                  "stroke": "#3b210f",
+                  "strokeThickness": 6,
+                  "origin": { "x": 0, "y": 0.5 },
+                  "position": { "x": 835, "y": 500 },
+                  "sizeMode": "content",
+                  "resolution": 2
+                }
+              },
+              {
+                "name": "Loading.Progress",
+                "instanceId": "d68a8bc0-3995-48d8-8d70-a75477d881d7",
+                "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+                "props": {
+                  "text": "0%",
+                  "fontId": "silkscreen-latin-700",
+                  "fontSize": 22,
+                  "color": "#93c5fd",
+                  "stroke": "#07111f",
+                  "strokeThickness": 5,
+                  "origin": { "x": 0, "y": 0.5 },
+                  "position": { "x": 835, "y": 544 },
+                  "sizeMode": "content",
+                  "resolution": 2
+                }
+              },
+              {
+                "name": "Loading.Script",
+                "instanceId": "ff39e7b3-938e-497e-a985-70e4f394d3ca",
+                "nodeTypeId": "dynamic.loading-script",
+                "props": {
+                  "progressNodeId": "d68a8bc0-3995-48d8-8d70-a75477d881d7",
+                  "minimumDurationMs": 900,
+                  "loadEvent": "game:load",
+                  "mountEvent": "game:mount"
+                }
+              }
+            ]
           }
         ]
       }
-    ],
-    "nodeTypeId": "b98beda2-6b49-5cc8-85b1-28b3b19eaae4"
+    ]
   }
 }
