@@ -153,9 +153,10 @@
                   "strokeThickness": 4,
                   "sizeMode": "content",
                   "position": {
-                    "x": 1268.75,
-                    "y": 711.25
-                  }
+                    "x": -13,
+                    "y": -11
+                  },
+                  "parentAnchor": "bottom-right"
                 }
               },
               {
