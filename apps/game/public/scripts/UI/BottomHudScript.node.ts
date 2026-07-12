@@ -23,7 +23,6 @@ type HudImageNode = Core.ImageNode & {
   image: {
     clearTint(): unknown;
     setTint(color: number): unknown;
-    setCrop(x: number, y: number, width: number, height: number): unknown;
     setVisible(visible: boolean): unknown;
   };
   visible: boolean;
@@ -41,7 +40,6 @@ const SLOT_PREFAB_ID = 'fc891d95-3efb-567e-81d1-7fb0a446ebf5';
 const SLOT_ORIGIN_X = 362.93;
 const SLOT_STEP_X = 150.698;
 const SLOT_Y = 21.767;
-const ENERGY_FRAME_WIDTH = 300;
 const FIRST_SLOT_ASSET = 'hud-hp-fuel-atlas#inventoryFirstSlot';
 
 export default class BottomHudScript extends Core.ScriptNode {
@@ -123,10 +121,7 @@ export default class BottomHudScript extends Core.ScriptNode {
     const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
     const energyPct = clamp((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
-    const cropWidth = Math.max(1, Math.round(ENERGY_FRAME_WIDTH * energyPct));
-    this.energyFill.visible = energyPct > 0;
-    this.energyFill.image.setCrop(0, 0, cropWidth, 84);
-    this.energyFill.image.setVisible(energyPct > 0);
+    this.energyFill.setHorizontalFill(energyPct);
 
     for (let index = 0; index < this.slots.length; index += 1) {
       const cargo = run?.cargo.slots[index];

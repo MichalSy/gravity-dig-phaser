@@ -13,6 +13,10 @@ type CroppableImage = Phaser.GameObjects.Image & {
   _crop?: { x: number; y: number; width: number; height: number };
 };
 
+function imageFrameLocalSize(image: Phaser.GameObjects.Image): { width: number; height: number } {
+  return { width: image.frame.width, height: image.frame.height };
+}
+
 function visibleImageLocalSize(image: Phaser.GameObjects.Image): { width: number; height: number } {
   const cropImage = image as CroppableImage;
   const crop = cropImage.isCropped ? cropImage._crop : undefined;
@@ -24,20 +28,6 @@ function visibleImageLocalSize(image: Phaser.GameObjects.Image): { width: number
 function visibleImageDisplaySize(image: Phaser.GameObjects.Image): { width: number; height: number } {
   const size = visibleImageLocalSize(image);
   return { width: size.width * Math.abs(image.scaleX), height: size.height * Math.abs(image.scaleY) };
-}
-
-function visibleImageLocalBounds(node: ImageNode, image: Phaser.GameObjects.Image): NodeDebugBounds {
-  const cropImage = image as CroppableImage;
-  const crop = cropImage.isCropped ? cropImage._crop : undefined;
-  const frameWidth = image.frame.width;
-  const frameHeight = image.frame.height;
-  const cropX = crop?.x ?? 0;
-  const cropY = crop?.y ?? 0;
-  const cropWidth = crop?.width ?? frameWidth;
-  const cropHeight = crop?.height ?? frameHeight;
-  const left = -node.origin.x * frameWidth + cropX;
-  const top = -node.origin.y * frameHeight + cropY;
-  return { x: left, y: top, width: cropWidth, height: cropHeight };
 }
 
 export interface ImageNodeOptions extends TransformNodeOptions {
@@ -82,12 +72,12 @@ export class ImageNode extends TransformNode {
     this.asset = ctx.assets.image(this.assetId);
     const frame = isFrameAsset(this.asset) ? this.asset.frameKey : undefined;
     this.phaserImage = ctx.phaserScene.add.image(0, 0, this.asset.textureKey, frame).setFlipX(this.flipX);
-    if (this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
+    if (this.sizeMode === 'content') this.size = imageFrameLocalSize(this.phaserImage);
     this.applyTransformTo(this.phaserImage);
   }
 
   override measureSelf(): void {
-    if (this.phaserImage && this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
+    if (this.phaserImage && this.sizeMode === 'content') this.size = imageFrameLocalSize(this.phaserImage);
   }
 
   override coreUpdate(_deltaMs?: number): void {
@@ -95,9 +85,9 @@ export class ImageNode extends TransformNode {
 
     if (this.syncMode === 'object-to-node') {
       this.position = this.worldToLocalPosition({ x: this.phaserImage.x, y: this.phaserImage.y });
-      const visibleSize = visibleImageLocalSize(this.phaserImage);
+      const frameSize = imageFrameLocalSize(this.phaserImage);
       const parentScale = this.getParentWorldScale();
-      this.size = visibleSize;
+      this.size = frameSize;
       this.visible = this.phaserImage.visible;
       this.scale = parentScale.x === 0 ? this.phaserImage.scaleX : this.phaserImage.scaleX / parentScale.x;
       this.scaleX = this.scale;
@@ -124,7 +114,7 @@ export class ImageNode extends TransformNode {
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;
     this.phaserImage?.setTexture(asset.textureKey, frame);
     if (this.phaserImage) {
-      if (this.sizeMode === 'content') this.size = visibleImageLocalSize(this.phaserImage);
+      if (this.sizeMode === 'content') this.size = imageFrameLocalSize(this.phaserImage);
       this.applyTransformTo(this.phaserImage);
     } else if (this.sizeMode === 'content') {
       this.size = { width: asset.width, height: asset.height };
@@ -133,7 +123,23 @@ export class ImageNode extends TransformNode {
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
     if (!this.phaserImage) return super.getLocalContentBounds();
-    return { ...visibleImageLocalBounds(this, this.phaserImage), scrollFactor: this.getEffectiveScrollFactor() };
+    const frameSize = imageFrameLocalSize(this.phaserImage);
+    return {
+      x: -this.origin.x * frameSize.width,
+      y: -this.origin.y * frameSize.height,
+      width: frameSize.width,
+      height: frameSize.height,
+      scrollFactor: this.getEffectiveScrollFactor(),
+    };
+  }
+
+  setHorizontalFill(percent: number): void {
+    if (!this.phaserImage) return;
+    const normalized = Math.max(0, Math.min(1, percent));
+    const frameSize = imageFrameLocalSize(this.phaserImage);
+    const cropWidth = Math.round(frameSize.width * normalized);
+    this.phaserImage.setCrop(0, 0, cropWidth, frameSize.height);
+    this.phaserImage.setVisible(this.isEffectivelyActive() && this.visible && cropWidth > 0);
   }
 
   protected override renderDebugOverlayLayer(ctx: DebugOverlayLayerRenderContext): boolean {

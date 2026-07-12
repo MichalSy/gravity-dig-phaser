@@ -551,7 +551,6 @@ var SLOT_PREFAB_ID = "fc891d95-3efb-567e-81d1-7fb0a446ebf5";
 var SLOT_ORIGIN_X = 362.93;
 var SLOT_STEP_X = 150.698;
 var SLOT_Y = 21.767;
-var ENERGY_FRAME_WIDTH = 300;
 var FIRST_SLOT_ASSET = "hud-hp-fuel-atlas#inventoryFirstSlot";
 var BottomHudScript = class extends ScriptNode {
   id = "dynamic.bottom-hud";
@@ -618,10 +617,7 @@ var BottomHudScript = class extends ScriptNode {
     const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
     const energyPct = clamp((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
-    const cropWidth = Math.max(1, Math.round(ENERGY_FRAME_WIDTH * energyPct));
-    this.energyFill.visible = energyPct > 0;
-    this.energyFill.image.setCrop(0, 0, cropWidth, 84);
-    this.energyFill.image.setVisible(energyPct > 0);
+    this.energyFill.setHorizontalFill(energyPct);
     for (let index = 0; index < this.slots.length; index += 1) {
       const cargo = run?.cargo.slots[index];
       const item = this.slotItems[index];
@@ -757,4 +753,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.c7f360d6f196.js.map
+//# sourceMappingURL=dynamic-nodes.d3d00ed88c16.js.map
