@@ -1,6 +1,8 @@
 # Editor and Public ScriptNode Migration — 2026-07-11
 
-This document records the completed Gravity Dig runtime/editor migration from 2026-07-11. The implementation described here is deployed on `main` through commit `1184bdc`.
+This is a historical migration record. It documents the state delivered on 2026-07-11 through commit `1184bdc`; later architecture changes are intentionally not reconstructed throughout the chronology below.
+
+For the canonical current implementation, use [`NODE_RUNTIME_ARCHITECTURE.md`](./NODE_RUNTIME_ARCHITECTURE.md). In particular, the current layout engine is dirty/cached, prefab matching uses `prefabId + nodeId + instanceId`, prefab sub-nodes share the normal Inspector schema, and image crop no longer changes node geometry.
 
 ## Result
 
@@ -216,13 +218,15 @@ Bottom HUD position and scale are editor-authored in `bottom-hud.prefab.json`:
 
 `BottomHudScript` must not recalculate HUD position, scale, or Energy Fill geometry from viewport size or slot count.
 
-Only the Energy Fill crop is dynamic:
+Only the Energy Fill percentage is dynamic:
 
 ```ts
-energyFill.image.setCrop(0, 0, cropWidth, 84);
+energyFill.setHorizontalFill(energyPct);
 ```
 
-At zero energy, the fill is hidden.
+`ImageNode` derives the crop rectangle from the complete atlas frame. The complete frame remains the node's measured size, so changing energy cannot resize or reposition the HUD.
+
+Inventory slot origin is exposed as pixel properties `slotOriginX` and `slotOriginY`. Horizontal spacing is derived from the first slot's measured layout width rather than a hard-coded step.
 
 ### Empty slots
 

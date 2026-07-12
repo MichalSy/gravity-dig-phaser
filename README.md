@@ -4,6 +4,7 @@ Gravity Dig is a TypeScript monorepo with two deployable apps:
 
 - `apps/game` - Phaser + Vite game client
 - `apps/editor` - Next.js/React debug editor plus server-side file/Git backend
+- `packages/game-core` - shared node runtime, layout, prefab and ScriptNode APIs
 - `packages/debug-protocol` - shared debug message types
 
 Live targets:
@@ -51,8 +52,15 @@ apps/
 └── editor/                 # Next.js debug editor + server-only backend APIs
 
 packages/
-└── debug-protocol/         # shared message/types package
+├── game-core/              # node runtime, layout, prefab manager and ScriptNode API
+└── debug-protocol/         # shared editor/game message types
 ```
+
+## Documentation
+
+- [`docs/NODE_RUNTIME_ARCHITECTURE.md`](docs/NODE_RUNTIME_ARCHITECTURE.md) is the canonical current architecture reference.
+- [`docs/README.md`](docs/README.md) indexes current, historical, and legacy documentation.
+- Godot and Unity documents are predecessor/reference material and do not define the current Phaser implementation.
 
 ## Debug smoke flow
 
@@ -68,14 +76,14 @@ Debug flow:
 
 ## Source migration notes
 
-### Godot source
+### Legacy Godot source
 
 - Original docs: `docs/godot/`
 - Godot project docs: `docs/godot-project/`
 - Archived README/version: `docs/archive/godot/`
 - Planet configs: `apps/game/public/config/planets/`
 
-### Unity source
+### Legacy Unity source
 
 - Archived README/migration plan: `docs/archive/unity/`
 - Authored Unity sprites copied into `apps/game/public/assets/`
@@ -111,7 +119,7 @@ Client-safe environment remains `NEXT_PUBLIC_GAME_URL` only.
 
 ## Architecture rules
 
-Current editor/public ScriptNode architecture and the completed 2026-07-11 migration are documented in [`docs/EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md`](docs/EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md).
+Current runtime, layout, prefab, Inspector and public ScriptNode architecture is documented in [`docs/NODE_RUNTIME_ARCHITECTURE.md`](docs/NODE_RUNTIME_ARCHITECTURE.md). The 2026-07-11 migration document is a historical implementation record.
 
 - `apps/game/src/main.ts` stays thin.
 - New runtime behavior belongs in one node per file; avoid multi-node catch-all files.

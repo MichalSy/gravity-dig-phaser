@@ -1,266 +1,246 @@
 # Node Runtime Architecture
 
-Gravity Dig uses Phaser for rendering and a small node runtime for gameplay orchestration.
+This document is the canonical technical reference for the current Phaser runtime, prefab system, layout engine, public ScriptNodes, and debug editor.
 
-The current public ScriptNode/prefab architecture and the completed 2026-07-11 migration are documented in [`EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md`](./EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md). That document is authoritative where older native-node examples below differ from the current implementation.
+Historical migration notes live in [`EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md`](./EDITOR_SCRIPTNODE_MIGRATION_2026-07-11.md). Godot and Unity documents are reference material only and do not define the current implementation.
 
-## Core Rule
+## 1. System boundaries
 
-`AppScene` is the only Phaser scene and only acts as an engine adapter:
+Gravity Dig is split into four primary workspaces:
 
-- preload menu assets
-- create the app runtime/root nodes
-- dynamically load gameplay assets when the menu requests start
-- mount gameplay/UI nodes after assets are ready
-- tick the runtime in `update()`
+```text
+apps/game                 Phaser/Vite game and editor runtime
+apps/editor               Next.js debug/prefab editor and Git backend
+packages/game-core        reusable node runtime, layout, prefabs and ScriptNode API
+packages/debug-protocol   typed editor ↔ game messages
+```
+
+`AppScene` is the single Phaser scene. It is an engine adapter that preloads assets, mounts the node runtime, and forwards Phaser's frame delta. App flow, gameplay, UI, and editable behavior belong in nodes rather than additional Phaser scenes.
+
+Phaser owns rendering. Nodes mutate Phaser GameObjects during update; there is no node `render()` lifecycle.
+
+## 2. Runtime tree and lifecycle
+
+`NodeRuntime` owns persistent manager nodes and one or more ordered root trees. Every `GameNode` follows the same lifecycle:
+
+1. `init(ctx)` creates owned Phaser objects and registers listeners.
+2. `resolve()` resolves required nodes and validates dependencies.
+3. `afterResolved()` performs startup shared by EDIT and PLAY.
+4. Layout runs as cached measure and arrange phases.
+5. `update(deltaMs)` runs in PLAY; `editorUpdate(deltaMs)` runs in EDIT.
+6. `destroy()` releases listeners, children, and owned Phaser objects.
+
+Dynamically inserted trees enter the same lifecycle. Their creator owns their removal. A public ScriptNode that creates runtime slots, for example, must remove them in `destroy()`.
+
+Runtime-created roots carry explicit creation metadata:
 
 ```ts
-update(_time: number, deltaMs: number): void {
-  this.appRuntime.update(deltaMs);
-}
+type NodeCreationOrigin = 'scene' | 'runtime-code' | 'runtime-script';
 ```
 
-There is no custom render phase. Phaser renders GameObjects automatically after we mutate their state in `update()`.
+The editor displays runtime roots with a `RUNTIME` badge. Names, UUID formats, and node types must never be used to infer creation origin.
 
-## Why There Is No `render()` Method
+## 3. Node types and exposed properties
 
-The previous runtime had `render()` hooks, but the game does not render manually. Nodes call Phaser APIs such as:
+Core node classes live under `packages/game-core/src/nodes/`. Engine- or game-specific native nodes live under `apps/game/src/`. Editor-facing behavior lives in public scripts under `apps/game/public/scripts/`.
 
-- `image.setTexture(...)`
-- `image.setPosition(...)`
-- `graphics.clear()` / `graphics.strokeRect(...)`
-- `text.setText(...)`
-- `camera.setZoom(...)`
+Each node type defines static property metadata through `exposedPropGroups`. This metadata is the single source for:
 
-Those are normal update-side mutations of Phaser objects. Phaser's renderer draws the resulting scene graph. A separate node `render()` phase would be misleading unless the game first introduced a strict pure-state/sync-to-view architecture.
+- normal runtime Inspector controls,
+- prefab root Inspector controls,
+- prefab sub-node Inspector controls,
+- labels, numeric steps, ranges, enums, vectors, anchors and origins.
 
-Current rule:
+A prefab file supplies authored values; it does not decide which properties the node type supports. Therefore an `ImageNode` exposes the same core Layout, Transform, Presentation, and Image properties whether selected in a live scene or inside a prefab.
 
-- `update(deltaMs)` owns simulation, input, and Phaser object synchronization.
-- Phaser owns actual drawing.
-- Do not add node `render()` methods unless we intentionally reintroduce a real state-to-view render pipeline.
-
-## Runtime Lifecycle
-
-Each `GameNode` supports:
-
-1. `init(ctx)`
-   - create Phaser objects
-   - register event listeners
-   - read Phaser cache/config
-2. `resolve(ctx)`
-   - require other nodes
-   - validate dependencies have been registered
-3. `afterResolved()`
-   - run common post-resolution startup in EDIT and PLAY
-   - create runtime composition that must exist in both modes
-4. frame update
-   - `update(deltaMs)` runs only in PLAY
-   - `editorUpdate(deltaMs)` runs only in EDIT
-5. `destroy()`
-   - remove listeners
-   - destroy Phaser objects owned by the node
-
-`NodeRuntime.update(deltaMs)` resolves lazily and then ticks persistent nodes followed by `NodeRoot` trees in `order`. Scripts initialize and resolve in EDIT; only normal gameplay `update()` is disabled there.
-
-## Dependencies
-
-Nodes declare required node names with `dependencies`:
+Properties are applied through controlled mutation paths such as `applySceneProp()` and node setters. Mutable layout values must not bypass invalidation by mutating nested fields in place; assign a complete value instead:
 
 ```ts
-export class MiningToolNode extends GameNode {
-  override readonly dependencies = ['level', 'world', 'playerController', 'playerState', 'gameplayInput'] as const;
-}
+node.position = { x: 120, y: 48 };
+node.origin = { x: 0, y: 0.5 };
 ```
 
-The base `GameNode` validates that dependencies exist before `resolve()` runs. This catches missing registrations early.
+## 4. Layout architecture
 
-Important: current validation checks presence, not full cycle analysis. Keep node coupling low and prefer data/events over direct calls when possible.
+Layout is split into two cached phases.
 
-## Node Data
+### 4.1 Measure
 
-Runtime state belongs in explicit `data` objects, not hidden scattered fields.
+`measureTree()` runs bottom-up for branches marked `measureDirty`:
 
-Examples:
+1. a node measures its intrinsic content,
+2. dirty children measure themselves,
+3. a `sizeMode: "content"` parent unions child bounds,
+4. the measured result is cached.
 
-- `PlayerControllerData`: velocity, grounded state, coyote timer, jump buffer, gravity toggle, input block flag
-- `MiningToolData`: target, aim vectors, laser origin, gamepad aim
-- `GameWorldData`: active level, player object, scene-owned decoration objects
-- `ShipDockData`: prompt message and timer
+`ImageNode` measures the complete image or atlas frame. `TextNode` measures its rendered text. A generic content container derives its size from child bounds.
 
-Data factories live in:
+### 4.2 Arrange
 
-```txt
-src/game/nodeData.ts
-```
+`arrangeTree()` runs top-down for branches marked `arrangeDirty`:
 
-Rules:
+1. the parent size and transform are already known,
+2. `parentAnchor` resolves against the final parent size,
+3. origin, local transform and world transform are applied,
+4. arranged bounds are cached.
 
-- Node data is runtime state.
-- Save-game state remains in player/profile/run modules.
-- Config/tuning remains constants or config files.
-- Phaser GameObjects may be referenced by node data only when the node owns their lifecycle.
+`parentAnchor` is intentionally excluded from content measurement. Anchors such as `center-left` depend on final parent dimensions and belong to arrange.
 
-## Typed Game Events
+A content-sized parent must not depend exclusively on an anchored child along the same axis: parent size depending on child position while child position depends on parent size is circular. Give that axis an explicit or otherwise independent size source.
 
-String events are centralized in:
+### 4.3 Dirty propagation
 
-```txt
-src/game/gameEvents.ts
-```
+Each node tracks separate measure and arrange state plus subtree state so clean branches are skipped completely.
 
-Use:
+Typical invalidation rules:
+
+| Change | Required work |
+|---|---|
+| text, font, image asset, intrinsic size | measure node and content ancestors; arrange affected branch |
+| explicit size or size mode | measure and arrange |
+| local position, anchor, origin, rotation, scale | arrange; measure content parent when its bounds change |
+| parent size or transform | arrange anchored descendants |
+| visibility or active state | update parent content measurement and arrangement |
+| add, remove, move or reparent child | measure affected content parents and arrange tree |
+
+Stable trees do not remeasure or rearrange every frame.
+
+### 4.4 Crop is not layout
+
+Image crop is visual state. It must not change intrinsic node size, authored position, or parent content size.
+
+`ImageNode.setHorizontalFill(percent)` clamps a value to `0..1`, reads the actual frame dimensions, and applies a horizontal Phaser crop. The node continues to measure the complete frame.
+
+HUD scripts therefore provide only dynamic state:
 
 ```ts
-emitGameEvent(scene, GAME_EVENTS.playerInteractRequested);
-onGameEvent(scene, GAME_EVENTS.worldLevelCreated, handler, this);
-offGameEvent(scene, GAME_EVENTS.worldLevelCreated, handler, this);
+const energyPct = clamp(currentEnergy / maxEnergy, 0, 1);
+energyFill.setHorizontalFill(energyPct);
 ```
 
-This keeps event names and payloads typed. Existing external emitters may still emit the same underlying string event names, but gameplay code should use the typed helpers.
+Fill position, origin, anchor, scale, and size remain authored in the prefab and resolved by normal layout.
 
-## Pure Logic
+## 5. Prefab identity and inheritance
 
-Reusable decision logic lives outside the node classes:
+Prefab matching uses three different identities:
 
-```txt
-src/game/gameplayLogic.ts      # gameplay decisions and view-model builders
-src/game/level/                # deterministic level generation, tilemap view, collision helpers
-src/game/mining/               # mining targeting, damage, and laser view
-src/game/physics/              # movement/physics helpers
-src/game/world/                # world geometry and decoration/player view factories
-src/input/gameplayIntents.ts   # player/mining input intent builders
-src/app/menu/                  # menu config/layout/view
-src/ui/layout/                 # pure UI layout calculations
+```text
+prefabId    persistent identity of a prefab definition
+nodeId      persistent identity of a node inside that definition
+instanceId  unique identity of one concrete runtime node
 ```
 
-Current examples:
+`prefabPath` is a loading hint and editor navigation value, not identity. Names, hierarchy paths, array indexes, and reconstructed JSON paths are never valid runtime matching keys.
 
-- `computePlayerAnimationState(...)`
-- `buildHudState(...)`
-- `buildShipDockPrompt(...)`
-- `isAtShipDock(...)`
-- `buildPlayerInputIntent(...)`
-- `buildMiningInputIntent(...)`
-- `computeBottomHudLayout(...)`
-- `stepPlayerPhysics(...)`
-- `findFirstMineableTile(...)`
-- `worldBoundsForLevel(...)`
-- `LevelTilemapView.draw(...)`
-- `collidesBox(...)`
+`PrefabManager` owns:
 
-Guideline: if a rule can be expressed without Phaser object ownership, prefer a pure function or focused view/helper module and let the node orchestrate it.
+- lazy loading and dependency loading,
+- caches indexed by prefab ID and path,
+- runtime instance ID allocation,
+- active instance registration,
+- targeted definition reload,
+- structural reconcile by stable `nodeId`.
 
-## Image Assets and Display Nodes
+A runtime instance keeps source identity and sparse authoring overrides. It does not keep a complete copied `prefabProps` snapshot.
 
-Image loading is split into three responsibilities:
+Scene-authored root overrides live in `props`. Child overrides live in `overrides`, keyed by source `nodeId`. Values equal to prefab defaults are removed so overrides stay sparse.
 
-- `AssetLoader` queues Phaser files (`.webp`, optional `.webp.json` metadata).
-- `AssetCatalog` resolves typed records such as `ImageAsset`, `FrameAsset`, and `ImageAnimationAsset`.
-- Display nodes consume resolved assets; they do not parse file names or JSON metadata.
+Explicit creation overrides, such as a dynamically calculated slot position, have precedence over prefab defaults. Reference remapping processes only properties with Node-ID semantics and must never reapply unrelated defaults afterward.
 
-Asset ids use compact references:
+## 6. Prefab reload
 
-```txt
-player.webp          # whole image
-player.webp#idle_01  # named frame from player.webp.json
-player.webp@walk     # animation from player.webp.json
+Saving a prefab triggers a targeted `PrefabManager` reload:
+
+1. parse and validate the replacement definition,
+2. update ID/path indexes transactionally,
+3. reconcile registered instances by source `nodeId`,
+4. preserve sparse authoring overrides,
+5. add, delete, move, or reorder runtime nodes as needed,
+6. preserve unrelated runtime state.
+
+Normal Inspector patches are applied directly to the selected runtime instance and persisted as pending changes. They do not reload the game iframe. A full iframe reload is reserved for operations that genuinely replace the whole editor runtime.
+
+## 7. Public ScriptNodes
+
+Editable behavior is authored as `.node.ts` files under:
+
+```text
+apps/game/public/scripts/
 ```
 
-The first implementation keeps the current texture keys (`player-idle-0`, etc.) as valid `ImageAsset` ids while adding support for future `image.webp.json` atlas metadata. `ImageAssetKind` is an enum-like const object because the game tsconfig uses `erasableSyntaxOnly`, which rejects runtime TypeScript enums.
+The build produces hashed compiled modules and `scripts-compiled/manifest.json`. Source and generated manifest/module artifacts are committed together.
 
-Display primitives live under `src/nodes/`:
+ScriptNodes expose editable fields with `Core.prop.*`, resolve nodes by stable references, and may instantiate prefabs through the shared factory/manager path:
 
-- `TransformNode` — position/size/anchor/depth/scale base.
-- `ImageNode` — renders either an `ImageAsset` or `FrameAsset`.
-- `AnimatedImageNode` — plays an `ImageAnimationAsset` frame sequence.
-- `DisplayNodeFactory` — small construction helper for display nodes.
-
-## Node Layout
-
-Every runtime node lives in its own file. Root nodes compose child nodes; large multi-node files are intentionally avoided.
-
-### Cached measure and arrange
-
-Layout is split into two cached phases:
-
-- `measureTree()` runs bottom-up only for branches marked `measureDirty`. A node measures its intrinsic content first; a `content` parent then unions the measured local bounds of its children.
-- `arrangeTree()` runs top-down only for branches marked `arrangeDirty`. It resolves parent anchors, origins, local/world transforms, and arranged bounds from the already measured sizes.
-
-Layout property setters invalidate the minimum required work. Intrinsic-size changes propagate measure invalidation through `content` ancestors; parent size and transform changes invalidate arrangement for anchored descendants. Tree insertion, removal, reparenting, visibility, scale, text, and size changes participate in the same invalidation path. Stable trees therefore reuse their measured size and arranged transform rather than recomputing both every frame.
-
-`parentAnchor` is intentionally excluded from content measurement. Anchors such as `center-left` depend on the final parent size and are resolved during arrange. A content-sized parent should not depend exclusively on an anchored child for the same axis, because that would create a circular size dependency.
-
-```txt
-src/app/loading/     # loading overlay view
-src/app/menu/        # menu view/config/layout
-src/app/nodes/       # app roots/state/menu/loading
-src/game/level/      # level generation, tilemap view, collision helpers
-src/game/mining/     # mining targeting, damage, laser view
-src/game/nodes/      # gameplay/runtime/save nodes
-src/game/physics/    # physics helpers
-src/game/world/      # world geometry and view factories
-src/input/           # input intent builders
-src/ui/layout/       # UI layout calculators
-src/ui/nodes/        # HUD and touch controls
-src/nodes/           # node runtime primitives
+```ts
+this.instantiatePrefab(prefabId, { name, props });
 ```
 
-Current gameplay nodes mounted under `GameplayRootNode`:
+The cached and hot-reloaded script paths must both use ID-aware prefab creation. A prefab UUID must not be passed to a path-only tree loader.
 
-- `GameplayInputNode` — input mode, keyboard/touch/gamepad intent source
-- `HudStateNode` — current HUD view model for UI rendering
-- `LevelNode` — level data lifecycle plus tile/collision query facade
-- `CameraZoomNode` — camera zoom sync
-- `GameWorldNode` — level lifecycle, background/ship/core/player spawn, camera bounds/follow
-- `PlayerNode` — player entity subtree (`playerController`, `playerPresentation`, `playerImage`)
-- `PlayerControllerNode` — player input to movement/physics; no world reset or debug toggles
-- `MiningToolNode` — mining input, laser, targeting, tile damage, crack overlays, block break handling
-- `PlayerPresentationNode` — animation, facing, footsteps; drives `playerImage`
-- `RunRecoveryNode` — energy recovery while not mining
-- `HudNode` — writes the HUD view model into `HudStateNode`
-- `ShipDockNode` — ship prompt and cargo return interaction
-- `AutoSaveNode` — periodic active-run save
+Script responsibilities should remain behavioral:
 
-Persistent nodes:
+- calculate state or percentages,
+- update text, tint, crop, animation, or other runtime presentation,
+- create/remove explicitly dynamic composition.
 
-- `PlayerStateManagerNode` — save/profile/run state
-- `LevelGeneratorManagerNode` — planet config and pure level generation
+Static geometry belongs in node/prefab properties. Dynamic composition may position instances, but should derive geometry from measured node bounds rather than duplicate asset constants.
 
-UI nodes mounted under `GameplayUiRootNode`:
+The Bottom HUD demonstrates this split:
 
-- `StatusHudNode`
-- `BottomHudNode`
-- `TouchControlsNode`
+- Energy Fill geometry is authored in `bottom-hud.prefab.json`.
+- The script only calculates energy percentage and crop.
+- Slot origin is exposed as pixel properties `slotOriginX` and `slotOriginY`.
+- Slot spacing comes from the first slot's measured parent bounds, not a hard-coded step.
 
-## Prefab Definitions and Instances
+## 8. Editor data flow
 
-`PrefabManager` is the single owner of loaded prefab definitions. It starts empty, loads a prefab only when a scene or runtime node first references it, deduplicates concurrent loads, recursively loads nested prefab dependencies, and keeps loaded definitions cached by path.
+The embedded game and editor communicate through typed `postMessage` messages from `packages/debug-protocol`.
 
-Runtime instances retain stable source metadata (`prefabId`, `prefabPath`, and the source node's `nodeId`) plus sparse authoring overrides. `prefabId` identifies the prefab independently of its file path; `nodeId` identifies a node inside that prefab independently of names and hierarchy. Runtime `instanceId`s are allocated by `PrefabManager` and remain independent. `prefabNodePath` is retained only for editor navigation and display, never for inheritance or reload matching. The manager owns `prefabId → instanceId → runtime root` registrations and reconciles active trees by `nodeId`, including property updates, insertion, deletion, reordering, and reparenting. The instances do not keep a copied `prefabProps` snapshot.
+The game publishes:
 
-Scene-authored prefab roots store sparse root overrides in `props`; sparse child-node overrides are stored in `overrides`, keyed by the source node's stable `nodeId`. Object overrides are field-level. Values equal to the current prefab definition are removed automatically, and empty `props`/`overrides` containers are omitted.
+- tree snapshots and deltas,
+- selected node properties,
+- node property definitions,
+- asset metadata,
+- patch acknowledgements,
+- prefab reload acknowledgements.
 
-When the editor saves a prefab, it requests a targeted manager reload. The manager replaces only that cached definition and updates registered instances. Properties with an authoring override are preserved; inherited properties receive the new prefab value. Runtime state such as live movement remains separate from authoring overrides.
+The editor:
 
-## Adding a New Node
+1. renders the live hierarchy and Inspector,
+2. sends a live node patch,
+3. records a pending source change through its Next.js backend,
+4. previews Git changes,
+5. commits and pushes from the isolated editor workspace.
 
-1. Create exactly one node class per file, e.g. `src/game/nodes/MyNode.ts`.
-2. Add a `data` object in `src/game/nodeData.ts` when the node owns runtime state.
-3. Declare `dependencies` explicitly.
-4. Register event listeners in `init()` and remove them in `destroy()`.
-5. Resolve other nodes in `resolve()`.
-6. Put simulation and Phaser sync in `update()`.
-7. Export from the relevant barrel (`src/game/nodes/index.ts`, `src/app/nodes/index.ts`, or `src/ui/nodes/index.ts`).
-8. Register in `src/app/nodes/GameplayRootNode.ts`.
-9. Add/adjust smoke coverage if the node affects gameplay.
+The browser never receives repository credentials. Server APIs validate relative paths and restrict writes to configured repository roots.
 
-## Things Not To Do
+## 9. Ownership rules
 
-- Do not put gameplay logic into `AppScene`.
-- Do not add node `render()` hooks for normal Phaser object updates.
-- Do not hide runtime state in unrelated private fields when it belongs in node data.
-- Do not introduce new raw string gameplay events in node code; use `GAME_EVENTS`.
-- Do not store save-game state in node data.
-- Do not add multiple node classes to one file.
-- Do not add more Phaser scenes for app/game/UI state; model them as runtime nodes unless Phaser lifecycle isolation is genuinely required.
+- `AppScene` remains a thin Phaser adapter.
+- Structure belongs in scene/prefab JSON.
+- Editor-facing behavior belongs in public ScriptNodes.
+- Native nodes are reserved for runtime management or Phaser integration.
+- Persistent profile/run/cargo state belongs to player-state modules, not UI scripts.
+- Runtime-created trees are destroyed by their creator.
+- A node owns the Phaser objects it creates.
+- Prefab identity never depends on names or paths.
+- Crop, tint, and animation are presentation; they must not silently become a second layout system.
+- Changes affecting editor/runtime parity are verified in both EDIT and PLAY.
+
+## 10. Verification baseline
+
+Before shipping runtime, prefab, layout, or editor changes, run the relevant subset and the complete build before final delivery:
+
+```bash
+npm run build -w packages/debug-protocol
+npx tsc --noEmit -p apps/game/tsconfig.json
+npx tsc --noEmit -p apps/editor/tsconfig.json
+npm run build -w apps/game
+npm run build:editor
+npm run build:embedded-game -w apps/editor
+git diff --check
+```
+
+Also verify the affected behavior in the real embedded editor, including EDIT/PLAY lifecycle, browser console, Inspector controls, targeted prefab reload, and dynamic-instance regressions.
