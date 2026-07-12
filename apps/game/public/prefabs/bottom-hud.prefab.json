@@ -76,8 +76,8 @@
           "energyFillNodeId": "e3955b4c-58c6-4bda-845c-e08c82003759",
           "slotPrefabId": "fc891d95-3efb-567e-81d1-7fb0a446ebf5",
           "slotPrefabPath": "prefabs/inventory-slot.prefab.json",
-          "slotOriginX": 362.93,
-          "slotOriginY": 21.767
+          "slotOriginX": 820,
+          "slotOriginY": 41
         }
       }
     ]
