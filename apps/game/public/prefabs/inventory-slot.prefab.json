@@ -18,8 +18,8 @@
       },
       "sizeMode": "explicit",
       "scale": {
-        "x": 0.418605,
-        "y": 0.418605
+        "x": 1,
+        "y": 1
       },
       "visible": true,
       "scrollFactor": 0,
