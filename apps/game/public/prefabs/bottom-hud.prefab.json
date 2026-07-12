@@ -8,7 +8,7 @@
     "props": {
       "parentAnchor": "bottom-center",
       "position": {
-        "x": -410.35,
+        "x": 0,
         "y": 0
       },
       "scale": {
@@ -18,7 +18,7 @@
       "sizeMode": "content",
       "debugScrollFactor": 0,
       "origin": {
-        "x": 0,
+        "x": 0.5,
         "y": 1
       }
     },
