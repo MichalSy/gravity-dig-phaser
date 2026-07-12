@@ -192,14 +192,17 @@ export class SceneNodeFactoryRegistry {
   }
 
   private remapPrefabNodeReferences(path: string, root: GameNode): void {
+    const prefabId = this.prefabManager?.get(path).prefabId;
     const runtimeByNodeId = new Map<string, GameNode>();
     const collect = (node: GameNode): void => {
+      if (node !== root && node.getCreationMetadata().prefabId !== prefabId) return;
       const nodeId = node.getCreationMetadata().prefabNodeId;
       if (nodeId) runtimeByNodeId.set(nodeId, node);
       for (const child of node.children) collect(child);
     };
     collect(root);
     const apply = (node: GameNode): void => {
+      if (node !== root && node.getCreationMetadata().prefabId !== prefabId) return;
       const nodeId = node.getCreationMetadata().prefabNodeId;
       const source = nodeId ? this.prefabManager?.getNode(path, nodeId) : undefined;
       if (source?.props) {
@@ -218,6 +221,7 @@ export class SceneNodeFactoryRegistry {
   private reconcilePrefabInstance(path: string, prefab: SceneFileJson, root: GameNode): void {
     const runtimeByNodeId = new Map<string, GameNode>();
     const collectRuntime = (node: GameNode): void => {
+      if (node !== root && node.getCreationMetadata().prefabId !== prefab.prefabId) return;
       const nodeId = node.getCreationMetadata().prefabNodeId;
       if (nodeId) runtimeByNodeId.set(nodeId, node);
       for (const child of node.children) collectRuntime(child);
@@ -231,12 +235,6 @@ export class SceneNodeFactoryRegistry {
       node.children?.forEach((child, childIndex) => collectDefinitions(child, node.nodeId, childIndex));
     };
     collectDefinitions(prefab.root, undefined, 0);
-
-    for (const [nodeId, runtimeNode] of [...runtimeByNodeId]) {
-      if (definitions.has(nodeId) || runtimeNode === root) continue;
-      runtimeNode.parent?.removeChild(runtimeNode);
-      runtimeByNodeId.delete(nodeId);
-    }
 
     const ensureNode = (nodeId: string): GameNode | undefined => {
       const existing = runtimeByNodeId.get(nodeId);
@@ -267,11 +265,17 @@ export class SceneNodeFactoryRegistry {
         expectedParent.insertChildAt(runtimeNode, entry.index);
       }
     }
+    for (const [nodeId, runtimeNode] of [...runtimeByNodeId]) {
+      if (definitions.has(nodeId) || runtimeNode === root) continue;
+      runtimeNode.parent?.removeChild(runtimeNode);
+      runtimeByNodeId.delete(nodeId);
+    }
     this.remapPrefabNodeReferences(path, root);
   }
 
   private applyReloadedPrefabNode(path: string, node: GameNode): void {
     const metadata = node.getCreationMetadata();
+    if (metadata.prefabId !== this.prefabManager?.get(path).prefabId) return;
     const definition = metadata.prefabNodeId ? this.prefabManager?.getNode(path, metadata.prefabNodeId) : undefined;
     if (definition?.props) {
       const overrideProps = new Set(metadata.prefabOverrideProps ?? []);

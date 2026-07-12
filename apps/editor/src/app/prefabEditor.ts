@@ -22,6 +22,12 @@ const classNamesByTypeId: Record<string, string> = {
   'f3f82d6c-c31e-56bc-afd6-b5892604eaf5': 'CollisionRectNode',
 };
 
+const anchorOptions = [
+  'top-left', 'top-center', 'top-right',
+  'center-left', 'center', 'center-right',
+  'bottom-left', 'bottom-center', 'bottom-right',
+];
+
 export function isPrefabFilePath(path: string): boolean {
   return path.toLowerCase().endsWith('.prefab.json');
 }
@@ -84,6 +90,7 @@ function inferPropDefinition(key: string, value: unknown): DebugScenePropDefinit
   if (key === 'position') return { type: 'Position' };
   if (key === 'size') return { type: 'Size' };
   if (key === 'origin') return { type: 'Origin' };
+  if (key === 'parentAnchor') return { type: 'Anchor', options: anchorOptions };
   if (key === 'scale') return { type: 'Scale' };
   if (key === 'assetId') return { type: 'AssetId' };
   if (key === 'fontId') return { type: 'FontId' };

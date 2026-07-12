@@ -83,11 +83,16 @@ export class PrefabManager {
   }
 
   async reload(path: string): Promise<SceneFileJson> {
-    const previousPrefabId = this.definitions.get(path)?.prefabId;
-    this.definitions.delete(path);
-    this.nodesById.delete(path);
-    const definition = await this.ensure(path);
-    if (previousPrefabId && definition.prefabId !== previousPrefabId) throw new Error(`Prefab '${path}' changed prefabId from '${previousPrefabId}' to '${definition.prefabId}'`);
+    const previous = this.definitions.get(path);
+    const definition = await this.loader(path);
+    validatePrefab(path, definition);
+    if (previous?.prefabId && definition.prefabId !== previous.prefabId) throw new Error(`Prefab '${path}' changed prefabId from '${previous.prefabId}' to '${definition.prefabId}'`);
+    const nodeIndex = indexPrefabNodes(path, definition.root);
+    await this.ensureDefinitions(definition.root);
+    this.definitions.set(path, definition);
+    this.definitionsById.set(definition.prefabId!, definition);
+    this.pathsById.set(definition.prefabId!, path);
+    this.nodesById.set(path, nodeIndex);
     for (const listener of this.listeners) listener(path, definition);
     return definition;
   }
