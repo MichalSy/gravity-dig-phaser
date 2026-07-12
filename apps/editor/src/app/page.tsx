@@ -1721,7 +1721,8 @@ export default function Home() {
           onSelectDirectory={selectPublicDirectory}
           onToggleDirectory={togglePublicDirectory}
           onSelectFile={setSelectedPublicFilePath}
-          onOpenFile={(path) => { if (isPrefabFilePath(path)) void openPrefabEditor(path); else setOpenNodeFilePath(path); }}
+          onOpenFile={setOpenNodeFilePath}
+          onOpenPrefab={(path) => void openPrefabEditor(path)}
           onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
           onStartFolderResize={startFolderTreeResize}
@@ -1873,6 +1874,7 @@ function PublicAssetExplorer({
   onToggleDirectory,
   onSelectFile,
   onOpenFile,
+  onOpenPrefab,
   onOpenImage,
   onRefresh,
   onStartFolderResize,
@@ -1896,6 +1898,7 @@ function PublicAssetExplorer({
   onToggleDirectory(path: string): void;
   onSelectFile(path: string): void;
   onOpenFile(path: string): void;
+  onOpenPrefab(path: string): void;
   onOpenImage(path: string): void;
   onRefresh(): void;
   onStartFolderResize(event: ReactPointerEvent<HTMLDivElement>): void;
@@ -1968,7 +1971,15 @@ function PublicAssetExplorer({
                   onImageAssetDragEnd();
                 }}
                 onClick={() => onSelectFile(file.path)}
-                onDoubleClick={() => { if (isCodePreviewFile(file)) onOpenFile(file.path); }}
+                onDoubleClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (isPrefabFilePath(file.path)) {
+                    onOpenPrefab(file.path);
+                    return;
+                  }
+                  if (isCodePreviewFile(file)) onOpenFile(file.path);
+                }}
                 title={file.path}
               >
                 <PublicFileThumbnail file={file} />
@@ -1980,7 +1991,7 @@ function PublicAssetExplorer({
             {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
           </div>
         </div>
-        <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} onOpenFile={onOpenFile} />
+        <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} onOpenFile={onOpenFile} onOpenPrefab={onOpenPrefab} />
       </div>
     </section>
   );
@@ -2017,13 +2028,19 @@ function QueuedPublicImageThumbnail({ file }: { file: PublicFileEntry }) {
   return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>{failed ? 'ERR' : 'LÄDT'}</span></div>;
 }
 
-function PublicFileDetails({ file, onOpenImage, onOpenFile }: { file?: PublicFileEntry; onOpenImage(path: string): void; onOpenFile(path: string): void }) {
+function PublicFileDetails({ file, onOpenImage, onOpenFile, onOpenPrefab }: { file?: PublicFileEntry; onOpenImage(path: string): void; onOpenFile(path: string): void; onOpenPrefab(path: string): void }) {
   if (!file) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle eine Datei.</p></aside>;
   const url = isCodePreviewFile(file) ? '' : publicFileContentUrl(file);
   return (
     <aside className={styles.assetDetails}>
       <div className={styles.publicFilePreviewPane}>
-        {isCodePreviewFile(file) ? (
+        {isPrefabFilePath(file.path) ? (
+          <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenPrefab(file.path)} aria-label={`${file.name} als Prefab öffnen`}>
+            <Boxes size={46} />
+            <span>Prefab bearbeiten</span>
+            <span className={styles.assetPreviewHint}>Doppelklick im Grid öffnet die Prefab-Hierarchie</span>
+          </button>
+        ) : isCodePreviewFile(file) ? (
           <button type="button" className={styles.assetPreviewLarge} onClick={() => onOpenFile(file.path)} aria-label={`${file.name} öffnen`}>
             <Code2 size={46} />
             <span>Datei öffnen</span>
@@ -4219,7 +4236,7 @@ function isPublicJsonFile(file: PublicFileEntry): boolean {
 }
 
 function isCodePreviewFile(file: PublicFileEntry): boolean {
-  return isSourceFile(file) || isNodeFile(file) || isPublicJsonFile(file);
+  return !isPrefabFilePath(file.path) && (isSourceFile(file) || isNodeFile(file) || isPublicJsonFile(file));
 }
 
 async function loadEditorSourceFile(path: string, signal: AbortSignal): Promise<NodeSourceFileContent> {
