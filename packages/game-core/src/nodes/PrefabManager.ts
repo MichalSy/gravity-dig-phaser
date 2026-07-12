@@ -74,9 +74,26 @@ export class PrefabManager {
 }
 
 export function collectPrefabPaths(definition: SceneNodeJson, target = new Set<string>()): string[] {
-  if (definition.prefab) target.add(definition.prefab);
-  for (const child of definition.children ?? []) collectPrefabPaths(child, target);
+  collectPrefabReferences(definition, target, new WeakSet<object>());
   return [...target];
+}
+
+function collectPrefabReferences(value: unknown, target: Set<string>, visited: WeakSet<object>): void {
+  if (typeof value === 'string') {
+    if (isPrefabPath(value)) target.add(value);
+    return;
+  }
+  if (!value || typeof value !== 'object' || visited.has(value)) return;
+  visited.add(value);
+  if (Array.isArray(value)) {
+    for (const item of value) collectPrefabReferences(item, target, visited);
+    return;
+  }
+  for (const nested of Object.values(value as Record<string, unknown>)) collectPrefabReferences(nested, target, visited);
+}
+
+function isPrefabPath(value: string): boolean {
+  return value.endsWith('.prefab.json');
 }
 
 function validatePrefab(path: string, definition: SceneFileJson): void {
