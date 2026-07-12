@@ -706,6 +706,11 @@ export class DebugBridgeNode extends GameNode {
 
     console.log('[Gravity Dig Debug][patch]', 'apply:start', { target: node.debugName(), instanceId: node.instanceId, props: message.props });
     const result = node.applySceneProps(message.props);
+    const creationMetadata = node.getCreationMetadata();
+    if (creationMetadata.prefabPath) node.setCreationMetadata({
+      ...creationMetadata,
+      prefabOverrideProps: [...new Set([...(creationMetadata.prefabOverrideProps ?? []), ...Object.keys(result.applied)])],
+    });
     console.log('[Gravity Dig Debug][patch]', 'apply:result', { target: node.debugName(), result, localTransform: node.getLocalTransform(), props: node.getDebugProps() });
     const nodeId = this.getStableNodeId(node);
     this.send({

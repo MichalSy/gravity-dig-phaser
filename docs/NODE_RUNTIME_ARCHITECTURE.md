@@ -222,6 +222,16 @@ UI nodes mounted under `GameplayUiRootNode`:
 - `BottomHudNode`
 - `TouchControlsNode`
 
+## Prefab Definitions and Instances
+
+`PrefabManager` is the single owner of loaded prefab definitions. It starts empty, loads a prefab only when a scene or runtime node first references it, deduplicates concurrent loads, recursively loads nested prefab dependencies, and keeps loaded definitions cached by path.
+
+Runtime instances retain only stable source metadata (`prefabPath` and `prefabNodePath`) plus sparse authoring overrides. They do not keep a copied `prefabProps` snapshot. Effective values come from the manager-owned definition merged with the instance overrides.
+
+Scene-authored prefab roots store sparse root overrides in `props`; sparse child-node overrides are stored in `overrides`, keyed by prefab-relative node path. Object overrides are field-level. Values equal to the current prefab definition are removed automatically, and empty `props`/`overrides` containers are omitted.
+
+When the editor saves a prefab, it requests a targeted manager reload. The manager replaces only that cached definition and updates registered instances. Properties with an authoring override are preserved; inherited properties receive the new prefab value. Runtime state such as live movement remains separate from authoring overrides.
+
 ## Adding a New Node
 
 1. Create exactly one node class per file, e.g. `src/game/nodes/MyNode.ts`.

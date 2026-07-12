@@ -2,6 +2,7 @@ export * from './Anchor';
 export * from './GameNode';
 export * from './SceneProps';
 export * from './SceneNodeFactory';
+export * from './PrefabManager';
 export * from './TransformNode';
 export * from './ImageNode';
 export * from './TextNode';

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent,
 import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, Waypoints } from 'lucide-react';
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
-import { formatPrefabDocument, isPrefabFilePath, parsePrefabDocument, patchPrefabNode, prefabDocumentToTree, prefabNodeDefinition, prefabNodePropsMessage, type PrefabDocument } from './prefabEditor';
+import { findPrefabTreeNodeByPath, formatPrefabDocument, isPrefabFilePath, parsePrefabDocument, patchPrefabNode, prefabDocumentToTree, prefabNodeDefinition, prefabNodePropsMessage, type PrefabDocument } from './prefabEditor';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
   return type !== 'node:select' && type !== 'node:props';
@@ -1553,27 +1553,55 @@ export default function Home() {
         method: 'POST',
         cache: 'no-store',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kind: 'setProps', target: { nodePath }, props, previousProps }),
+        body: JSON.stringify({
+          kind: 'setProps',
+          target: {
+            nodePath,
+            prefabPath: node.prefabPath,
+            prefabNodePath: node.prefabNodePath,
+            prefabInstancePath: node.prefabNodePath ? nodePath.slice(0, Math.max(1, nodePath.length - node.prefabNodePath.length + 1)) : undefined,
+          },
+          props,
+          previousProps,
+        }),
       });
       const result = await response.json() as { ok: boolean; changeSet?: EditorChangeSet; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPendingChangeSet(result.changeSet);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
       void refreshGitStatus();
+      if (node.prefabPath) reloadGameFrame();
     } catch (error) {
       setGitSaveStatus(`Pending Change fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  async function openPrefabEditor(path: string): Promise<void> {
+  async function resetPrefabOverride(node: DebugNodeDescriptor, propName: string): Promise<void> {
+    if (!node.prefabPath || !node.prefabNodePath) return;
+    try {
+      const sourcePath = `apps/game/public/${node.prefabPath}`;
+      const file = await loadEditorSourceFile(sourcePath, new AbortController().signal);
+      const document = parsePrefabDocument(file.content);
+      const roots = prefabDocumentToTree(document, sourcePath);
+      const prefabNode = findPrefabTreeNodeByPath(roots, node.prefabNodePath);
+      if (!prefabNode) throw new Error(`Prefab-Node ${node.prefabNodePath.join('/')} nicht gefunden`);
+      const prefabProps = prefabNodePropsMessage(document, sourcePath, prefabNode.id)?.props ?? {};
+      sendNodePatch(node, { [propName]: prefabProps[propName] ?? null } as DebugNodePatch);
+    } catch (error) {
+      setGitSaveStatus(`Override-Reset fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function openPrefabEditor(path: string, targetNodePath?: readonly string[]): Promise<void> {
     setPrefabStatus('Lade Prefab ...');
     try {
       const file = await loadEditorSourceFile(path, new AbortController().signal);
       const document = parsePrefabDocument(file.content);
       const roots = prefabDocumentToTree(document, path);
+      const targetNode = targetNodePath ? findPrefabTreeNodeByPath(roots, targetNodePath) : undefined;
       setOpenPrefabPath(path);
       setOpenPrefabDocument(document);
-      setPrefabSelectedNodeId(roots[0]?.id);
+      setPrefabSelectedNodeId(targetNode?.id ?? roots[0]?.id);
       setExpandedNodeIds(new Set(collectNodeIds(roots)));
       setInspectorResetVersion((current) => current + 1);
       setPrefabStatus('Prefab geladen');
@@ -1605,8 +1633,9 @@ export default function Home() {
       });
       const result = await response.json() as EditorFileSaveResult;
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      setPrefabStatus('Prefab gespeichert');
+      setPrefabStatus('Prefab gespeichert · Instanzen werden aktualisiert');
       void refreshGitStatus();
+      runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:prefab:reload', path: openPrefabPath.replace(/^apps\/game\/public\//, '') }, window.location.origin);
     } catch (error) {
       setPrefabStatus(`Prefab konnte nicht gespeichert werden: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -1740,7 +1769,7 @@ export default function Home() {
         <aside className={styles.panel}>
           <PanelHeader title="Inspector" meta={displayedSelectedNode ? `${displayedSelectedNode.name}${openPrefabPath ? ` · ${prefabStatus}` : gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (openPrefabPath ? prefabStatus : gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
-            {displayedSelectedNode ? <Inspector roots={displayedTreeRoots} node={displayedSelectedNode} parentInactive={openPrefabPath ? false : selectedNodeHasInactiveParent} definition={displayedNodeDefinition} debugProps={displayedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[displayedSelectedNode.id]} assets={imageAssets} fonts={fonts} onPatch={openPrefabPath ? (node, props) => void patchOpenPrefabNode(node, props) : sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {displayedSelectedNode ? <Inspector roots={displayedTreeRoots} node={displayedSelectedNode} parentInactive={openPrefabPath ? false : selectedNodeHasInactiveParent} definition={displayedNodeDefinition} debugProps={displayedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[displayedSelectedNode.id]} assets={imageAssets} fonts={fonts} onPatch={openPrefabPath ? (node, props) => void patchOpenPrefabNode(node, props) : sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} onEditPrefab={!openPrefabPath && displayedSelectedNode.prefabPath ? () => void openPrefabEditor(`apps/game/public/${displayedSelectedNode.prefabPath}`, displayedSelectedNode.prefabNodePath) : undefined} onResetPrefabOverride={!openPrefabPath && displayedSelectedNode.prefabPath ? (propName) => void resetPrefabOverride(displayedSelectedNode, propName) : undefined} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -3034,6 +3063,8 @@ function Inspector({
   onPatch,
   onOverlayLayerSelectionChange,
   onSelectAsset,
+  onEditPrefab,
+  onResetPrefabOverride,
 }: {
   roots: DebugNodeDescriptor[];
   node: DebugNodeDescriptor;
@@ -3047,6 +3078,8 @@ function Inspector({
   onPatch(node: DebugNodeDescriptor, props: DebugNodePatch): void;
   onOverlayLayerSelectionChange(node: DebugNodeDescriptor, layerIds: string[]): void;
   onSelectAsset(id: string): void;
+  onEditPrefab?(): void;
+  onResetPrefabOverride?(propName: string): void;
 }) {
   const canToggleVisible = Boolean(definition?.exposedPropGroups?.some((group) => group.name === 'Presentation' && group.props.visible) ?? flattenDefinitionProps(definition).visible);
   return (
@@ -3065,6 +3098,19 @@ function Inspector({
           )}
         </div>
       </div>
+      {node.prefabPath && (
+        <div className={styles.prefabInspectorCard}>
+          <div><strong>Prefab-Instanz</strong><span>{node.prefabPath}</span></div>
+          {node.prefabOverrideProps && node.prefabOverrideProps.length > 0 && (
+            <div className={styles.prefabOverrideList}>
+              {node.prefabOverrideProps.map((propName) => (
+                <div key={propName}><span>Override: {propName}</span>{onResetPrefabOverride && <button type="button" onClick={() => onResetPrefabOverride(propName)}>Reset</button>}</div>
+              ))}
+            </div>
+          )}
+          {onEditPrefab && <button type="button" className={styles.headerButton} onClick={onEditPrefab}>Prefab bearbeiten</button>}
+        </div>
+      )}
       <OverlayLayersDropdown node={node} definition={definition} selection={overlayLayerSelection} onChange={onOverlayLayerSelectionChange} />
       <ExposedPropsSection roots={roots} node={node} definition={definition} debugProps={debugProps} resetVersion={resetVersion} assets={assets} fonts={fonts} onPatch={onPatch} />
       <InspectorSection title="Debug · read-only" defaultOpen={false}>

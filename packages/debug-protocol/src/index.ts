@@ -246,6 +246,8 @@ export interface DebugNodeDescriptor {
   creationOrigin?: 'scene' | 'runtime-code' | 'runtime-script';
   runtimeRoot?: boolean;
   prefabPath?: string;
+  prefabNodePath?: string[];
+  prefabOverrideProps?: string[];
   createdByInstanceId?: string;
   index: number;
   children: DebugNodeDescriptor[];
@@ -382,6 +384,10 @@ export interface DebugAssetListMessage {
 export interface EditorChangeTarget {
   /** Stable authoring path by node names, e.g. ['UI.Gameplay', 'UI.BottomHud', 'UI.ActionFrame']. */
   nodePath: string[];
+  /** Prefab source and instance metadata used to persist sparse instance overrides. */
+  prefabPath?: string;
+  prefabNodePath?: string[];
+  prefabInstancePath?: string[];
 }
 
 export interface EditorSetPropsChange {

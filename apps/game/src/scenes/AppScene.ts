@@ -9,7 +9,7 @@ import {
   PlayerAnimatorNode,
   PlayerStateManagerNode,
 } from '../game/nodes';
-import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
+import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, PrefabManager, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { GameplayInputNode } from '../app/nodes';
 import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
@@ -21,13 +21,6 @@ const SCENE_JSON_KEYS = {
   gameplay: 'scene:gameplay',
 } as const;
 
-const PREFAB_JSON_KEYS: Record<string, string> = {
-  'prefabs/player.prefab.json': 'prefab:player',
-  'prefabs/ship.prefab.json': 'prefab:ship',
-  'prefabs/status-hud.prefab.json': 'prefab:status-hud',
-  'prefabs/bottom-hud.prefab.json': 'prefab:bottom-hud',
-  'prefabs/inventory-slot.prefab.json': 'prefab:inventory-slot',
-};
 
 const PREVIEW_CHANGES_KEY = 'editor:preview-changes';
 const DYNAMIC_NODE_MANIFEST_KEY = 'dynamic-nodes:manifest';
@@ -40,6 +33,7 @@ export class AppScene extends Phaser.Scene {
   private appRuntime!: NodeRuntime;
   private appRoot!: NodeRoot;
   private sceneFactory!: SceneNodeFactoryRegistry;
+  private prefabManager!: PrefabManager;
   private menuScene!: GameNode;
   private loadingScene!: GameNode;
   private gameplayMounted = false;
@@ -58,7 +52,7 @@ export class AppScene extends Phaser.Scene {
     this.load.json(SCENE_JSON_KEYS.menu, 'scenes/menu.scene.json');
     this.load.json(SCENE_JSON_KEYS.loading, 'scenes/loading.scene.json');
     this.load.json(SCENE_JSON_KEYS.gameplay, 'scenes/gameplay.scene.json');
-    for (const [path, key] of Object.entries(PREFAB_JSON_KEYS)) this.load.json(key, path);
+
     this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'scripts-compiled/manifest.json');
     this.readLaunchParams();
     if (this.debugConfig) {
@@ -81,6 +75,11 @@ export class AppScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
 
     this.appRuntime = new NodeRuntime({ phaserScene: this, mode: this.launchMode === 'editor' ? NodeRuntimeMode.Editor : NodeRuntimeMode.Play });
+    this.prefabManager = new PrefabManager(async (path) => {
+      const response = await fetch(new URL(path, document.baseURI), { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Prefab '${path}' konnte nicht geladen werden: HTTP ${response.status}`);
+      return await response.json() as SceneFileJson;
+    });
     this.sceneFactory = this.createSceneFactory();
     await this.registerDynamicNodeModules();
     this.appRuntime.registerImageAssets(MENU_GRAPHIC_ASSETS);
@@ -94,9 +93,9 @@ export class AppScene extends Phaser.Scene {
 
     this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: this.launchMode === 'editor' ? 'Editor-Root' : 'App-Root' }));
     if (this.launchMode === 'editor') {
-      this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS[this.editorSceneKey]));
+      this.appRoot.addChild(await this.createScene(SCENE_JSON_KEYS[this.editorSceneKey]));
     } else {
-      this.menuScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.menu));
+      this.menuScene = this.appRoot.addChild(await this.createScene(SCENE_JSON_KEYS.menu));
     }
 
     this.appRuntime.init();
@@ -114,9 +113,9 @@ export class AppScene extends Phaser.Scene {
     if (scene && EDITOR_SCENE_KEYS.has(scene as keyof typeof SCENE_JSON_KEYS)) this.editorSceneKey = scene as keyof typeof SCENE_JSON_KEYS;
   }
 
-  private startGame(): void {
+  private async startGame(): Promise<void> {
     this.appRoot.removeChild(this.menuScene);
-    this.loadingScene = this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.loading));
+    this.loadingScene = this.appRoot.addChild(await this.createScene(SCENE_JSON_KEYS.loading));
     this.appRuntime.resolve();
   }
 
@@ -150,7 +149,7 @@ export class AppScene extends Phaser.Scene {
     this.appRuntime.addPersistentNode(new GameplayInputNode());
     this.appRuntime.addPersistentNode(new PlayerStateManagerNode());
     this.appRuntime.addPersistentNode(new LevelGeneratorManagerNode());
-    this.mountGameplayScenes();
+    void this.mountGameplayScenes();
     this.unmountStartupNodes();
   }
 
@@ -159,8 +158,12 @@ export class AppScene extends Phaser.Scene {
     this.appRoot.removeChild(this.loadingScene);
   }
 
-  private mountGameplayScenes(): void {
-    this.appRoot.addChild(this.createScene(SCENE_JSON_KEYS.gameplay));
+  private async mountGameplayScenes(): Promise<void> {
+    await Promise.all([
+      this.prefabManager.ensure('prefabs/player.prefab.json'),
+      this.prefabManager.ensure('prefabs/ship.prefab.json'),
+    ]);
+    this.appRoot.addChild(await this.createScene(SCENE_JSON_KEYS.gameplay));
   }
 
   private async registerDynamicNodeModules(): Promise<void> {
@@ -210,7 +213,7 @@ export class AppScene extends Phaser.Scene {
 
   private createScriptActions(): Record<string, (source: DynamicScriptNode) => void> {
     return {
-      'game:start': () => this.startGame(),
+      'game:start': () => { void this.startGame(); },
       'game:load': (source) => this.loadGameplayAssets(source),
       'game:mount': () => this.mountGameplay(),
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
@@ -235,22 +238,17 @@ export class AppScene extends Phaser.Scene {
     return reloaded;
   }
 
-  private createScene(cacheKey: string): GameNode {
+  private async createScene(cacheKey: string): Promise<GameNode> {
     const scene = this.cache.json.get(cacheKey) as SceneFileJson | undefined;
     if (!scene) throw new Error(`Scene JSON '${cacheKey}' was not loaded`);
+    await this.prefabManager.ensureDefinitions(scene.root);
     return this.sceneFactory.createTree(scene.root);
   }
 
   private createSceneFactory(): SceneNodeFactoryRegistry {
     return new SceneNodeFactoryRegistry()
       .withPreviewChanges(this.readPreviewChanges())
-      .withPrefabResolver((path) => {
-        const key = PREFAB_JSON_KEYS[path];
-        if (!key) throw new Error(`Unknown prefab '${path}'`);
-        const prefab = this.cache.json.get(key) as SceneFileJson | undefined;
-        if (!prefab) throw new Error(`Prefab '${path}' was not loaded`);
-        return prefab;
-      })
+      .withPrefabManager(this.prefabManager)
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))

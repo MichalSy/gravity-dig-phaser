@@ -56,6 +56,13 @@ function toDescriptor(node: PrefabNodeDefinition, parentId: string | undefined, 
   };
 }
 
+export function findPrefabTreeNodeByPath(roots: DebugNodeDescriptor[], nodePath: readonly string[]): DebugNodeDescriptor | undefined {
+  if (nodePath.length === 0) return roots[0];
+  let current = roots.find((node) => node.name === nodePath[0]);
+  for (let index = 1; current && index < nodePath.length; index += 1) current = current.children.find((child) => child.name === nodePath[index]);
+  return current;
+}
+
 export function prefabNodeDefinition(document: PrefabDocument, path: string, nodeId: string): DebugSceneNodeDefinition | undefined {
   const node = findPrefabNode(document.root, path, nodeId, 'root');
   if (!node) return undefined;

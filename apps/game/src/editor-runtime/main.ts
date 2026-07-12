@@ -5,7 +5,7 @@ import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, MiningLaserNode, PlayerAnimatorNode, PlayerStateManagerNode } from '../game/nodes';
 import { GameplayInputNode } from '../app/nodes';
 import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
-import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
+import { AnimatedImageNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, PrefabManager, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
 import { VIEWPORT_REFRESH_EVENT } from '../utils/screen';
@@ -27,17 +27,11 @@ interface StartRuntimeMessage {
   sessionId?: string;
 }
 
-const prefabFiles: Record<string, string> = {
-  'prefabs/player.prefab.json': 'prefabs/player.prefab.json',
-  'prefabs/ship.prefab.json': 'prefabs/ship.prefab.json',
-  'prefabs/status-hud.prefab.json': 'prefabs/status-hud.prefab.json',
-  'prefabs/bottom-hud.prefab.json': 'prefabs/bottom-hud.prefab.json',
-  'prefabs/inventory-slot.prefab.json': 'prefabs/inventory-slot.prefab.json',
-};
-
 class EditorRuntimeScene extends Phaser.Scene {
   private runtime?: NodeRuntime;
   private factory?: SceneNodeFactoryRegistry;
+  private prefabManager?: PrefabManager;
+  private prefabManagerApiBase?: string;
   private currentMode?: RuntimeMode;
   private currentEditorRoot?: NodeRoot;
   private playRoot?: NodeRoot;
@@ -74,7 +68,14 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   private readonly handleMessage = (event: MessageEvent): void => {
     if (event.origin !== window.location.origin) return;
-    const data = event.data as Partial<StartRuntimeMessage> | undefined;
+    const data = event.data as { type?: string; path?: string; mode?: RuntimeMode; scene?: RuntimeSceneId } | undefined;
+    if (data?.type === 'gravity-dig:prefab:reload' && data.path) {
+      void this.prefabManager?.reload(data.path).then(() => {
+        this.runtime?.resolve();
+        this.debugBridge?.publishTreeSnapshot();
+      });
+      return;
+    }
     if (data?.type !== 'gravity-dig:runtime:start' || !data.mode || !data.scene) return;
     void this.start(data as StartRuntimeMessage);
   };
@@ -148,8 +149,11 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   private async refreshFactory(editorApiBase: string | undefined): Promise<void> {
     await this.loadDynamicModules(editorApiBase);
-    const prefabs = await this.loadPrefabs(editorApiBase);
-    this.factory = this.createFactory(prefabs);
+    if (!this.prefabManager || this.prefabManagerApiBase !== editorApiBase) {
+      this.prefabManager = new PrefabManager((path) => this.fetchJson<SceneFileJson>(editorApiBase, path));
+      this.prefabManagerApiBase = editorApiBase;
+    }
+    this.factory = this.createFactory(this.prefabManager);
   }
 
   private async showEditorScene(message: StartRuntimeMessage): Promise<void> {
@@ -165,6 +169,11 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     if (this.needsGameplayRuntime(message.scene)) this.addGameplayRuntimeNodes(runtime);
     const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles[message.scene]);
+    await this.prefabManager?.ensureDefinitions(scene.root);
+    if (message.scene === 'gameplay') await Promise.all([
+      this.prefabManager?.ensure('prefabs/player.prefab.json'),
+      this.prefabManager?.ensure('prefabs/ship.prefab.json'),
+    ]);
     this.currentEditorRoot.addChild(this.createScene(scene));
     runtime.resolve();
 
@@ -181,6 +190,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
     this.playRoot = runtime.addRoot(new NodeRoot({ rootName: 'Play-Runtime-Root' }));
     const menu = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.menu);
+    await this.prefabManager?.ensureDefinitions(menu.root);
     this.playMenuScene = this.playRoot.addChild(this.createScene(menu));
   }
 
@@ -191,6 +201,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     }
     if (!this.playRoot || this.playLoadingScene) return;
     const loading = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.loading);
+    await this.prefabManager?.ensureDefinitions(loading.root);
     this.playLoadingScene = this.playRoot.addChild(this.createScene(loading));
     this.runtime?.resolve();
   }
@@ -228,6 +239,11 @@ class EditorRuntimeScene extends Phaser.Scene {
   private async mountGameplayScenes(root: NodeRoot): Promise<void> {
     try {
       const gameplay = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.gameplay);
+      await this.prefabManager?.ensureDefinitions(gameplay.root);
+      await Promise.all([
+        this.prefabManager?.ensure('prefabs/player.prefab.json'),
+        this.prefabManager?.ensure('prefabs/ship.prefab.json'),
+      ]);
       root.addChild(this.createScene(gameplay));
       this.runtime?.resolve();
     } catch (error) {
@@ -294,24 +310,15 @@ class EditorRuntimeScene extends Phaser.Scene {
     }
   }
 
-  private async loadPrefabs(editorApiBase: string | undefined): Promise<Map<string, SceneFileJson>> {
-    const prefabs = new Map<string, SceneFileJson>();
-    for (const [key, path] of Object.entries(prefabFiles)) prefabs.set(key, await this.fetchJson<SceneFileJson>(editorApiBase, path));
-    return prefabs;
-  }
 
   private createScene(scene: SceneFileJson): GameNode {
     if (!this.factory) throw new Error('Runtime factory is not ready');
     return this.factory.createTree(scene.root);
   }
 
-  private createFactory(prefabs: Map<string, SceneFileJson>): SceneNodeFactoryRegistry {
+  private createFactory(prefabs: PrefabManager): SceneNodeFactoryRegistry {
     const factory = new SceneNodeFactoryRegistry()
-      .withPrefabResolver((path) => {
-        const prefab = prefabs.get(path);
-        if (!prefab) throw new Error(`Unknown prefab '${path}'`);
-        return prefab;
-      })
+      .withPrefabManager(prefabs)
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))

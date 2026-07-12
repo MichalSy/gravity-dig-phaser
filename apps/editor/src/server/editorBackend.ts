@@ -43,6 +43,7 @@ interface SceneNodeJsonLike {
   id?: string;
   prefab?: string;
   props?: Record<string, unknown>;
+  overrides?: Record<string, Record<string, unknown>>;
   children?: SceneNodeJsonLike[];
 }
 
@@ -359,7 +360,12 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
     id: change.id ?? randomUUID(),
     kind: 'setProps',
     sessionId,
-    target: { nodePath },
+    target: {
+      nodePath,
+      prefabPath: typeof change.target.prefabPath === 'string' ? change.target.prefabPath : undefined,
+      prefabNodePath: Array.isArray(change.target.prefabNodePath) ? normalizeNodePathInput(change.target.prefabNodePath) : undefined,
+      prefabInstancePath: Array.isArray(change.target.prefabInstancePath) ? normalizeNodePathInput(change.target.prefabInstancePath) : undefined,
+    },
     props: change.props as DebugNodePatch,
     previousProps: typeof change.previousProps === 'object' && change.previousProps !== null ? change.previousProps as DebugNodePatch : undefined,
     fieldPath: Array.isArray(change.fieldPath) ? change.fieldPath.map((part) => String(part).trim()).filter(Boolean) : undefined,
@@ -720,6 +726,10 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
     await applyDeleteNodeToWorkspace(change);
     return;
   }
+  if (change.target.prefabPath && change.target.prefabNodePath && change.target.prefabInstancePath) {
+    await applyPrefabOverrideToWorkspace(change);
+    return;
+  }
   const source = resolveSourceFile(change.target.nodePath);
   const filePath = resolveEditablePath(source.filePath);
   const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
@@ -740,6 +750,58 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
   await writeFile(filePath.absolutePath, `${JSON.stringify(file, null, 2)}\n`);
 }
 
+
+async function applyPrefabOverrideToWorkspace(change: EditorSetPropsChange): Promise<void> {
+  const prefabPath = change.target.prefabPath;
+  const prefabNodePath = change.target.prefabNodePath;
+  const instancePath = change.target.prefabInstancePath;
+  if (!prefabPath || !prefabNodePath || !instancePath) return;
+
+  const sceneSource = resolveSceneSourceFile(instancePath);
+  const sceneFilePath = resolveEditablePath(sceneSource.filePath);
+  const sceneFile = JSON.parse(await readFile(sceneFilePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
+  const declaration = findPrefabDeclaration(sceneFile.root, sceneSource.nodePath, prefabPath);
+  if (!declaration) throw new EditorBackendError(`Prefab instance '${prefabPath}' is runtime-only and cannot persist authoring overrides`, 422);
+
+  const prefabFilePath = resolveEditablePath(`apps/game/public/${prefabPath.replace(/^\/+/, '')}`);
+  const prefabFile = JSON.parse(await readFile(prefabFilePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
+  const prefabNode = findNodeByPath(prefabFile.root, prefabNodePath);
+  if (!prefabNode) throw new EditorBackendError(`Could not locate prefab node '${prefabNodePath.join('/')}'`, 422);
+
+  const overrideKey = prefabNodePath.length <= 1 ? '$' : prefabNodePath.slice(1).join('/');
+  const current = overrideKey === '$' ? { ...(declaration.props ?? {}) } : { ...(declaration.overrides?.[overrideKey] ?? {}) };
+  for (const [key, value] of Object.entries(change.props)) {
+    const field = singleFieldName(change);
+    if (value === null) delete current[key];
+    else if (field && isObjectPropValue(value)) {
+      const existing = isObjectPropValue(current[key]) ? current[key] : {};
+      current[key] = { ...existing, [field]: (value as unknown as Record<string, unknown>)[field] };
+    } else current[key] = value;
+  }
+  const sparse = sparseObjectDifference(prefabNode.props ?? {}, current);
+  if (overrideKey === '$') {
+    if (Object.keys(sparse).length > 0) declaration.props = sparse;
+    else delete declaration.props;
+  } else {
+    declaration.overrides = { ...(declaration.overrides ?? {}) };
+    if (Object.keys(sparse).length > 0) declaration.overrides[overrideKey] = sparse;
+    else delete declaration.overrides[overrideKey];
+    if (Object.keys(declaration.overrides).length === 0) delete declaration.overrides;
+  }
+  await writeFile(sceneFilePath.absolutePath, `${JSON.stringify(sceneFile, null, 2)}\n`);
+}
+
+function sparseObjectDifference(base: Record<string, unknown>, values: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    const baseValue = base[key];
+    if (isObjectPropValue(baseValue) && isObjectPropValue(value)) {
+      const nested = sparseObjectDifference(baseValue, value);
+      if (Object.keys(nested).length > 0) result[key] = nested;
+    } else if (JSON.stringify(baseValue) !== JSON.stringify(value)) result[key] = value;
+  }
+  return result;
+}
 
 function pendingAddMatches(change: EditorAddNodeChange, parentPath: string[], node: Partial<EditorAddNodeChange['node']>): boolean {
   return change.target.nodePath.join('\u0000') === parentPath.join('\u0000')
@@ -1245,6 +1307,33 @@ function normalizeAssetPath(assetPath: string): string | undefined {
   if (trimmed.startsWith(`public${sep}assets${sep}`)) return join('apps/game', trimmed);
   if (trimmed.startsWith(`assets${sep}`)) return join('apps/game/public', trimmed);
   return undefined;
+}
+
+function resolveSceneSourceFile(nodePath: string[]): { filePath: string; nodePath: string[] } {
+  const normalizedNodePath = stripRuntimeRootPath(nodePath);
+  const sceneMap: Record<string, string> = {
+    Menu: 'apps/game/public/scenes/menu.scene.json',
+    'Scene.Menu': 'apps/game/public/scenes/menu.scene.json',
+    Loading: 'apps/game/public/scenes/loading.scene.json',
+    'Scene.Loading': 'apps/game/public/scenes/loading.scene.json',
+    Gameplay: 'apps/game/public/scenes/gameplay.scene.json',
+    'Scene.Gameplay': 'apps/game/public/scenes/gameplay.scene.json',
+    'UI.Gameplay': 'apps/game/public/scenes/gameplay.scene.json',
+  };
+  const filePath = sceneMap[normalizedNodePath[0]];
+  if (!filePath) throw new EditorBackendError(`Runtime prefab instance '${nodePath.join('/')}' has no persistent scene source`, 422);
+  return { filePath, nodePath: normalizedNodePath };
+}
+
+function findPrefabDeclaration(root: SceneNodeJsonLike, instancePath: readonly string[], prefabPath: string): SceneNodeJsonLike | undefined {
+  if (root.name !== instancePath[0]) return undefined;
+  let current = root;
+  for (const part of instancePath.slice(1, -1)) {
+    const child = current.children?.find((candidate) => candidate.name === part);
+    if (!child) return undefined;
+    current = child;
+  }
+  return current.children?.find((candidate) => candidate.prefab === prefabPath);
 }
 
 function resolveSourceFile(nodePath: string[]): { filePath: string; nodePath: string[] } {

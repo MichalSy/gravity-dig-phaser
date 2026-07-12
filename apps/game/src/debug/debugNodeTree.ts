@@ -103,6 +103,8 @@ function serializeNode(
     creationOrigin: creationMetadata.origin,
     runtimeRoot: creationMetadata.runtimeRoot,
     prefabPath: creationMetadata.prefabPath,
+    prefabNodePath: creationMetadata.prefabNodePath,
+    prefabOverrideProps: creationMetadata.prefabOverrideProps,
     createdByInstanceId: creationMetadata.createdByInstanceId,
     index,
     children: node.children.map((child, childIndex) => serializeNode(child, id, childIndex, flatNodes, getNodeId)),

@@ -1,6 +1,7 @@
 import { ImageNode, type ImageNodeOptions } from './ImageNode';
 import { TextNode, type TextNodeOptions } from './TextNode';
 import type { GameNode, NodeCreationMetadata } from './GameNode';
+import type { PrefabManager } from './PrefabManager';
 
 export interface SceneNodeJson {
   /** Static node type identifier. All ImageNode instances share the same nodeTypeId. */
@@ -10,6 +11,10 @@ export interface SceneNodeJson {
   name?: string;
   prefab?: string;
   props?: Record<string, unknown>;
+  /** Sparse per-node authoring overrides keyed by prefab-relative node path. */
+  overrides?: Record<string, Record<string, unknown>>;
+  /** Runtime-only metadata populated while resolving a prefab. */
+  prefabOverrideProps?: string[];
   children?: SceneNodeJson[];
 }
 
@@ -32,24 +37,84 @@ function cloneDefinition(definition: SceneNodeJson): SceneNodeJson {
 }
 
 function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): SceneNodeJson {
-  return {
+  const merged: SceneNodeJson = {
     ...base,
     ...override,
     nodeTypeId: getDefinitionNodeTypeId(base),
     instanceId: undefined,
     prefab: undefined,
-    props: { ...(base.props ?? {}), ...(override.props ?? {}) },
+    overrides: undefined,
+    prefabOverrideProps: Object.keys(override.props ?? {}),
+    props: mergePropertyValues(base.props ?? {}, override.props ?? {}),
     children: override.children ?? base.children,
   };
+  applyNestedPrefabOverrides(merged, override.overrides ?? {}, []);
+  return merged;
+}
+
+function applyNestedPrefabOverrides(node: SceneNodeJson, overrides: Record<string, Record<string, unknown>>, path: string[]): void {
+  const nodePath = [...path, node.name ?? getDefinitionNodeTypeId(node) ?? 'unnamed'];
+  const key = nodePath.slice(1).join('/');
+  const values = overrides[key];
+  if (values) {
+    node.props = mergePropertyValues(node.props ?? {}, values);
+    node.prefabOverrideProps = Object.keys(values);
+  }
+  for (const child of node.children ?? []) applyNestedPrefabOverrides(child, overrides, nodePath);
+}
+
+export function mergePropertyValues(base: Record<string, unknown>, overrides: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(overrides)) {
+    const baseValue = result[key];
+    result[key] = isPlainObject(baseValue) && isPlainObject(value) ? mergePropertyValues(baseValue, value) : value;
+  }
+  return result;
+}
+
+export function sparsePropertyOverrides(base: Record<string, unknown>, values: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    const baseValue = base[key];
+    if (isPlainObject(baseValue) && isPlainObject(value)) {
+      const nested = sparsePropertyOverrides(baseValue, value);
+      if (Object.keys(nested).length > 0) result[key] = nested;
+    } else if (!propertyValuesEqual(baseValue, value)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function propertyValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) && Array.isArray(right)) return left.length === right.length && left.every((value, index) => propertyValuesEqual(value, right[index]));
+  if (isPlainObject(left) && isPlainObject(right)) {
+    const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+    return [...keys].every((key) => propertyValuesEqual(left[key], right[key]));
+  }
+  return false;
 }
 
 export class SceneNodeFactoryRegistry {
   private readonly factories = new Map<string, SceneNodeFactory>();
   private prefabResolver?: PrefabResolver;
+  private prefabManager?: PrefabManager;
   private previewChanges: readonly EditorPreviewSetPropsChange[] = [];
 
   withPrefabResolver(resolver: PrefabResolver): this {
     this.prefabResolver = resolver;
+    return this;
+  }
+
+  withPrefabManager(manager: PrefabManager): this {
+    this.prefabManager = manager;
+    this.prefabResolver = (path) => manager.get(path);
+    manager.onReload((path, definition) => this.applyReloadedPrefab(path, definition));
     return this;
   }
 
@@ -72,20 +137,46 @@ export class SceneNodeFactoryRegistry {
   }
 
   createTree(definition: SceneNodeJson, creation: NodeCreationMetadata = { origin: 'scene' }): GameNode {
-    return this.createTreeAtPath(definition, [], creation, true);
+    return this.createTreeAtPath(definition, [], creation, true, creation.prefabNodePath ?? []);
   }
 
-  private createTreeAtPath(definition: SceneNodeJson, parentPath: string[], creation: NodeCreationMetadata, isRoot: boolean): GameNode {
+  private createTreeAtPath(definition: SceneNodeJson, parentPath: string[], creation: NodeCreationMetadata, isRoot: boolean, inheritedPrefabNodePath: string[]): GameNode {
+    const declaredPrefabPath = definition.prefab;
+    const prefabPath = declaredPrefabPath ?? creation.prefabPath;
     const resolvedDefinition = this.resolvePrefab(definition);
-    const nodePath = [...parentPath, resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed'];
+    const nodeName = resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed';
+    const nodePath = [...parentPath, nodeName];
+    const prefabNodePath = prefabPath ? [...inheritedPrefabNodePath, nodeName] : [];
     const effectiveDefinition = this.withStableInstanceId(this.applyPreviewProps(resolvedDefinition, nodePath), nodePath);
     const factory = this.resolveFactory(effectiveDefinition);
     const node = factory(effectiveDefinition);
-    node.setCreationMetadata({ ...creation, runtimeRoot: creation.origin !== 'scene' && isRoot });
+    node.setCreationMetadata({
+      ...creation,
+      runtimeRoot: creation.origin !== 'scene' && isRoot,
+      prefabPath,
+      prefabNodePath: prefabPath ? prefabNodePath : undefined,
+      prefabOverrideProps: effectiveDefinition.prefabOverrideProps ?? [],
+    });
     applyInitialProps(node, effectiveDefinition.props);
-    for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath, creation, false));
+    for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath, { ...creation, prefabPath }, false, prefabNodePath));
     node.ensureRequiredChildren();
+    if (declaredPrefabPath) this.prefabManager?.register(declaredPrefabPath, node);
     return node;
+  }
+
+  private applyReloadedPrefab(path: string, definition: SceneFileJson): void {
+    for (const root of this.prefabManager?.getInstances(path) ?? []) this.applyReloadedPrefabNode(root, definition.root);
+  }
+
+  private applyReloadedPrefabNode(node: GameNode, definitionRoot: SceneNodeJson): void {
+    const metadata = node.getCreationMetadata();
+    const definition = findDefinitionByNamePath(definitionRoot, metadata.prefabNodePath ?? []);
+    if (definition?.props) {
+      const overrideProps = new Set(metadata.prefabOverrideProps ?? []);
+      const inheritedProps = Object.fromEntries(Object.entries(definition.props).filter(([key]) => !overrideProps.has(key)));
+      applyInitialProps(node, inheritedProps);
+    }
+    for (const child of node.children) this.applyReloadedPrefabNode(child, definitionRoot);
   }
 
   private resolvePrefab(definition: SceneNodeJson): SceneNodeJson {
@@ -127,6 +218,13 @@ export function getDefinitionNodeTypeId(definition: SceneNodeJson): string | und
 
 function pathsEqual(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
+}
+
+function findDefinitionByNamePath(root: SceneNodeJson, nodePath: readonly string[]): SceneNodeJson | undefined {
+  if (nodePath.length === 0) return root;
+  let current: SceneNodeJson | undefined = root.name === nodePath[0] ? root : undefined;
+  for (let index = 1; current && index < nodePath.length; index += 1) current = current.children?.find((child) => child.name === nodePath[index]);
+  return current;
 }
 
 function applyInitialProps(node: GameNode, props: Record<string, unknown> | undefined): void {
