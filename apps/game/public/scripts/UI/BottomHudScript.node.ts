@@ -47,8 +47,8 @@ export default class BottomHudScript extends Core.ScriptNode {
   energyFillNodeId = Core.prop.nodeRef(null, { label: 'Energy Fill' });
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State' });
   slotPrefabId = Core.prop.string(SLOT_PREFAB_ID, { label: 'Slot Prefab ID' });
-  slotOriginX = Core.prop.number(362.93, { label: 'Slot Origin X', step: 0.001 });
-  slotOriginY = Core.prop.number(21.767, { label: 'Slot Origin Y', step: 0.001 });
+  slotOriginX = Core.prop.number(362.93, { label: 'Slot Origin X', step: 1 });
+  slotOriginY = Core.prop.number(21.767, { label: 'Slot Origin Y', step: 1 });
 
   private hudRoot!: HudRoot;
   private energyFill!: HudImageNode;

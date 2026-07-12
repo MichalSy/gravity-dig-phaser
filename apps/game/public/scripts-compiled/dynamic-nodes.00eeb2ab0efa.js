@@ -556,8 +556,8 @@ var BottomHudScript = class extends ScriptNode {
   energyFillNodeId = prop.nodeRef(null, { label: "Energy Fill" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State" });
   slotPrefabId = prop.string(SLOT_PREFAB_ID, { label: "Slot Prefab ID" });
-  slotOriginX = prop.number(362.93, { label: "Slot Origin X", step: 1e-3 });
-  slotOriginY = prop.number(21.767, { label: "Slot Origin Y", step: 1e-3 });
+  slotOriginX = prop.number(362.93, { label: "Slot Origin X", step: 1 });
+  slotOriginY = prop.number(21.767, { label: "Slot Origin Y", step: 1 });
   hudRoot;
   energyFill;
   playerState;
@@ -761,4 +761,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.5ec720589518.js.map
+//# sourceMappingURL=dynamic-nodes.00eeb2ab0efa.js.map
