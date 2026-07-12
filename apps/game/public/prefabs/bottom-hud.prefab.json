@@ -52,12 +52,17 @@
           "assetId": "hud-hp-fuel-atlas#energyBar",
           "scrollFactor": 0,
           "position": {
-            "x": 128,
-            "y": 80
+            "x": 129,
+            "y": 16
           },
           "scale": {
             "x": 0.41,
             "y": 0.48
+          },
+          "parentAnchor": "center-left",
+          "origin": {
+            "x": 0,
+            "y": 0.5
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
