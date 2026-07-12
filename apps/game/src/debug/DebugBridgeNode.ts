@@ -94,6 +94,10 @@ export class DebugBridgeNode extends GameNode {
     this.sendTreeSnapshot();
   }
 
+  publishSelectedNodeProps(): void {
+    this.sendSelectedNodeProps(true);
+  }
+
   update(deltaMs: number): void {
     this.propsElapsedMs += deltaMs;
 

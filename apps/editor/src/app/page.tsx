@@ -609,9 +609,15 @@ export default function Home() {
   useEffect(() => {
     function handleRuntimeMessage(event: MessageEvent): void {
       if (event.origin !== window.location.origin) return;
-      const message = event.data as { type?: string; mode?: string; scene?: string } | undefined;
+      const message = event.data as { type?: string; mode?: string; scene?: string; path?: string; instances?: number; error?: string } | undefined;
       if (message?.type === 'gravity-dig:runtime:ready') {
         setRuntimeReadyKey((current) => current + 1);
+      }
+      if (message?.type === 'gravity-dig:prefab:reloaded') {
+        setPrefabStatus(`Prefab gespeichert · ${message.instances ?? 0} aktive Instanz(en) aktualisiert`);
+      }
+      if (message?.type === 'gravity-dig:prefab:reload-error') {
+        setPrefabStatus(`Prefab gespeichert, Runtime-Update fehlgeschlagen: ${message.error ?? 'Unbekannter Fehler'}`);
       }
     }
     window.addEventListener('message', handleRuntimeMessage);

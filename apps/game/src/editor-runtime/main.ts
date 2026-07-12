@@ -70,15 +70,33 @@ class EditorRuntimeScene extends Phaser.Scene {
     if (event.origin !== window.location.origin) return;
     const data = event.data as { type?: string; path?: string; mode?: RuntimeMode; scene?: RuntimeSceneId } | undefined;
     if (data?.type === 'gravity-dig:prefab:reload' && data.path) {
-      void this.prefabManager?.reload(data.path).then(() => {
-        this.runtime?.resolve();
-        this.debugBridge?.publishTreeSnapshot();
-      });
+      void this.reloadPrefab(data.path);
       return;
     }
     if (data?.type !== 'gravity-dig:runtime:start' || !data.mode || !data.scene) return;
     void this.start(data as StartRuntimeMessage);
   };
+
+  private async reloadPrefab(path: string): Promise<void> {
+    try {
+      if (!this.prefabManager) throw new Error('Prefab manager is not initialized');
+      await this.prefabManager.reload(path);
+      this.runtime?.resolve();
+      this.debugBridge?.publishTreeSnapshot();
+      this.debugBridge?.publishSelectedNodeProps();
+      window.parent?.postMessage({
+        type: 'gravity-dig:prefab:reloaded',
+        path,
+        instances: this.prefabManager.getInstances(path).length,
+      }, window.location.origin);
+    } catch (error) {
+      window.parent?.postMessage({
+        type: 'gravity-dig:prefab:reload-error',
+        path,
+        error: error instanceof Error ? error.message : String(error),
+      }, window.location.origin);
+    }
+  }
 
   private async start(message: StartRuntimeMessage): Promise<void> {
     this.startQueue = this.startQueue
