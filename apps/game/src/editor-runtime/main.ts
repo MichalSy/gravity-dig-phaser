@@ -360,7 +360,7 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     for (const [nodeTypeId, cached] of this.dynamicModules) {
       const module = cached.module;
-      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }, { origin: 'runtime-script', prefabPath: path, createdByInstanceId: definition.instanceId }); } }));
+      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (prefabId, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId }); } }));
     }
     return factory;
   }
