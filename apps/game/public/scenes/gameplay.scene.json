@@ -45,6 +45,24 @@
               "c9237d32-2f25-547a-b486-fa255c604c7f": {
                 "slotOriginY": 17,
                 "slotOriginX": 345
+              },
+              "e3955b4c-58c6-4bda-845c-e08c82003759": {
+                "position": {
+                  "x": 301,
+                  "y": 39
+                },
+                "scale": {
+                  "y": 1.1
+                }
+              }
+            },
+            "props": {
+              "scale": {
+                "x": 0.35,
+                "y": 0.35
+              },
+              "position": {
+                "x": -423
               }
             }
           },
