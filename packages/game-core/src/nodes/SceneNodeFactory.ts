@@ -206,7 +206,11 @@ export class SceneNodeFactoryRegistry {
       const nodeId = node.getCreationMetadata().prefabNodeId;
       const source = nodeId ? this.prefabManager?.getNode(path, nodeId) : undefined;
       if (source?.props) {
-        const mapped = Object.fromEntries(Object.entries(source.props).map(([key, value]) => [key, mapNodeReferenceValue(key, value, runtimeByNodeId)]));
+        const mapped = Object.fromEntries(
+          Object.entries(source.props)
+            .filter(([key]) => /nodeIds?$/i.test(key))
+            .map(([key, value]) => [key, mapNodeReferenceValue(key, value, runtimeByNodeId)]),
+        );
         applyInitialProps(node, mapped);
       }
       for (const child of node.children) apply(child);
