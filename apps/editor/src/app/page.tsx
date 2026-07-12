@@ -1565,6 +1565,7 @@ export default function Home() {
             nodePath,
             prefabPath: node.prefabPath,
             prefabNodePath: node.prefabNodePath,
+            prefabNodeId: node.prefabNodeId,
             prefabInstancePath: node.prefabNodePath ? nodePath.slice(0, Math.max(1, nodePath.length - node.prefabNodePath.length + 1)) : undefined,
           },
           props,

@@ -15,6 +15,7 @@
     "children": [
       {
         "name": "UI.ActionFrame",
+        "instanceId": "8b3d31df-697d-5fac-9a0a-460695fb861b",
         "props": {
           "assetId": "hud-hp-fuel-atlas#bottomHud",
           "scrollFactor": 0,
@@ -37,6 +38,7 @@
       {
         "name": "BottomHudBehavior",
         "nodeTypeId": "dynamic.bottom-hud",
+        "instanceId": "c9237d32-2f25-547a-b486-fa255c604c7f",
         "props": {
           "hudRootNodeId": "453ddf91-70a1-4b26-9c18-47f39ef34f53",
           "energyFillNodeId": "e3955b4c-58c6-4bda-845c-e08c82003759",

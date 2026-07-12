@@ -2,6 +2,7 @@
   "version": 1,
   "root": {
     "name": "Ship",
+    "instanceId": "cb17876d-0c28-5656-ad8d-ba44dc82e5af",
     "props": {
       "position": {
         "x": -288,

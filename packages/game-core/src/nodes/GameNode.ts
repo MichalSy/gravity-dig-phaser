@@ -78,6 +78,7 @@ export interface NodeCreationMetadata {
   runtimeRoot?: boolean;
   prefabPath?: string;
   prefabNodePath?: string[];
+  prefabNodeId?: string;
   prefabOverrideProps?: string[];
   createdByInstanceId?: string;
 }

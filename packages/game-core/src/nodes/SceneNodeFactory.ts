@@ -17,6 +17,8 @@ export interface SceneNodeJson {
   prefabOverrideProps?: string[];
   /** Runtime-only source name used for stable prefab-relative paths when an instance is renamed. */
   prefabSourceName?: string;
+  /** Runtime-only stable identity of the source node inside the prefab definition. */
+  prefabSourceInstanceId?: string;
   children?: SceneNodeJson[];
 }
 
@@ -48,6 +50,7 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
     overrides: undefined,
     prefabOverrideProps: Object.keys(override.props ?? {}),
     prefabSourceName: base.name,
+    prefabSourceInstanceId: base.prefabSourceInstanceId,
     props: mergePropertyValues(base.props ?? {}, override.props ?? {}),
     children: override.children ?? base.children,
   };
@@ -58,7 +61,7 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
 function applyNestedPrefabOverrides(node: SceneNodeJson, overrides: Record<string, Record<string, unknown>>, path: string[]): void {
   const nodePath = [...path, node.name ?? getDefinitionNodeTypeId(node) ?? 'unnamed'];
   const key = nodePath.slice(1).join('/');
-  const values = overrides[key];
+  const values = (node.prefabSourceInstanceId ? overrides[node.prefabSourceInstanceId] : undefined) ?? overrides[key];
   if (values) {
     node.props = mergePropertyValues(node.props ?? {}, values);
     node.prefabOverrideProps = Object.keys(values);
@@ -159,6 +162,7 @@ export class SceneNodeFactoryRegistry {
       runtimeRoot: creation.origin !== 'scene' && isRoot,
       prefabPath,
       prefabNodePath: prefabPath ? prefabNodePath : undefined,
+      prefabNodeId: effectiveDefinition.prefabSourceInstanceId,
       prefabOverrideProps: effectiveDefinition.prefabOverrideProps ?? [],
     });
     applyInitialProps(node, effectiveDefinition.props);
@@ -168,26 +172,28 @@ export class SceneNodeFactoryRegistry {
     return node;
   }
 
-  private applyReloadedPrefab(path: string, definition: SceneFileJson): void {
-    for (const root of this.prefabManager?.getInstances(path) ?? []) this.applyReloadedPrefabNode(root, definition.root);
+  private applyReloadedPrefab(path: string, _definition: SceneFileJson): void {
+    for (const root of this.prefabManager?.getInstances(path) ?? []) this.applyReloadedPrefabNode(path, root);
   }
 
-  private applyReloadedPrefabNode(node: GameNode, definitionRoot: SceneNodeJson): void {
+  private applyReloadedPrefabNode(path: string, node: GameNode): void {
     const metadata = node.getCreationMetadata();
-    const definition = findDefinitionByNamePath(definitionRoot, metadata.prefabNodePath ?? []);
+    const definition = metadata.prefabNodeId ? this.prefabManager?.getNode(path, metadata.prefabNodeId) : undefined;
     if (definition?.props) {
       const overrideProps = new Set(metadata.prefabOverrideProps ?? []);
       const inheritedProps = Object.fromEntries(Object.entries(definition.props).filter(([key]) => !overrideProps.has(key)));
       applyInitialProps(node, inheritedProps);
     }
-    for (const child of node.children) this.applyReloadedPrefabNode(child, definitionRoot);
+    for (const child of node.children) this.applyReloadedPrefabNode(path, child);
   }
 
   private resolvePrefab(definition: SceneNodeJson): SceneNodeJson {
     if (!definition.prefab) return definition;
     if (!this.prefabResolver) throw new Error(`No prefab resolver configured for '${definition.prefab}'`);
     const prefab = this.prefabResolver(definition.prefab);
-    return mergePrefabDefinition(cloneDefinition(prefab.root), definition);
+    const source = cloneDefinition(prefab.root);
+    preparePrefabSourceTree(source);
+    return mergePrefabDefinition(source, definition);
   }
 
   private resolveFactory(definition: SceneNodeJson): SceneNodeFactory {
@@ -224,11 +230,11 @@ function pathsEqual(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-function findDefinitionByNamePath(root: SceneNodeJson, nodePath: readonly string[]): SceneNodeJson | undefined {
-  if (nodePath.length === 0) return root;
-  let current: SceneNodeJson | undefined = root.name === nodePath[0] ? root : undefined;
-  for (let index = 1; current && index < nodePath.length; index += 1) current = current.children?.find((child) => child.name === nodePath[index]);
-  return current;
+function preparePrefabSourceTree(node: SceneNodeJson): void {
+  node.prefabSourceName = node.name;
+  node.prefabSourceInstanceId = node.instanceId;
+  node.instanceId = undefined;
+  for (const child of node.children ?? []) preparePrefabSourceTree(child);
 }
 
 function applyInitialProps(node: GameNode, props: Record<string, unknown> | undefined): void {

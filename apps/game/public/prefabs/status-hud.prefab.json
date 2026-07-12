@@ -26,6 +26,7 @@
       {
         "name": "UI.StatusFrame",
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "instanceId": "19a35db4-3ed4-5edc-86ef-c0242b76a619",
         "props": {
           "assetId": "hud-hp-fuel-atlas#topHud",
           "scrollFactor": 0,

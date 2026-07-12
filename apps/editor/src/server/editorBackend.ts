@@ -364,6 +364,7 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
       nodePath,
       prefabPath: typeof change.target.prefabPath === 'string' ? change.target.prefabPath : undefined,
       prefabNodePath: Array.isArray(change.target.prefabNodePath) ? normalizeNodePathInput(change.target.prefabNodePath) : undefined,
+      prefabNodeId: typeof change.target.prefabNodeId === 'string' ? change.target.prefabNodeId : undefined,
       prefabInstancePath: Array.isArray(change.target.prefabInstancePath) ? normalizeNodePathInput(change.target.prefabInstancePath) : undefined,
     },
     props: change.props as DebugNodePatch,
@@ -726,7 +727,7 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
     await applyDeleteNodeToWorkspace(change);
     return;
   }
-  if (change.target.prefabPath && change.target.prefabNodePath && change.target.prefabInstancePath) {
+  if (change.target.prefabPath && change.target.prefabNodeId && change.target.prefabInstancePath) {
     await applyPrefabOverrideToWorkspace(change);
     return;
   }
@@ -753,9 +754,9 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
 
 async function applyPrefabOverrideToWorkspace(change: EditorSetPropsChange): Promise<void> {
   const prefabPath = change.target.prefabPath;
-  const prefabNodePath = change.target.prefabNodePath;
+  const prefabNodeId = change.target.prefabNodeId;
   const instancePath = change.target.prefabInstancePath;
-  if (!prefabPath || !prefabNodePath || !instancePath) return;
+  if (!prefabPath || !prefabNodeId || !instancePath) return;
 
   const sceneSource = resolveSceneSourceFile(instancePath);
   const sceneFilePath = resolveEditablePath(sceneSource.filePath);
@@ -765,10 +766,10 @@ async function applyPrefabOverrideToWorkspace(change: EditorSetPropsChange): Pro
 
   const prefabFilePath = resolveEditablePath(`apps/game/public/${prefabPath.replace(/^\/+/, '')}`);
   const prefabFile = JSON.parse(await readFile(prefabFilePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
-  const prefabNode = findNodeByPath(prefabFile.root, prefabNodePath);
-  if (!prefabNode) throw new EditorBackendError(`Could not locate prefab node '${prefabNodePath.join('/')}'`, 422);
+  const prefabNode = findNodeByInstanceId(prefabFile.root, prefabNodeId);
+  if (!prefabNode) throw new EditorBackendError(`Could not locate prefab node '${prefabNodeId}'`, 422);
 
-  const overrideKey = prefabNodePath.length <= 1 ? '$' : prefabNodePath.slice(1).join('/');
+  const overrideKey = prefabFile.root.instanceId === prefabNodeId ? '$' : prefabNodeId;
   const current = overrideKey === '$' ? { ...(declaration.props ?? {}) } : { ...(declaration.overrides?.[overrideKey] ?? {}) };
   for (const [key, value] of Object.entries(change.props)) {
     const field = singleFieldName(change);
@@ -1385,6 +1386,15 @@ interface SceneNodeLocation {
 
 function findNodeByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): SceneNodeJsonLike | undefined {
   return findNodeLocationByPath(root, nodePath)?.node;
+}
+
+function findNodeByInstanceId(root: SceneNodeJsonLike, instanceId: string): SceneNodeJsonLike | undefined {
+  if (root.instanceId === instanceId) return root;
+  for (const child of root.children ?? []) {
+    const match = findNodeByInstanceId(child, instanceId);
+    if (match) return match;
+  }
+  return undefined;
 }
 
 function findNodeLocationByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): SceneNodeLocation | undefined {

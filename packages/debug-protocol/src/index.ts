@@ -247,6 +247,7 @@ export interface DebugNodeDescriptor {
   runtimeRoot?: boolean;
   prefabPath?: string;
   prefabNodePath?: string[];
+  prefabNodeId?: string;
   prefabOverrideProps?: string[];
   createdByInstanceId?: string;
   index: number;
@@ -387,6 +388,7 @@ export interface EditorChangeTarget {
   /** Prefab source and instance metadata used to persist sparse instance overrides. */
   prefabPath?: string;
   prefabNodePath?: string[];
+  prefabNodeId?: string;
   prefabInstancePath?: string[];
 }
 
