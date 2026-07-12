@@ -40,7 +40,13 @@
           },
           {
             "prefab": "prefabs/bottom-hud.prefab.json",
-            "prefabId": "3c62312d-b728-53b2-b0b5-6624e500269c"
+            "prefabId": "3c62312d-b728-53b2-b0b5-6624e500269c",
+            "overrides": {
+              "c9237d32-2f25-547a-b486-fa255c604c7f": {
+                "slotOriginY": 17,
+                "slotOriginX": 345
+              }
+            }
           },
           {
             "name": "UI.TouchControls",
