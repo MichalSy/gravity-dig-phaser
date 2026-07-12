@@ -77,6 +77,7 @@ export interface NodeCreationMetadata {
   origin: NodeCreationOrigin;
   runtimeRoot?: boolean;
   prefabPath?: string;
+  prefabId?: string;
   prefabNodePath?: string[];
   prefabNodeId?: string;
   prefabOverrideProps?: string[];
@@ -141,6 +142,7 @@ export abstract class GameNode {
   private initialized = false;
   private resolved = false;
   private creationMetadata: NodeCreationMetadata = { origin: 'scene' };
+  private readonly destroyedListeners = new Set<() => void>();
 
   protected constructor(options: GameNodeOptions = {}) {
     this.nodeTypeId = options.nodeTypeId ?? getNodeTypeId(this);
@@ -176,6 +178,11 @@ export abstract class GameNode {
 
   getCreationMetadata(): Readonly<NodeCreationMetadata> {
     return this.creationMetadata;
+  }
+
+  onDestroyed(listener: () => void): () => void {
+    this.destroyedListeners.add(listener);
+    return () => this.destroyedListeners.delete(listener);
   }
 
   protected get assets(): AssetCatalog {
@@ -333,6 +340,8 @@ export abstract class GameNode {
     this.childNodes.length = 0;
 
     this.destroy();
+    for (const listener of this.destroyedListeners) listener();
+    this.destroyedListeners.clear();
     this.nodeContext?.runtime.unregisterNode(this);
     this.nodeContext = undefined;
     this.initialized = false;

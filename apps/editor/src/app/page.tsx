@@ -1564,6 +1564,7 @@ export default function Home() {
           target: {
             nodePath,
             prefabPath: node.prefabPath,
+            prefabId: node.prefabId,
             prefabNodePath: node.prefabNodePath,
             prefabNodeId: node.prefabNodeId,
             prefabInstancePath: node.prefabNodePath ? nodePath.slice(0, Math.max(1, nodePath.length - node.prefabNodePath.length + 1)) : undefined,
@@ -1642,7 +1643,7 @@ export default function Home() {
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setPrefabStatus('Prefab gespeichert · Instanzen werden aktualisiert');
       void refreshGitStatus();
-      runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:prefab:reload', path: openPrefabPath.replace(/^apps\/game\/public\//, '') }, window.location.origin);
+      runtimeFrameRef.current?.contentWindow?.postMessage({ type: 'gravity-dig:prefab:reload', prefabId: nextDocument.prefabId }, window.location.origin);
     } catch (error) {
       setPrefabStatus(`Prefab konnte nicht gespeichert werden: ${error instanceof Error ? error.message : String(error)}`);
     }

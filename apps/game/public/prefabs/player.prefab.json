@@ -1,9 +1,10 @@
 {
   "version": 1,
+  "prefabId": "08a9bfce-1773-5ca0-8adc-52dc8b2e378e",
   "root": {
     "name": "Player",
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
-    "instanceId": "dcaed9bf-9bd0-4ba2-8ed2-c37b30215c2f",
+    "nodeId": "dcaed9bf-9bd0-4ba2-8ed2-c37b30215c2f",
     "children": [
       {
         "name": "PlayerMovementController",
@@ -16,7 +17,7 @@
           "bodyNodeId": "f131026e-98c2-47a6-92d5-a98ac4cc87cd",
           "imageNodeId": "fe8c9a25-c18c-4154-aa84-e4272055d66b"
         },
-        "instanceId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
+        "nodeId": "8e9c3d71-ea21-4882-809a-e75645ce74ef"
       },
       {
         "name": "PlayerBody",
@@ -48,26 +49,26 @@
               "scale": 0.9
             },
             "nodeTypeId": "5a0cd663-64c3-5f02-a579-9915605564be",
-            "instanceId": "fe8c9a25-c18c-4154-aa84-e4272055d66b"
+            "nodeId": "fe8c9a25-c18c-4154-aa84-e4272055d66b"
           }
         ],
         "nodeTypeId": "f3f82d6c-c31e-56bc-afd6-b5892604eaf5",
-        "instanceId": "f131026e-98c2-47a6-92d5-a98ac4cc87cd"
+        "nodeId": "f131026e-98c2-47a6-92d5-a98ac4cc87cd"
       },
       {
         "name": "PlayerAnimator",
         "nodeTypeId": "dbfe2289-a994-52dd-88f8-1b680fc914f6",
-        "instanceId": "53f8874d-9d86-4687-8d07-897cc51a9ee2"
+        "nodeId": "53f8874d-9d86-4687-8d07-897cc51a9ee2"
       },
       {
         "name": "MiningLaser",
         "nodeTypeId": "af263543-8259-4627-8876-247a1ae87d9a",
-        "instanceId": "29e2fba4-4aa5-4029-9a00-dabde6208295"
+        "nodeId": "29e2fba4-4aa5-4029-9a00-dabde6208295"
       },
       {
         "name": "MiningTool",
         "nodeTypeId": "dynamic.mining-tool",
-        "instanceId": "ed3da883-3ca5-42e9-a032-7adaa6a51b97",
+        "nodeId": "ed3da883-3ca5-42e9-a032-7adaa6a51b97",
         "props": {
           "levelNodeId": "b79d5555-5726-4ce6-be4c-b62b505320ba",
           "movementScriptNodeId": "8e9c3d71-ea21-4882-809a-e75645ce74ef",

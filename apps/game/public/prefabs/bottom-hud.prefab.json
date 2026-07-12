@@ -1,7 +1,8 @@
 {
   "version": 1,
+  "prefabId": "3c62312d-b728-53b2-b0b5-6624e500269c",
   "root": {
-    "instanceId": "453ddf91-70a1-4b26-9c18-47f39ef34f53",
+    "nodeId": "453ddf91-70a1-4b26-9c18-47f39ef34f53",
     "name": "UI.BottomHud",
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
     "props": {
@@ -15,7 +16,7 @@
     "children": [
       {
         "name": "UI.ActionFrame",
-        "instanceId": "8b3d31df-697d-5fac-9a0a-460695fb861b",
+        "nodeId": "8b3d31df-697d-5fac-9a0a-460695fb861b",
         "props": {
           "assetId": "hud-hp-fuel-atlas#bottomHud",
           "scrollFactor": 0,
@@ -25,7 +26,7 @@
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
       {
-        "instanceId": "e3955b4c-58c6-4bda-845c-e08c82003759",
+        "nodeId": "e3955b4c-58c6-4bda-845c-e08c82003759",
         "name": "UI.EnergyFill",
         "props": {
           "assetId": "hud-hp-fuel-atlas#energyBar",
@@ -38,11 +39,12 @@
       {
         "name": "BottomHudBehavior",
         "nodeTypeId": "dynamic.bottom-hud",
-        "instanceId": "c9237d32-2f25-547a-b486-fa255c604c7f",
+        "nodeId": "c9237d32-2f25-547a-b486-fa255c604c7f",
         "props": {
           "hudRootNodeId": "453ddf91-70a1-4b26-9c18-47f39ef34f53",
           "energyFillNodeId": "e3955b4c-58c6-4bda-845c-e08c82003759",
-          "slotPrefab": "prefabs/inventory-slot.prefab.json",
+          "slotPrefabId": "fc891d95-3efb-567e-81d1-7fb0a446ebf5",
+          "slotPrefabPath": "prefabs/inventory-slot.prefab.json",
           "slotOriginX": 362.93,
           "slotStepX": 150.698,
           "slotY": 21.767

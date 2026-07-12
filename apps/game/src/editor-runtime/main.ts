@@ -68,30 +68,30 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   private readonly handleMessage = (event: MessageEvent): void => {
     if (event.origin !== window.location.origin) return;
-    const data = event.data as { type?: string; path?: string; mode?: RuntimeMode; scene?: RuntimeSceneId } | undefined;
-    if (data?.type === 'gravity-dig:prefab:reload' && data.path) {
-      void this.reloadPrefab(data.path);
+    const data = event.data as { type?: string; path?: string; prefabId?: string; mode?: RuntimeMode; scene?: RuntimeSceneId } | undefined;
+    if (data?.type === 'gravity-dig:prefab:reload' && data.prefabId) {
+      void this.reloadPrefab(data.prefabId);
       return;
     }
     if (data?.type !== 'gravity-dig:runtime:start' || !data.mode || !data.scene) return;
     void this.start(data as StartRuntimeMessage);
   };
 
-  private async reloadPrefab(path: string): Promise<void> {
+  private async reloadPrefab(prefabId: string): Promise<void> {
     try {
       if (!this.prefabManager) throw new Error('Prefab manager is not initialized');
-      await this.prefabManager.reload(path);
+      await this.prefabManager.reloadById(prefabId);
       this.runtime?.resolve();
       this.debugBridge?.publishSelectedNodeProps();
       window.parent?.postMessage({
         type: 'gravity-dig:prefab:reloaded',
-        path,
-        instances: this.prefabManager.getInstances(path).length,
+        prefabId,
+        instances: this.prefabManager.getInstancesByPrefabId(prefabId).length,
       }, window.location.origin);
     } catch (error) {
       window.parent?.postMessage({
         type: 'gravity-dig:prefab:reload-error',
-        path,
+        prefabId,
         error: error instanceof Error ? error.message : String(error),
       }, window.location.origin);
     }
@@ -310,7 +310,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
-    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (path, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createTree({ prefab: path, name: options?.name, props: options?.props }, { origin: 'runtime-script', prefabPath: path, createdByInstanceId: definition.instanceId }); } }));
+    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (prefabId, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId }); } }));
     return true;
   }
 
@@ -342,12 +342,9 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
         ...optionsFrom(definition),
-        instantiatePrefab: (path) => {
+        instantiatePrefab: (prefabId) => {
           if (!this.factory) throw new Error('Runtime factory is not ready');
-          return this.factory.createTree(
-            { prefab: path },
-            { origin: 'runtime-code', prefabPath: path, createdByInstanceId: definition.instanceId },
-          );
+          return this.factory.createPrefab(prefabId, {}, { origin: 'runtime-code', createdByInstanceId: definition.instanceId });
         },
       }))
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))

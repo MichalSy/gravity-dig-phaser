@@ -40,8 +40,10 @@ interface SceneNodeJsonLike {
   name?: string;
   nodeTypeId?: string;
   instanceId?: string;
+  nodeId?: string;
   id?: string;
   prefab?: string;
+  prefabId?: string;
   props?: Record<string, unknown>;
   overrides?: Record<string, Record<string, unknown>>;
   children?: SceneNodeJsonLike[];
@@ -363,6 +365,7 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
     target: {
       nodePath,
       prefabPath: typeof change.target.prefabPath === 'string' ? change.target.prefabPath : undefined,
+      prefabId: typeof change.target.prefabId === 'string' ? change.target.prefabId : undefined,
       prefabNodePath: Array.isArray(change.target.prefabNodePath) ? normalizeNodePathInput(change.target.prefabNodePath) : undefined,
       prefabNodeId: typeof change.target.prefabNodeId === 'string' ? change.target.prefabNodeId : undefined,
       prefabInstancePath: Array.isArray(change.target.prefabInstancePath) ? normalizeNodePathInput(change.target.prefabInstancePath) : undefined,
@@ -769,7 +772,7 @@ async function applyPrefabOverrideToWorkspace(change: EditorSetPropsChange): Pro
   const prefabNode = findNodeByInstanceId(prefabFile.root, prefabNodeId);
   if (!prefabNode) throw new EditorBackendError(`Could not locate prefab node '${prefabNodeId}'`, 422);
 
-  const overrideKey = prefabFile.root.instanceId === prefabNodeId ? '$' : prefabNodeId;
+  const overrideKey = prefabFile.root.nodeId === prefabNodeId ? '$' : prefabNodeId;
   const current = overrideKey === '$' ? { ...(declaration.props ?? {}) } : { ...(declaration.overrides?.[overrideKey] ?? {}) };
   for (const [key, value] of Object.entries(change.props)) {
     const field = singleFieldName(change);
@@ -1388,10 +1391,10 @@ function findNodeByPath(root: SceneNodeJsonLike, nodePath: readonly string[]): S
   return findNodeLocationByPath(root, nodePath)?.node;
 }
 
-function findNodeByInstanceId(root: SceneNodeJsonLike, instanceId: string): SceneNodeJsonLike | undefined {
-  if (root.instanceId === instanceId) return root;
+function findNodeByInstanceId(root: SceneNodeJsonLike, nodeId: string): SceneNodeJsonLike | undefined {
+  if (root.nodeId === nodeId) return root;
   for (const child of root.children ?? []) {
-    const match = findNodeByInstanceId(child, instanceId);
+    const match = findNodeByInstanceId(child, nodeId);
     if (match) return match;
   }
   return undefined;

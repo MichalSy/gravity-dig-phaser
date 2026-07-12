@@ -8,8 +8,11 @@ export interface SceneNodeJson {
   nodeTypeId?: string;
   /** Stable scene instance identifier. Persist this when another node needs a durable reference. */
   instanceId?: string;
+  /** Stable identity inside a prefab definition. Not used as a runtime instanceId. */
+  nodeId?: string;
   name?: string;
   prefab?: string;
+  prefabId?: string;
   props?: Record<string, unknown>;
   /** Sparse per-node authoring overrides keyed by prefab-relative node path. */
   overrides?: Record<string, Record<string, unknown>>;
@@ -18,12 +21,14 @@ export interface SceneNodeJson {
   /** Runtime-only source name used for stable prefab-relative paths when an instance is renamed. */
   prefabSourceName?: string;
   /** Runtime-only stable identity of the source node inside the prefab definition. */
-  prefabSourceInstanceId?: string;
+  prefabSourceNodeId?: string;
+  prefabSourcePrefabId?: string;
   children?: SceneNodeJson[];
 }
 
 export interface SceneFileJson {
   version: 1;
+  prefabId?: string;
   root: SceneNodeJson;
 }
 
@@ -50,7 +55,8 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
     overrides: undefined,
     prefabOverrideProps: Object.keys(override.props ?? {}),
     prefabSourceName: base.name,
-    prefabSourceInstanceId: base.prefabSourceInstanceId,
+    prefabSourceNodeId: base.prefabSourceNodeId,
+    prefabSourcePrefabId: base.prefabSourcePrefabId,
     props: mergePropertyValues(base.props ?? {}, override.props ?? {}),
     children: override.children ?? base.children,
   };
@@ -61,7 +67,7 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
 function applyNestedPrefabOverrides(node: SceneNodeJson, overrides: Record<string, Record<string, unknown>>, path: string[]): void {
   const nodePath = [...path, node.name ?? getDefinitionNodeTypeId(node) ?? 'unnamed'];
   const key = nodePath.slice(1).join('/');
-  const values = (node.prefabSourceInstanceId ? overrides[node.prefabSourceInstanceId] : undefined) ?? overrides[key];
+  const values = (node.prefabSourceNodeId ? overrides[node.prefabSourceNodeId] : undefined) ?? overrides[key];
   if (values) {
     node.props = mergePropertyValues(node.props ?? {}, values);
     node.prefabOverrideProps = Object.keys(values);
@@ -142,6 +148,14 @@ export class SceneNodeFactoryRegistry {
     return this.register(nodeTypeId, (definition) => new TextNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, ...(definition.props ?? {}) } as TextNodeOptions));
   }
 
+  createPrefab(prefabId: string, options: { name?: string; props?: Record<string, unknown> } = {}, creation: NodeCreationMetadata = { origin: 'runtime-code' }): GameNode {
+    if (!this.prefabManager) throw new Error(`No prefab manager configured for '${prefabId}'`);
+    return this.prefabManager.instantiate(prefabId, (path) => this.createTree(
+      { prefab: path, prefabId, name: options.name, props: options.props },
+      { ...creation, prefabId, prefabPath: path },
+    ));
+  }
+
   createTree(definition: SceneNodeJson, creation: NodeCreationMetadata = { origin: 'scene' }): GameNode {
     return this.createTreeAtPath(definition, [], creation, true, creation.prefabNodePath ?? []);
   }
@@ -152,7 +166,7 @@ export class SceneNodeFactoryRegistry {
     const resolvedDefinition = this.resolvePrefab(definition);
     const nodeName = resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed';
     const nodePath = [...parentPath, nodeName];
-    const effectiveDefinition = this.withStableInstanceId(this.applyPreviewProps(resolvedDefinition, nodePath), nodePath);
+    const effectiveDefinition = this.withRuntimeInstanceId(this.applyPreviewProps(resolvedDefinition, nodePath), nodePath);
     const prefabNodeName = effectiveDefinition.prefabSourceName ?? nodeName;
     const prefabNodePath = prefabPath ? [...inheritedPrefabNodePath, prefabNodeName] : [];
     const factory = this.resolveFactory(effectiveDefinition);
@@ -161,19 +175,99 @@ export class SceneNodeFactoryRegistry {
       ...creation,
       runtimeRoot: creation.origin !== 'scene' && isRoot,
       prefabPath,
+      prefabId: effectiveDefinition.prefabSourcePrefabId,
       prefabNodePath: prefabPath ? prefabNodePath : undefined,
-      prefabNodeId: effectiveDefinition.prefabSourceInstanceId,
+      prefabNodeId: effectiveDefinition.prefabSourceNodeId,
       prefabOverrideProps: effectiveDefinition.prefabOverrideProps ?? [],
     });
     applyInitialProps(node, effectiveDefinition.props);
     for (const child of effectiveDefinition.children ?? []) node.addChild(this.createTreeAtPath(child, nodePath, { ...creation, prefabPath }, false, prefabNodePath));
     node.ensureRequiredChildren();
-    if (declaredPrefabPath) this.prefabManager?.register(declaredPrefabPath, node);
+    if (declaredPrefabPath) {
+      this.remapPrefabNodeReferences(declaredPrefabPath, node);
+      this.prefabManager?.register(declaredPrefabPath, node);
+      node.onDestroyed(() => this.prefabManager?.unregister(declaredPrefabPath, node));
+    }
     return node;
   }
 
-  private applyReloadedPrefab(path: string, _definition: SceneFileJson): void {
-    for (const root of this.prefabManager?.getInstances(path) ?? []) this.applyReloadedPrefabNode(path, root);
+  private remapPrefabNodeReferences(path: string, root: GameNode): void {
+    const runtimeByNodeId = new Map<string, GameNode>();
+    const collect = (node: GameNode): void => {
+      const nodeId = node.getCreationMetadata().prefabNodeId;
+      if (nodeId) runtimeByNodeId.set(nodeId, node);
+      for (const child of node.children) collect(child);
+    };
+    collect(root);
+    const apply = (node: GameNode): void => {
+      const nodeId = node.getCreationMetadata().prefabNodeId;
+      const source = nodeId ? this.prefabManager?.getNode(path, nodeId) : undefined;
+      if (source?.props) {
+        const mapped = Object.fromEntries(Object.entries(source.props).map(([key, value]) => [key, mapNodeReferenceValue(key, value, runtimeByNodeId)]));
+        applyInitialProps(node, mapped);
+      }
+      for (const child of node.children) apply(child);
+    };
+    apply(root);
+  }
+
+  private applyReloadedPrefab(path: string, definition: SceneFileJson): void {
+    for (const root of this.prefabManager?.getInstances(path) ?? []) this.reconcilePrefabInstance(path, definition, root);
+  }
+
+  private reconcilePrefabInstance(path: string, prefab: SceneFileJson, root: GameNode): void {
+    const runtimeByNodeId = new Map<string, GameNode>();
+    const collectRuntime = (node: GameNode): void => {
+      const nodeId = node.getCreationMetadata().prefabNodeId;
+      if (nodeId) runtimeByNodeId.set(nodeId, node);
+      for (const child of node.children) collectRuntime(child);
+    };
+    collectRuntime(root);
+
+    const definitions = new Map<string, { node: SceneNodeJson; parentId?: string; index: number }>();
+    const collectDefinitions = (node: SceneNodeJson, parentId: string | undefined, index: number): void => {
+      if (!node.nodeId) return;
+      definitions.set(node.nodeId, { node, parentId, index });
+      node.children?.forEach((child, childIndex) => collectDefinitions(child, node.nodeId, childIndex));
+    };
+    collectDefinitions(prefab.root, undefined, 0);
+
+    for (const [nodeId, runtimeNode] of [...runtimeByNodeId]) {
+      if (definitions.has(nodeId) || runtimeNode === root) continue;
+      runtimeNode.parent?.removeChild(runtimeNode);
+      runtimeByNodeId.delete(nodeId);
+    }
+
+    const ensureNode = (nodeId: string): GameNode | undefined => {
+      const existing = runtimeByNodeId.get(nodeId);
+      if (existing) return existing;
+      const entry = definitions.get(nodeId);
+      if (!entry?.parentId) return root;
+      const parent = ensureNode(entry.parentId);
+      if (!parent) return undefined;
+      const source = cloneDefinition(entry.node);
+      preparePrefabSourceTree(source, prefab.prefabId);
+      const parentPath = gameNodePath(parent);
+      const created = this.createTreeAtPath(source, parentPath, { ...root.getCreationMetadata(), prefabPath: path }, false, parent.getCreationMetadata().prefabNodePath ?? []);
+      parent.insertChildAt(created, entry.index);
+      collectRuntime(created);
+      return created;
+    };
+
+    for (const nodeId of definitions.keys()) ensureNode(nodeId);
+    for (const [nodeId, entry] of definitions) {
+      const runtimeNode = runtimeByNodeId.get(nodeId);
+      if (!runtimeNode) continue;
+      this.applyReloadedPrefabNode(path, runtimeNode);
+      if (!entry.parentId || runtimeNode === root) continue;
+      const expectedParent = runtimeByNodeId.get(entry.parentId);
+      if (!expectedParent) continue;
+      if (runtimeNode.parent !== expectedParent || expectedParent.children[entry.index] !== runtimeNode) {
+        runtimeNode.parent?.detachChildForMove(runtimeNode);
+        expectedParent.insertChildAt(runtimeNode, entry.index);
+      }
+    }
+    this.remapPrefabNodeReferences(path, root);
   }
 
   private applyReloadedPrefabNode(path: string, node: GameNode): void {
@@ -191,8 +285,9 @@ export class SceneNodeFactoryRegistry {
     if (!definition.prefab) return definition;
     if (!this.prefabResolver) throw new Error(`No prefab resolver configured for '${definition.prefab}'`);
     const prefab = this.prefabResolver(definition.prefab);
+    if (definition.prefabId && prefab.prefabId !== definition.prefabId) throw new Error(`Prefab id mismatch for '${definition.prefab}'`);
     const source = cloneDefinition(prefab.root);
-    preparePrefabSourceTree(source);
+    preparePrefabSourceTree(source, prefab.prefabId);
     return mergePrefabDefinition(source, definition);
   }
 
@@ -213,8 +308,12 @@ export class SceneNodeFactoryRegistry {
     };
   }
 
-  private withStableInstanceId(definition: SceneNodeJson, nodePath: string[]): SceneNodeJson {
-    return definition.instanceId ? definition : { ...definition, instanceId: stableSceneNodeInstanceId(nodePath) };
+  private withRuntimeInstanceId(definition: SceneNodeJson, nodePath: string[]): SceneNodeJson {
+    if (definition.instanceId) return definition;
+    if (definition.prefabSourcePrefabId && definition.prefabSourceNodeId && this.prefabManager) {
+      return { ...definition, instanceId: this.prefabManager.allocateRuntimeInstanceId(definition.prefabSourcePrefabId, definition.prefabSourceNodeId) };
+    }
+    return { ...definition, instanceId: stableSceneNodeInstanceId(nodePath) };
   }
 }
 
@@ -230,11 +329,23 @@ function pathsEqual(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
-function preparePrefabSourceTree(node: SceneNodeJson): void {
+function preparePrefabSourceTree(node: SceneNodeJson, prefabId: string | undefined): void {
   node.prefabSourceName = node.name;
-  node.prefabSourceInstanceId = node.instanceId;
-  node.instanceId = undefined;
-  for (const child of node.children ?? []) preparePrefabSourceTree(child);
+  node.prefabSourceNodeId = node.nodeId;
+  node.prefabSourcePrefabId = prefabId;
+  for (const child of node.children ?? []) preparePrefabSourceTree(child, prefabId);
+}
+
+function mapNodeReferenceValue(key: string, value: unknown, runtimeByNodeId: ReadonlyMap<string, GameNode>): unknown {
+  if (/nodeId$/i.test(key) && typeof value === 'string') return runtimeByNodeId.get(value)?.instanceId ?? value;
+  if (/nodeIds$/i.test(key) && Array.isArray(value)) return value.map((item) => typeof item === 'string' ? runtimeByNodeId.get(item)?.instanceId ?? item : item);
+  return value;
+}
+
+function gameNodePath(node: GameNode): string[] {
+  const result: string[] = [];
+  for (let current: GameNode | undefined = node; current; current = current.parent) result.unshift(current.name ?? current.nodeTypeId);
+  return result;
 }
 
 function applyInitialProps(node: GameNode, props: Record<string, unknown> | undefined): void {

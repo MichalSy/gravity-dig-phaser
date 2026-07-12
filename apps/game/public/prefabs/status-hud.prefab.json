@@ -1,9 +1,10 @@
 {
   "version": 1,
+  "prefabId": "b818f0d5-5274-5f7d-b1d0-a6adbc18c3c2",
   "root": {
     "name": "UI.StatusHud",
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
-    "instanceId": "8df42271-4e87-4db2-92e7-31f726d2ae6c",
+    "nodeId": "8df42271-4e87-4db2-92e7-31f726d2ae6c",
     "props": {
       "parentAnchor": "top-left",
       "debugScrollFactor": 0,
@@ -26,7 +27,7 @@
       {
         "name": "UI.StatusFrame",
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-        "instanceId": "19a35db4-3ed4-5edc-86ef-c0242b76a619",
+        "nodeId": "19a35db4-3ed4-5edc-86ef-c0242b76a619",
         "props": {
           "assetId": "hud-hp-fuel-atlas#topHud",
           "scrollFactor": 0,
@@ -43,7 +44,7 @@
       {
         "name": "UI.HpFill",
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-        "instanceId": "38178d5e-84aa-441e-95f1-059372d67e7a",
+        "nodeId": "38178d5e-84aa-441e-95f1-059372d67e7a",
         "props": {
           "assetId": "hud-hp-fuel-atlas#hpBar",
           "scrollFactor": 0,
@@ -60,7 +61,7 @@
       {
         "name": "UI.FuelFill",
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-        "instanceId": "9595055b-0f85-4296-828b-22fcaed7e439",
+        "nodeId": "9595055b-0f85-4296-828b-22fcaed7e439",
         "props": {
           "assetId": "hud-hp-fuel-atlas#fuelBar",
           "scrollFactor": 0,
@@ -82,7 +83,7 @@
       {
         "name": "StatusHudBehavior",
         "nodeTypeId": "dynamic.status-hud",
-        "instanceId": "c43dd281-3e7a-4181-b41a-9e113122e62b",
+        "nodeId": "c43dd281-3e7a-4181-b41a-9e113122e62b",
         "props": {
           "hpFillNodeId": "38178d5e-84aa-441e-95f1-059372d67e7a",
           "fuelFillNodeId": "9595055b-0f85-4296-828b-22fcaed7e439",

@@ -202,10 +202,7 @@ export class AppScene extends Phaser.Scene {
       name: definition.name,
       props: definition.props,
       actions: this.createScriptActions(),
-      instantiatePrefab: (path, options) => this.sceneFactory.createTree(
-        { prefab: path, name: options?.name, props: options?.props },
-        { origin: 'runtime-script', prefabPath: path, createdByInstanceId: definition.instanceId },
-      ),
+      instantiatePrefab: (prefabId, options) => this.sceneFactory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId }),
     });
     this.dynamicScriptNodes.add(node);
     return node;
@@ -255,10 +252,7 @@ export class AppScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
         ...optionsFrom(definition),
-        instantiatePrefab: (path) => this.sceneFactory.createTree(
-          { prefab: path },
-          { origin: 'runtime-code', prefabPath: path, createdByInstanceId: definition.instanceId },
-        ),
+        instantiatePrefab: (prefabId) => this.sceneFactory.createPrefab(prefabId, {}, { origin: 'runtime-code', createdByInstanceId: definition.instanceId }),
       }))
       .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.MiningLaserNode, (definition) => new MiningLaserNode(optionsFrom(definition)))

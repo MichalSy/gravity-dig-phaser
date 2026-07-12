@@ -547,7 +547,7 @@ var LoadingScript = class extends ScriptNode {
 };
 
 // public/scripts/UI/BottomHudScript.node.ts
-var SLOT_PREFAB = "prefabs/inventory-slot.prefab.json";
+var SLOT_PREFAB_ID = "fc891d95-3efb-567e-81d1-7fb0a446ebf5";
 var SLOT_ORIGIN_X = 362.93;
 var SLOT_STEP_X = 150.698;
 var SLOT_Y = 21.767;
@@ -559,7 +559,7 @@ var BottomHudScript = class extends ScriptNode {
   hudRootNodeId = prop.nodeRef(null, { label: "HUD Root" });
   energyFillNodeId = prop.nodeRef(null, { label: "Energy Fill" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State" });
-  slotPrefab = prop.string(SLOT_PREFAB, { label: "Slot Prefab" });
+  slotPrefabId = prop.string(SLOT_PREFAB_ID, { label: "Slot Prefab ID" });
   slotOriginX = prop.number(SLOT_ORIGIN_X, { label: "Slot Origin X", step: 1e-3 });
   slotStepX = prop.number(SLOT_STEP_X, { label: "Slot Step X", step: 1e-3 });
   slotY = prop.number(SLOT_Y, { label: "Slot Y", step: 1e-3 });
@@ -593,7 +593,7 @@ var BottomHudScript = class extends ScriptNode {
     while (this.slots.length > targetCount) this.removeLastSlot();
   }
   addSlot(index) {
-    const slot = this.instantiatePrefab(this.slotPrefab, {
+    const slot = this.instantiatePrefab(this.slotPrefabId, {
       name: `UI.Slot${index}`,
       props: {
         position: { x: this.slotOriginX + index * this.slotStepX, y: this.slotY },
@@ -757,4 +757,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.8d78c0b8d407.js.map
+//# sourceMappingURL=dynamic-nodes.c7f360d6f196.js.map

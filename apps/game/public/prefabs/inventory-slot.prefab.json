@@ -1,9 +1,10 @@
 {
   "version": 1,
+  "prefabId": "fc891d95-3efb-567e-81d1-7fb0a446ebf5",
   "root": {
     "name": "InventorySlot",
     "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-    "instanceId": "987ff63c-9a74-5c08-a4e8-d4115756b293",
+    "nodeId": "987ff63c-9a74-5c08-a4e8-d4115756b293",
     "props": {
       "assetId": "hud-hp-fuel-atlas#inventoryRepeatSlot",
       "parentAnchor": "top-left",
@@ -19,7 +20,7 @@
       {
         "name": "Item",
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-        "instanceId": "ed851222-fd1b-5e24-974f-736d10ced759",
+        "nodeId": "ed851222-fd1b-5e24-974f-736d10ced759",
         "props": {
           "assetId": "hud-item-rock",
           "parentAnchor": "center",
@@ -35,7 +36,7 @@
       {
         "name": "Label",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "instanceId": "5bf6ecad-7a7f-5f51-914f-bb498ca03f49",
+        "nodeId": "5bf6ecad-7a7f-5f51-914f-bb498ca03f49",
         "props": {
           "text": "",
           "fontFamily": "Arial, sans-serif",

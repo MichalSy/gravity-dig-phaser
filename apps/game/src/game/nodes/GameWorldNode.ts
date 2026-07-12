@@ -8,7 +8,7 @@ import { LevelNode } from './LevelNode';
 import { PlayerStateManagerNode } from './PlayerStateManagerNode';
 
 export interface GameWorldNodeOptions extends GameNodeOptions {
-  instantiatePrefab(path: string): GameNode;
+  instantiatePrefab(prefabId: string): GameNode;
 }
 
 export class GameWorldNode extends GameNode {
@@ -89,12 +89,12 @@ export class GameWorldNode extends GameNode {
   }
 
   private spawnShip(): void {
-    this.shipInstance = this.addChild(this.instantiatePrefab('prefabs/ship.prefab.json'));
+    this.shipInstance = this.addChild(this.instantiatePrefab('66b0a50c-1c54-5150-ae52-9ad853555e56'));
   }
 
   private spawnPlayer(): void {
     const spawn = spawnToWorld(this.level);
-    this.playerInstance = this.addChild(this.instantiatePrefab('prefabs/player.prefab.json'));
+    this.playerInstance = this.addChild(this.instantiatePrefab('08a9bfce-1773-5ca0-8adc-52dc8b2e378e'));
     const movement = findNode(this.playerInstance, 'PlayerMovementController') as unknown as ScriptMethodTarget;
     this.data.player = movement.callScriptMethod('spawnAt', spawn.x, spawn.y) as Phaser.GameObjects.Image;
 

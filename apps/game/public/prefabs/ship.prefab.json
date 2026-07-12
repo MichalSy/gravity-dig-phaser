@@ -1,8 +1,9 @@
 {
   "version": 1,
+  "prefabId": "66b0a50c-1c54-5150-ae52-9ad853555e56",
   "root": {
     "name": "Ship",
-    "instanceId": "cb17876d-0c28-5656-ad8d-ba44dc82e5af",
+    "nodeId": "cb17876d-0c28-5656-ad8d-ba44dc82e5af",
     "props": {
       "position": {
         "x": -288,
@@ -30,7 +31,7 @@
           }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
-        "instanceId": "9c403c67-2191-413b-b140-6d389068add2"
+        "nodeId": "9c403c67-2191-413b-b140-6d389068add2"
       },
       {
         "name": "ShipPrompt",
@@ -54,12 +55,12 @@
           "visible": false
         },
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "instanceId": "8bfe624f-b374-45a0-a467-d389b1aff3d8"
+        "nodeId": "8bfe624f-b374-45a0-a467-d389b1aff3d8"
       },
       {
         "name": "ShipBehavior",
         "nodeTypeId": "dynamic.ship",
-        "instanceId": "eec428e5-414c-478a-a58e-73dae9506aa4",
+        "nodeId": "eec428e5-414c-478a-a58e-73dae9506aa4",
         "props": {
           "worldNodeId": null,
           "playerStateNodeId": null,

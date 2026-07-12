@@ -37,7 +37,7 @@ type HudTextNode = Core.TextNode & {
 
 type ItemId = keyof typeof ITEM_SHORT_LABELS;
 
-const SLOT_PREFAB = 'prefabs/inventory-slot.prefab.json';
+const SLOT_PREFAB_ID = 'fc891d95-3efb-567e-81d1-7fb0a446ebf5';
 const SLOT_ORIGIN_X = 362.93;
 const SLOT_STEP_X = 150.698;
 const SLOT_Y = 21.767;
@@ -51,7 +51,7 @@ export default class BottomHudScript extends Core.ScriptNode {
   hudRootNodeId = Core.prop.nodeRef(null, { label: 'HUD Root' });
   energyFillNodeId = Core.prop.nodeRef(null, { label: 'Energy Fill' });
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State' });
-  slotPrefab = Core.prop.string(SLOT_PREFAB, { label: 'Slot Prefab' });
+  slotPrefabId = Core.prop.string(SLOT_PREFAB_ID, { label: 'Slot Prefab ID' });
   slotOriginX = Core.prop.number(SLOT_ORIGIN_X, { label: 'Slot Origin X', step: 0.001 });
   slotStepX = Core.prop.number(SLOT_STEP_X, { label: 'Slot Step X', step: 0.001 });
   slotY = Core.prop.number(SLOT_Y, { label: 'Slot Y', step: 0.001 });
@@ -94,7 +94,7 @@ export default class BottomHudScript extends Core.ScriptNode {
   }
 
   private addSlot(index: number) {
-    const slot = this.instantiatePrefab<SlotNode>(this.slotPrefab, {
+    const slot = this.instantiatePrefab<SlotNode>(this.slotPrefabId, {
       name: `UI.Slot${index}`,
       props: {
         position: { x: this.slotOriginX + index * this.slotStepX, y: this.slotY },

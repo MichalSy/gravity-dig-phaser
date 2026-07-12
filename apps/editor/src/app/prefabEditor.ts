@@ -1,7 +1,7 @@
 import type { DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugSceneNodeDefinition, DebugScenePropDefinition } from '@gravity-dig/debug-protocol';
 
 export interface PrefabNodeDefinition {
-  instanceId?: string;
+  nodeId: string;
   name?: string;
   nodeTypeId?: string;
   props?: Record<string, unknown>;
@@ -10,6 +10,7 @@ export interface PrefabNodeDefinition {
 
 export interface PrefabDocument {
   version: number;
+  prefabId: string;
   root: PrefabNodeDefinition;
 }
 
@@ -28,7 +29,9 @@ export function isPrefabFilePath(path: string): boolean {
 export function parsePrefabDocument(content: string): PrefabDocument {
   const value = JSON.parse(content) as Partial<PrefabDocument>;
   if (!value || typeof value !== 'object' || !value.root || typeof value.root !== 'object') throw new Error('Prefab enthält keinen gültigen root-Node.');
-  return { version: typeof value.version === 'number' ? value.version : 1, root: value.root };
+  const root = value.root as PrefabNodeDefinition;
+  ensureNodeIds(root);
+  return { version: typeof value.version === 'number' ? value.version : 1, prefabId: value.prefabId ?? crypto.randomUUID(), root };
 }
 
 export function prefabDocumentToTree(document: PrefabDocument, path: string): DebugNodeDescriptor[] {
@@ -36,14 +39,14 @@ export function prefabDocumentToTree(document: PrefabDocument, path: string): De
 }
 
 function toDescriptor(node: PrefabNodeDefinition, parentId: string | undefined, index: number, path: string, fallbackKey: string): DebugNodeDescriptor {
-  const id = node.instanceId ?? `prefab:${path}:${fallbackKey}`;
+  const id = node.nodeId ?? `prefab:${path}:${fallbackKey}`;
   const nodeTypeId = node.nodeTypeId;
   const className = nodeTypeId ? classNamesByTypeId[nodeTypeId] ?? (nodeTypeId.startsWith('dynamic.') ? 'DynamicScriptNode' : 'GameNode') : 'TransformNode';
   const active = node.props?.active !== false;
   const visible = node.props?.visible !== false;
   return {
     id,
-    instanceId: node.instanceId,
+    instanceId: node.nodeId,
     parentId,
     nodeTypeId,
     name: node.name ?? className,
@@ -69,7 +72,7 @@ export function prefabNodeDefinition(document: PrefabDocument, path: string, nod
   const props = node.props ?? {};
   const exposedProps = Object.fromEntries(Object.entries(props).map(([key, value]) => [key, inferPropDefinition(key, value)]));
   return {
-    instanceId: node.instanceId ?? nodeId,
+    instanceId: node.nodeId ?? nodeId,
     name: node.name ?? 'Prefab Node',
     typeName: node.nodeTypeId ?? 'TransformNode',
     exposedPropGroups: [{ name: 'Prefab Props', props: exposedProps }],
@@ -105,7 +108,7 @@ export function prefabNodePropsMessage(document: PrefabDocument, path: string, n
     type: 'node:props',
     sessionId: `prefab:${path}`,
     nodeId,
-    instanceId: node.instanceId,
+    instanceId: node.nodeId,
     localTransform: {
       x: position.x,
       y: position.y,
@@ -135,13 +138,18 @@ export function formatPrefabDocument(document: PrefabDocument): string {
 }
 
 function findPrefabNode(node: PrefabNodeDefinition, path: string, id: string, fallbackKey: string): PrefabNodeDefinition | undefined {
-  const nodeId = node.instanceId ?? `prefab:${path}:${fallbackKey}`;
+  const nodeId = node.nodeId ?? `prefab:${path}:${fallbackKey}`;
   if (nodeId === id) return node;
   for (let index = 0; index < (node.children ?? []).length; index += 1) {
     const match = findPrefabNode(node.children![index], path, id, `${fallbackKey}.${index}`);
     if (match) return match;
   }
   return undefined;
+}
+
+function ensureNodeIds(node: PrefabNodeDefinition): void {
+  node.nodeId ||= crypto.randomUUID();
+  for (const child of node.children ?? []) ensureNodeIds(child);
 }
 
 function objectPair(value: unknown, first: string, second: string, fallbackFirst: number, fallbackSecond: number): { x: number; y: number } {

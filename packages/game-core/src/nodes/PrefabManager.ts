@@ -5,11 +5,14 @@ export type PrefabLoader = (path: string) => Promise<SceneFileJson>;
 
 export class PrefabManager {
   private readonly definitions = new Map<string, SceneFileJson>();
+  private readonly definitionsById = new Map<string, SceneFileJson>();
+  private readonly pathsById = new Map<string, string>();
   private readonly nodesById = new Map<string, Map<string, SceneNodeJson>>();
   private readonly pendingLoads = new Map<string, Promise<SceneFileJson>>();
-  private readonly instances = new Map<string, Set<GameNode>>();
+  private readonly instancesByPrefabId = new Map<string, Map<string, GameNode>>();
   private readonly listeners = new Set<(path: string, definition: SceneFileJson) => void>();
   private readonly loader: PrefabLoader;
+  private nextRuntimeInstance = 1;
 
   constructor(loader: PrefabLoader) {
     this.loader = loader;
@@ -25,8 +28,29 @@ export class PrefabManager {
     return prefab;
   }
 
-  getNode(path: string, sourceInstanceId: string): SceneNodeJson | undefined {
-    return this.nodesById.get(path)?.get(sourceInstanceId);
+  getNode(path: string, nodeId: string): SceneNodeJson | undefined {
+    return this.nodesById.get(path)?.get(nodeId);
+  }
+
+  getById(prefabId: string): SceneFileJson {
+    const prefab = this.definitionsById.get(prefabId);
+    if (!prefab) throw new Error(`Prefab '${prefabId}' has not been loaded`);
+    return prefab;
+  }
+
+  getPath(prefabId: string): string | undefined {
+    return this.pathsById.get(prefabId);
+  }
+
+  allocateRuntimeInstanceId(prefabId: string, nodeId: string): string {
+    return `prefab:${prefabId}:${this.nextRuntimeInstance++}:${nodeId}`;
+  }
+
+  instantiate(prefabId: string, create: (path: string, definition: SceneFileJson) => GameNode): GameNode {
+    const path = this.pathsById.get(prefabId);
+    const definition = this.definitionsById.get(prefabId);
+    if (!path || !definition) throw new Error(`Prefab '${prefabId}' has not been loaded`);
+    return create(path, definition);
   }
 
   async ensure(path: string): Promise<SceneFileJson> {
@@ -37,6 +61,8 @@ export class PrefabManager {
     const load = this.loader(path).then(async (definition) => {
       validatePrefab(path, definition);
       this.definitions.set(path, definition);
+      this.definitionsById.set(definition.prefabId!, definition);
+      this.pathsById.set(definition.prefabId!, path);
       this.nodesById.set(path, indexPrefabNodes(path, definition.root));
       await this.ensureDefinitions(definition.root);
       return definition;
@@ -50,10 +76,18 @@ export class PrefabManager {
     await Promise.all(paths.map((path) => this.ensure(path)));
   }
 
+  async reloadById(prefabId: string): Promise<SceneFileJson> {
+    const path = this.pathsById.get(prefabId);
+    if (!path) throw new Error(`Prefab '${prefabId}' has not been loaded`);
+    return this.reload(path);
+  }
+
   async reload(path: string): Promise<SceneFileJson> {
+    const previousPrefabId = this.definitions.get(path)?.prefabId;
     this.definitions.delete(path);
     this.nodesById.delete(path);
     const definition = await this.ensure(path);
+    if (previousPrefabId && definition.prefabId !== previousPrefabId) throw new Error(`Prefab '${path}' changed prefabId from '${previousPrefabId}' to '${definition.prefabId}'`);
     for (const listener of this.listeners) listener(path, definition);
     return definition;
   }
@@ -64,19 +98,27 @@ export class PrefabManager {
   }
 
   register(path: string, instance: GameNode): void {
-    const instances = this.instances.get(path) ?? new Set<GameNode>();
-    instances.add(instance);
-    this.instances.set(path, instances);
+    const prefabId = this.get(path).prefabId!;
+    const instances = this.instancesByPrefabId.get(prefabId) ?? new Map<string, GameNode>();
+    instances.set(instance.instanceId, instance);
+    this.instancesByPrefabId.set(prefabId, instances);
   }
 
   unregister(path: string, instance: GameNode): void {
-    const instances = this.instances.get(path);
-    instances?.delete(instance);
-    if (instances?.size === 0) this.instances.delete(path);
+    const prefabId = this.definitions.get(path)?.prefabId;
+    if (!prefabId) return;
+    const instances = this.instancesByPrefabId.get(prefabId);
+    instances?.delete(instance.instanceId);
+    if (instances?.size === 0) this.instancesByPrefabId.delete(prefabId);
   }
 
   getInstances(path: string): readonly GameNode[] {
-    return [...(this.instances.get(path) ?? [])];
+    const prefabId = this.get(path).prefabId!;
+    return [...(this.instancesByPrefabId.get(prefabId)?.values() ?? [])];
+  }
+
+  getInstancesByPrefabId(prefabId: string): readonly GameNode[] {
+    return [...(this.instancesByPrefabId.get(prefabId)?.values() ?? [])];
   }
 }
 
@@ -105,14 +147,15 @@ function isPrefabPath(value: string): boolean {
 
 function validatePrefab(path: string, definition: SceneFileJson): void {
   if (!definition || definition.version !== 1 || !definition.root || typeof definition.root !== 'object') throw new Error(`Prefab '${path}' is invalid`);
+  if (!definition.prefabId) throw new Error(`Prefab '${path}' needs a prefabId`);
 }
 
 function indexPrefabNodes(path: string, root: SceneNodeJson): Map<string, SceneNodeJson> {
   const nodes = new Map<string, SceneNodeJson>();
   const visit = (node: SceneNodeJson): void => {
-    if (!node.instanceId) throw new Error(`Prefab '${path}' node '${node.name ?? '<unnamed>'}' needs an instanceId`);
-    if (nodes.has(node.instanceId)) throw new Error(`Prefab '${path}' contains duplicate instanceId '${node.instanceId}'`);
-    nodes.set(node.instanceId, node);
+    if (!node.nodeId) throw new Error(`Prefab '${path}' node '${node.name ?? '<unnamed>'}' needs a nodeId`);
+    if (nodes.has(node.nodeId)) throw new Error(`Prefab '${path}' contains duplicate nodeId '${node.nodeId}'`);
+    nodes.set(node.nodeId, node);
     for (const child of node.children ?? []) visit(child);
   };
   visit(root);
