@@ -436,7 +436,10 @@ export default function Home() {
   );
   const displayedNodeDefinition = useMemo(() => {
     if (!displayedSelectedNode) return undefined;
-    if (openPrefabPath && openPrefabDocument) return prefabNodeDefinition(openPrefabDocument, openPrefabPath, displayedSelectedNode.id);
+    if (openPrefabPath && openPrefabDocument) {
+      const baseDefinition = [...nodeDefinitions.values()].find((definition) => definition.typeName === displayedSelectedNode.className);
+      return prefabNodeDefinition(openPrefabDocument, openPrefabPath, displayedSelectedNode.id, baseDefinition);
+    }
     const direct = nodeDefinitions.get(displayedSelectedNode.instanceId ?? displayedSelectedNode.id);
     if (direct) return direct;
     const matchingSceneNode = findNodeByTypeId(treeRoots, displayedSelectedNode.nodeTypeId);
@@ -522,7 +525,11 @@ export default function Home() {
       }
 
       if (message.type === 'node:definitions') {
-        setNodeDefinitions(new Map(message.nodes.map((node) => [node.instanceId, node])));
+        setNodeDefinitions((current) => {
+          const next = new Map(current);
+          for (const node of message.nodes) next.set(node.instanceId, node);
+          return next;
+        });
         return;
       }
 

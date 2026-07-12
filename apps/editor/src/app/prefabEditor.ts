@@ -72,17 +72,29 @@ export function findPrefabTreeNodeByPath(roots: DebugNodeDescriptor[], nodePath:
   return current;
 }
 
-export function prefabNodeDefinition(document: PrefabDocument, path: string, nodeId: string): DebugSceneNodeDefinition | undefined {
+export function prefabNodeDefinition(
+  document: PrefabDocument,
+  path: string,
+  nodeId: string,
+  baseDefinition?: DebugSceneNodeDefinition,
+): DebugSceneNodeDefinition | undefined {
   const node = findPrefabNode(document.root, path, nodeId, 'root');
   if (!node) return undefined;
   const props = node.props ?? {};
-  const exposedProps = Object.fromEntries(Object.entries(props).map(([key, value]) => [key, inferPropDefinition(key, value)]));
+  const additionalProps = baseDefinition
+    ? {}
+    : Object.fromEntries(Object.entries(props).map(([key, value]) => [key, inferPropDefinition(key, value)]));
+  const exposedPropGroups = baseDefinition
+    ? baseDefinition.exposedPropGroups
+    : Object.keys(additionalProps).length > 0
+      ? [{ name: 'Prefab Props', props: additionalProps }]
+      : [];
   return {
     instanceId: node.nodeId ?? nodeId,
     name: node.name ?? 'Prefab Node',
-    typeName: node.nodeTypeId ?? 'TransformNode',
-    exposedPropGroups: [{ name: 'Prefab Props', props: exposedProps }],
-    overlayLayers: [],
+    typeName: baseDefinition?.typeName ?? classNamesByTypeId[node.nodeTypeId ?? ''] ?? node.nodeTypeId ?? 'TransformNode',
+    exposedPropGroups,
+    overlayLayers: baseDefinition?.overlayLayers ?? [],
   };
 }
 
