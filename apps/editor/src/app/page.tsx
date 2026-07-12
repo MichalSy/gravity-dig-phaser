@@ -1578,7 +1578,6 @@ export default function Home() {
       setPendingChangeSet(result.changeSet);
       setGitSaveStatus(`Pending Change gespeichert: ${nodePath.join(' / ')}`);
       void refreshGitStatus();
-      if (node.prefabPath) reloadGameFrame();
     } catch (error) {
       setGitSaveStatus(`Pending Change fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
