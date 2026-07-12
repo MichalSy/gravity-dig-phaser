@@ -190,6 +190,26 @@
   padding: 12px;
 }
 
+.prefabEditingBanner {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  border-radius: 7px;
+  background: rgba(14, 165, 233, 0.12);
+  color: #e0f2fe;
+}
+
+.prefabEditingBanner span,
+.prefabEditingBanner small {
+  overflow: hidden;
+  color: #7dd3fc;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .viewportBody {
   min-height: 0;
   display: grid;

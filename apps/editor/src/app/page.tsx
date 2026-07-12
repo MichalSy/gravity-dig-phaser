@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent,
 import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, Waypoints } from 'lucide-react';
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
+import { formatPrefabDocument, isPrefabFilePath, parsePrefabDocument, patchPrefabNode, prefabDocumentToTree, prefabNodeDefinition, prefabNodePropsMessage, type PrefabDocument } from './prefabEditor';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
   return type !== 'node:select' && type !== 'node:props';
@@ -334,6 +335,10 @@ export default function Home() {
   const [selectedDirectoryFilesStatus, setSelectedDirectoryFilesStatus] = useState('');
   const [previewPublicFilePath, setPreviewPublicFilePath] = useState<string | undefined>();
   const [openNodeFilePath, setOpenNodeFilePath] = useState<string | undefined>();
+  const [openPrefabPath, setOpenPrefabPath] = useState<string | undefined>();
+  const [openPrefabDocument, setOpenPrefabDocument] = useState<PrefabDocument | undefined>();
+  const [prefabSelectedNodeId, setPrefabSelectedNodeId] = useState<string | undefined>();
+  const [prefabStatus, setPrefabStatus] = useState('');
   const [expandedPublicDirectoryPaths, setExpandedPublicDirectoryPaths] = useState<Set<string>>(() => new Set(['apps/game/public', 'apps/game/src']));
   const [publicFileStatus, setPublicFileStatus] = useState('Lade public/ ...');
   const [gameFrameKey, setGameFrameKey] = useState(0);
@@ -369,6 +374,22 @@ export default function Home() {
   const selectedNode = useMemo(
     () => (selectedNodeId ? findNode(treeRoots, selectedNodeId) : undefined),
     [selectedNodeId, treeRoots],
+  );
+  const prefabTreeRoots = useMemo(
+    () => openPrefabPath && openPrefabDocument ? prefabDocumentToTree(openPrefabDocument, openPrefabPath) : [],
+    [openPrefabDocument, openPrefabPath],
+  );
+  const displayedTreeRoots = openPrefabPath ? prefabTreeRoots : treeRoots;
+  const displayedSelectedNodeId = openPrefabPath ? prefabSelectedNodeId : selectedNodeId;
+  const displayedSelectedNode = useMemo(
+    () => displayedSelectedNodeId ? findNode(displayedTreeRoots, displayedSelectedNodeId) : undefined,
+    [displayedSelectedNodeId, displayedTreeRoots],
+  );
+  const displayedNodeProps = useMemo(
+    () => openPrefabPath && openPrefabDocument && prefabSelectedNodeId
+      ? prefabNodePropsMessage(openPrefabDocument, openPrefabPath, prefabSelectedNodeId)
+      : selectedNodeProps,
+    [openPrefabDocument, openPrefabPath, prefabSelectedNodeId, selectedNodeProps],
   );
   const selectedAsset = useMemo(
     () => (selectedAssetId ? imageAssets.find((asset) => asset.id === selectedAssetId) : undefined),
@@ -413,6 +434,15 @@ export default function Home() {
     () => (selectedNode?.instanceId ? nodeDefinitions.get(selectedNode.instanceId) : selectedNode ? nodeDefinitions.get(selectedNode.id) : undefined),
     [nodeDefinitions, selectedNode],
   );
+  const displayedNodeDefinition = useMemo(() => {
+    if (!displayedSelectedNode) return undefined;
+    if (openPrefabPath && openPrefabDocument) return prefabNodeDefinition(openPrefabDocument, openPrefabPath, displayedSelectedNode.id);
+    const direct = nodeDefinitions.get(displayedSelectedNode.instanceId ?? displayedSelectedNode.id);
+    if (direct) return direct;
+    const matchingSceneNode = findNodeByTypeId(treeRoots, displayedSelectedNode.nodeTypeId);
+    const source = matchingSceneNode ? nodeDefinitions.get(matchingSceneNode.instanceId ?? matchingSceneNode.id) : undefined;
+    return source ? { ...source, instanceId: displayedSelectedNode.instanceId ?? displayedSelectedNode.id, name: displayedSelectedNode.name } : undefined;
+  }, [displayedSelectedNode, nodeDefinitions, openPrefabDocument, openPrefabPath, treeRoots]);
   const selectedNodeHasInactiveParent = useMemo(
     () => selectedNode ? hasInactiveAncestor(treeRoots, selectedNode) : false,
     [selectedNode, treeRoots],
@@ -704,7 +734,7 @@ export default function Home() {
 
   function expandAllNodes(): void {
     setPersistentManagersOpen(true);
-    setExpandedNodeIds(new Set(collectNodeIds(treeRoots)));
+    setExpandedNodeIds(new Set(collectNodeIds(openPrefabPath ? prefabTreeRoots : treeRoots)));
   }
 
   function collapseAllNodes(): void {
@@ -1535,11 +1565,58 @@ export default function Home() {
     }
   }
 
+  async function openPrefabEditor(path: string): Promise<void> {
+    setPrefabStatus('Lade Prefab ...');
+    try {
+      const file = await loadEditorSourceFile(path, new AbortController().signal);
+      const document = parsePrefabDocument(file.content);
+      const roots = prefabDocumentToTree(document, path);
+      setOpenPrefabPath(path);
+      setOpenPrefabDocument(document);
+      setPrefabSelectedNodeId(roots[0]?.id);
+      setExpandedNodeIds(new Set(collectNodeIds(roots)));
+      setInspectorResetVersion((current) => current + 1);
+      setPrefabStatus('Prefab geladen');
+    } catch (error) {
+      setPrefabStatus(`Prefab konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  function closePrefabEditor(): void {
+    setOpenPrefabPath(undefined);
+    setOpenPrefabDocument(undefined);
+    setPrefabSelectedNodeId(undefined);
+    setPrefabStatus('');
+    setExpandedNodeIds(new Set(collectNodeIds(treeRoots)));
+    setInspectorResetVersion((current) => current + 1);
+  }
+
+  async function patchOpenPrefabNode(node: DebugNodeDescriptor, props: DebugNodePatch): Promise<void> {
+    if (!openPrefabPath || !openPrefabDocument) return;
+    try {
+      const nextDocument = patchPrefabNode(openPrefabDocument, openPrefabPath, node.id, props);
+      setOpenPrefabDocument(nextDocument);
+      setPrefabStatus('Speichere Prefab ...');
+      const response = await fetch(editorApi('/files'), {
+        method: 'PUT',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ path: openPrefabPath, content: formatPrefabDocument(nextDocument) }),
+      });
+      const result = await response.json() as EditorFileSaveResult;
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setPrefabStatus('Prefab gespeichert');
+      void refreshGitStatus();
+    } catch (error) {
+      setPrefabStatus(`Prefab konnte nicht gespeichert werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   const editorTitle = gitNeedsRebase ? 'Debug Editor · Rebase nötig' : 'Debug Editor';
   const workspaceMessage = backendStatus?.workspace?.message ?? 'Editor startet ...';
   const showWorkspaceActivity = !backendStatus?.workspace?.exists || backendStatus?.workspace?.busy || explorerRoots.length === 0;
-  const hierarchySections = splitHierarchyRoots(treeRoots, viewportMode);
-  const hierarchyNodeCount = viewportMode === 'editor' ? countNodes(hierarchySections.scenes) : countNodes(treeRoots);
+  const hierarchySections = splitHierarchyRoots(displayedTreeRoots, viewportMode);
+  const hierarchyNodeCount = openPrefabPath ? countNodes(displayedTreeRoots) : viewportMode === 'editor' ? countNodes(hierarchySections.scenes) : countNodes(displayedTreeRoots);
 
   return (
     <main className={styles.appShell}>
@@ -1567,22 +1644,25 @@ export default function Home() {
 
       <section ref={workbenchRef} className={styles.workbench}>
         <aside className={styles.panel}>
-          <PanelHeader title="Hierarchy" meta={`${hierarchyNodeCount} Nodes`}>
+          <PanelHeader title={openPrefabPath ? 'Prefab' : 'Hierarchy'} meta={openPrefabPath ? compactPublicPath(openPrefabPath) : `${hierarchyNodeCount} Nodes`}>
+            {openPrefabPath && <button type="button" className={styles.headerButton} onClick={closePrefabEditor}>← Zurück zur Scene</button>}
             <button type="button" className={styles.headerButton} onClick={expandAllNodes}>Alle auf</button>
             <button type="button" className={styles.headerButton} onClick={collapseAllNodes}>Alle zu</button>
           </PanelHeader>
           <div className={styles.panelBody}>
-            {treeRoots.length > 0 ? (
+            {openPrefabPath && <div className={styles.prefabEditingBanner}><strong>Prefab bearbeiten</strong><span>{openPrefabPath}</span>{prefabStatus && <small>{prefabStatus}</small>}</div>}
+            {displayedTreeRoots.length > 0 ? (
               <HierarchyTree
-                roots={treeRoots}
+                roots={displayedTreeRoots}
                 mode={viewportMode}
+                prefabMode={Boolean(openPrefabPath)}
                 editorPreviewScene={editorPreviewScene}
                 editorPreviewSceneOptions={editorPreviewScenes}
-                selectedNodeId={selectedNodeId}
+                selectedNodeId={displayedSelectedNodeId}
                 expandedNodeIds={expandedNodeIds}
                 persistentManagersOpen={persistentManagersOpen}
                 onEditorPreviewSceneChange={setEditorPreviewScene}
-                onSelectNode={setSelectedNodeId}
+                onSelectNode={openPrefabPath ? setPrefabSelectedNodeId : setSelectedNodeId}
                 onToggleNode={toggleNodeExpanded}
                 onTogglePersistentManagers={() => setPersistentManagersOpen((current) => !current)}
                 isDynamicNodeDragActive={() => Boolean(draggedDynamicNodeRef.current)}
@@ -1641,7 +1721,7 @@ export default function Home() {
           onSelectDirectory={selectPublicDirectory}
           onToggleDirectory={togglePublicDirectory}
           onSelectFile={setSelectedPublicFilePath}
-          onOpenFile={setOpenNodeFilePath}
+          onOpenFile={(path) => { if (isPrefabFilePath(path)) void openPrefabEditor(path); else setOpenNodeFilePath(path); }}
           onOpenImage={setPreviewPublicFilePath}
           onRefresh={refreshPublicFiles}
           onStartFolderResize={startFolderTreeResize}
@@ -1657,9 +1737,9 @@ export default function Home() {
         <div className={`${styles.columnResizer} ${styles.rightColumnResizer}`} role="separator" aria-orientation="vertical" aria-label="Inspector Breite ändern" onPointerDown={(event) => startColumnResize('right', event)} />
 
         <aside className={styles.panel}>
-          <PanelHeader title="Inspector" meta={selectedNode ? `${selectedNode.name}${gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (gitSaveStatus || 'Kein Node')} />
+          <PanelHeader title="Inspector" meta={displayedSelectedNode ? `${displayedSelectedNode.name}${openPrefabPath ? ` · ${prefabStatus}` : gitSaveStatus ? ` · ${gitSaveStatus}` : ''}` : (openPrefabPath ? prefabStatus : gitSaveStatus || 'Kein Node')} />
           <div className={styles.panelBody}>
-            {selectedNode ? <Inspector roots={treeRoots} node={selectedNode} parentInactive={selectedNodeHasInactiveParent} definition={selectedNodeDefinition} debugProps={selectedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[selectedNode.id]} assets={imageAssets} fonts={fonts} onPatch={sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
+            {displayedSelectedNode ? <Inspector roots={displayedTreeRoots} node={displayedSelectedNode} parentInactive={openPrefabPath ? false : selectedNodeHasInactiveParent} definition={displayedNodeDefinition} debugProps={displayedNodeProps} resetVersion={inspectorResetVersion} overlayLayerSelection={overlayLayerSelections[displayedSelectedNode.id]} assets={imageAssets} fonts={fonts} onPatch={openPrefabPath ? (node, props) => void patchOpenPrefabNode(node, props) : sendNodePatch} onOverlayLayerSelectionChange={setNodeOverlayLayerEnabled} onSelectAsset={setSelectedAssetId} /> : <p className={styles.empty}>Wähle einen Node in der Hierarchy.</p>}
           </div>
         </aside>
       </section>
@@ -2479,6 +2559,7 @@ function PanelHeader({ title, meta, children }: { title: string; meta: string; c
 function HierarchyTree({
   roots,
   mode,
+  prefabMode,
   editorPreviewScene,
   editorPreviewSceneOptions,
   selectedNodeId,
@@ -2506,6 +2587,7 @@ function HierarchyTree({
 }: {
   roots: DebugNodeDescriptor[];
   mode: ViewportMode;
+  prefabMode?: boolean;
   editorPreviewScene: EditorPreviewSceneId;
   editorPreviewSceneOptions: readonly EditorPreviewSceneOption[];
   selectedNodeId?: string;
@@ -2532,7 +2614,9 @@ function HierarchyTree({
   onDeleteNode(node: DebugNodeDescriptor): void;
 }) {
   const { persistentManagers, scenes } = splitHierarchyRoots(roots, mode);
-  const treeProps = { selectedNodeId, expandedNodeIds, onSelectNode, onToggleNode, isDynamicNodeDragActive, getDraggedDynamicNode, isImageAssetDragActive, getDraggedImageAsset, onDropDynamicNode, onDropImageAsset, onOpenCreateMenu, onSelectScriptSource, draggedHierarchyNode, hierarchyDropTarget, onHierarchyDragStart, onHierarchyDragEnd, onHierarchyDragOver, onMoveHierarchyNode, onDeleteNode };
+  const treeProps = { selectedNodeId, expandedNodeIds, onSelectNode, onToggleNode, isDynamicNodeDragActive, getDraggedDynamicNode, isImageAssetDragActive, getDraggedImageAsset, onDropDynamicNode, onDropImageAsset, onOpenCreateMenu, onSelectScriptSource, draggedHierarchyNode, hierarchyDropTarget, onHierarchyDragStart, onHierarchyDragEnd, onHierarchyDragOver, onMoveHierarchyNode, onDeleteNode, readOnly: prefabMode };
+
+  if (prefabMode) return <NodeTree nodes={roots} {...treeProps} />;
 
   if (mode === 'editor') {
     return (
@@ -2597,6 +2681,7 @@ function NodeTree({
   onHierarchyDragOver,
   onMoveHierarchyNode,
   onDeleteNode,
+  readOnly,
 }: {
   nodes: DebugNodeDescriptor[];
   selectedNodeId?: string;
@@ -2618,11 +2703,12 @@ function NodeTree({
   onHierarchyDragOver(target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onMoveHierarchyNode(node: DebugNodeDescriptor, target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
+  readOnly?: boolean;
 }) {
   return (
     <ol className={styles.treeList}>
       {nodes.map((node) => (
-        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onSelectScriptSource={onSelectScriptSource} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />
+        <NodeTreeItem key={node.id} node={node} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onSelectScriptSource={onSelectScriptSource} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} readOnly={readOnly} />
       ))}
     </ol>
   );
@@ -2649,6 +2735,7 @@ function NodeTreeItem({
   onHierarchyDragOver,
   onMoveHierarchyNode,
   onDeleteNode,
+  readOnly,
 }: {
   node: DebugNodeDescriptor;
   selectedNodeId?: string;
@@ -2670,6 +2757,7 @@ function NodeTreeItem({
   onHierarchyDragOver(target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onMoveHierarchyNode(node: DebugNodeDescriptor, target: DebugNodeDescriptor, placement: HierarchyDropPlacement): void;
   onDeleteNode(node: DebugNodeDescriptor): void;
+  readOnly?: boolean;
 }) {
   const hasChildren = node.children.length > 0;
   const effectiveActive = isEffectivelyActive(node);
@@ -2677,14 +2765,15 @@ function NodeTreeItem({
   const isSystemRoot = isSystemSceneRootNode(node);
   const isSceneNode = sceneNodeClassNames.has(node.className);
   const isLocked = node.editorLocked === true;
-  const canDragNode = !alwaysExpanded && !isSystemRoot && !isLocked;
-  const canCreateChild = !isSceneNode && !isLocked;
+  const canDragNode = !readOnly && !alwaysExpanded && !isSystemRoot && !isLocked;
+  const canCreateChild = !readOnly && !isSceneNode && !isLocked;
   const canSelectScriptSource = node.nodeTypeId?.startsWith('dynamic.') === true;
-  const canDeleteNode = !alwaysExpanded && !isSystemRoot && !isLocked;
+  const canDeleteNode = !readOnly && !alwaysExpanded && !isSystemRoot && !isLocked;
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
   function handleDragOver(event: ReactDragEvent<HTMLLIElement>): void {
+    if (readOnly) return;
     const draggedNode = draggedHierarchyNode();
     if (draggedNode || hasHierarchyNodeDragType(event)) {
       if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isLocked || isSystemSceneRootNode(draggedNode) || draggedNode.editorLocked) return;
@@ -2701,6 +2790,7 @@ function NodeTreeItem({
   }
 
   function handleDrop(event: ReactDragEvent<HTMLLIElement>): void {
+    if (readOnly) return;
     const draggedNode = draggedHierarchyNode();
     if (draggedNode || hasHierarchyNodeDragType(event)) {
       if (!draggedNode || draggedNode.id === node.id || containsNode(draggedNode, node.id) || alwaysExpanded || isLocked || isSystemSceneRootNode(draggedNode) || draggedNode.editorLocked) return;
@@ -2815,7 +2905,7 @@ function NodeTreeItem({
       </div>
       {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'child' && <HierarchyDropIndicator placement="child" />}
       {hierarchyDropTarget?.targetId === node.id && hierarchyDropTarget.placement === 'after' && <HierarchyDropIndicator placement="after" />}
-      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onSelectScriptSource={onSelectScriptSource} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} />}
+      {hasChildren && isExpanded && <NodeTree nodes={node.children} selectedNodeId={selectedNodeId} expandedNodeIds={expandedNodeIds} onSelectNode={onSelectNode} onToggleNode={onToggleNode} isDynamicNodeDragActive={isDynamicNodeDragActive} getDraggedDynamicNode={getDraggedDynamicNode} isImageAssetDragActive={isImageAssetDragActive} getDraggedImageAsset={getDraggedImageAsset} onDropDynamicNode={onDropDynamicNode} onDropImageAsset={onDropImageAsset} onOpenCreateMenu={onOpenCreateMenu} onSelectScriptSource={onSelectScriptSource} draggedHierarchyNode={draggedHierarchyNode} hierarchyDropTarget={hierarchyDropTarget} onHierarchyDragStart={onHierarchyDragStart} onHierarchyDragEnd={onHierarchyDragEnd} onHierarchyDragOver={onHierarchyDragOver} onMoveHierarchyNode={onMoveHierarchyNode} onDeleteNode={onDeleteNode} readOnly={readOnly} />}
     </li>
   );
 }
@@ -4299,6 +4389,16 @@ function findNode(nodes: DebugNodeDescriptor[], id: string): DebugNodeDescriptor
   for (const node of nodes) {
     if (node.id === id) return node;
     const child = findNode(node.children, id);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+function findNodeByTypeId(nodes: DebugNodeDescriptor[], nodeTypeId?: string): DebugNodeDescriptor | undefined {
+  if (!nodeTypeId) return undefined;
+  for (const node of nodes) {
+    if (node.nodeTypeId === nodeTypeId) return node;
+    const child = findNodeByTypeId(node.children, nodeTypeId);
     if (child) return child;
   }
   return undefined;
