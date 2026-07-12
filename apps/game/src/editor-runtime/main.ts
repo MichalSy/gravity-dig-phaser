@@ -82,7 +82,6 @@ class EditorRuntimeScene extends Phaser.Scene {
       if (!this.prefabManager) throw new Error('Prefab manager is not initialized');
       await this.prefabManager.reload(path);
       this.runtime?.resolve();
-      this.debugBridge?.publishTreeSnapshot();
       this.debugBridge?.publishSelectedNodeProps();
       window.parent?.postMessage({
         type: 'gravity-dig:prefab:reloaded',

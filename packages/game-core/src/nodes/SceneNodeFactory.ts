@@ -15,6 +15,8 @@ export interface SceneNodeJson {
   overrides?: Record<string, Record<string, unknown>>;
   /** Runtime-only metadata populated while resolving a prefab. */
   prefabOverrideProps?: string[];
+  /** Runtime-only source name used for stable prefab-relative paths when an instance is renamed. */
+  prefabSourceName?: string;
   children?: SceneNodeJson[];
 }
 
@@ -45,6 +47,7 @@ function mergePrefabDefinition(base: SceneNodeJson, override: SceneNodeJson): Sc
     prefab: undefined,
     overrides: undefined,
     prefabOverrideProps: Object.keys(override.props ?? {}),
+    prefabSourceName: base.name,
     props: mergePropertyValues(base.props ?? {}, override.props ?? {}),
     children: override.children ?? base.children,
   };
@@ -146,8 +149,9 @@ export class SceneNodeFactoryRegistry {
     const resolvedDefinition = this.resolvePrefab(definition);
     const nodeName = resolvedDefinition.name ?? getDefinitionNodeTypeId(resolvedDefinition) ?? 'unnamed';
     const nodePath = [...parentPath, nodeName];
-    const prefabNodePath = prefabPath ? [...inheritedPrefabNodePath, nodeName] : [];
     const effectiveDefinition = this.withStableInstanceId(this.applyPreviewProps(resolvedDefinition, nodePath), nodePath);
+    const prefabNodeName = effectiveDefinition.prefabSourceName ?? nodeName;
+    const prefabNodePath = prefabPath ? [...inheritedPrefabNodePath, prefabNodeName] : [];
     const factory = this.resolveFactory(effectiveDefinition);
     const node = factory(effectiveDefinition);
     node.setCreationMetadata({
