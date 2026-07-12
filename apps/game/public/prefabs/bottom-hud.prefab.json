@@ -77,8 +77,7 @@
           "slotPrefabId": "fc891d95-3efb-567e-81d1-7fb0a446ebf5",
           "slotPrefabPath": "prefabs/inventory-slot.prefab.json",
           "slotOriginX": 362.93,
-          "slotStepX": 150.698,
-          "slotY": 21.767
+          "slotOriginY": 21.767
         }
       }
     ]

@@ -548,9 +548,6 @@ var LoadingScript = class extends ScriptNode {
 
 // public/scripts/UI/BottomHudScript.node.ts
 var SLOT_PREFAB_ID = "fc891d95-3efb-567e-81d1-7fb0a446ebf5";
-var SLOT_ORIGIN_X = 362.93;
-var SLOT_STEP_X = 150.698;
-var SLOT_Y = 21.767;
 var FIRST_SLOT_ASSET = "hud-hp-fuel-atlas#inventoryFirstSlot";
 var BottomHudScript = class extends ScriptNode {
   id = "dynamic.bottom-hud";
@@ -559,9 +556,8 @@ var BottomHudScript = class extends ScriptNode {
   energyFillNodeId = prop.nodeRef(null, { label: "Energy Fill" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State" });
   slotPrefabId = prop.string(SLOT_PREFAB_ID, { label: "Slot Prefab ID" });
-  slotOriginX = prop.number(SLOT_ORIGIN_X, { label: "Slot Origin X", step: 1e-3 });
-  slotStepX = prop.number(SLOT_STEP_X, { label: "Slot Step X", step: 1e-3 });
-  slotY = prop.number(SLOT_Y, { label: "Slot Y", step: 1e-3 });
+  slotOriginX = prop.number(362.93, { label: "Slot Origin X", step: 1e-3 });
+  slotOriginY = prop.number(21.767, { label: "Slot Origin Y", step: 1e-3 });
   hudRoot;
   energyFill;
   playerState;
@@ -590,12 +586,13 @@ var BottomHudScript = class extends ScriptNode {
     const targetCount = Math.max(0, Math.floor(this.playerState.stats.cargoSlots));
     while (this.slots.length < targetCount) this.addSlot(this.slots.length);
     while (this.slots.length > targetCount) this.removeLastSlot();
+    this.layoutSlots();
   }
   addSlot(index) {
     const slot = this.instantiatePrefab(this.slotPrefabId, {
       name: `UI.Slot${index}`,
       props: {
-        position: { x: this.slotOriginX + index * this.slotStepX, y: this.slotY },
+        position: { x: this.slotOriginX, y: this.slotOriginY },
         ...index === 0 ? { assetId: FIRST_SLOT_ASSET } : {}
       }
     });
@@ -606,6 +603,17 @@ var BottomHudScript = class extends ScriptNode {
     this.slots.push(slot);
     this.slotItems.push(item);
     this.slotLabels.push(label);
+  }
+  layoutSlots() {
+    const firstSlot = this.slots[0];
+    if (!firstSlot) return;
+    const slotWidth = firstSlot.getContentBoundsForParentSizing()?.width ?? firstSlot.size.width;
+    for (let index = 0; index < this.slots.length; index += 1) {
+      this.slots[index].position = {
+        x: this.slotOriginX + index * slotWidth,
+        y: this.slotOriginY
+      };
+    }
   }
   removeLastSlot() {
     const slot = this.slots.pop();
@@ -753,4 +761,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.d3d00ed88c16.js.map
+//# sourceMappingURL=dynamic-nodes.5ec720589518.js.map

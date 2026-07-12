@@ -37,9 +37,6 @@ type HudTextNode = Core.TextNode & {
 type ItemId = keyof typeof ITEM_SHORT_LABELS;
 
 const SLOT_PREFAB_ID = 'fc891d95-3efb-567e-81d1-7fb0a446ebf5';
-const SLOT_ORIGIN_X = 362.93;
-const SLOT_STEP_X = 150.698;
-const SLOT_Y = 21.767;
 const FIRST_SLOT_ASSET = 'hud-hp-fuel-atlas#inventoryFirstSlot';
 
 export default class BottomHudScript extends Core.ScriptNode {
@@ -50,9 +47,8 @@ export default class BottomHudScript extends Core.ScriptNode {
   energyFillNodeId = Core.prop.nodeRef(null, { label: 'Energy Fill' });
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State' });
   slotPrefabId = Core.prop.string(SLOT_PREFAB_ID, { label: 'Slot Prefab ID' });
-  slotOriginX = Core.prop.number(SLOT_ORIGIN_X, { label: 'Slot Origin X', step: 0.001 });
-  slotStepX = Core.prop.number(SLOT_STEP_X, { label: 'Slot Step X', step: 0.001 });
-  slotY = Core.prop.number(SLOT_Y, { label: 'Slot Y', step: 0.001 });
+  slotOriginX = Core.prop.number(362.93, { label: 'Slot Origin X', step: 0.001 });
+  slotOriginY = Core.prop.number(21.767, { label: 'Slot Origin Y', step: 0.001 });
 
   private hudRoot!: HudRoot;
   private energyFill!: HudImageNode;
@@ -88,14 +84,14 @@ export default class BottomHudScript extends Core.ScriptNode {
 
     while (this.slots.length < targetCount) this.addSlot(this.slots.length);
     while (this.slots.length > targetCount) this.removeLastSlot();
-
+    this.layoutSlots();
   }
 
   private addSlot(index: number) {
     const slot = this.instantiatePrefab<SlotNode>(this.slotPrefabId, {
       name: `UI.Slot${index}`,
       props: {
-        position: { x: this.slotOriginX + index * this.slotStepX, y: this.slotY },
+        position: { x: this.slotOriginX, y: this.slotOriginY },
         ...(index === 0 ? { assetId: FIRST_SLOT_ASSET } : {}),
       },
     });
@@ -108,6 +104,18 @@ export default class BottomHudScript extends Core.ScriptNode {
     this.slots.push(slot);
     this.slotItems.push(item);
     this.slotLabels.push(label);
+  }
+
+  private layoutSlots() {
+    const firstSlot = this.slots[0];
+    if (!firstSlot) return;
+    const slotWidth = firstSlot.getContentBoundsForParentSizing()?.width ?? firstSlot.size.width;
+    for (let index = 0; index < this.slots.length; index += 1) {
+      this.slots[index].position = {
+        x: this.slotOriginX + index * slotWidth,
+        y: this.slotOriginY,
+      };
+    }
   }
 
   private removeLastSlot() {
