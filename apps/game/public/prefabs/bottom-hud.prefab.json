@@ -7,11 +7,20 @@
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
     "props": {
       "parentAnchor": "bottom-center",
-      "position": { "x": -410.35, "y": 0 },
-      "scale": { "x": 1, "y": 1 },
+      "position": {
+        "x": -410.35,
+        "y": 0
+      },
+      "scale": {
+        "x": 1,
+        "y": 1
+      },
       "sizeMode": "content",
       "debugScrollFactor": 0,
-      "origin": { "x": 0, "y": 1 }
+      "origin": {
+        "x": 0,
+        "y": 1
+      }
     },
     "children": [
       {
@@ -20,8 +29,19 @@
         "props": {
           "assetId": "hud-hp-fuel-atlas#bottomHud",
           "scrollFactor": 0,
-          "position": { "x": 0, "y": 0 },
-          "scale": { "x": 0.42, "y": 0.42 }
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "scale": {
+            "x": 0.42,
+            "y": 0.42
+          },
+          "parentAnchor": "center-left",
+          "origin": {
+            "x": 0,
+            "y": 0.5
+          }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
@@ -31,8 +51,14 @@
         "props": {
           "assetId": "hud-hp-fuel-atlas#energyBar",
           "scrollFactor": 0,
-          "position": { "x": 128, "y": 80 },
-          "scale": { "x": 0.41, "y": 0.48 }
+          "position": {
+            "x": 128,
+            "y": 80
+          },
+          "scale": {
+            "x": 0.41,
+            "y": 0.48
+          }
         },
         "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48"
       },
