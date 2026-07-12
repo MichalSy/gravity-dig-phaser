@@ -112,7 +112,6 @@ export class TextNode extends TransformNode {
     if (!this.phaserText) return;
 
     this.applyTextContentAndStyle();
-    if (this.sizeMode === 'content') this.updateSizeFromText();
     this.applyTransformTo(this.phaserText);
   }
 
@@ -126,21 +125,24 @@ export class TextNode extends TransformNode {
   }
 
   setText(text: string): void {
+    if (this.text === text) return;
     this.text = text;
     this.phaserText?.setText(text);
-    if (this.sizeMode === 'content') this.updateSizeFromText();
+    if (this.sizeMode === 'content') this.invalidateMeasure();
   }
 
   setFontFamily(fontFamily: string): void {
+    if (this.fontFamily === fontFamily) return;
     this.fontFamily = fontFamily;
     this.applyTextContentAndStyle();
-    if (this.sizeMode === 'content') this.updateSizeFromText();
+    if (this.sizeMode === 'content') this.invalidateMeasure();
   }
 
   setFontSize(fontSize: number): void {
+    if (this.fontSize === fontSize) return;
     this.fontSize = fontSize;
     this.applyTextContentAndStyle();
-    if (this.sizeMode === 'content') this.updateSizeFromText();
+    if (this.sizeMode === 'content') this.invalidateMeasure();
   }
 
   setStyle(style: Phaser.Types.GameObjects.Text.TextStyle): void {
@@ -153,7 +155,7 @@ export class TextNode extends TransformNode {
     this.strokeThickness = normalizeFontSize(style.strokeThickness, this.strokeThickness);
     this.align = stringStyleValue(style.align) ?? this.align;
     this.applyTextContentAndStyle();
-    if (this.sizeMode === 'content') this.updateSizeFromText();
+    if (this.sizeMode === 'content') this.invalidateMeasure();
   }
 
   protected override getLocalContentBounds(): NodeDebugBounds | undefined {
@@ -212,7 +214,7 @@ export class TextNode extends TransformNode {
         if (typeof value !== 'string') return false;
         this.fontId = value;
         this.applyTextContentAndStyle();
-        if (this.sizeMode === 'content') this.updateSizeFromText();
+        if (this.sizeMode === 'content') this.invalidateMeasure();
         return true;
       case 'fontFamily':
         if (typeof value !== 'string') return false;

@@ -180,6 +180,17 @@ Display primitives live under `src/nodes/`:
 
 Every runtime node lives in its own file. Root nodes compose child nodes; large multi-node files are intentionally avoided.
 
+### Cached measure and arrange
+
+Layout is split into two cached phases:
+
+- `measureTree()` runs bottom-up only for branches marked `measureDirty`. A node measures its intrinsic content first; a `content` parent then unions the measured local bounds of its children.
+- `arrangeTree()` runs top-down only for branches marked `arrangeDirty`. It resolves parent anchors, origins, local/world transforms, and arranged bounds from the already measured sizes.
+
+Layout property setters invalidate the minimum required work. Intrinsic-size changes propagate measure invalidation through `content` ancestors; parent size and transform changes invalidate arrangement for anchored descendants. Tree insertion, removal, reparenting, visibility, scale, text, and size changes participate in the same invalidation path. Stable trees therefore reuse their measured size and arranged transform rather than recomputing both every frame.
+
+`parentAnchor` is intentionally excluded from content measurement. Anchors such as `center-left` depend on the final parent size and are resolved during arrange. A content-sized parent should not depend exclusively on an anchored child for the same axis, because that would create a circular size dependency.
+
 ```txt
 src/app/loading/     # loading overlay view
 src/app/menu/        # menu view/config/layout

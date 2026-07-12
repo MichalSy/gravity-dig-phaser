@@ -49,10 +49,10 @@ export class TransformNode extends GameNode {
     }),
   ];
 
-  visible: boolean;
-  scale: number;
-  scaleX: number;
-  scaleY: number;
+  private visibleValue: boolean;
+  private scaleValue: number;
+  private scaleXValue: number;
+  private scaleYValue: number;
   scrollFactor: number;
   private inheritsScrollFactor: boolean;
 
@@ -61,14 +61,45 @@ export class TransformNode extends GameNode {
       ...options,
       className: options.className ?? 'TransformNode',
     });
-    this.visible = options.visible ?? true;
+    this.visibleValue = options.visible ?? true;
     const scale = typeof options.scale === 'object' ? options.scale : undefined;
     const uniformScale = typeof options.scale === 'number' ? options.scale : 1;
-    this.scaleX = roundScale(scale?.x ?? uniformScale);
-    this.scaleY = roundScale(scale?.y ?? uniformScale);
-    this.scale = this.scaleX === this.scaleY ? this.scaleX : 1;
+    this.scaleXValue = roundScale(scale?.x ?? uniformScale);
+    this.scaleYValue = roundScale(scale?.y ?? uniformScale);
+    this.scaleValue = this.scaleXValue === this.scaleYValue ? this.scaleXValue : 1;
     this.scrollFactor = options.scrollFactor ?? 1;
     this.inheritsScrollFactor = options.scrollFactor === undefined;
+  }
+
+  get visible(): boolean { return this.visibleValue; }
+  set visible(value: boolean) {
+    if (this.visibleValue === value) return;
+    this.visibleValue = value;
+    this.invalidateArrange(true);
+    if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
+  }
+
+  get scale(): number { return this.scaleValue; }
+  set scale(value: number) { this.scaleValue = value; }
+
+  get scaleX(): number { return this.scaleXValue; }
+  set scaleX(value: number) {
+    const rounded = roundScale(value);
+    if (this.scaleXValue === rounded) return;
+    this.scaleXValue = rounded;
+    this.scaleValue = this.scaleXValue === this.scaleYValue ? this.scaleXValue : 1;
+    this.invalidateArrange(true);
+    if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
+  }
+
+  get scaleY(): number { return this.scaleYValue; }
+  set scaleY(value: number) {
+    const rounded = roundScale(value);
+    if (this.scaleYValue === rounded) return;
+    this.scaleYValue = rounded;
+    this.scaleValue = this.scaleXValue === this.scaleYValue ? this.scaleXValue : 1;
+    this.invalidateArrange(true);
+    if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
   }
 
   override isDebugVisible(): boolean {

@@ -121,12 +121,12 @@ export abstract class GameNode {
   readonly name?: string;
   private readonly debugClassNameValue: string;
   active: boolean;
-  position: PointLike;
-  size: SizeLike;
-  parentAnchor: Anchor;
-  origin: PointLike;
-  rotation: number;
-  sizeMode: NodeSizeMode;
+  private positionValue: PointLike;
+  private sizeValue: SizeLike;
+  private parentAnchorValue: Anchor;
+  private originValue: PointLike;
+  private rotationValue: number;
+  private sizeModeValue: NodeSizeMode;
   boundsMode: NodeBoundsMode;
   debugScrollFactor?: number;
   parent?: GameNode;
@@ -143,6 +143,11 @@ export abstract class GameNode {
   private resolved = false;
   private creationMetadata: NodeCreationMetadata = { origin: 'scene' };
   private readonly destroyedListeners = new Set<() => void>();
+  private measureDirty = true;
+  private subtreeMeasureDirty = true;
+  private arrangeDirty = true;
+  private subtreeArrangeDirty = true;
+  private inMeasurePass = false;
 
   protected constructor(options: GameNodeOptions = {}) {
     this.nodeTypeId = options.nodeTypeId ?? getNodeTypeId(this);
@@ -150,14 +155,82 @@ export abstract class GameNode {
     this.name = options.name;
     this.debugClassNameValue = options.className ?? this.constructor.name;
     this.active = options.active ?? true;
-    this.position = { x: options.position?.x ?? 0, y: options.position?.y ?? 0 };
-    this.size = { width: options.size?.width ?? 0, height: options.size?.height ?? 0 };
-    this.parentAnchor = options.parentAnchor ?? 'top-left';
-    this.origin = { x: options.origin?.x ?? 0, y: options.origin?.y ?? 0 };
-    this.rotation = options.rotation ?? 0;
-    this.sizeMode = options.sizeMode ?? (options.size ? 'explicit' : 'content');
+    this.positionValue = { x: options.position?.x ?? 0, y: options.position?.y ?? 0 };
+    this.sizeValue = { width: options.size?.width ?? 0, height: options.size?.height ?? 0 };
+    this.parentAnchorValue = options.parentAnchor ?? 'top-left';
+    this.originValue = { x: options.origin?.x ?? 0, y: options.origin?.y ?? 0 };
+    this.rotationValue = options.rotation ?? 0;
+    this.sizeModeValue = options.sizeMode ?? (options.size ? 'explicit' : 'content');
     this.boundsMode = options.boundsMode ?? 'content';
     this.debugScrollFactor = options.debugScrollFactor;
+  }
+
+  get position(): PointLike { return this.positionValue; }
+  set position(value: PointLike) {
+    if (this.positionValue.x === value.x && this.positionValue.y === value.y) return;
+    this.positionValue = { ...value };
+    this.invalidateArrange();
+    if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
+  }
+
+  get size(): SizeLike { return this.sizeValue; }
+  set size(value: SizeLike) {
+    if (this.sizeValue.width === value.width && this.sizeValue.height === value.height) return;
+    this.sizeValue = { ...value };
+    this.invalidateArrange(true);
+    if (!this.inMeasurePass) this.invalidateMeasure();
+    else if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
+  }
+
+  get parentAnchor(): Anchor { return this.parentAnchorValue; }
+  set parentAnchor(value: Anchor) {
+    if (this.parentAnchorValue === value) return;
+    this.parentAnchorValue = value;
+    this.invalidateArrange();
+  }
+
+  get origin(): PointLike { return this.originValue; }
+  set origin(value: PointLike) {
+    if (this.originValue.x === value.x && this.originValue.y === value.y) return;
+    this.originValue = { ...value };
+    this.invalidateArrange(true);
+    if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
+  }
+
+  get rotation(): number { return this.rotationValue; }
+  set rotation(value: number) {
+    if (this.rotationValue === value) return;
+    this.rotationValue = value;
+    this.invalidateArrange(true);
+    if (this.parent?.sizeMode === 'content') this.parent.invalidateMeasure();
+  }
+
+  get sizeMode(): NodeSizeMode { return this.sizeModeValue; }
+  set sizeMode(value: NodeSizeMode) {
+    if (this.sizeModeValue === value) return;
+    this.sizeModeValue = value;
+    this.contentBounds = undefined;
+    this.invalidateMeasure();
+  }
+
+  get isMeasureDirty(): boolean { return this.measureDirty; }
+  get isArrangeDirty(): boolean { return this.arrangeDirty; }
+
+  invalidateMeasure(): void {
+    this.measureDirty = true;
+    this.arrangeDirty = true;
+    for (let node: GameNode | undefined = this; node; node = node.parent) {
+      node.subtreeMeasureDirty = true;
+      node.subtreeArrangeDirty = true;
+      if (node !== this && node.sizeMode === 'content') node.measureDirty = true;
+    }
+  }
+
+  invalidateArrange(includeDescendants = false): void {
+    this.arrangeDirty = true;
+    this.subtreeArrangeDirty = true;
+    for (let node = this.parent; node; node = node.parent) node.subtreeArrangeDirty = true;
+    if (includeDescendants) for (const child of this.children) child.invalidateArrange(true);
   }
 
   get children(): readonly GameNode[] {
@@ -199,6 +272,8 @@ export abstract class GameNode {
 
     child.parent = this;
     this.childNodes.splice(clampChildIndex(index, this.childNodes.length), 0, child);
+    child.invalidateArrange(true);
+    this.invalidateMeasure();
 
     if (this.nodeContext && !child.isInitialized) {
       this.nodeContext.runtime.mountSubtree(child, this.nodeContext);
@@ -213,6 +288,7 @@ export abstract class GameNode {
 
     this.childNodes.splice(index, 1);
     child.parent = undefined;
+    this.invalidateMeasure();
     return true;
   }
 
@@ -223,6 +299,7 @@ export abstract class GameNode {
     child.destroyTree();
     child.parent = undefined;
     this.childNodes.splice(index, 1);
+    this.invalidateMeasure();
   }
 
   init(_ctx: NodeContext): void {}
@@ -267,18 +344,32 @@ export abstract class GameNode {
   }
 
   measureTree(deltaMs: number): void {
-    if (!this.isEffectivelyActive()) return;
+    if (!this.isEffectivelyActive() || !this.subtreeMeasureDirty) return;
 
-    this.layoutResult = undefined;
-    this.prepareLayout(deltaMs);
-    this.updateFillSizeFromParent();
-    this.measureSelf();
+    let measuredSelfSize: SizeLike | undefined;
+    if (this.measureDirty) {
+      this.layoutResult = undefined;
+      this.inMeasurePass = true;
+      if (this.sizeMode === 'content' && this.contentBounds) {
+        this.contentBounds = undefined;
+        this.sizeValue = { width: 0, height: 0 };
+      }
+      this.prepareLayout(deltaMs);
+      this.updateFillSizeFromParent();
+      this.measureSelf();
+      measuredSelfSize = { ...this.size };
+    }
     for (const child of this.children) child.measureTree(deltaMs);
-    this.updateContentSizeFromChildren();
+    if (this.measureDirty) {
+      this.updateContentSizeFromChildren(measuredSelfSize);
+      this.inMeasurePass = false;
+      this.measureDirty = false;
+    }
+    this.subtreeMeasureDirty = this.children.some((child) => child.isEffectivelyActive() && child.subtreeMeasureDirty);
   }
 
   arrangeTree(): void {
-    if (!this.isEffectivelyActive()) return;
+    if (!this.isEffectivelyActive() || !this.subtreeArrangeDirty) return;
 
     this.updateFillSizeFromParent();
     const localScale = this.getLocalScale();
@@ -315,6 +406,8 @@ export abstract class GameNode {
     this.layoutResult.localBounds = localBounds;
     this.layoutResult.boundsInParent = localBounds ? transformBounds(localBounds, localScale, this.rotation, positionInParent) : undefined;
     this.layoutResult.worldBounds = localBounds ? transformBounds(localBounds, worldScale, worldRotation, worldPosition) : undefined;
+    this.arrangeDirty = false;
+    this.subtreeArrangeDirty = this.children.some((child) => child.isEffectivelyActive() && child.subtreeArrangeDirty);
   }
 
   updateTree(deltaMs: number): void {
@@ -453,11 +546,15 @@ export abstract class GameNode {
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, scrollFactor: localBounds.scrollFactor ?? this.debugScrollFactor };
   }
 
-  updateContentSizeFromChildren(): void {
-    if (this.sizeMode !== 'content' || this.children.length === 0) return;
+  updateContentSizeFromChildren(measuredSelfSize = this.size): void {
+    if (this.sizeMode !== 'content') return;
 
     const childBounds = this.getChildContentBounds((child) => child.getContentBoundsForParentSizing());
-    if (childBounds.length === 0) return;
+    if (childBounds.length === 0) {
+      this.contentBounds = undefined;
+      this.size = { ...measuredSelfSize };
+      return;
+    }
 
     const bounds = this.unionChildBounds(childBounds, true);
     this.contentBounds = bounds;
@@ -729,6 +826,7 @@ export abstract class GameNode {
         if (this.active === value) return true;
         this.active = value;
         this.refreshSubtreeActiveState();
+        this.invalidateMeasure();
         return true;
       case 'position':
         if (!isPointPatchValue(value)) return false;
@@ -767,6 +865,8 @@ export abstract class GameNode {
   getDebugProps(): NodeDebugProps {
     return {
       active: this.active,
+      measureDirty: this.measureDirty,
+      arrangeDirty: this.arrangeDirty,
       scenePropOverrides: this.scenePropOverrides.size > 0 ? [...this.scenePropOverrides].join(',') : null,
     };
   }
