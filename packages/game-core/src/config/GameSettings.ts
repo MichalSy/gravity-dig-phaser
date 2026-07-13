@@ -5,8 +5,24 @@ export type ManagerLifetime = 'runtime' | 'scene';
 
 export interface GameSceneSettings {
   path: string;
-  assetGroup?: string;
+  assetGroups: string[];
+  prefabs: string[];
 }
+
+export interface GameSceneActionSettings {
+  type: 'mountScene' | 'loadSceneAssets';
+  scene: string;
+  unmount: string[];
+}
+
+export interface GameSoundActionSettings {
+  type: 'playSound';
+  asset: string;
+  volume: number;
+  detune: number;
+}
+
+export type GameActionSettings = GameSceneActionSettings | GameSoundActionSettings;
 
 export interface GameManagerSettings {
   id: string;
@@ -20,16 +36,22 @@ export interface GameManagerSettings {
 
 export interface GameSettings {
   version: 1;
+  assets: { manifest: string };
   scenes: {
     startup: string;
     editorDefault: string;
     definitions: Record<string, GameSceneSettings>;
   };
+  actions: Record<string, GameActionSettings>;
   managers: GameManagerSettings[];
 }
 
 export function parseGameSettings(value: unknown): GameSettings {
   if (!isRecord(value) || value.version !== 1) throw new Error('game.settings.json uses an unsupported schema version');
+  const assets = value.assets;
+  if (!isRecord(assets) || typeof assets.manifest !== 'string' || assets.manifest.length === 0) {
+    throw new Error('game.settings.json has invalid asset settings');
+  }
   const scenes = value.scenes;
   if (!isRecord(scenes) || typeof scenes.startup !== 'string' || typeof scenes.editorDefault !== 'string' || !isRecord(scenes.definitions)) {
     throw new Error('game.settings.json has invalid scene settings');
@@ -42,11 +64,35 @@ export function parseGameSettings(value: unknown): GameSettings {
     }
     definitions[id] = {
       path: definition.path,
-      assetGroup: typeof definition.assetGroup === 'string' ? definition.assetGroup : undefined,
+      assetGroups: parseStringArray(definition.assetGroups, `Scene '${id}' has invalid assetGroups`),
+      prefabs: parseStringArray(definition.prefabs, `Scene '${id}' has invalid prefabs`),
     };
   }
   if (!definitions[scenes.startup]) throw new Error(`Startup scene '${scenes.startup}' is not defined`);
   if (!definitions[scenes.editorDefault]) throw new Error(`Editor default scene '${scenes.editorDefault}' is not defined`);
+
+  if (!isRecord(value.actions)) throw new Error('game.settings.json actions must be an object');
+  const actions: Record<string, GameActionSettings> = {};
+  for (const [event, action] of Object.entries(value.actions)) {
+    if (!isRecord(action)) {
+      throw new Error(`Action '${event}' is invalid`);
+    }
+    if (action.type === 'playSound') {
+      if (typeof action.asset !== 'string' || action.asset.length === 0) throw new Error(`Action '${event}' has no sound asset`);
+      actions[event] = {
+        type: 'playSound',
+        asset: action.asset,
+        volume: typeof action.volume === 'number' ? action.volume : 1,
+        detune: typeof action.detune === 'number' ? action.detune : 0,
+      };
+      continue;
+    }
+    if ((action.type !== 'mountScene' && action.type !== 'loadSceneAssets') || typeof action.scene !== 'string') throw new Error(`Action '${event}' is invalid`);
+    if (!definitions[action.scene]) throw new Error(`Action '${event}' references unknown scene '${action.scene}'`);
+    const unmount = parseStringArray(action.unmount, `Action '${event}' has invalid unmount scenes`);
+    for (const sceneId of unmount) if (!definitions[sceneId]) throw new Error(`Action '${event}' unmounts unknown scene '${sceneId}'`);
+    actions[event] = { type: action.type, scene: action.scene, unmount };
+  }
 
   if (!Array.isArray(value.managers)) throw new Error('game.settings.json managers must be an array');
   const managers = value.managers.map(parseManagerSettings);
@@ -83,7 +129,9 @@ export function parseGameSettings(value: unknown): GameSettings {
 
   return {
     version: 1,
+    assets: { manifest: assets.manifest },
     scenes: { startup: scenes.startup, editorDefault: scenes.editorDefault, definitions },
+    actions,
     managers,
   };
 }
@@ -153,4 +201,10 @@ function compareManagers(left: GameManagerSettings, right: GameManagerSettings):
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseStringArray(value: unknown, error: string): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string' && entry.length > 0)) throw new Error(error);
+  return [...value];
 }

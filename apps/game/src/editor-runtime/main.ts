@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { DebugDynamicNodeBundleReference } from '@gravity-dig/debug-protocol';
 import '../style.css';
-import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
+import { loadAssetGroups, parsePublicAssetManifest, runtimeAssetDefinitions } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { createGravityDigNodeFactory, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, registerGravityDigDynamicModule, RuntimeManagerHost, SceneNodeFactoryRegistry, type GameNode, type GameSettings, type SceneFileJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
@@ -9,7 +9,7 @@ import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode
 import { VIEWPORT_REFRESH_EVENT } from '../utils/screen';
 
 type RuntimeMode = 'editor' | 'play';
-type RuntimeSceneId = 'menu' | 'loading' | 'gameplay';
+type RuntimeSceneId = string;
 
 interface StartRuntimeMessage {
   type: 'gravity-dig:runtime:start';
@@ -29,10 +29,8 @@ class EditorRuntimeScene extends Phaser.Scene {
   private currentMode?: RuntimeMode;
   private currentEditorRoot?: NodeRoot;
   private playRoot?: NodeRoot;
-  private playMenuScene?: GameNode;
-  private playLoadingScene?: GameNode;
+  private readonly playScenes = new Map<string, GameNode>();
   private debugBridge?: DebugBridgeNode;
-  private playGameplayMounted = false;
   private editorApiBase?: string;
   private lastStartSignature?: string;
   private startQueue: Promise<void> = Promise.resolve();
@@ -41,11 +39,6 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   constructor() {
     super('EditorRuntime');
-  }
-
-  preload(): void {
-    loadMenuAssets(this);
-    loadGameAssets(this);
   }
 
   create(): void {
@@ -123,7 +116,7 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     this.runtime.resolve();
     this.debugBridge?.publishTreeSnapshot();
-    window.parent?.postMessage({ type: 'gravity-dig:runtime:started', mode: message.mode, scene: message.mode === 'play' ? 'menu' : message.scene }, window.location.origin);
+    window.parent?.postMessage({ type: 'gravity-dig:runtime:started', mode: message.mode, scene: message.mode === 'play' ? this.requireGameSettings().scenes.startup : message.scene }, window.location.origin);
   }
 
   private async ensureRuntime(message: StartRuntimeMessage): Promise<void> {
@@ -137,10 +130,8 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.currentEditorRoot = undefined;
     this.playRoot = undefined;
+    this.playScenes.clear();
     this.debugBridge = undefined;
-    this.playMenuScene = undefined;
-    this.playLoadingScene = undefined;
-    this.playGameplayMounted = false;
     this.managerHost = undefined;
     this.gameSettings = undefined;
     this.dynamicModules.clear();
@@ -148,11 +139,15 @@ class EditorRuntimeScene extends Phaser.Scene {
     const mode = message.mode === 'editor' ? NodeRuntimeMode.Editor : NodeRuntimeMode.Play;
     this.runtime = new NodeRuntime({ phaserScene: this, mode });
     this.currentMode = message.mode;
-    this.runtime.registerImageAssets([...MENU_GRAPHIC_ASSETS, ...GAME_GRAPHIC_ASSETS]);
-    this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
-    this.runtime.registerFontAssets(GAME_FONT_ASSETS);
-    await this.refreshFactory(message.editorApiBase);
     this.gameSettings = parseGameSettings(await this.fetchJson<unknown>(message.editorApiBase, 'game.settings.json'));
+    const assetManifest = parsePublicAssetManifest(await this.fetchJson<unknown>(message.editorApiBase, this.gameSettings.assets.manifest));
+    const assetGroups = [...new Set(Object.values(this.gameSettings.scenes.definitions).flatMap((definition) => definition.assetGroups))];
+    await loadAssetGroups(this, assetManifest, assetGroups);
+    const assets = runtimeAssetDefinitions(this, assetManifest, assetGroups);
+    this.runtime.registerImageAssets(assets.images);
+    this.runtime.registerAnimationSets(assets.animationSets);
+    this.runtime.registerFontAssets(assets.fonts);
+    await this.refreshFactory(message.editorApiBase);
     if (!this.factory || !this.prefabManager) throw new Error('Runtime factory is not ready');
     this.managerHost = new RuntimeManagerHost({
       runtime: this.runtime,
@@ -197,17 +192,14 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     await this.requireManagerHost().activateScene(message.scene);
     const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, this.scenePath(message.scene));
+    await this.ensureConfiguredPrefabs(message.scene);
     await this.prefabManager?.ensureDefinitions(scene.root);
-    if (message.scene === 'gameplay') await Promise.all([
-      this.prefabManager?.ensure('prefabs/player.prefab.json'),
-      this.prefabManager?.ensure('prefabs/ship.prefab.json'),
-    ]);
     this.currentEditorRoot.addChild(this.createScene(scene));
     runtime.resolve();
 
   }
 
-  private async startPlayMode(message: StartRuntimeMessage): Promise<void> {
+  private async startPlayMode(_message: StartRuntimeMessage): Promise<void> {
     const runtime = this.requireRuntime();
     if (this.currentEditorRoot) {
       runtime.removeRoot(this.currentEditorRoot);
@@ -218,66 +210,58 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
     this.playRoot = runtime.addRoot(new NodeRoot({ rootName: 'Play-Runtime-Root' }));
     const startupSceneId = this.requireGameSettings().scenes.startup;
-    const menu = await this.fetchJson<SceneFileJson>(message.editorApiBase, this.scenePath(startupSceneId));
-    await this.prefabManager?.ensureDefinitions(menu.root);
-    this.playMenuScene = this.playRoot.addChild(this.createScene(menu));
-  }
-
-  private async startGame(): Promise<void> {
-    if (this.playMenuScene && this.playRoot) {
-      this.playRoot.removeChild(this.playMenuScene);
-      this.playMenuScene = undefined;
-    }
-    if (!this.playRoot || this.playLoadingScene) return;
-    const loading = await this.fetchJson<SceneFileJson>(this.editorApiBase, this.scenePath('loading'));
-    await this.prefabManager?.ensureDefinitions(loading.root);
-    this.playLoadingScene = this.playRoot.addChild(this.createScene(loading));
-    this.runtime?.resolve();
+    await this.mountPlayScene(startupSceneId);
   }
 
   private createScriptActions(): Record<string, (source: DynamicScriptNode) => void> {
-    return {
-      'game:start': () => { void this.startGame(); },
-      'game:load': (source) => {
-        source.callScriptMethod('setProgress', 1);
-        source.callScriptMethod('complete');
-      },
-      'game:mount': () => { void this.mountGameplay(); },
-      'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
-    };
+    return Object.fromEntries(Object.keys(this.requireGameSettings().actions).map((event) => [
+      event,
+      (source: DynamicScriptNode) => { void this.runConfiguredAction(event, source); },
+    ]));
   }
 
-  private async mountGameplay(): Promise<void> {
-    if (this.playGameplayMounted || !this.playRoot) return;
-    this.playGameplayMounted = true;
-    await this.requireManagerHost().activateScene('gameplay');
-
-    if (this.playMenuScene) {
-      this.playRoot.removeChild(this.playMenuScene);
-      this.playMenuScene = undefined;
+  private async runConfiguredAction(event: string, source: DynamicScriptNode): Promise<void> {
+    const action = this.requireGameSettings().actions[event];
+    if (!action) return;
+    if (action.type === 'playSound') {
+      const detune = action.detune > 0 ? Phaser.Math.Between(-action.detune, action.detune) : 0;
+      this.sound.play(action.asset, { volume: action.volume, detune });
+      return;
     }
-    if (this.playLoadingScene) {
-      this.playRoot.removeChild(this.playLoadingScene);
-      this.playLoadingScene = undefined;
+    if (action.type === 'loadSceneAssets') {
+      source.callScriptMethod('setProgress', 1);
+      source.callScriptMethod('complete');
+      return;
     }
-
-    void this.mountGameplayScenes(this.playRoot);
+    await this.mountPlayScene(action.scene);
+    this.unmountPlayScenes(action.unmount);
+    this.runtime?.resolve();
   }
 
-  private async mountGameplayScenes(root: NodeRoot): Promise<void> {
-    try {
-      const gameplay = await this.fetchJson<SceneFileJson>(this.editorApiBase, this.scenePath('gameplay'));
-      await this.prefabManager?.ensureDefinitions(gameplay.root);
-      await Promise.all([
-        this.prefabManager?.ensure('prefabs/player.prefab.json'),
-        this.prefabManager?.ensure('prefabs/ship.prefab.json'),
-      ]);
-      root.addChild(this.createScene(gameplay));
-      this.runtime?.resolve();
-    } catch (error) {
-      console.error('[Gravity Dig Runtime] gameplay mount failed', error);
-      window.parent?.postMessage({ type: 'gravity-dig:runtime:error', message: error instanceof Error ? error.message : String(error) }, window.location.origin);
+  private async mountPlayScene(sceneId: string): Promise<void> {
+    if (!this.playRoot || this.playScenes.has(sceneId)) return;
+    await this.requireManagerHost().activateScene(sceneId);
+    await this.ensureConfiguredPrefabs(sceneId);
+    const sceneFile = await this.fetchJson<SceneFileJson>(this.editorApiBase, this.scenePath(sceneId));
+    await this.prefabManager?.ensureDefinitions(sceneFile.root);
+    const scene = this.playRoot.addChild(this.createScene(sceneFile));
+    this.playScenes.set(sceneId, scene);
+  }
+
+  private unmountPlayScenes(sceneIds: readonly string[]): void {
+    if (!this.playRoot) return;
+    for (const sceneId of sceneIds) {
+      const scene = this.playScenes.get(sceneId);
+      if (!scene) continue;
+      this.playRoot.removeChild(scene);
+      this.playScenes.delete(sceneId);
     }
+  }
+
+  private async ensureConfiguredPrefabs(sceneId: string): Promise<void> {
+    const definition = this.requireGameSettings().scenes.definitions[sceneId];
+    if (!definition) throw new Error(`Scene '${sceneId}' is not defined in game.settings.json`);
+    await Promise.all(definition.prefabs.map((path) => this.prefabManager?.ensure(path)));
   }
 
   private requireRuntime(): NodeRuntime {

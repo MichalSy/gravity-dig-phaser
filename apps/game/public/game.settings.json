@@ -1,22 +1,51 @@
 {
   "$schema": "schemas/game-settings.schema.json",
   "version": 1,
+  "assets": {
+    "manifest": "assets/assets.manifest.json"
+  },
   "scenes": {
     "startup": "menu",
     "editorDefault": "gameplay",
     "definitions": {
       "menu": {
         "path": "scenes/menu.scene.json",
-        "assetGroup": "startup"
+        "assetGroups": ["startup"]
       },
       "loading": {
         "path": "scenes/loading.scene.json",
-        "assetGroup": "startup"
+        "assetGroups": ["startup"]
       },
       "gameplay": {
         "path": "scenes/gameplay.scene.json",
-        "assetGroup": "gameplay"
+        "assetGroups": ["gameplay"],
+        "prefabs": [
+          "prefabs/player.prefab.json",
+          "prefabs/ship.prefab.json"
+        ]
       }
+    }
+  },
+  "actions": {
+    "game:start": {
+      "type": "mountScene",
+      "scene": "loading",
+      "unmount": ["menu"]
+    },
+    "game:load": {
+      "type": "loadSceneAssets",
+      "scene": "gameplay"
+    },
+    "game:mount": {
+      "type": "mountScene",
+      "scene": "gameplay",
+      "unmount": ["menu", "loading"]
+    },
+    "player:jump": {
+      "type": "playSound",
+      "asset": "jump",
+      "volume": 0.42,
+      "detune": 40
     }
   },
   "managers": [

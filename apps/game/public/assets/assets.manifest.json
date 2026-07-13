@@ -1,0 +1,58 @@
+{
+  "$schema": "../schemas/asset-manifest.schema.json",
+  "version": 1,
+  "groups": {
+    "startup": {
+      "images": [
+        { "key": "title-screen", "path": "/assets/ui/menu/title_screen.webp" },
+        { "key": "loading-screen", "path": "/assets/ui/menu/loading_screen.webp" },
+        { "key": "menu-button-active", "path": "/assets/ui/menu/menu_button_active.webp" },
+        { "key": "menu-button-inactive", "path": "/assets/ui/menu/menu_button_inactive.webp" }
+      ],
+      "fontManifests": ["/fonts/manifest.json"]
+    },
+    "gameplay": {
+      "images": [
+        { "key": "tiles", "path": "/assets/tilesets/atlas/tiles_atlas.webp" },
+        { "key": "backwall-tiles", "path": "/assets/tilesets/atlas/backwall_atlas.webp" },
+        { "key": "ship", "path": "/assets/ships/the_bucket.webp" },
+        { "key": "drill-tunnel-bg", "path": "/assets/ships/drill_tunnel_bg.webp" },
+        { "key": "laser-dot", "path": "/assets/effects/laser_beam.webp" },
+        { "key": "hud-hp-fuel-atlas", "path": "/assets/ui/hud/hud_hp_fuel_atlas.webp", "meta": true },
+        { "key": "hud-item-rock", "path": "/assets/ui/hud/hud_item_rock.webp" },
+        { "key": "crack-1", "path": "/assets/effects/cracks/crack-1.webp" },
+        { "key": "crack-2", "path": "/assets/effects/cracks/crack-2.webp" },
+        { "key": "crack-3", "path": "/assets/effects/cracks/crack-3.webp" },
+        { "key": "crack-4", "path": "/assets/effects/cracks/crack-4.webp" },
+        { "key": "player-walk-0", "path": "/assets/character/generated/walk/east/frame_000.webp" },
+        { "key": "player-walk-1", "path": "/assets/character/generated/walk/east/frame_001.webp" },
+        { "key": "player-walk-2", "path": "/assets/character/generated/walk/east/frame_002.webp" },
+        { "key": "player-walk-3", "path": "/assets/character/generated/walk/east/frame_003.webp" },
+        { "key": "player-walk-4", "path": "/assets/character/generated/walk/east/frame_004.webp" },
+        { "key": "player-walk-5", "path": "/assets/character/generated/walk/east/frame_005.webp" },
+        { "key": "player-jump-0", "path": "/assets/character/generated/jump/east/frame_000.webp" },
+        { "key": "player-jump-1", "path": "/assets/character/generated/jump/east/frame_001.webp" },
+        { "key": "player-idle-0", "path": "/assets/character/generated/idle/east/frame_000.webp" },
+        { "key": "player-idle-1", "path": "/assets/character/generated/idle/east/frame_001.webp" },
+        { "key": "player-idle-2", "path": "/assets/character/generated/idle/east/frame_002.webp" },
+        { "key": "player-idle-3", "path": "/assets/character/generated/idle/east/frame_003.webp" }
+      ],
+      "audio": [
+        { "key": "laser-loop", "path": "/assets/sfx/laser-loop.wav" },
+        { "key": "block-break-dirt", "path": "/assets/sfx/block-break-dirt.wav" },
+        { "key": "block-break-gem", "path": "/assets/sfx/block-break-gem.wav" },
+        { "key": "jump", "path": "/assets/sfx/jump.wav" },
+        { "key": "walk-1", "path": "/assets/sfx/walk-1.wav" },
+        { "key": "walk-2", "path": "/assets/sfx/walk-2.wav" },
+        { "key": "walk-3", "path": "/assets/sfx/walk-3.wav" }
+      ],
+      "json": [
+        { "key": "dev-planet", "path": "/config/planets/dev_planet.json" }
+      ],
+      "animationSets": [
+        { "key": "character", "path": "/assets/character/character.animation.json" }
+      ],
+      "fontManifests": ["/fonts/manifest.json"]
+    }
+  }
+}

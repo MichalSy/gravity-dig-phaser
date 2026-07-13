@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Public Game Asset Manifest",
+  "type": "object",
+  "required": ["version", "groups"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "groups": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "images": { "type": "array", "items": { "$ref": "#/definitions/imageAsset" } },
+          "audio": { "type": "array", "items": { "$ref": "#/definitions/keyPathAsset" } },
+          "json": { "type": "array", "items": { "$ref": "#/definitions/keyPathAsset" } },
+          "animationSets": { "type": "array", "items": { "$ref": "#/definitions/keyPathAsset" } },
+          "fontManifests": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "definitions": {
+    "keyPathAsset": {
+      "type": "object",
+      "required": ["key", "path"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "imageAsset": {
+      "type": "object",
+      "required": ["key", "path"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "meta": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

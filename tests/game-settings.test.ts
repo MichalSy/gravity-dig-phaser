@@ -4,14 +4,16 @@ import { managersForScene, parseGameSettings } from '../packages/game-core/src/c
 function settings(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     version: 1,
+    assets: { manifest: 'assets/assets.manifest.json' },
     scenes: {
       startup: 'menu',
       editorDefault: 'gameplay',
       definitions: {
-        menu: { path: 'scenes/menu.scene.json' },
-        gameplay: { path: 'scenes/gameplay.scene.json' },
+        menu: { path: 'scenes/menu.scene.json', assetGroups: ['startup'] },
+        gameplay: { path: 'scenes/gameplay.scene.json', assetGroups: ['gameplay'] },
       },
     },
+    actions: {},
     managers: [],
     ...overrides,
   };
@@ -37,12 +39,29 @@ describe('parseGameSettings', () => {
     expect(managersForScene(parsed, 'gameplay', 'play').map(({ id }) => id)).toEqual(['state', 'level']);
   });
 
+  it('normalizes scene assets, prefabs, transitions, and sound actions', () => {
+    const parsed = parseGameSettings(settings({
+      actions: {
+        start: { type: 'mountScene', scene: 'gameplay', unmount: ['menu'] },
+        jump: { type: 'playSound', asset: 'jump', volume: 0.4, detune: 20 },
+      },
+    }));
+
+    expect(parsed.assets.manifest).toBe('assets/assets.manifest.json');
+    expect(parsed.scenes.definitions.gameplay.assetGroups).toEqual(['gameplay']);
+    expect(parsed.scenes.definitions.gameplay.prefabs).toEqual([]);
+    expect(parsed.actions.start).toEqual({ type: 'mountScene', scene: 'gameplay', unmount: ['menu'] });
+    expect(parsed.actions.jump).toEqual({ type: 'playSound', asset: 'jump', volume: 0.4, detune: 20 });
+  });
+
   it.each([
     [settings({ version: 2 }), 'unsupported schema version'],
     [settings({ managers: [manager('state'), manager('state')] }), "Duplicate manager id 'state'"],
     [settings({ managers: [manager('level', { dependsOn: ['missing'] })] }), "depends on unknown manager 'missing'"],
     [settings({ managers: [manager('a', { dependsOn: ['b'] }), manager('b', { dependsOn: ['a'] })] }), 'dependency cycle'],
     [settings({ managers: [manager('level', { mountWhen: ['missing'] })] }), "references unknown scene 'missing'"],
+    [settings({ actions: { broken: { type: 'mountScene', scene: 'missing' } } }), "references unknown scene 'missing'"],
+    [settings({ actions: { broken: { type: 'playSound' } } }), 'has no sound asset'],
   ])('rejects invalid settings', (input, message) => {
     expect(() => parseGameSettings(input)).toThrow(message);
   });

@@ -22,6 +22,7 @@ describe('RuntimeManagerHost', () => {
   it('mounts dependencies once, tears down scene managers in reverse order, and preserves source metadata', async () => {
     const settings = parseGameSettings({
       version: 1,
+      assets: { manifest: 'assets/assets.manifest.json' },
       scenes: {
         startup: 'a',
         editorDefault: 'a',
@@ -30,6 +31,7 @@ describe('RuntimeManagerHost', () => {
           b: { path: 'scenes/b.scene.json' },
         },
       },
+      actions: {},
       managers: [
         { id: 'base', path: 'managers/base.manager.json', mountWhen: ['a', 'b'], lifetime: 'runtime', modes: ['play'], order: 1 },
         { id: 'a-ui', path: 'managers/a-ui.manager.json', mountWhen: ['a'], lifetime: 'scene', modes: ['play'], dependsOn: ['base'], order: 2 },

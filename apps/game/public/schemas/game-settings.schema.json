@@ -2,9 +2,16 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Gravity Dig Game Settings",
   "type": "object",
-  "required": ["version", "scenes", "managers"],
+  "required": ["version", "assets", "scenes", "actions", "managers"],
   "properties": {
+    "$schema": { "type": "string" },
     "version": { "const": 1 },
+    "assets": {
+      "type": "object",
+      "required": ["manifest"],
+      "properties": { "manifest": { "type": "string", "minLength": 1 } },
+      "additionalProperties": false
+    },
     "scenes": {
       "type": "object",
       "required": ["startup", "editorDefault", "definitions"],
@@ -17,14 +24,43 @@
             "type": "object",
             "required": ["path"],
             "properties": {
-              "path": { "type": "string" },
-              "assetGroup": { "type": "string" }
+              "path": { "type": "string", "minLength": 1 },
+              "assetGroups": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+              "prefabs": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
             },
             "additionalProperties": false
           }
         }
       },
       "additionalProperties": false
+    },
+    "actions": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["type", "scene"],
+            "properties": {
+              "type": { "enum": ["mountScene", "loadSceneAssets"] },
+              "scene": { "type": "string", "minLength": 1 },
+              "unmount": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["type", "asset"],
+            "properties": {
+              "type": { "const": "playSound" },
+              "asset": { "type": "string", "minLength": 1 },
+              "volume": { "type": "number", "minimum": 0 },
+              "detune": { "type": "number", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
     },
     "managers": {
       "type": "array",
