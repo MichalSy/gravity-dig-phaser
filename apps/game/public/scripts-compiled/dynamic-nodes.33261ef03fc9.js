@@ -243,10 +243,16 @@ var MiningScript = class extends ScriptNode {
     this.miningPressed = firing;
     this.playerState.setMiningActive(firing);
     this.target = target;
-    this.clearPresentation();
-    if (!target) return;
+    this.clearPresentation(false);
+    if (!target) {
+      this.laserAudio.stop();
+      return;
+    }
     this.showTargetAndBeam(target, origin, firing);
-    if (!firing || !this.playerState.hasMiningEnergy()) return;
+    if (!firing || !this.playerState.hasMiningEnergy()) {
+      this.laserAudio.stop();
+      return;
+    }
     this.laserAudio.play();
     this.playerState.consumeMiningEnergy(deltaSeconds);
     target.health -= this.playerState.stats.miningDamagePerSec * deltaSeconds;
@@ -271,11 +277,11 @@ var MiningScript = class extends ScriptNode {
       this.laserLine.worldToLocalPosition(center)
     );
   }
-  clearPresentation() {
+  clearPresentation(stopAudio = true) {
     this.laserLine?.clear();
     if (this.laserLine) this.laserLine.visible = false;
     if (this.targetMarker) this.targetMarker.visible = false;
-    this.laserAudio?.stop();
+    if (stopAudio) this.laserAudio?.stop();
   }
   updateCrackOverlay(cell) {
     const key = tileKey(cell);
@@ -849,4 +855,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.d5fc2270a91e.js.map
+//# sourceMappingURL=dynamic-nodes.33261ef03fc9.js.map

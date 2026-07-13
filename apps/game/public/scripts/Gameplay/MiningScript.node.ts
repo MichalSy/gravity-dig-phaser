@@ -157,11 +157,17 @@ export default class MiningScript extends Core.ScriptNode {
     this.miningPressed = firing;
     this.playerState.setMiningActive(firing);
     this.target = target;
-    this.clearPresentation();
+    this.clearPresentation(false);
 
-    if (!target) return;
+    if (!target) {
+      this.laserAudio.stop();
+      return;
+    }
     this.showTargetAndBeam(target, origin, firing);
-    if (!firing || !this.playerState.hasMiningEnergy()) return;
+    if (!firing || !this.playerState.hasMiningEnergy()) {
+      this.laserAudio.stop();
+      return;
+    }
 
     this.laserAudio.play();
     this.playerState.consumeMiningEnergy(deltaSeconds);
@@ -191,11 +197,11 @@ export default class MiningScript extends Core.ScriptNode {
     );
   }
 
-  private clearPresentation() {
+  private clearPresentation(stopAudio = true) {
     this.laserLine?.clear();
     if (this.laserLine) this.laserLine.visible = false;
     if (this.targetMarker) this.targetMarker.visible = false;
-    this.laserAudio?.stop();
+    if (stopAudio) this.laserAudio?.stop();
   }
 
   private updateCrackOverlay(cell: TileCell) {
