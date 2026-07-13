@@ -13,6 +13,11 @@
     "build": "npm run build:protocol && npm run build:game && npm run build:editor",
     "build:protocol": "npm run build -w packages/debug-protocol",
     "build:game": "npm run build -w apps/game",
-    "build:editor": "npm run build -w apps/editor"
+    "build:editor": "npm run build -w apps/editor",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.7"
   }
 }

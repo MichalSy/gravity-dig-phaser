@@ -51,13 +51,29 @@ export function parseGameSettings(value: unknown): GameSettings {
   if (!Array.isArray(value.managers)) throw new Error('game.settings.json managers must be an array');
   const managers = value.managers.map(parseManagerSettings);
   const ids = new Set<string>();
+  const managersById = new Map<string, GameManagerSettings>();
   for (const manager of managers) {
     if (ids.has(manager.id)) throw new Error(`Duplicate manager id '${manager.id}'`);
     ids.add(manager.id);
+    managersById.set(manager.id, manager);
   }
   for (const manager of managers) {
     for (const dependency of manager.dependsOn ?? []) {
-      if (!ids.has(dependency)) throw new Error(`Manager '${manager.id}' depends on unknown manager '${dependency}'`);
+      const dependencyManager = managersById.get(dependency);
+      if (!dependencyManager) throw new Error(`Manager '${manager.id}' depends on unknown manager '${dependency}'`);
+      if (manager.lifetime === 'runtime' && dependencyManager.lifetime === 'scene') {
+        throw new Error(`Runtime manager '${manager.id}' cannot depend on scene manager '${dependency}'`);
+      }
+      for (const mode of manager.modes) {
+        if (!dependencyManager.modes.includes(mode)) {
+          throw new Error(`Manager '${manager.id}' depends on '${dependency}', which is not active in mode '${mode}'`);
+        }
+      }
+      for (const sceneId of manager.mountWhen) {
+        if (!dependencyManager.mountWhen.includes(sceneId)) {
+          throw new Error(`Manager '${manager.id}' depends on '${dependency}', which does not mount in scene '${sceneId}'`);
+        }
+      }
     }
     for (const sceneId of manager.mountWhen) {
       if (!definitions[sceneId]) throw new Error(`Manager '${manager.id}' references unknown scene '${sceneId}'`);
