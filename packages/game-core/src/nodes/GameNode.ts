@@ -783,20 +783,8 @@ export abstract class GameNode {
     return result;
   }
 
-  applyInitialSceneProps(props: Record<string, unknown>): Set<string> {
-    const exposedProps = this.getFlattenedExposedProps();
-    const applied = new Set<string>();
-
-    for (const [key, value] of Object.entries(props)) {
-      const definition = exposedProps[key];
-      if (!definition) continue;
-      const validatedValue = validateScenePropValue(definition, value);
-      if (validatedValue === undefined) continue;
-      if (!this.applySceneProp(key, validatedValue)) continue;
-      applied.add(key);
-    }
-
-    return applied;
+  applyInitialSceneProps(_props: Record<string, unknown>): Set<string> {
+    return new Set<string>();
   }
 
   hasScenePropOverride(key: string): boolean {

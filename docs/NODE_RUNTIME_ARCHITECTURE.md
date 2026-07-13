@@ -151,7 +151,7 @@ A runtime instance keeps source identity and sparse authoring overrides. It does
 
 Scene-authored root overrides live in `props`. Child overrides live in `overrides`, keyed by source `nodeId`. Values equal to prefab defaults are removed so overrides stay sparse.
 
-Explicit creation overrides, such as a dynamically calculated slot position, have precedence over prefab defaults. Reference remapping processes only properties with Node-ID semantics and must never reapply unrelated defaults afterward. Initial prefab properties use `applyInitialSceneProps()`: this applies validated native and Dynamic ScriptNode properties without incorrectly recording them as sparse Inspector overrides. It also ensures remapped `*NodeId` and `*NodeIds` values reach the encapsulated Dynamic Script behavior instead of being assigned to an unused wrapper field.
+Explicit creation overrides, such as a dynamically calculated slot position, have precedence over prefab defaults. Reference remapping processes only properties with Node-ID semantics and must never reapply unrelated defaults afterward. Remapped Dynamic ScriptNode properties use `applyInitialSceneProps()`: this validates and updates the encapsulated Script behavior without incorrectly recording a sparse Inspector override. Native nodes keep their pre-init-safe constructor/direct-assignment path.
 
 ## 6. Prefab reload
 
