@@ -2103,20 +2103,24 @@ function PublicFileBundleTile({
           </button>
         )}
       </div>
-      {expanded && bundle.children.map((child) => (
-        <PublicAssetFileTile
+      {expanded && bundle.children.map((child, index) => (
+        <div
           key={child.file.path}
-          file={child.file}
-          relationLabel={child.label}
-          selected={child.file.path === selectedFilePath}
-          onSelectFile={onSelectFile}
-          onOpenFile={onOpenFile}
-          onOpenPrefab={onOpenPrefab}
-          onDynamicNodeDragStart={onDynamicNodeDragStart}
-          onDynamicNodeDragEnd={onDynamicNodeDragEnd}
-          onImageAssetDragStart={onImageAssetDragStart}
-          onImageAssetDragEnd={onImageAssetDragEnd}
-        />
+          className={`${styles.assetBundleChild} ${index === bundle.children.length - 1 ? styles.assetBundleEnd : ''}`}
+        >
+          <PublicAssetFileTile
+            file={child.file}
+            relationLabel={child.label}
+            selected={child.file.path === selectedFilePath}
+            onSelectFile={onSelectFile}
+            onOpenFile={onOpenFile}
+            onOpenPrefab={onOpenPrefab}
+            onDynamicNodeDragStart={onDynamicNodeDragStart}
+            onDynamicNodeDragEnd={onDynamicNodeDragEnd}
+            onImageAssetDragStart={onImageAssetDragStart}
+            onImageAssetDragEnd={onImageAssetDragEnd}
+          />
+        </div>
       ))}
     </div>
   );
