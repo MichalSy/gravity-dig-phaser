@@ -902,7 +902,7 @@ export default function Home() {
         headers: { 'content-type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ paths }),
       });
-      const result = await response.json() as { ok?: boolean; deleted?: string[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; error?: string };
+      const result = await response.json() as { ok?: boolean; deleted?: string[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; dynamicNodeBuildError?: string; error?: string };
       if (!response.ok || result.ok === false) throw new Error(result.error ?? `HTTP ${response.status}`);
       setDeletePublicFilesOpen(false);
       setPreviewPublicFilePath((current) => current && paths.includes(current) ? undefined : current);
@@ -911,7 +911,8 @@ export default function Home() {
       setSelectedPublicFilePath(undefined);
       await applyExplorerMutationResult(result);
       await Promise.all([reloadSelectedDirectoryFiles(targetDirectoryPath), refreshGitStatus()]);
-      setPublicFileOperationStatus(`${result.deleted?.length ?? paths.length} Datei${paths.length === 1 ? '' : 'en'} gelöscht.`);
+      const deletedCount = result.deleted?.length ?? paths.length;
+      setPublicFileOperationStatus(`${deletedCount} Datei${deletedCount === 1 ? '' : 'en'} gelöscht.${result.dynamicNodeBuildError ? ` Script-Build fehlgeschlagen: ${result.dynamicNodeBuildError}` : ''}`);
     } catch (error) {
       setPublicFileOperationStatus(`Löschen fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -919,6 +920,14 @@ export default function Home() {
 
   async function uploadPublicFiles(files: File[]): Promise<void> {
     if (files.length === 0) return;
+    if (files.length > 100) {
+      setPublicFileOperationStatus('Upload fehlgeschlagen: maximal 100 Dateien pro Upload.');
+      return;
+    }
+    if (files.reduce((total, file) => total + file.size, 0) > 200 * 1024 * 1024) {
+      setPublicFileOperationStatus('Upload fehlgeschlagen: maximal 200 MB pro Upload.');
+      return;
+    }
     const targetDirectoryPath = selectedPublicDirectoryPath;
     setPublicFileOperationStatus(`Lade ${files.length} Datei${files.length === 1 ? '' : 'en'} nach ${compactPublicPath(targetDirectoryPath)} ...`);
     try {
@@ -926,7 +935,7 @@ export default function Home() {
       form.set('directoryPath', targetDirectoryPath);
       for (const file of files) form.append('files', file, file.name);
       const response = await fetch(editorApi('/public-files'), { method: 'POST', cache: 'no-store', body: form });
-      const result = await response.json() as { ok?: boolean; written?: { path: string; size: number }[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; error?: string };
+      const result = await response.json() as { ok?: boolean; written?: { path: string; size: number }[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; dynamicNodeBuildError?: string; error?: string };
       if (!response.ok || result.ok === false) throw new Error(result.error ?? `HTTP ${response.status}`);
       await applyExplorerMutationResult(result);
       await Promise.all([reloadSelectedDirectoryFiles(targetDirectoryPath), refreshGitStatus()]);
@@ -934,7 +943,7 @@ export default function Home() {
       if (selectedPublicDirectoryPathRef.current === targetDirectoryPath) {
         setSelectedPublicFilePaths(new Set(writtenPaths));
         setSelectedPublicFilePath(writtenPaths.at(-1));
-        setPublicFileOperationStatus(`${writtenPaths.length || files.length} Datei${files.length === 1 ? '' : 'en'} hochgeladen · vorhandene Namen überschrieben.`);
+        setPublicFileOperationStatus(`${writtenPaths.length || files.length} Datei${files.length === 1 ? '' : 'en'} hochgeladen · vorhandene Namen überschrieben.${result.dynamicNodeBuildError ? ` Script-Build fehlgeschlagen: ${result.dynamicNodeBuildError}` : ''}`);
       }
     } catch (error) {
       if (selectedPublicDirectoryPathRef.current === targetDirectoryPath) setPublicFileOperationStatus(`Upload fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
@@ -1861,6 +1870,7 @@ export default function Home() {
           selectedDirectory={selectedPublicDirectory}
           selectedDirectoryPath={selectedPublicDirectoryPath}
           selectedFile={selectedPublicFile}
+          activeFilePath={selectedPublicFilePath}
           selectedFilePaths={selectedPublicFilePaths}
           selectedFiles={selectedPublicFiles}
           files={publicFilesInSelectedDirectory}
@@ -2072,6 +2082,7 @@ function PublicAssetExplorer({
   selectedDirectory,
   selectedDirectoryPath,
   selectedFile,
+  activeFilePath,
   selectedFilePaths,
   selectedFiles,
   files,
@@ -2100,6 +2111,7 @@ function PublicAssetExplorer({
   selectedDirectory?: PublicFileEntry;
   selectedDirectoryPath: string;
   selectedFile?: PublicFileEntry;
+  activeFilePath?: string;
   selectedFilePaths: ReadonlySet<string>;
   selectedFiles: PublicFileEntry[];
   files: PublicFileEntry[];
@@ -2145,6 +2157,13 @@ function PublicAssetExplorer({
     uploadDragDepthRef.current = 0;
     setUploadDropActive(false);
   }, [selectedDirectoryPath]);
+
+  useEffect(() => {
+    const anchorPath = selectionAnchorRef.current;
+    if (activeFilePath && visibleFilePaths.includes(activeFilePath) && (!anchorPath || !visibleFilePaths.includes(anchorPath) || !selectedFilePaths.has(anchorPath))) {
+      selectionAnchorRef.current = activeFilePath;
+    }
+  }, [activeFilePath, selectedDirectoryPath, selectedFilePaths, visibleFilePaths]);
 
   function selectFile(path: string, event: ReactMouseEvent<HTMLButtonElement>): void {
     const result = updateExplorerSelection({
@@ -2256,9 +2275,16 @@ function PublicAssetExplorer({
                   expanded={Boolean(bundle && expandedBundlePaths.has(file.path))}
                   selectedFilePaths={selectedFilePaths}
                   onToggle={() => {
-                    if (bundle && expandedBundlePaths.has(file.path) && bundle.children.some((child) => selectedFilePaths.has(child.file.path))) {
-                      selectionAnchorRef.current = file.path;
-                      onSelectionChange(new Set([file.path]), file.path);
+                    if (bundle && expandedBundlePaths.has(file.path)) {
+                      const selectedChildPaths = bundle.children.map((child) => child.file.path).filter((path) => selectedFilePaths.has(path));
+                      if (selectedChildPaths.length > 0) {
+                        const nextSelection = new Set(selectedFilePaths);
+                        for (const childPath of selectedChildPaths) nextSelection.delete(childPath);
+                        nextSelection.add(file.path);
+                        const nextActivePath = activeFilePath && selectedChildPaths.includes(activeFilePath) ? file.path : activeFilePath;
+                        if (selectionAnchorRef.current && selectedChildPaths.includes(selectionAnchorRef.current)) selectionAnchorRef.current = file.path;
+                        onSelectionChange(nextSelection, nextActivePath);
+                      }
                     }
                     toggleBundle(file.path);
                   }}

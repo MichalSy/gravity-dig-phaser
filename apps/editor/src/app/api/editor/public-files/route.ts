@@ -1,4 +1,4 @@
-import { deleteExplorerFiles, listPublicDirectories, listPublicDirectoryFiles, listPublicFiles, uploadExplorerFiles } from '../../../../server/editorBackend';
+import { deleteExplorerFiles, EditorBackendError, listPublicDirectories, listPublicDirectoryFiles, listPublicFiles, uploadExplorerFiles } from '../../../../server/editorBackend';
 import { jsonError, jsonNoStore, readJson } from '../_response';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +17,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const contentLength = Number(request.headers.get('content-length') ?? '0');
+    if (Number.isFinite(contentLength) && contentLength > 210 * 1024 * 1024) throw new EditorBackendError('Upload exceeds the 200 MB limit.', 413);
     const form = await request.formData();
     const directoryPath = String(form.get('directoryPath') ?? '').trim();
     const files = await Promise.all(form.getAll('files').filter((value): value is File => value instanceof File).map(async (file) => ({
