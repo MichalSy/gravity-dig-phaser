@@ -61,22 +61,9 @@
         "nodeId": "53f8874d-9d86-4687-8d07-897cc51a9ee2"
       },
       {
-        "name": "MiningLaser",
-        "nodeTypeId": "af263543-8259-4627-8876-247a1ae87d9a",
-        "nodeId": "29e2fba4-4aa5-4029-9a00-dabde6208295"
-      },
-      {
-        "name": "MiningTool",
-        "nodeTypeId": "dynamic.mining-tool",
-        "nodeId": "ed3da883-3ca5-42e9-a032-7adaa6a51b97",
-        "props": {
-          "levelNodeId": "b79d5555-5726-4ce6-be4c-b62b505320ba",
-          "movementScriptNodeId": "8e9c3d71-ea21-4882-809a-e75645ce74ef",
-          "laserNodeId": "29e2fba4-4aa5-4029-9a00-dabde6208295",
-          "worldNodeId": null,
-          "playerStateNodeId": null,
-          "inputNodeId": null
-        }
+        "prefab": "prefabs/mining-tool.prefab.json",
+        "prefabId": "33bf4c16-7370-5141-ae9b-701234051188",
+        "nodeId": "94e94ebb-d833-554c-8136-27bca2d189cd"
       }
     ]
   }

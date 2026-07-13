@@ -37,7 +37,6 @@ const GAME_ONLY_TYPE_IDS = new Set<string>([
   NODE_TYPE_IDS.LevelNode,
   NODE_TYPE_IDS.GameWorldNode,
   NODE_TYPE_IDS.PlayerAnimatorNode,
-  NODE_TYPE_IDS.MiningLaserNode,
   NODE_TYPE_IDS.CollisionRectNode,
 ]);
 const UI_ONLY_TYPE_IDS = new Set<string>([

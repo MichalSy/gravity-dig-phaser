@@ -48,6 +48,7 @@ var prop = {
   number: (value, options = {}) => marker(value, { type: "Number", ...options }),
   boolean: (value, options = {}) => marker(value, { type: "Boolean", ...options }),
   assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options }),
+  color: (value, options = {}) => marker(value, { type: "Color", ...options }),
   nodeRef: (value = null, options = {}) => marker(value, { type: "NodeRef", ...options }),
   nodeRefList: (value = [], options = {}) => marker(value, { type: "NodeRefList", ...options })
 };
@@ -146,6 +147,7 @@ var MenuScript = class extends ScriptNode {
 
 // public/scripts/Gameplay/MiningScript.node.ts
 var PLAYER_HEIGHT = 64;
+var RESOURCE_TILE_TYPES = /* @__PURE__ */ new Set(["copper", "iron", "gold", "diamond"]);
 var MiningScript = class extends ScriptNode {
   id = "dynamic.mining-tool";
   name = "Mining Tool Script";
@@ -154,14 +156,34 @@ var MiningScript = class extends ScriptNode {
   movementScriptNodeId = prop.nodeRef(null, { label: "Movement Script Node" });
   playerStateNodeId = prop.nodeRef(null, { label: "Player State Node" });
   inputNodeId = prop.nodeRef(null, { label: "Gameplay Input Node" });
-  laserNodeId = prop.nodeRef(null, { label: "Mining Laser Node" });
+  laserLineNodeId = prop.nodeRef(null, { label: "Laser Line Node" });
+  targetMarkerNodeId = prop.nodeRef(null, { label: "Target Marker Node" });
+  laserAudioNodeId = prop.nodeRef(null, { label: "Laser Audio Node" });
+  dirtBreakAudioNodeId = prop.nodeRef(null, { label: "Dirt Break Audio Node" });
+  gemBreakAudioNodeId = prop.nodeRef(null, { label: "Gem Break Audio Node" });
+  crackPrefabId = prop.string("781e9ab6-9061-55ef-92de-1b3c129c44ca", { label: "Crack Prefab ID" });
+  crackPrefabPath = prop.string("prefabs/mining-crack.prefab.json", { label: "Crack Prefab Path" });
   laserOriginOffsetY = prop.number(PLAYER_HEIGHT * 0.18, { label: "Laser Origin Offset Y", step: 0.1 });
+  tileSize = prop.number(96, { label: "Tile Size", min: 1, step: 1 });
+  idleLaserColor = prop.color("#fb7185", { label: "Idle Laser Color" });
+  firingLaserColor = prop.color("#f43f5e", { label: "Firing Laser Color" });
+  targetColor = prop.color("#f97316", { label: "Target Color" });
+  idleLaserWidth = prop.number(2, { label: "Idle Laser Width", min: 0, step: 1 });
+  firingLaserWidth = prop.number(4, { label: "Firing Laser Width", min: 0, step: 1 });
+  idleLaserAlpha = prop.number(0.5, { label: "Idle Laser Alpha", min: 0, max: 1, step: 0.05 });
+  firingLaserAlpha = prop.number(0.95, { label: "Firing Laser Alpha", min: 0, max: 1, step: 0.05 });
+  crackStages = prop.number(4, { label: "Crack Stages", min: 1, step: 1 });
   levelNode;
   world;
   movementController;
   playerState;
   gameplayInput;
-  laser;
+  laserLine;
+  targetMarker;
+  laserAudio;
+  dirtBreakAudio;
+  gemBreakAudio;
+  crackOverlays = /* @__PURE__ */ new Map();
   laserOrigin = new Vec2();
   gamepadAim = new Vec2(1, 0);
   currentAimWorld = new Vec2(1, 0);
@@ -173,23 +195,30 @@ var MiningScript = class extends ScriptNode {
     this.movementController = this.requireResolvedNode(this.movementScriptNodeId, "PlayerMovementController");
     this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
     this.gameplayInput = this.requireResolvedNode(this.inputNodeId, "GameplayInput");
-    this.laser = this.requireResolvedNode(this.laserNodeId, "MiningLaser");
+    this.laserLine = this.requireResolvedNode(this.laserLineNodeId, "MiningLaserLine");
+    this.targetMarker = this.requireResolvedNode(this.targetMarkerNodeId, "MiningTargetMarker");
+    this.laserAudio = this.requireResolvedNode(this.laserAudioNodeId, "MiningLaserAudio");
+    this.dirtBreakAudio = this.requireResolvedNode(this.dirtBreakAudioNodeId, "MiningDirtBreakAudio");
+    this.gemBreakAudio = this.requireResolvedNode(this.gemBreakAudioNodeId, "MiningGemBreakAudio");
+    this.targetMarker.strokeColor = this.targetColor;
+    this.clearPresentation();
   }
   update(deltaMs) {
     this.updateMining(deltaMs / 1e3);
   }
   destroy() {
+    this.clearCrackOverlays();
     this.stopFiring();
   }
   resetForLevel() {
-    this.laser.resetForLevel();
+    this.clearCrackOverlays();
     this.stopFiring();
   }
   stopFiring() {
     this.target = void 0;
     this.miningPressed = false;
     this.playerState?.setMiningActive(false);
-    this.laser?.clear();
+    this.clearPresentation();
   }
   isMiningPressed() {
     return this.miningPressed;
@@ -214,26 +243,79 @@ var MiningScript = class extends ScriptNode {
     this.miningPressed = firing;
     this.playerState.setMiningActive(firing);
     this.target = target;
-    this.laser.clear();
+    this.clearPresentation();
     if (!target) return;
-    this.laser.showTargetAndBeam(target, origin, firing);
+    this.showTargetAndBeam(target, origin, firing);
     if (!firing || !this.playerState.hasMiningEnergy()) return;
-    this.laser.setLaserSound(true);
+    this.laserAudio.play();
     this.playerState.consumeMiningEnergy(deltaSeconds);
     target.health -= this.playerState.stats.miningDamagePerSec * deltaSeconds;
-    this.laser.updateCrackOverlay(target);
+    this.updateCrackOverlay(target);
     if (target.health <= 0) this.mineTile(target);
   }
   getUpdatedAimWorld(aimWorld) {
     if (aimWorld) this.currentAimWorld.copy(aimWorld);
     return this.currentAimWorld;
   }
+  showTargetAndBeam(target, origin, firing) {
+    const center = this.tileCenter(target);
+    this.targetMarker.position = this.targetMarker.worldToLocalPosition(center);
+    this.targetMarker.strokeColor = this.targetColor;
+    this.targetMarker.visible = true;
+    this.laserLine.color = firing ? this.firingLaserColor : this.idleLaserColor;
+    this.laserLine.lineWidth = firing ? this.firingLaserWidth : this.idleLaserWidth;
+    this.laserLine.alpha = firing ? this.firingLaserAlpha : this.idleLaserAlpha;
+    this.laserLine.visible = true;
+    this.laserLine.setPoints(
+      this.laserLine.worldToLocalPosition(origin),
+      this.laserLine.worldToLocalPosition(center)
+    );
+  }
+  clearPresentation() {
+    this.laserLine?.clear();
+    if (this.laserLine) this.laserLine.visible = false;
+    if (this.targetMarker) this.targetMarker.visible = false;
+    this.laserAudio?.stop();
+  }
+  updateCrackOverlay(cell) {
+    const key = tileKey(cell);
+    const damage = clamp(1 - cell.health / cell.maxHealth, 0, 1);
+    const stage = Math.min(this.crackStages, Math.max(1, Math.ceil(damage * this.crackStages)));
+    let overlay = this.crackOverlays.get(key);
+    if (!overlay) {
+      overlay = this.instantiatePrefab(this.crackPrefabId, {
+        name: `MiningCrack.${key}`,
+        props: {
+          assetId: `crack-${stage}`,
+          position: this.tileCenter(cell)
+        }
+      });
+      this.world.addChild(overlay);
+      this.crackOverlays.set(key, overlay);
+      return;
+    }
+    overlay.setAssetId(`crack-${stage}`);
+  }
+  removeCrackOverlay(cell) {
+    const key = tileKey(cell);
+    const overlay = this.crackOverlays.get(key);
+    if (overlay) this.world.removeChild(overlay);
+    this.crackOverlays.delete(key);
+  }
+  clearCrackOverlays() {
+    for (const overlay of this.crackOverlays.values()) this.world?.removeChild(overlay);
+    this.crackOverlays.clear();
+  }
   mineTile(cell) {
     const minedType = cell.type;
     this.levelNode.clearTile(cell);
-    this.laser.removeCrackOverlay(cell);
+    this.removeCrackOverlay(cell);
     this.playerState.recordMinedTile(minedType);
-    this.laser.playBlockBreakSound(minedType);
+    const detune = Math.round(Math.random() * 90 - 45);
+    (RESOURCE_TILE_TYPES.has(minedType) ? this.gemBreakAudio : this.dirtBreakAudio).playOneShot({ detune });
+  }
+  tileCenter(cell) {
+    return { x: cell.x * this.tileSize + this.tileSize / 2, y: cell.y * this.tileSize + this.tileSize / 2 };
   }
   requireResolvedNode(instanceId, fallbackName) {
     const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
@@ -288,6 +370,12 @@ function findFirstMineableTile(origin, aimWorld, range, level) {
 }
 function readMovementInputBlocked(controller) {
   return (controller.inputBlocked ?? controller.callScriptMethod?.("isInputBlocked") ?? controller.getScriptProperty?.("inputBlocked")) === true;
+}
+function tileKey(cell) {
+  return `${cell.x}:${cell.y}`;
+}
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 // public/scripts/Gameplay/PlayerMovementScript.node.ts
@@ -624,7 +712,7 @@ var BottomHudScript = class extends ScriptNode {
   updateHud() {
     const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
-    const energyPct = clamp((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
+    const energyPct = clamp2((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
     this.energyFill.setHorizontalFill(energyPct);
     for (let index = 0; index < this.slots.length; index += 1) {
       const cargo = run?.cargo.slots[index];
@@ -681,7 +769,7 @@ var ITEM_TINTS = {
   repair_kit: 15680580,
   teleport_bracelet: 12616956
 };
-function clamp(value, min, max) {
+function clamp2(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -717,7 +805,7 @@ var StatusHudScript = class extends ScriptNode {
     this.updateBarFill(this.fuelFill, FUEL_FRAME, (run?.fuel ?? MAX_FUEL) / MAX_FUEL);
   }
   updateBarFill(node, frame, pct) {
-    const safePct = clamp2(pct, 0, 1);
+    const safePct = clamp3(pct, 0, 1);
     const visible = safePct > 0;
     node.visible = visible;
     node.image.setCrop(0, 0, Math.max(1, Math.round(frame.width * safePct)), frame.height);
@@ -729,7 +817,7 @@ var StatusHudScript = class extends ScriptNode {
     return node;
   }
 };
-function clamp2(value, min, max) {
+function clamp3(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -761,4 +849,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.00eeb2ab0efa.js.map
+//# sourceMappingURL=dynamic-nodes.d5fc2270a91e.js.map

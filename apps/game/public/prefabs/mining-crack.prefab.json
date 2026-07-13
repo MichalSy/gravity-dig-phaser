@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "prefabId": "781e9ab6-9061-55ef-92de-1b3c129c44ca",
+  "root": {
+    "name": "MiningCrack",
+    "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+    "nodeId": "2440c322-3897-57c3-bc12-3dd3b22fff5f",
+    "props": {
+      "assetId": "crack-1",
+      "origin": { "x": 0.5, "y": 0.5 },
+      "sizeMode": "content"
+    }
+  }
+}

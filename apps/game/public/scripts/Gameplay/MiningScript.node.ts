@@ -13,8 +13,10 @@ type LevelNodeLike = {
   clearTile(cell: TileCell): void;
 };
 
-type WorldNodeLike = {
+type WorldNodeLike = Core.GameNode & {
   player: { x: number; y: number };
+  addChild<T extends Core.GameNode>(child: T): T;
+  removeChild(child: Core.GameNode): void;
 };
 
 type MovementControllerLike = {
@@ -42,17 +44,13 @@ type GameplayInputLike = {
   }): { miningPressed: boolean; aimWorld?: { x: number; y: number } };
 };
 
-type MiningLaserLike = {
-  resetForLevel(): void;
-  clear(): void;
-  showTargetAndBeam(target: TileCell, origin: { x: number; y: number }, firing: boolean): void;
-  setLaserSound(active: boolean): void;
-  updateCrackOverlay(target: TileCell): void;
-  removeCrackOverlay(target: TileCell): void;
-  playBlockBreakSound(type: string): void;
-};
+type LineNodeLike = Core.LineNode;
+type MarkerNodeLike = Core.RectangleNode;
+type AudioNodeLike = Core.AudioNode;
+type CrackNodeLike = Core.ImageNode;
 
 const PLAYER_HEIGHT = 64;
+const RESOURCE_TILE_TYPES = new Set(['copper', 'iron', 'gold', 'diamond']);
 
 export default class MiningScript extends Core.ScriptNode {
   id = 'dynamic.mining-tool';
@@ -63,15 +61,35 @@ export default class MiningScript extends Core.ScriptNode {
   movementScriptNodeId = Core.prop.nodeRef(null, { label: 'Movement Script Node' });
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State Node' });
   inputNodeId = Core.prop.nodeRef(null, { label: 'Gameplay Input Node' });
-  laserNodeId = Core.prop.nodeRef(null, { label: 'Mining Laser Node' });
+  laserLineNodeId = Core.prop.nodeRef(null, { label: 'Laser Line Node' });
+  targetMarkerNodeId = Core.prop.nodeRef(null, { label: 'Target Marker Node' });
+  laserAudioNodeId = Core.prop.nodeRef(null, { label: 'Laser Audio Node' });
+  dirtBreakAudioNodeId = Core.prop.nodeRef(null, { label: 'Dirt Break Audio Node' });
+  gemBreakAudioNodeId = Core.prop.nodeRef(null, { label: 'Gem Break Audio Node' });
+  crackPrefabId = Core.prop.string('781e9ab6-9061-55ef-92de-1b3c129c44ca', { label: 'Crack Prefab ID' });
+  crackPrefabPath = Core.prop.string('prefabs/mining-crack.prefab.json', { label: 'Crack Prefab Path' });
   laserOriginOffsetY = Core.prop.number(PLAYER_HEIGHT * 0.18, { label: 'Laser Origin Offset Y', step: 0.1 });
+  tileSize = Core.prop.number(96, { label: 'Tile Size', min: 1, step: 1 });
+  idleLaserColor = Core.prop.color('#fb7185', { label: 'Idle Laser Color' });
+  firingLaserColor = Core.prop.color('#f43f5e', { label: 'Firing Laser Color' });
+  targetColor = Core.prop.color('#f97316', { label: 'Target Color' });
+  idleLaserWidth = Core.prop.number(2, { label: 'Idle Laser Width', min: 0, step: 1 });
+  firingLaserWidth = Core.prop.number(4, { label: 'Firing Laser Width', min: 0, step: 1 });
+  idleLaserAlpha = Core.prop.number(0.5, { label: 'Idle Laser Alpha', min: 0, max: 1, step: 0.05 });
+  firingLaserAlpha = Core.prop.number(0.95, { label: 'Firing Laser Alpha', min: 0, max: 1, step: 0.05 });
+  crackStages = Core.prop.number(4, { label: 'Crack Stages', min: 1, step: 1 });
 
   private levelNode!: LevelNodeLike;
   private world!: WorldNodeLike;
   private movementController!: MovementControllerLike;
   private playerState!: PlayerStateLike;
   private gameplayInput!: GameplayInputLike;
-  private laser!: MiningLaserLike;
+  private laserLine!: LineNodeLike;
+  private targetMarker!: MarkerNodeLike;
+  private laserAudio!: AudioNodeLike;
+  private dirtBreakAudio!: AudioNodeLike;
+  private gemBreakAudio!: AudioNodeLike;
+  private readonly crackOverlays = new Map<string, CrackNodeLike>();
   private readonly laserOrigin = new Vec2();
   private readonly gamepadAim = new Vec2(1, 0);
   private readonly currentAimWorld = new Vec2(1, 0);
@@ -84,7 +102,13 @@ export default class MiningScript extends Core.ScriptNode {
     this.movementController = this.requireResolvedNode<MovementControllerLike>(this.movementScriptNodeId, 'PlayerMovementController');
     this.playerState = this.requireResolvedNode<PlayerStateLike>(this.playerStateNodeId, 'PlayerState');
     this.gameplayInput = this.requireResolvedNode<GameplayInputLike>(this.inputNodeId, 'GameplayInput');
-    this.laser = this.requireResolvedNode<MiningLaserLike>(this.laserNodeId, 'MiningLaser');
+    this.laserLine = this.requireResolvedNode<LineNodeLike>(this.laserLineNodeId, 'MiningLaserLine');
+    this.targetMarker = this.requireResolvedNode<MarkerNodeLike>(this.targetMarkerNodeId, 'MiningTargetMarker');
+    this.laserAudio = this.requireResolvedNode<AudioNodeLike>(this.laserAudioNodeId, 'MiningLaserAudio');
+    this.dirtBreakAudio = this.requireResolvedNode<AudioNodeLike>(this.dirtBreakAudioNodeId, 'MiningDirtBreakAudio');
+    this.gemBreakAudio = this.requireResolvedNode<AudioNodeLike>(this.gemBreakAudioNodeId, 'MiningGemBreakAudio');
+    this.targetMarker.strokeColor = this.targetColor;
+    this.clearPresentation();
   }
 
   update(deltaMs: number) {
@@ -92,11 +116,12 @@ export default class MiningScript extends Core.ScriptNode {
   }
 
   destroy() {
+    this.clearCrackOverlays();
     this.stopFiring();
   }
 
   resetForLevel() {
-    this.laser.resetForLevel();
+    this.clearCrackOverlays();
     this.stopFiring();
   }
 
@@ -104,7 +129,7 @@ export default class MiningScript extends Core.ScriptNode {
     this.target = undefined;
     this.miningPressed = false;
     this.playerState?.setMiningActive(false);
-    this.laser?.clear();
+    this.clearPresentation();
   }
 
   isMiningPressed() {
@@ -132,16 +157,16 @@ export default class MiningScript extends Core.ScriptNode {
     this.miningPressed = firing;
     this.playerState.setMiningActive(firing);
     this.target = target;
-    this.laser.clear();
+    this.clearPresentation();
 
     if (!target) return;
-    this.laser.showTargetAndBeam(target, origin, firing);
+    this.showTargetAndBeam(target, origin, firing);
     if (!firing || !this.playerState.hasMiningEnergy()) return;
 
-    this.laser.setLaserSound(true);
+    this.laserAudio.play();
     this.playerState.consumeMiningEnergy(deltaSeconds);
     target.health -= this.playerState.stats.miningDamagePerSec * deltaSeconds;
-    this.laser.updateCrackOverlay(target);
+    this.updateCrackOverlay(target);
     if (target.health <= 0) this.mineTile(target);
   }
 
@@ -150,12 +175,74 @@ export default class MiningScript extends Core.ScriptNode {
     return this.currentAimWorld;
   }
 
+  private showTargetAndBeam(target: TileCell, origin: Vec2, firing: boolean) {
+    const center = this.tileCenter(target);
+    this.targetMarker.position = this.targetMarker.worldToLocalPosition(center);
+    this.targetMarker.strokeColor = this.targetColor;
+    this.targetMarker.visible = true;
+
+    this.laserLine.color = firing ? this.firingLaserColor : this.idleLaserColor;
+    this.laserLine.lineWidth = firing ? this.firingLaserWidth : this.idleLaserWidth;
+    this.laserLine.alpha = firing ? this.firingLaserAlpha : this.idleLaserAlpha;
+    this.laserLine.visible = true;
+    this.laserLine.setPoints(
+      this.laserLine.worldToLocalPosition(origin),
+      this.laserLine.worldToLocalPosition(center),
+    );
+  }
+
+  private clearPresentation() {
+    this.laserLine?.clear();
+    if (this.laserLine) this.laserLine.visible = false;
+    if (this.targetMarker) this.targetMarker.visible = false;
+    this.laserAudio?.stop();
+  }
+
+  private updateCrackOverlay(cell: TileCell) {
+    const key = tileKey(cell);
+    const damage = clamp(1 - cell.health / cell.maxHealth, 0, 1);
+    const stage = Math.min(this.crackStages, Math.max(1, Math.ceil(damage * this.crackStages)));
+    let overlay = this.crackOverlays.get(key);
+
+    if (!overlay) {
+      overlay = this.instantiatePrefab<CrackNodeLike>(this.crackPrefabId, {
+        name: `MiningCrack.${key}`,
+        props: {
+          assetId: `crack-${stage}`,
+          position: this.tileCenter(cell),
+        },
+      });
+      this.world.addChild(overlay);
+      this.crackOverlays.set(key, overlay);
+      return;
+    }
+
+    overlay.setAssetId(`crack-${stage}`);
+  }
+
+  private removeCrackOverlay(cell: TileCell) {
+    const key = tileKey(cell);
+    const overlay = this.crackOverlays.get(key);
+    if (overlay) this.world.removeChild(overlay);
+    this.crackOverlays.delete(key);
+  }
+
+  private clearCrackOverlays() {
+    for (const overlay of this.crackOverlays.values()) this.world?.removeChild(overlay);
+    this.crackOverlays.clear();
+  }
+
   private mineTile(cell: TileCell) {
     const minedType = cell.type;
     this.levelNode.clearTile(cell);
-    this.laser.removeCrackOverlay(cell);
+    this.removeCrackOverlay(cell);
     this.playerState.recordMinedTile(minedType);
-    this.laser.playBlockBreakSound(minedType);
+    const detune = Math.round(Math.random() * 90 - 45);
+    (RESOURCE_TILE_TYPES.has(minedType) ? this.gemBreakAudio : this.dirtBreakAudio).playOneShot({ detune });
+  }
+
+  private tileCenter(cell: Pick<TileCell, 'x' | 'y'>) {
+    return { x: cell.x * this.tileSize + this.tileSize / 2, y: cell.y * this.tileSize + this.tileSize / 2 };
   }
 
   private requireResolvedNode<T>(instanceId: string | null, fallbackName: string): T {
@@ -188,4 +275,12 @@ function findFirstMineableTile(origin: Vec2, aimWorld: Vec2, range: number, leve
 
 function readMovementInputBlocked(controller: MovementControllerLike): boolean {
   return (controller.inputBlocked ?? controller.callScriptMethod?.('isInputBlocked') ?? controller.getScriptProperty?.('inputBlocked')) === true;
+}
+
+function tileKey(cell: Pick<TileCell, 'x' | 'y'>): string {
+  return `${cell.x}:${cell.y}`;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }

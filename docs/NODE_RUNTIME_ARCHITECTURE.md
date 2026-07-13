@@ -42,7 +42,13 @@ The editor displays runtime roots with a `RUNTIME` badge. Names, UUID formats, a
 
 ## 3. Node types and exposed properties
 
-Core node classes live under `packages/game-core/src/nodes/`. Engine- or game-specific native nodes live under `apps/game/src/`. Editor-facing behavior lives in public scripts under `apps/game/public/scripts/`.
+Core node classes live under `packages/game-core/src/nodes/`. `apps/game/src/` contains the Phaser/bootstrap adapter and native engine services. The concrete Gravity Dig game project lives under `apps/game/public/`: scenes, prefabs, assets, configuration, presentation, and gameplay ScriptNodes.
+
+The boundary is semantic rather than file-type based:
+
+- engine/native code may know how to draw a line, play a sound, read a device, or instantiate a prefab;
+- public game code decides that a line is a mining laser, which sound represents a broken gem, and how damage becomes crack stages;
+- native adapters must not contain Gravity Dig key bindings, balance values, asset choices, or state machines.
 
 Each node type defines static property metadata through `exposedPropGroups`. This metadata is the single source for:
 
@@ -145,7 +151,7 @@ A runtime instance keeps source identity and sparse authoring overrides. It does
 
 Scene-authored root overrides live in `props`. Child overrides live in `overrides`, keyed by source `nodeId`. Values equal to prefab defaults are removed so overrides stay sparse.
 
-Explicit creation overrides, such as a dynamically calculated slot position, have precedence over prefab defaults. Reference remapping processes only properties with Node-ID semantics and must never reapply unrelated defaults afterward.
+Explicit creation overrides, such as a dynamically calculated slot position, have precedence over prefab defaults. Reference remapping processes only properties with Node-ID semantics and must never reapply unrelated defaults afterward. Initial prefab properties use `applyInitialSceneProps()`: this applies validated native and Dynamic ScriptNode properties without incorrectly recording them as sparse Inspector overrides. It also ensures remapped `*NodeId` and `*NodeIds` values reach the encapsulated Dynamic Script behavior instead of being assigned to an unused wrapper field.
 
 ## 6. Prefab reload
 
@@ -193,6 +199,19 @@ The Bottom HUD demonstrates this split:
 - Slot origin is exposed as pixel properties `slotOriginX` and `slotOriginY`.
 - Slot spacing comes from the first slot's measured parent bounds, not a hard-coded step.
 
+### 7.1 Public mining composition
+
+Mining is composed by `public/prefabs/mining-tool.prefab.json` and `public/scripts/Gameplay/MiningScript.node.ts`. The public script owns targeting, range checks, energy use, damage, resource classification, crack stages, colors, widths, alpha values, and sound selection.
+
+The prefab uses only generic engine capabilities:
+
+- `LineNode` renders the beam,
+- `RectangleNode` renders the target marker,
+- `AudioNode` plays looped and one-shot sounds,
+- `ImageNode.setAssetId()` updates runtime crack-prefab instances.
+
+`public/prefabs/mining-crack.prefab.json` is instantiated and removed by the mining script through the normal prefab lifecycle. There is no native `MiningLaserNode` or Phaser-specific `MiningLaserView`; engine code contains no mining presentation policy.
+
 ## 8. Editor data flow
 
 The embedded game and editor communicate through typed `postMessage` messages from `packages/debug-protocol`.
@@ -219,9 +238,10 @@ The browser never receives repository credentials. Server APIs validate relative
 ## 9. Ownership rules
 
 - `AppScene` remains a thin Phaser adapter.
+- `apps/game/public/` is the replaceable concrete game project; reusable engine capabilities remain in core/native adapters.
 - Structure belongs in scene/prefab JSON.
 - Editor-facing behavior belongs in public ScriptNodes.
-- Native nodes are reserved for runtime management or Phaser integration.
+- Native nodes are reserved for reusable runtime management or Phaser integration and must not encode Gravity Dig decisions.
 - Persistent profile/run/cargo state belongs to player-state modules, not UI scripts.
 - Runtime-created trees are destroyed by their creator.
 - A node owns the Phaser objects it creates.

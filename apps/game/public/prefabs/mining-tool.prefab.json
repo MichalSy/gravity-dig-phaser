@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "prefabId": "33bf4c16-7370-5141-ae9b-701234051188",
+  "root": {
+    "name": "MiningTool",
+    "nodeTypeId": "dynamic.mining-tool",
+    "nodeId": "cb278fb8-c7fd-555f-98ef-6a9b0283abe4",
+    "props": {
+      "levelNodeId": null,
+      "worldNodeId": null,
+      "movementScriptNodeId": null,
+      "playerStateNodeId": null,
+      "inputNodeId": null,
+      "laserLineNodeId": "867f9a5f-119c-5927-aca8-bae4ed96b2bd",
+      "targetMarkerNodeId": "0a56814d-6a3c-5db5-b192-6c46deea02fd",
+      "laserAudioNodeId": "e6994f3a-847e-56bc-96c4-c749be933528",
+      "dirtBreakAudioNodeId": "80171742-4d22-57e2-add9-9ecc252393e6",
+      "gemBreakAudioNodeId": "080e8160-9ea8-50e7-bd3d-32933fb3a775",
+      "crackPrefabId": "781e9ab6-9061-55ef-92de-1b3c129c44ca",
+      "crackPrefabPath": "prefabs/mining-crack.prefab.json",
+      "laserOriginOffsetY": 11.52,
+      "tileSize": 96,
+      "idleLaserColor": "#fb7185",
+      "firingLaserColor": "#f43f5e",
+      "targetColor": "#f97316",
+      "idleLaserWidth": 2,
+      "firingLaserWidth": 4,
+      "idleLaserAlpha": 0.5,
+      "firingLaserAlpha": 0.95,
+      "crackStages": 4
+    },
+    "children": [
+      {
+        "name": "MiningLaserLine",
+        "nodeTypeId": "b1bc7a02-4eab-54c0-9180-0c9e336f28a7",
+        "nodeId": "867f9a5f-119c-5927-aca8-bae4ed96b2bd",
+        "props": {
+          "visible": false,
+          "color": "#fb7185",
+          "lineWidth": 2,
+          "alpha": 0.5
+        }
+      },
+      {
+        "name": "MiningTargetMarker",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "0a56814d-6a3c-5db5-b192-6c46deea02fd",
+        "props": {
+          "visible": false,
+          "size": { "width": 96, "height": 96 },
+          "origin": { "x": 0.5, "y": 0.5 },
+          "fillColor": "#f97316",
+          "fillAlpha": 0,
+          "strokeColor": "#f97316",
+          "strokeAlpha": 0.95,
+          "strokeWidth": 3
+        }
+      },
+      {
+        "name": "MiningLaserAudio",
+        "nodeTypeId": "88b20e68-99d0-5699-9306-b51283834211",
+        "nodeId": "e6994f3a-847e-56bc-96c4-c749be933528",
+        "props": { "soundKey": "laser-loop", "loop": true, "volume": 0.28 }
+      },
+      {
+        "name": "MiningDirtBreakAudio",
+        "nodeTypeId": "88b20e68-99d0-5699-9306-b51283834211",
+        "nodeId": "80171742-4d22-57e2-add9-9ecc252393e6",
+        "props": { "soundKey": "block-break-dirt", "volume": 0.42 }
+      },
+      {
+        "name": "MiningGemBreakAudio",
+        "nodeTypeId": "88b20e68-99d0-5699-9306-b51283834211",
+        "nodeId": "080e8160-9ea8-50e7-bd3d-32933fb3a775",
+        "props": { "soundKey": "block-break-gem", "volume": 0.52 }
+      }
+    ]
+  }
+}

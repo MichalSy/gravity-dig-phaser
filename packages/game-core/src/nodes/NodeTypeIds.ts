@@ -8,6 +8,9 @@ export const CORE_NODE_TYPE_IDS = {
   AnimatedImageNode: '5a0cd663-64c3-5f02-a579-9915605564be',
   CollisionRectNode: 'f3f82d6c-c31e-56bc-afd6-b5892604eaf5',
   ButtonNode: 'addc5b95-e208-503a-9474-4408cee67995',
+  LineNode: 'b1bc7a02-4eab-54c0-9180-0c9e336f28a7',
+  RectangleNode: 'e214ccf6-b974-56b9-8599-954e313c6e83',
+  AudioNode: '88b20e68-99d0-5699-9306-b51283834211',
 } as const;
 
 export type CoreNodeTypeName = keyof typeof CORE_NODE_TYPE_IDS;

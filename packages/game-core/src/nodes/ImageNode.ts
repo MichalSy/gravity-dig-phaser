@@ -109,6 +109,11 @@ export class ImageNode extends TransformNode {
     this.phaserImage?.setVisible(active && this.visible);
   }
 
+  setAssetId(assetId: string): void {
+    this.assetId = assetId;
+    if (this.isInitialized) this.setAsset(this.assets.image(assetId));
+  }
+
   setAsset(asset: RenderableImageAsset): void {
     this.asset = asset;
     const frame = isFrameAsset(asset) ? asset.frameKey : undefined;
@@ -184,8 +189,7 @@ export class ImageNode extends TransformNode {
     switch (key) {
       case 'assetId':
         if (typeof value !== 'string') return false;
-        this.assetId = value;
-        if (this.isInitialized) this.setAsset(this.assets.image(value));
+        this.setAssetId(value);
         return true;
       case 'flipX':
         if (typeof value !== 'boolean') return false;

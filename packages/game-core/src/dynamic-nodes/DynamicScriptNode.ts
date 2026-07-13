@@ -179,6 +179,30 @@ export class DynamicScriptNode extends GameNode {
     };
   }
 
+  override applyInitialSceneProps(props: Record<string, unknown>): Set<string> {
+    const baseProps: Record<string, unknown> = {};
+    const applied = new Set<string>();
+
+    for (const [key, value] of Object.entries(props)) {
+      const definition = this.scriptPropDefinitions[key];
+      if (!definition) {
+        baseProps[key] = value;
+        continue;
+      }
+      const validatedValue = validateScenePropValue(definition, value);
+      if (validatedValue === undefined) continue;
+      try {
+        this.behavior[key] = validatedValue;
+        applied.add(key);
+      } catch (error) {
+        this.recordScriptError(`set-initial-prop:${key}`, error);
+      }
+    }
+
+    for (const key of super.applyInitialSceneProps(baseProps)) applied.add(key);
+    return applied;
+  }
+
   override hasScenePropOverride(key: string): boolean {
     return this.scriptPropOverrides.has(key) || super.hasScenePropOverride(key);
   }

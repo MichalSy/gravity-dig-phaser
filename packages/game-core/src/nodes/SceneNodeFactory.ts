@@ -358,8 +358,10 @@ function gameNodePath(node: GameNode): string[] {
 
 function applyInitialProps(node: GameNode, props: Record<string, unknown> | undefined): void {
   if (!props) return;
+  const appliedSceneProps = node.applyInitialSceneProps(props);
   const mutableNode = node as GameNode & Record<string, unknown>;
   for (const [key, value] of Object.entries(props)) {
+    if (appliedSceneProps.has(key)) continue;
     if (!(key in mutableNode)) continue;
 
     if (key === 'scale' && isPointLike(value)) {
