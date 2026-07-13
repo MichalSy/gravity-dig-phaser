@@ -1,5 +1,6 @@
 import { NODE_TYPE_IDS, GameNode, type GameNodeOptions } from '../../nodes';
-import type { InputMode } from '../HudState';
+
+type InputMode = 'touch' | 'desktop' | 'gamepad';
 
 interface GameplayInputLike {
   setInputMode(mode: InputMode): void;
