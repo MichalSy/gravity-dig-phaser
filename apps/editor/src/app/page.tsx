@@ -1,11 +1,12 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, Waypoints } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, UploadCloud, Waypoints } from 'lucide-react';
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 import { buildNestedFileBundles, type NestedFileBundle } from '../file-nesting';
+import { updateExplorerSelection } from './explorerSelection';
 import { findPrefabTreeNodeByPath, formatPrefabDocument, isPrefabFilePath, parsePrefabDocument, patchPrefabNode, prefabDocumentToTree, prefabNodeDefinition, prefabNodePropsMessage, type PrefabDocument } from './prefabEditor';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -148,8 +149,12 @@ interface EditorGitDiffEntry {
 interface EditorGitDiffFile {
   path: string;
   status: string;
+  kind: 'text' | 'image';
+  contentType?: string;
   original: string;
   modified: string;
+  originalBase64?: string;
+  modifiedBase64?: string;
 }
 
 interface EditorBackendStatus {
@@ -333,6 +338,9 @@ export default function Home() {
   const [nodeFileRoot, setNodeFileRoot] = useState<PublicFileEntry | undefined>();
   const [selectedPublicDirectoryPath, setSelectedPublicDirectoryPath] = useState('apps/game/public');
   const [selectedPublicFilePath, setSelectedPublicFilePath] = useState<string | undefined>();
+  const [selectedPublicFilePaths, setSelectedPublicFilePaths] = useState<Set<string>>(() => new Set());
+  const [deletePublicFilesOpen, setDeletePublicFilesOpen] = useState(false);
+  const [publicFileOperationStatus, setPublicFileOperationStatus] = useState('');
   const [selectedDirectoryFiles, setSelectedDirectoryFiles] = useState<PublicFileEntry[]>([]);
   const [selectedDirectoryFilesStatus, setSelectedDirectoryFilesStatus] = useState('');
   const [previewPublicFilePath, setPreviewPublicFilePath] = useState<string | undefined>();
@@ -353,6 +361,7 @@ export default function Home() {
   const draggedDynamicNodeRef = useRef<PublicFileEntry | undefined>(undefined);
   const draggedImageAssetRef = useRef<ImageAssetDragPayload | undefined>(undefined);
   const pendingPublicFileSelectionRef = useRef<string | undefined>(undefined);
+  const selectedPublicDirectoryPathRef = useRef(selectedPublicDirectoryPath);
   const [nodeCreateMenu, setNodeCreateMenu] = useState<{ node: DebugNodeDescriptor; x: number; y: number } | undefined>();
   const draggedHierarchyNodeRef = useRef<DebugNodeDescriptor | undefined>(undefined);
   const pendingHierarchyMovesRef = useRef<Map<string, { nodePath: string[]; targetPath: string[]; placement: HierarchyDropPlacement }>>(new Map());
@@ -427,6 +436,10 @@ export default function Home() {
   const selectedPublicFile = useMemo(
     () => selectedPublicFilePath ? selectedDirectoryFiles.find((file) => file.path === selectedPublicFilePath) : undefined,
     [selectedDirectoryFiles, selectedPublicFilePath],
+  );
+  const selectedPublicFiles = useMemo(
+    () => selectedDirectoryFiles.filter((file) => selectedPublicFilePaths.has(file.path)),
+    [selectedDirectoryFiles, selectedPublicFilePaths],
   );
   const publicFileCount = useMemo(
     () => explorerRoots.reduce((total, root) => total + countPublicFiles(root), 0) + selectedDirectoryFiles.length,
@@ -638,6 +651,10 @@ export default function Home() {
   }, [viewportMode, editorPreviewScene, runtimeReadyKey, sessionId]);
 
   useEffect(() => {
+    selectedPublicDirectoryPathRef.current = selectedPublicDirectoryPath;
+  }, [selectedPublicDirectoryPath]);
+
+  useEffect(() => {
     selectedNodeIdRef.current = selectedNodeId;
   }, [selectedNodeId]);
 
@@ -661,6 +678,8 @@ export default function Home() {
     }
     let cancelled = false;
     setSelectedDirectoryFiles([]);
+    setSelectedPublicFilePaths(new Set());
+    setPublicFileOperationStatus('');
     setSelectedDirectoryFilesStatus('Lade Dateien ...');
     void fetchDirectoryFiles(selectedPublicDirectory.path)
       .then((files) => {
@@ -679,17 +698,25 @@ export default function Home() {
   useEffect(() => {
     if (publicFilesInSelectedDirectory.length === 0) {
       setSelectedPublicFilePath(undefined);
+      setSelectedPublicFilePaths(new Set());
       return;
     }
+    const availablePaths = new Set(publicFilesInSelectedDirectory.map((file) => file.path));
     const pendingPath = pendingPublicFileSelectionRef.current;
-    if (pendingPath && publicFilesInSelectedDirectory.some((file) => file.path === pendingPath)) {
+    if (pendingPath && availablePaths.has(pendingPath)) {
       pendingPublicFileSelectionRef.current = undefined;
       setSelectedPublicFilePath(pendingPath);
+      setSelectedPublicFilePaths(new Set([pendingPath]));
       return;
     }
     const nestedChildPaths = buildNestedFileBundles(publicFilesInSelectedDirectory).bundledChildPaths;
     const defaultFilePath = publicFilesInSelectedDirectory.find((file) => !nestedChildPaths.has(file.path))?.path;
-    setSelectedPublicFilePath((current) => current && publicFilesInSelectedDirectory.some((file) => file.path === current) ? current : defaultFilePath);
+    setSelectedPublicFilePath((current) => current && availablePaths.has(current) ? current : defaultFilePath);
+    setSelectedPublicFilePaths((current) => {
+      const retained = new Set([...current].filter((path) => availablePaths.has(path)));
+      if (retained.size === 0 && defaultFilePath) retained.add(defaultFilePath);
+      return retained;
+    });
   }, [publicFilesInSelectedDirectory]);
 
   useEffect(() => {
@@ -847,6 +874,73 @@ export default function Home() {
     return result.files;
   }
 
+  async function reloadSelectedDirectoryFiles(path = selectedPublicDirectoryPath): Promise<void> {
+    if (selectedPublicDirectoryPathRef.current === path) setSelectedDirectoryFilesStatus('Lade Dateien ...');
+    const files = await fetchDirectoryFiles(path);
+    if (selectedPublicDirectoryPathRef.current !== path) return;
+    setSelectedDirectoryFiles(files);
+    setSelectedDirectoryFilesStatus(`${files.length} Datei(en) geladen`);
+  }
+
+  async function applyExplorerMutationResult(result: { dynamicNodeBuild?: { manifest: DynamicNodeManifest } }): Promise<void> {
+    const manifest = result.dynamicNodeBuild?.manifest;
+    if (!manifest) return;
+    const previousManifest = dynamicNodeManifestRef.current;
+    dynamicNodeManifestRef.current = manifest;
+    if (!previousManifest?.bundle || previousManifest.bundle.hash !== manifest.bundle?.hash) await sendDynamicNodeBundleUpdated(manifest);
+  }
+
+  async function deleteSelectedPublicFiles(): Promise<void> {
+    const paths = [...selectedPublicFilePaths];
+    const targetDirectoryPath = selectedPublicDirectoryPath;
+    if (paths.length === 0) return;
+    setPublicFileOperationStatus(`Lösche ${paths.length} Datei${paths.length === 1 ? '' : 'en'} ...`);
+    try {
+      const response = await fetch(editorApi('/public-files'), {
+        method: 'DELETE',
+        cache: 'no-store',
+        headers: { 'content-type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ paths }),
+      });
+      const result = await response.json() as { ok?: boolean; deleted?: string[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; error?: string };
+      if (!response.ok || result.ok === false) throw new Error(result.error ?? `HTTP ${response.status}`);
+      setDeletePublicFilesOpen(false);
+      setPreviewPublicFilePath((current) => current && paths.includes(current) ? undefined : current);
+      setOpenNodeFilePath((current) => current && paths.includes(current) ? undefined : current);
+      setSelectedPublicFilePaths(new Set());
+      setSelectedPublicFilePath(undefined);
+      await applyExplorerMutationResult(result);
+      await Promise.all([reloadSelectedDirectoryFiles(targetDirectoryPath), refreshGitStatus()]);
+      setPublicFileOperationStatus(`${result.deleted?.length ?? paths.length} Datei${paths.length === 1 ? '' : 'en'} gelöscht.`);
+    } catch (error) {
+      setPublicFileOperationStatus(`Löschen fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function uploadPublicFiles(files: File[]): Promise<void> {
+    if (files.length === 0) return;
+    const targetDirectoryPath = selectedPublicDirectoryPath;
+    setPublicFileOperationStatus(`Lade ${files.length} Datei${files.length === 1 ? '' : 'en'} nach ${compactPublicPath(targetDirectoryPath)} ...`);
+    try {
+      const form = new FormData();
+      form.set('directoryPath', targetDirectoryPath);
+      for (const file of files) form.append('files', file, file.name);
+      const response = await fetch(editorApi('/public-files'), { method: 'POST', cache: 'no-store', body: form });
+      const result = await response.json() as { ok?: boolean; written?: { path: string; size: number }[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; error?: string };
+      if (!response.ok || result.ok === false) throw new Error(result.error ?? `HTTP ${response.status}`);
+      await applyExplorerMutationResult(result);
+      await Promise.all([reloadSelectedDirectoryFiles(targetDirectoryPath), refreshGitStatus()]);
+      const writtenPaths = result.written?.map((file) => file.path) ?? [];
+      if (selectedPublicDirectoryPathRef.current === targetDirectoryPath) {
+        setSelectedPublicFilePaths(new Set(writtenPaths));
+        setSelectedPublicFilePath(writtenPaths.at(-1));
+        setPublicFileOperationStatus(`${writtenPaths.length || files.length} Datei${files.length === 1 ? '' : 'en'} hochgeladen · vorhandene Namen überschrieben.`);
+      }
+    } catch (error) {
+      if (selectedPublicDirectoryPathRef.current === targetDirectoryPath) setPublicFileOperationStatus(`Upload fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   function selectPublicDirectory(path: string): void {
     setSelectedPublicDirectoryPath(path);
     setExpandedPublicDirectoryPaths((current) => new Set([...current, ...publicDirectoryAncestorPaths(path), path]));
@@ -856,6 +950,7 @@ export default function Home() {
     const directoryPath = path.split('/').slice(0, -1).join('/');
     pendingPublicFileSelectionRef.current = path;
     setSelectedPublicFilePath(path);
+    setSelectedPublicFilePaths(new Set([path]));
     selectPublicDirectory(directoryPath);
   }
 
@@ -1766,7 +1861,8 @@ export default function Home() {
           selectedDirectory={selectedPublicDirectory}
           selectedDirectoryPath={selectedPublicDirectoryPath}
           selectedFile={selectedPublicFile}
-          selectedFilePath={selectedPublicFilePath}
+          selectedFilePaths={selectedPublicFilePaths}
+          selectedFiles={selectedPublicFiles}
           files={publicFilesInSelectedDirectory}
           filesStatus={selectedDirectoryFilesStatus}
           expandedDirectoryPaths={expandedPublicDirectoryPaths}
@@ -1775,7 +1871,16 @@ export default function Home() {
           bodyRef={assetExplorerBodyRef}
           onSelectDirectory={selectPublicDirectory}
           onToggleDirectory={togglePublicDirectory}
-          onSelectFile={setSelectedPublicFilePath}
+          onSelectionChange={(paths, activePath) => {
+            setSelectedPublicFilePaths(paths);
+            setSelectedPublicFilePath(activePath);
+          }}
+          onDeleteSelection={() => {
+            setPublicFileOperationStatus('');
+            setDeletePublicFilesOpen(true);
+          }}
+          onUploadFiles={(files) => void uploadPublicFiles(files)}
+          operationStatus={publicFileOperationStatus}
           onOpenFile={setOpenNodeFilePath}
           onOpenPrefab={(path) => void openPrefabEditor(path)}
           onOpenImage={setPreviewPublicFilePath}
@@ -1801,6 +1906,7 @@ export default function Home() {
       </section>
       {nodeCreateMenu && <NodeCreateContextMenu roots={treeRoots} menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
       {savePreviewOpen && <GitSavePreviewDialog needsRebase={gitNeedsRebase} onCancel={() => setSavePreviewOpen(false)} onPush={pushGitChanges} />}
+      {deletePublicFilesOpen && <DeletePublicFilesDialog files={selectedPublicFiles} status={publicFileOperationStatus} onCancel={() => setDeletePublicFilesOpen(false)} onConfirm={deleteSelectedPublicFiles} />}
       {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
         if (!result.dynamicNodeBuild?.manifest) return;
@@ -1811,6 +1917,34 @@ export default function Home() {
         }
       }} />}
     </main>
+  );
+}
+
+function DeletePublicFilesDialog({ files, status, onCancel, onConfirm }: { files: PublicFileEntry[]; status: string; onCancel(): void; onConfirm(): void | Promise<void> }) {
+  const [deleting, setDeleting] = useState(false);
+  async function confirm(): Promise<void> {
+    setDeleting(true);
+    try { await onConfirm(); } finally { setDeleting(false); }
+  }
+  return (
+    <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" aria-labelledby="delete-files-title" onClick={deleting ? undefined : onCancel}>
+      <div className={styles.deleteFilesDialog} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <strong id="delete-files-title">{files.length} Datei{files.length === 1 ? '' : 'en'} löschen?</strong>
+          {status && <span className={styles.dialogStatus}>{status}</span>}
+        </div>
+        <div className={styles.deleteFilesBody}>
+          <p>Diese Dateien werden aus dem Workspace gelöscht und anschließend als Git-Änderungen angezeigt.</p>
+          <ul>{files.map((file) => <li key={file.path}>{compactPublicPath(file.path)}</li>)}</ul>
+        </div>
+        <div className={styles.gitPreviewFooter}>
+          <button type="button" className={`${styles.button} ${styles.ghost}`} disabled={deleting} onClick={onCancel}>Abbrechen</button>
+          <button type="button" className={`${styles.button} ${styles.dangerButton}`} disabled={deleting || files.length === 0} onClick={() => void confirm()}>
+            <Trash2 size={14} /> {deleting ? 'Lösche ...' : 'Endgültig löschen'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1888,7 +2022,9 @@ function GitSavePreviewDialog({
               )) : <p className={styles.empty}>Keine lokalen Änderungen.</p>}
             </aside>
             <div className={styles.gitDiffEditorPane}>
-              {selectedFile ? (
+              {selectedFile ? selectedFile.kind === 'image' ? (
+                <GitImageDiff file={selectedFile} />
+              ) : (
                 <MonacoDiffEditor
                   height="100%"
                   original={selectedFile.original}
@@ -1914,12 +2050,30 @@ function GitSavePreviewDialog({
   );
 }
 
+function GitImageDiff({ file }: { file: EditorGitDiffFile }) {
+  const originalSrc = file.originalBase64 ? `data:${file.contentType ?? 'image/png'};base64,${file.originalBase64}` : undefined;
+  const modifiedSrc = file.modifiedBase64 ? `data:${file.contentType ?? 'image/png'};base64,${file.modifiedBase64}` : undefined;
+  return (
+    <div className={styles.gitImageDiff}>
+      <figure>
+        <figcaption>Vorher · HEAD</figcaption>
+        <div>{originalSrc ? <img src={originalSrc} alt={`${file.path} vor der Änderung`} /> : <span>Nicht in HEAD vorhanden</span>}</div>
+      </figure>
+      <figure>
+        <figcaption>Nachher · Workspace</figcaption>
+        <div>{modifiedSrc ? <img src={modifiedSrc} alt={`${file.path} nach der Änderung`} /> : <span>Datei gelöscht</span>}</div>
+      </figure>
+    </div>
+  );
+}
+
 function PublicAssetExplorer({
   roots,
   selectedDirectory,
   selectedDirectoryPath,
   selectedFile,
-  selectedFilePath,
+  selectedFilePaths,
+  selectedFiles,
   files,
   filesStatus,
   expandedDirectoryPaths,
@@ -1928,7 +2082,10 @@ function PublicAssetExplorer({
   bodyRef,
   onSelectDirectory,
   onToggleDirectory,
-  onSelectFile,
+  onSelectionChange,
+  onDeleteSelection,
+  onUploadFiles,
+  operationStatus,
   onOpenFile,
   onOpenPrefab,
   onOpenImage,
@@ -1943,7 +2100,8 @@ function PublicAssetExplorer({
   selectedDirectory?: PublicFileEntry;
   selectedDirectoryPath: string;
   selectedFile?: PublicFileEntry;
-  selectedFilePath?: string;
+  selectedFilePaths: ReadonlySet<string>;
+  selectedFiles: PublicFileEntry[];
   files: PublicFileEntry[];
   filesStatus: string;
   expandedDirectoryPaths: Set<string>;
@@ -1952,7 +2110,10 @@ function PublicAssetExplorer({
   bodyRef: RefObject<HTMLDivElement | null>;
   onSelectDirectory(path: string): void;
   onToggleDirectory(path: string): void;
-  onSelectFile(path: string): void;
+  onSelectionChange(paths: Set<string>, activePath?: string): void;
+  onDeleteSelection(): void;
+  onUploadFiles(files: File[]): void;
+  operationStatus: string;
   onOpenFile(path: string): void;
   onOpenPrefab(path: string): void;
   onOpenImage(path: string): void;
@@ -1965,12 +2126,42 @@ function PublicAssetExplorer({
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const [expandedBundlePaths, setExpandedBundlePaths] = useState<Set<string>>(() => new Set());
+  const [uploadDropActive, setUploadDropActive] = useState(false);
+  const uploadDragDepthRef = useRef(0);
+  const selectionAnchorRef = useRef<string | undefined>(undefined);
   const nestedFiles = useMemo(() => buildNestedFileBundles(files), [files]);
   const bundleByPrimaryPath = useMemo(
     () => new Map(nestedFiles.bundles.map((bundle) => [bundle.primary.path, bundle])),
     [nestedFiles.bundles],
   );
   const topLevelFiles = files.filter((file) => !nestedFiles.bundledChildPaths.has(file.path));
+  const visibleFilePaths = topLevelFiles.flatMap((file) => {
+    const bundle = bundleByPrimaryPath.get(file.path);
+    return bundle && expandedBundlePaths.has(file.path) ? [file.path, ...bundle.children.map((child) => child.file.path)] : [file.path];
+  });
+
+  useEffect(() => {
+    selectionAnchorRef.current = undefined;
+    uploadDragDepthRef.current = 0;
+    setUploadDropActive(false);
+  }, [selectedDirectoryPath]);
+
+  function selectFile(path: string, event: ReactMouseEvent<HTMLButtonElement>): void {
+    const result = updateExplorerSelection({
+      selectedPaths: selectedFilePaths,
+      anchorPath: selectionAnchorRef.current,
+      targetPath: path,
+      orderedPaths: visibleFilePaths,
+      toggle: event.ctrlKey || event.metaKey,
+      range: event.shiftKey,
+    });
+    selectionAnchorRef.current = result.anchorPath;
+    onSelectionChange(result.selectedPaths, result.activePath);
+  }
+
+  function hasExternalFiles(event: ReactDragEvent): boolean {
+    return Array.from(event.dataTransfer.types).includes('Files');
+  }
 
   function toggleBundle(path: string): void {
     setExpandedBundlePaths((current) => {
@@ -2004,12 +2195,51 @@ function PublicAssetExplorer({
           )}
         </div>
         <div className={styles.folderTreeResizer} role="separator" aria-orientation="vertical" aria-label="Ordnerbereich Breite ändern" onPointerDown={onStartFolderResize} />
-        <div className={styles.fileListPane}>
+        <div
+          className={`${styles.fileListPane} ${uploadDropActive ? styles.fileListPaneUploadActive : ''}`}
+          onDragEnter={(event) => {
+            if (!hasExternalFiles(event)) return;
+            event.preventDefault();
+            uploadDragDepthRef.current += 1;
+            setUploadDropActive(true);
+          }}
+          onDragOver={(event) => {
+            if (!hasExternalFiles(event)) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+          }}
+          onDragLeave={(event) => {
+            if (!hasExternalFiles(event)) return;
+            uploadDragDepthRef.current = Math.max(0, uploadDragDepthRef.current - 1);
+            if (uploadDragDepthRef.current === 0) setUploadDropActive(false);
+          }}
+          onDrop={(event) => {
+            if (!hasExternalFiles(event)) return;
+            event.preventDefault();
+            uploadDragDepthRef.current = 0;
+            setUploadDropActive(false);
+            onUploadFiles(Array.from(event.dataTransfer.files));
+          }}
+        >
           <div className={styles.fileListHeader}>
-            <strong>{compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>
-            <span>{childDirectories.length} Ordner · {filesStatus || `${files.length} Dateien`}</span>
+            <div className={styles.fileListTitleRow}>
+              <strong>{selectedFiles.length > 1 ? `${selectedFiles.length} Dateien ausgewählt` : compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>
+              {selectedFiles.length > 0 && (
+                <button type="button" className={`${styles.inlineIconButton} ${styles.deleteFileButton}`} onClick={onDeleteSelection} aria-label={`${selectedFiles.length} ausgewählte Datei${selectedFiles.length === 1 ? '' : 'en'} löschen`} title="Ausgewählte Dateien löschen">
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+            <span>{operationStatus || `${childDirectories.length} Ordner · ${filesStatus || `${files.length} Dateien`}`}</span>
           </div>
           <div className={styles.assetGrid}>
+            {uploadDropActive && (
+              <div className={styles.assetUploadOverlay}>
+                <UploadCloud size={38} />
+                <strong>Dateien hochladen</strong>
+                <span>Nach {compactPublicPath(selectedDirectoryPath)} · vorhandene Namen werden überschrieben</span>
+              </div>
+            )}
             {childDirectories.map((directory) => (
               <button key={directory.path} type="button" className={styles.assetTile} onClick={() => onSelectDirectory(directory.path)}>
                 <div className={styles.fileTileIcon}><Folder size={30} /></div>
@@ -2024,9 +2254,15 @@ function PublicAssetExplorer({
                   key={file.path}
                   bundle={bundle ?? { primary: file, children: [] }}
                   expanded={Boolean(bundle && expandedBundlePaths.has(file.path))}
-                  selectedFilePath={selectedFilePath}
-                  onToggle={() => toggleBundle(file.path)}
-                  onSelectFile={onSelectFile}
+                  selectedFilePaths={selectedFilePaths}
+                  onToggle={() => {
+                    if (bundle && expandedBundlePaths.has(file.path) && bundle.children.some((child) => selectedFilePaths.has(child.file.path))) {
+                      selectionAnchorRef.current = file.path;
+                      onSelectionChange(new Set([file.path]), file.path);
+                    }
+                    toggleBundle(file.path);
+                  }}
+                  onSelectFile={selectFile}
                   onOpenFile={onOpenFile}
                   onOpenPrefab={onOpenPrefab}
                   onDynamicNodeDragStart={onDynamicNodeDragStart}
@@ -2040,7 +2276,7 @@ function PublicAssetExplorer({
             {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
           </div>
         </div>
-        <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} onOpenFile={onOpenFile} onOpenPrefab={onOpenPrefab} />
+        <PublicFileDetails files={selectedFiles} file={selectedFile} onDelete={onDeleteSelection} onOpenImage={onOpenImage} onOpenFile={onOpenFile} onOpenPrefab={onOpenPrefab} />
       </div>
     </section>
   );
@@ -2049,7 +2285,7 @@ function PublicAssetExplorer({
 function PublicFileBundleTile({
   bundle,
   expanded,
-  selectedFilePath,
+  selectedFilePaths,
   onToggle,
   onSelectFile,
   onOpenFile,
@@ -2061,9 +2297,9 @@ function PublicFileBundleTile({
 }: {
   bundle: NestedFileBundle<PublicFileEntry>;
   expanded: boolean;
-  selectedFilePath?: string;
+  selectedFilePaths: ReadonlySet<string>;
   onToggle(): void;
-  onSelectFile(path: string): void;
+  onSelectFile(path: string, event: ReactMouseEvent<HTMLButtonElement>): void;
   onOpenFile(path: string): void;
   onOpenPrefab(path: string): void;
   onDynamicNodeDragStart(file: PublicFileEntry): void;
@@ -2077,7 +2313,7 @@ function PublicFileBundleTile({
       <div className={styles.assetBundlePrimary}>
         <PublicAssetFileTile
           file={bundle.primary}
-          selected={bundle.primary.path === selectedFilePath}
+          selected={selectedFilePaths.has(bundle.primary.path)}
           onSelectFile={onSelectFile}
           onOpenFile={onOpenFile}
           onOpenPrefab={onOpenPrefab}
@@ -2092,7 +2328,6 @@ function PublicFileBundleTile({
             className={styles.assetBundleToggle}
             onClick={(event) => {
               event.stopPropagation();
-              if (expanded && bundle.children.some(({ file }) => file.path === selectedFilePath)) onSelectFile(bundle.primary.path);
               onToggle();
             }}
             aria-label={`${bundle.primary.name}: ${bundle.children.length} verknüpfte Datei${bundle.children.length === 1 ? '' : 'en'} ${expanded ? 'einklappen' : 'aufklappen'}`}
@@ -2111,7 +2346,7 @@ function PublicFileBundleTile({
           <PublicAssetFileTile
             file={child.file}
             relationLabel={child.label}
-            selected={child.file.path === selectedFilePath}
+            selected={selectedFilePaths.has(child.file.path)}
             onSelectFile={onSelectFile}
             onOpenFile={onOpenFile}
             onOpenPrefab={onOpenPrefab}
@@ -2141,7 +2376,7 @@ function PublicAssetFileTile({
   file: PublicFileEntry;
   relationLabel?: string;
   selected: boolean;
-  onSelectFile(path: string): void;
+  onSelectFile(path: string, event: ReactMouseEvent<HTMLButtonElement>): void;
   onOpenFile(path: string): void;
   onOpenPrefab(path: string): void;
   onDynamicNodeDragStart(file: PublicFileEntry): void;
@@ -2173,7 +2408,7 @@ function PublicAssetFileTile({
         onDynamicNodeDragEnd();
         onImageAssetDragEnd();
       }}
-      onClick={() => onSelectFile(file.path)}
+      onClick={(event) => onSelectFile(file.path, event)}
       onDoubleClick={(event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -2223,7 +2458,21 @@ function QueuedPublicImageThumbnail({ file }: { file: PublicFileEntry }) {
   return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>{failed ? 'ERR' : 'LÄDT'}</span></div>;
 }
 
-function PublicFileDetails({ file, onOpenImage, onOpenFile, onOpenPrefab }: { file?: PublicFileEntry; onOpenImage(path: string): void; onOpenFile(path: string): void; onOpenPrefab(path: string): void }) {
+function PublicFileDetails({ files, file, onDelete, onOpenImage, onOpenFile, onOpenPrefab }: { files: PublicFileEntry[]; file?: PublicFileEntry; onDelete(): void; onOpenImage(path: string): void; onOpenFile(path: string): void; onOpenPrefab(path: string): void }) {
+  if (files.length > 1) {
+    return (
+      <aside className={styles.assetDetails}>
+        <div className={styles.multiFileSelectionDetails}>
+          <div className={styles.assetMetaHeaderRow}>
+            <strong>{files.length} Dateien ausgewählt</strong>
+            <button type="button" className={`${styles.inlineIconButton} ${styles.deleteFileButton}`} onClick={onDelete} aria-label="Ausgewählte Dateien löschen" title="Ausgewählte Dateien löschen"><Trash2 size={14} /></button>
+          </div>
+          <ul>{files.map((selected) => <li key={selected.path}>{selected.name}</li>)}</ul>
+          <span>Strg/Cmd + Klick wählt einzelne Dateien. Shift + Klick wählt einen Bereich.</span>
+        </div>
+      </aside>
+    );
+  }
   if (!file) return <aside className={styles.assetDetails}><p className={styles.empty}>Wähle eine Datei.</p></aside>;
   const url = isCodePreviewFile(file) ? '' : publicFileContentUrl(file);
   return (
@@ -2258,7 +2507,10 @@ function PublicFileDetails({ file, onOpenImage, onOpenFile, onOpenPrefab }: { fi
       </div>
       <div className={styles.assetMetaPanel}>
         <div className={styles.assetMetaHeader}>
-          <strong>{file.name}</strong>
+          <div className={styles.assetMetaHeaderRow}>
+            <strong>{file.name}</strong>
+            <button type="button" className={`${styles.inlineIconButton} ${styles.deleteFileButton}`} onClick={onDelete} aria-label={`${file.name} löschen`} title="Datei löschen"><Trash2 size={14} /></button>
+          </div>
           <span>{formatFileMeta(file)}</span>
         </div>
         <div className={styles.assetMetaGrid}>

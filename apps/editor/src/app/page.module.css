@@ -768,8 +768,14 @@
 }
 
 .fileListPane {
+  position: relative;
   display: grid;
   grid-template-rows: auto 1fr;
+}
+
+.fileListPaneUploadActive {
+  outline: 2px solid rgba(56, 189, 248, 0.72);
+  outline-offset: -2px;
 }
 
 .fileListHeader {
@@ -779,6 +785,35 @@
   padding: 8px 10px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.13);
   background: rgba(15, 23, 42, 0.72);
+}
+
+.fileListTitleRow,
+.assetMetaHeaderRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fileListTitleRow strong,
+.assetMetaHeaderRow strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deleteFileButton {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.22);
+  color: #fca5a5;
+}
+
+.deleteFileButton:hover {
+  border-color: rgba(248, 113, 113, 0.72);
+  background: rgba(185, 28, 28, 0.32);
+  color: #fee2e2;
 }
 
 .fileListHeader strong {
@@ -895,6 +930,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 }
 
 .assetGrid {
+  position: relative;
   min-width: 0;
   min-height: 0;
   overflow-x: hidden;
@@ -905,6 +941,37 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   gap: 8px;
   padding: 10px;
   background: rgba(2, 6, 23, 0.5);
+}
+
+.assetUploadOverlay {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  grid-column: 1 / -1;
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  border: 2px dashed rgba(125, 211, 252, 0.75);
+  border-radius: 12px;
+  padding: 18px;
+  background: rgba(3, 18, 36, 0.94);
+  color: #7dd3fc;
+  text-align: center;
+  pointer-events: none;
+}
+
+.assetUploadOverlay strong {
+  color: #e0f2fe;
+  font-size: 15px;
+}
+
+.assetUploadOverlay span {
+  max-width: 420px;
+  color: #bae6fd;
+  font-size: 11px;
 }
 
 .assetFileBundle {
@@ -1162,6 +1229,46 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 
 .assetMetaHeader span { color: #94a3b8; font-size: 11px; }
 
+.multiFileSelectionDetails {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.multiFileSelectionDetails ul,
+.deleteFilesBody ul {
+  min-width: 0;
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.multiFileSelectionDetails li,
+.deleteFilesBody li {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 7px;
+  padding: 7px 8px;
+  background: rgba(2, 6, 23, 0.5);
+  color: #cbd5e1;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.multiFileSelectionDetails > span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
 .assetMetaGrid {
   min-width: 0;
   display: grid;
@@ -1217,6 +1324,46 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
   grid-template-rows: 44px minmax(0, 1fr) 58px;
   border-radius: 10px;
   box-shadow: 0 18px 56px rgba(0, 0, 0, 0.55);
+}
+
+.deleteFilesDialog {
+  width: min(92vw, 620px);
+  max-height: min(82vh, 680px);
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr) 58px;
+  border: 1px solid rgba(248, 113, 113, 0.36);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.99);
+  box-shadow: 0 22px 72px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+
+.deleteFilesBody {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+}
+
+.deleteFilesBody p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.dangerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-color: rgba(248, 113, 113, 0.48);
+  background: rgba(185, 28, 28, 0.45);
+  color: #fee2e2;
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.58);
 }
 
 .codeDialog {
@@ -1829,6 +1976,67 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 .gitDiffEditorPane :global(.monaco-diff-editor),
 .gitDiffEditorPane :global(.monaco-editor .overflow-guard) {
   min-height: 420px;
+}
+
+.gitImageDiff {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.gitImageDiff figure {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+  margin: 0;
+  background: #020617;
+}
+
+.gitImageDiff figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  color: #bae6fd;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.gitImageDiff figure > div {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.08) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.08) 75%),
+    #020617;
+  background-size: 18px 18px;
+  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+}
+
+.gitImageDiff img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.gitImageDiff figure > div > span {
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #94a3b8;
+  font-size: 11px;
 }
 
 .gitPreviewTable {

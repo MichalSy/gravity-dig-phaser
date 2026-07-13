@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
-import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { DebugNodeMovePlacement, DebugNodePatch, EditorAddNodeChange, EditorChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 
@@ -17,8 +17,12 @@ interface SaveRequest {
 export interface EditorGitDiffFile {
   path: string;
   status: string;
+  kind: 'text' | 'image';
+  contentType?: string;
   original: string;
   modified: string;
+  originalBase64?: string;
+  modifiedBase64?: string;
 }
 
 interface StagedAssetUpload {
@@ -247,9 +251,24 @@ export async function gitDiffFile(relativePath: string): Promise<EditorGitDiffFi
     const path = safePath.relativePath;
     const statusLine = (await git(['status', '--short', '--', path])).trim();
     const status = statusLine ? parseGitStatusLine(statusLine).status : 'M';
+    const contentType = contentTypeForPath(path);
+    if (contentType.startsWith('image/')) {
+      const original = await gitBuffer(['show', `HEAD:${path}`]).catch(() => Buffer.alloc(0));
+      const modified = await readFile(safePath.absolutePath).catch(() => Buffer.alloc(0));
+      return {
+        path,
+        status,
+        kind: 'image',
+        contentType,
+        original: '',
+        modified: '',
+        originalBase64: original.length > 0 ? original.toString('base64') : undefined,
+        modifiedBase64: modified.length > 0 ? modified.toString('base64') : undefined,
+      };
+    }
     const original = await git(['show', `HEAD:${path}`]).catch(() => '');
     const modified = await readFile(safePath.absolutePath, 'utf8').catch(() => '');
-    return { path, status, original, modified };
+    return { path, status, kind: 'text', original, modified };
   });
 }
 
@@ -321,6 +340,43 @@ export async function readPublicFile(relativePath: string): Promise<{ content: B
   const filePath = await resolvePublicFilePath(relativePath);
   const content = await readFile(filePath.absolutePath);
   return { content, contentType: contentTypeForPath(filePath.relativePath), path: filePath.relativePath, size: content.length };
+}
+
+export async function deleteExplorerFiles(body: unknown) {
+  const typed = body as { paths?: unknown } | undefined;
+  const paths = Array.isArray(typed?.paths) ? [...new Set(typed.paths.filter((path): path is string => typeof path === 'string' && path.trim().length > 0))] : [];
+  if (paths.length === 0 || paths.length > 100) throw new EditorBackendError('Required: 1 to 100 file paths.', 400);
+  const deleted = await withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    const resolved = await Promise.all(paths.map((path) => resolveExplorerMutationFilePath(path)));
+    for (const file of resolved) await rm(file.absolutePath);
+    return resolved.map((file) => file.relativePath);
+  });
+  const dynamicNodeBuild = deleted.some(isDynamicNodeSourcePath) ? await buildDynamicNodeModules() : undefined;
+  return { ok: true, deleted, dynamicNodeBuild };
+}
+
+export async function uploadExplorerFiles(directoryPath: string, files: { name: string; content: Buffer }[]) {
+  if (files.length === 0 || files.length > 100) throw new EditorBackendError('Required: 1 to 100 files.', 400);
+  const totalBytes = files.reduce((total, file) => total + file.content.length, 0);
+  if (totalBytes > 200 * 1024 * 1024) throw new EditorBackendError('Upload exceeds the 200 MB limit.', 413);
+  const written = await withWorkspaceLock(async () => {
+    await ensureWorkspaceUnlocked();
+    const directory = await resolveExplorerMutationDirectoryPath(directoryPath);
+    const targets = files.map((file) => {
+      const name = file.name.trim();
+      if (!name || name === '.' || name === '..' || basename(name) !== name || name.includes('/') || name.includes('\\')) {
+        throw new EditorBackendError(`Invalid upload filename: ${file.name}`, 400);
+      }
+      const absolutePath = resolve(directory.absolutePath, name);
+      assertInsideRoot(absolutePath, directory.absolutePath, 'uploadFile');
+      return { absolutePath, relativePath: `${directory.relativePath}/${name}`, content: file.content };
+    });
+    for (const target of targets) await writeFile(target.absolutePath, target.content);
+    return targets.map(({ relativePath, content }) => ({ path: relativePath, size: content.length }));
+  });
+  const dynamicNodeBuild = written.some((file) => isDynamicNodeSourcePath(file.path)) ? await buildDynamicNodeModules() : undefined;
+  return { ok: true, written, overwritten: true, dynamicNodeBuild };
 }
 
 export async function writeEditorFile(relativePath: string, content: string) {
@@ -675,6 +731,35 @@ async function ensureWorkspaceSubtree(relativeRoot: string, label: string): Prom
 
     throw new EditorBackendError(`${label} not found after workspace sync: ${relative(workspacePath, rootPath)}`, 500);
   });
+}
+
+async function resolveExplorerMutationFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
+  const resolved = resolveExplorerMutationPath(relativePath);
+  const fileStat = await stat(resolved.absolutePath).catch(() => undefined);
+  if (!fileStat?.isFile()) throw new EditorBackendError(`Explorer path is not a file: ${resolved.relativePath}`, 400);
+  return resolved;
+}
+
+async function resolveExplorerMutationDirectoryPath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
+  const resolved = resolveExplorerMutationPath(relativePath);
+  const fileStat = await stat(resolved.absolutePath).catch(() => undefined);
+  if (!fileStat?.isDirectory()) throw new EditorBackendError(`Explorer path is not a directory: ${resolved.relativePath}`, 400);
+  return resolved;
+}
+
+function resolveExplorerMutationPath(relativePath: string): { absolutePath: string; relativePath: string } {
+  const normalized = relativePath.replace(/^\/+/, '').replaceAll('\\', '/');
+  if (!normalized || normalized.split('/').includes('..')) throw new EditorBackendError('Invalid explorer path.', 400);
+  const allowedRoot = normalized === 'apps/game/public' || normalized.startsWith('apps/game/public/')
+    ? 'apps/game/public'
+    : normalized === 'apps/game/src' || normalized.startsWith('apps/game/src/')
+      ? 'apps/game/src'
+      : undefined;
+  if (!allowedRoot) throw new EditorBackendError('Explorer mutations are limited to apps/game/public and apps/game/src.', 403);
+  const absoluteRoot = resolve(workspacePath, allowedRoot);
+  const absolutePath = resolve(workspacePath, normalized);
+  assertInsideRoot(absolutePath, absoluteRoot, 'explorerPath');
+  return { absolutePath, relativePath: normalized };
 }
 
 async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
@@ -1242,6 +1327,19 @@ function parseGitStatusLine(line: string): { status: string; path: string } {
 async function git(args: string[]): Promise<string> {
   if (args[0] === 'pushWithToken') return gitPushWithToken(args.slice(1));
   return gitOutside(['-C', workspacePath, ...args]);
+}
+
+async function gitBuffer(args: string[]): Promise<Buffer> {
+  return new Promise((resolveBuffer, rejectBuffer) => {
+    execFile('git', ['-C', workspacePath, ...args], { env: process.env, maxBuffer: 1024 * 1024 * 64, encoding: 'buffer' }, (error, stdout, stderr) => {
+      if (error) {
+        rejectBuffer(error);
+        return;
+      }
+      if (stderr.length > 0) console.warn('[git]', stderr.toString().trim());
+      resolveBuffer(Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout));
+    });
+  });
 }
 
 async function gitOutside(args: string[]): Promise<string> {
