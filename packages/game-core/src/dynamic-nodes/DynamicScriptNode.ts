@@ -114,6 +114,10 @@ export class DynamicScriptNode extends GameNode {
     return this.readScriptValue(name);
   }
 
+  setScriptProperty(name: string, value: unknown): void {
+    this.behavior[name] = value;
+  }
+
   reloadModule(module: DynamicNodeModule): void {
     const previousValues = Object.fromEntries(Object.keys(this.scriptPropDefinitions).map((key) => [key, this.readScriptValue(key)]));
     this.callScriptLifecycle('destroy', () => this.behavior.destroy?.());
@@ -352,6 +356,24 @@ export class DynamicScriptNode extends GameNode {
     }
     handler(this);
   }
+}
+
+export function createDynamicScriptNode(options: DynamicScriptNodeOptions): DynamicScriptNode {
+  const node = new DynamicScriptNode(options);
+  return new Proxy(node, {
+    get(target, property, receiver) {
+      if (typeof property !== 'string' || property in target) return Reflect.get(target, property, receiver);
+      const value = target.getScriptProperty(property);
+      return typeof value === 'function'
+        ? (...args: unknown[]) => target.callScriptMethod(property, ...args)
+        : value;
+    },
+    set(target, property, value, receiver) {
+      if (typeof property !== 'string' || property in target) return Reflect.set(target, property, value, receiver);
+      target.setScriptProperty(property, value);
+      return true;
+    },
+  });
 }
 
 function extractScriptProps(behavior: DynamicScriptBehavior): { definitions: Record<string, DebugScenePropDefinition> } {

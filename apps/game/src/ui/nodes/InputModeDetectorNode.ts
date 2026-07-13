@@ -1,11 +1,14 @@
-import { GameplayInputNode } from '../../app/nodes';
 import { NODE_TYPE_IDS, GameNode, type GameNodeOptions } from '../../nodes';
 import type { InputMode } from '../HudState';
+
+interface GameplayInputLike {
+  setInputMode(mode: InputMode): void;
+}
 
 export class InputModeDetectorNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.InputModeDetectorNode;
 
-  private inputState!: GameplayInputNode;
+  private inputState!: GameplayInputLike;
   override readonly dependencies = ['GameplayInput'] as const;
 
   constructor(options: GameNodeOptions = {}) {
@@ -13,7 +16,7 @@ export class InputModeDetectorNode extends GameNode {
   }
 
   resolve(): void {
-    this.inputState = this.requireNode<GameplayInputNode>('GameplayInput');
+    this.inputState = this.requireNode('GameplayInput') as unknown as GameplayInputLike;
   }
 
   update(): void {

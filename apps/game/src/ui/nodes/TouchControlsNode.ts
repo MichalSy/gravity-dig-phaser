@@ -1,12 +1,21 @@
 import Phaser from 'phaser';
-import { GameplayInputNode } from '../../app/nodes';
 import { VirtualJoystick } from '../../controls/VirtualJoystick';
 import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
+
+interface GameplayInputLike {
+  setControlPointerResolver(resolver: (pointer: Phaser.Input.Pointer) => boolean): void;
+  getInputMode(): 'desktop' | 'touch' | 'gamepad';
+  setMenuOpen(open: boolean): void;
+  isMenuOpen(): boolean;
+  setMoveVector(vector: Phaser.Math.Vector2): void;
+  setAimVector(vector: Phaser.Math.Vector2): void;
+  setAiming(aiming: boolean): void;
+}
 
 export class TouchControlsNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.TouchControlsNode;
 
-  private inputState!: GameplayInputNode;
+  private inputState!: GameplayInputLike;
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
   private controlsHint!: Phaser.GameObjects.Text;
@@ -41,7 +50,7 @@ export class TouchControlsNode extends GameNode {
   }
 
   resolve(): void {
-    this.inputState = this.requireNode<GameplayInputNode>('GameplayInput');
+    this.inputState = this.requireNode('GameplayInput') as unknown as GameplayInputLike;
   }
 
   afterResolved(): void {

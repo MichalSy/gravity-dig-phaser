@@ -1,4 +1,4 @@
-import { TILE_SIZE } from '../../config/gameConfig';
+import { TILE_SIZE } from '../playerConfig';
 import type { UpgradeDefinition, UpgradeId } from '../types';
 
 export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {

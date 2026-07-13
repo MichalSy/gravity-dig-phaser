@@ -2,7 +2,7 @@
   "version": 1,
   "root": {
     "name": "PlayerState",
-    "nodeTypeId": "fe16c9f8-414b-51dd-bd4f-9cb56ff9eb03",
+    "nodeTypeId": "dynamic.player-state",
     "instanceId": "e675186e-ff31-53c3-92b1-781f8e8dc05b"
   }
 }

@@ -5,7 +5,7 @@ import {
   MINING_DAMAGE_PER_SEC,
   MINING_RANGE,
   PLAYER_SPEED,
-} from '../config/gameConfig';
+} from './playerConfig';
 import { PERK_DEFINITIONS } from './catalogs/perks';
 import { UPGRADE_DEFINITIONS } from './catalogs/upgrades';
 import type { EffectivePlayerStats, PlayerProfile, StatModifier } from './types';

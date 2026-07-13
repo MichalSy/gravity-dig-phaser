@@ -57,8 +57,39 @@
       },
       {
         "name": "PlayerAnimator",
-        "nodeTypeId": "dbfe2289-a994-52dd-88f8-1b680fc914f6",
-        "nodeId": "53f8874d-9d86-4687-8d07-897cc51a9ee2"
+        "nodeTypeId": "dynamic.player-animation",
+        "nodeId": "53f8874d-9d86-4687-8d07-897cc51a9ee2",
+        "props": {
+          "worldNodeId": null,
+          "movementNodeId": "8e9c3d71-ea21-4882-809a-e75645ce74ef",
+          "miningNodeId": "cb278fb8-c7fd-555f-98ef-6a9b0283abe4",
+          "imageNodeId": "fe8c9a25-c18c-4154-aa84-e4272055d66b",
+          "footstepAudioNodeIds": [
+            "bdac5c5e-8531-4cf2-bcff-b03deba96671",
+            "2aa86a60-0d3b-4b9e-96be-c5b0e6464474",
+            "9ab279a0-c1b4-4095-aa40-78452b080617"
+          ]
+        },
+        "children": [
+          {
+            "name": "FootstepAudio1",
+            "nodeTypeId": "88b20e68-99d0-5699-9306-b51283834211",
+            "nodeId": "bdac5c5e-8531-4cf2-bcff-b03deba96671",
+            "props": { "soundKey": "walk-1", "volume": 0.16 }
+          },
+          {
+            "name": "FootstepAudio2",
+            "nodeTypeId": "88b20e68-99d0-5699-9306-b51283834211",
+            "nodeId": "2aa86a60-0d3b-4b9e-96be-c5b0e6464474",
+            "props": { "soundKey": "walk-2", "volume": 0.16 }
+          },
+          {
+            "name": "FootstepAudio3",
+            "nodeTypeId": "88b20e68-99d0-5699-9306-b51283834211",
+            "nodeId": "9ab279a0-c1b4-4095-aa40-78452b080617",
+            "props": { "soundKey": "walk-3", "volume": 0.16 }
+          }
+        ]
       },
       {
         "prefab": "prefabs/mining-tool.prefab.json",

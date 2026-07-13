@@ -392,6 +392,77 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+// public/scripts/Gameplay/PlayerAnimationScript.node.ts
+var PlayerAnimationScript = class extends ScriptNode {
+  id = "dynamic.player-animation";
+  name = "Player Animator";
+  worldNodeId = prop.nodeRef(null, { label: "World" });
+  movementNodeId = prop.nodeRef("8e9c3d71-ea21-4882-809a-e75645ce74ef", { label: "Movement" });
+  miningNodeId = prop.nodeRef("cb278fb8-c7fd-555f-98ef-6a9b0283abe4", { label: "Mining Tool" });
+  imageNodeId = prop.nodeRef("fe8c9a25-c18c-4154-aa84-e4272055d66b", { label: "Player Image" });
+  footstepAudioNodeIds = prop.nodeRefList([], { label: "Footstep Audio" });
+  footstepIntervalMs = prop.number(240, { min: 50, max: 1e3, step: 10, label: "Footstep Interval ms" });
+  facing = "east";
+  animationId = "idle.east";
+  world;
+  movement;
+  mining;
+  image;
+  footstepAudio = [];
+  footstepTimerMs = 0;
+  walkSoundIndex = 0;
+  resolve() {
+    this.world = this.requireResolvedNode(this.worldNodeId, "World");
+    this.movement = this.requireResolvedNode(this.movementNodeId, "PlayerMovementController");
+    this.mining = this.requireResolvedNode(this.miningNodeId, "MiningTool");
+    this.image = this.requireResolvedNode(this.imageNodeId, "PlayerImage");
+    this.footstepAudio = this.footstepAudioNodeIds.flatMap((id) => {
+      const node = this.getNodeById(id);
+      return node ? [node] : [];
+    });
+  }
+  update(deltaMs) {
+    const player = this.world.player;
+    if (!this.image.isEffectivelyActive()) {
+      player.setVisible(false);
+      return;
+    }
+    player.setVisible(true);
+    const aim = this.mining.callScriptMethod("getAimWorldPoint");
+    const aimX = this.mining.callScriptMethod("isMiningPressed") === true ? aim?.x : void 0;
+    const velocity = readPoint(this.movement.callScriptMethod?.("getVelocity") ?? this.movement.getScriptProperty?.("velocity"));
+    const grounded = (this.movement.callScriptMethod?.("isGrounded") ?? this.movement.getScriptProperty?.("grounded")) === true;
+    if (aimX !== void 0 && Math.abs(aimX - player.x) > 10) this.facing = aimX >= player.x ? "east" : "west";
+    else if (Math.abs(velocity.x) > 1) this.facing = velocity.x > 0 ? "east" : "west";
+    const airborne = !grounded;
+    const moving = Math.abs(velocity.x) > 1;
+    const animationName = airborne ? velocity.y <= 30 ? "jump" : "fall" : moving ? "walk" : "idle";
+    this.animationId = `${animationName}.east`;
+    this.image.play(this.animationId);
+    this.image.flipX = this.facing === "west";
+    this.updateFootstep(!airborne && moving, deltaMs);
+  }
+  updateFootstep(active, deltaMs) {
+    if (!active) {
+      this.footstepTimerMs = 0;
+      return;
+    }
+    this.footstepTimerMs += deltaMs;
+    if (this.footstepTimerMs < this.footstepIntervalMs || this.footstepAudio.length === 0) return;
+    this.footstepTimerMs = 0;
+    this.walkSoundIndex = (this.walkSoundIndex + 1) % this.footstepAudio.length;
+    this.footstepAudio[this.walkSoundIndex].playOneShot({ detune: Math.round(Math.random() * 60 - 30) });
+  }
+  requireResolvedNode(instanceId, fallbackName) {
+    const node = (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${instanceId ?? fallbackName}' was not found`);
+    return node;
+  }
+};
+function readPoint(value) {
+  return value && typeof value === "object" && "x" in value && "y" in value ? { x: Number(value.x), y: Number(value.y) } : { x: 0, y: 0 };
+}
+
 // public/scripts/Gameplay/PlayerMovementScript.node.ts
 var PLAYER_SIZE = { w: 40, h: 64 };
 var HORIZONTAL_COLLISION_SIZE = { w: PLAYER_SIZE.w, h: PLAYER_SIZE.h - 8 };
@@ -648,6 +719,110 @@ var LoadingScript = class extends ScriptNode {
   }
 };
 
+// public/scripts/Managers/GameplayInput.node.ts
+var GameplayInputScript = class extends ScriptNode {
+  id = "dynamic.gameplay-input";
+  name = "Gameplay Input";
+  deviceNodeId = prop.nodeRef("87b03f69-911d-55e3-a00f-d2f92f460f4e", { label: "Input Device" });
+  device;
+  inputMode = "desktop";
+  moveVector = { x: 0, y: 0 };
+  aimVector = { x: 1, y: 0 };
+  gamepadAim = { x: 1, y: 0 };
+  aiming = false;
+  menuOpen = false;
+  controlPointerResolver = () => false;
+  resolve() {
+    const device = this.deviceNodeId ? this.getNodeById(this.deviceNodeId) : void 0;
+    if (!device) throw new Error("Required node 'InputDevice' was not resolved");
+    this.device = device;
+  }
+  setInputMode(mode) {
+    this.inputMode = mode;
+  }
+  getInputMode() {
+    return this.inputMode;
+  }
+  setMoveVector(vector) {
+    this.moveVector = { x: vector.x, y: vector.y };
+  }
+  getMoveVector() {
+    return this.moveVector;
+  }
+  setAimVector(vector) {
+    this.aimVector = normalized(vector, this.aimVector);
+  }
+  getAimVector() {
+    return this.aimVector;
+  }
+  setAiming(aiming) {
+    this.aiming = aiming;
+  }
+  isAiming() {
+    return !this.menuOpen && this.inputMode === "touch" && this.aiming;
+  }
+  setMenuOpen(open) {
+    this.menuOpen = open;
+  }
+  isMenuOpen() {
+    return this.menuOpen;
+  }
+  setControlPointerResolver(resolver) {
+    this.controlPointerResolver = resolver;
+  }
+  containsControlPointer(pointer) {
+    return this.inputMode === "touch" && this.controlPointerResolver(pointer);
+  }
+  getPlayerIntent(options) {
+    const desktop = this.inputMode === "desktop";
+    const touch = this.inputMode === "touch";
+    const gamepad = this.inputMode === "gamepad";
+    const gamepadX = gamepad ? this.device.getGamepadAxis(0) : 0;
+    const gamepadY = gamepad ? this.device.getGamepadAxis(1) : 0;
+    const left = desktop && (this.device.isKeyDown("LEFT") || this.device.isKeyDown("A")) || touch && this.moveVector.x < -0.22 || gamepad && gamepadX < -0.22;
+    const right = desktop && (this.device.isKeyDown("RIGHT") || this.device.isKeyDown("D")) || touch && this.moveVector.x > 0.22 || gamepad && gamepadX > 0.22;
+    const touchJumpHeld = touch && this.moveVector.y < -0.56;
+    const gamepadJumpHeld = gamepad && this.device.isGamepadButtonDown(0);
+    const keyboardJumpHeld = desktop && (this.device.isKeyDown("UP") || this.device.isKeyDown("W") || this.device.isKeyDown("SPACE"));
+    const moveStrength = touch ? Math.max(0.45, Math.abs(this.moveVector.x)) : gamepad ? Math.max(0.45, Math.abs(gamepadX)) : 1;
+    return {
+      moveX: this.menuOpen ? 0 : ((left ? -1 : 0) + (right ? 1 : 0)) * moveStrength,
+      jumpPressed: !this.menuOpen && (desktop && (this.device.isKeyJustDown("SPACE") || this.device.isKeyJustDown("W")) || (touchJumpHeld || gamepadJumpHeld) && !options.previousJumpHeld),
+      jumpHeld: !this.menuOpen && (touchJumpHeld || keyboardJumpHeld || gamepadJumpHeld || gamepad && gamepadY < -0.56),
+      interactPressed: !this.menuOpen && desktop && this.device.isKeyJustDown("E")
+    };
+  }
+  getMiningIntent(options) {
+    const blocked = options.inputBlocked || this.menuOpen;
+    if (blocked) return { aiming: false, miningPressed: false };
+    const origin = { x: options.playerX, y: options.playerY };
+    if (this.inputMode === "touch") {
+      const active = this.isAiming();
+      return { aiming: active, miningPressed: active, aimWorld: active ? pointAtRange(origin, this.aimVector, options.miningRange) : void 0 };
+    }
+    if (this.inputMode === "gamepad") {
+      const stick = { x: this.device.getGamepadAxis(2), y: this.device.getGamepadAxis(3) };
+      if (Math.hypot(stick.x, stick.y) > 0.22) this.gamepadAim = normalized(stick, this.gamepadAim);
+      options.gamepadAim.x = this.gamepadAim.x;
+      options.gamepadAim.y = this.gamepadAim.y;
+      return {
+        aiming: true,
+        miningPressed: this.device.isGamepadButtonDown(7) || this.device.isGamepadButtonDown(5),
+        aimWorld: pointAtRange(origin, this.gamepadAim, options.miningRange)
+      };
+    }
+    const pointer = this.device.getPointer();
+    return { aiming: true, miningPressed: pointer.isDown, aimWorld: pointer.world };
+  }
+};
+function normalized(value, fallback) {
+  const length = Math.hypot(value.x, value.y);
+  return length > 1e-4 ? { x: value.x / length, y: value.y / length } : { ...fallback };
+}
+function pointAtRange(origin, direction, range) {
+  return { x: origin.x + direction.x * range, y: origin.y + direction.y * range };
+}
+
 // public/scripts/LevelGeneration/math.ts
 function clamp2(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -889,10 +1064,10 @@ function createWorldContext(config, difficultyLevel, customSeed) {
 }
 function applyDifficultyScaling(config, difficulty) {
   const scaled = {};
-  const normalized = (difficulty - 1) / 9;
+  const normalized2 = (difficulty - 1) / 9;
   for (const [key, params] of Object.entries(config.planet.difficulty_scaling ?? {})) {
-    let factor = normalized;
-    if (params.formula === "exponential") factor = normalized ** 2;
+    let factor = normalized2;
+    if (params.formula === "exponential") factor = normalized2 ** 2;
     if (params.formula === "logarithmic") factor = Math.log(difficulty) / Math.log(10);
     scaled[key] = params.mode === "decrease" ? params.max - (params.max - params.min) * factor : params.min + (params.max - params.min) * factor;
   }
@@ -1059,6 +1234,597 @@ var LevelManager = class extends ScriptNode {
   }
   clearTile(level, tileX, tileY) {
     return clearTile(level, tileX, tileY);
+  }
+};
+
+// public/scripts/PlayerState/catalogs/items.ts
+var ITEM_DEFINITIONS = {
+  dirt: { id: "dirt", label: "Erde", category: "resource", value: 0, stackSize: 999 },
+  sand: { id: "sand", label: "Sand", category: "resource", value: 1, stackSize: 999 },
+  clay: { id: "clay", label: "Lehm", category: "resource", value: 1, stackSize: 999 },
+  gravel: { id: "gravel", label: "Kies", category: "resource", value: 1, stackSize: 999 },
+  stone: { id: "stone", label: "Stein", category: "resource", value: 1, stackSize: 999 },
+  basalt: { id: "basalt", label: "Basalt", category: "resource", value: 3, stackSize: 999 },
+  copper: { id: "copper", label: "Kupfer", category: "resource", value: 3, stackSize: 999 },
+  iron: { id: "iron", label: "Eisen", category: "resource", value: 5, stackSize: 999 },
+  gold: { id: "gold", label: "Gold", category: "resource", value: 25, stackSize: 999 },
+  diamond: { id: "diamond", label: "Diamant", category: "resource", value: 100, stackSize: 999 },
+  energy_cell: { id: "energy_cell", label: "Energie-Zelle", category: "consumable", value: 30, stackSize: 20 },
+  repair_kit: { id: "repair_kit", label: "Repair-Kit", category: "consumable", value: 40, stackSize: 20 },
+  teleport_bracelet: { id: "teleport_bracelet", label: "Teleport-Armband", category: "consumable", value: 200, stackSize: 5 }
+};
+
+// public/scripts/PlayerState/inventory.ts
+function createInventory(slotCount, stackLimit) {
+  return {
+    slots: Array.from({ length: Math.max(0, Math.floor(slotCount)) }, () => ({ quantity: 0 })),
+    stackLimit
+  };
+}
+function normalizeInventory(raw, slotCount, stackLimit) {
+  const fallback = createInventory(slotCount, stackLimit);
+  if (!raw || typeof raw !== "object") return fallback;
+  const maybe = raw;
+  if (Array.isArray(maybe.slots)) {
+    const slots = maybe.slots.slice(0, slotCount).map(normalizeSlot);
+    while (slots.length < slotCount) slots.push({ quantity: 0 });
+    return { slots, stackLimit };
+  }
+  if (maybe.items && typeof maybe.items === "object") {
+    const inventory = fallback;
+    for (const [itemId, count] of Object.entries(maybe.items)) {
+      addItem(inventory, itemId, count ?? 0);
+    }
+    return inventory;
+  }
+  return fallback;
+}
+function addItem(inventory, itemId, quantity = 1) {
+  let remaining = Math.max(0, Math.floor(quantity));
+  let accepted = 0;
+  while (remaining > 0) {
+    const slot = findWritableSlot(inventory, itemId, 1);
+    if (!slot) break;
+    if (!slot.itemId || slot.quantity <= 0) {
+      slot.itemId = itemId;
+      slot.quantity = 0;
+    }
+    const space = inventory.stackLimit - slot.quantity;
+    const added = Math.min(space, remaining);
+    slot.quantity += added;
+    accepted += added;
+    remaining -= added;
+  }
+  return accepted;
+}
+function findWritableSlot(inventory, itemId, quantity) {
+  const stack = inventory.slots.find((slot) => slot.itemId === itemId && slot.quantity + quantity <= inventory.stackLimit);
+  if (stack) return stack;
+  return inventory.slots.find((slot) => !slot.itemId || slot.quantity <= 0);
+}
+function normalizeSlot(slot) {
+  if (!slot || typeof slot !== "object") return { quantity: 0 };
+  const raw = slot;
+  if (!raw.itemId || !raw.quantity || raw.quantity <= 0) return { quantity: 0 };
+  return { itemId: raw.itemId, quantity: Math.floor(raw.quantity) };
+}
+
+// public/scripts/PlayerState/RunState.ts
+function createRunState(planetId, seed, stats) {
+  return {
+    planetId,
+    seed,
+    health: stats.maxHealth,
+    energy: stats.maxEnergy,
+    fuel: 100,
+    cargo: createInventory(stats.cargoSlots, stats.cargoStackLimit),
+    temporaryEffects: [],
+    discoveredTiles: []
+  };
+}
+function normalizeRunState(run, stats) {
+  return {
+    ...run,
+    health: Math.min(run.health, stats.maxHealth),
+    energy: Math.min(run.energy, stats.maxEnergy),
+    cargo: normalizeInventory(run.cargo, stats.cargoSlots, stats.cargoStackLimit),
+    temporaryEffects: run.temporaryEffects ?? [],
+    discoveredTiles: run.discoveredTiles ?? []
+  };
+}
+
+// public/scripts/PlayerState/PlayerProfile.ts
+function createDefaultPlayerProfile() {
+  return {
+    version: 1,
+    credits: 0,
+    inventory: createInventory(8, 99),
+    equipment: {
+      laser: "laser_mk1",
+      visor: "standard_visor",
+      battery: "standard_battery",
+      boots: "no_boots",
+      coreDetector: "no_core_detector"
+    },
+    upgrades: {
+      purchased: []
+    },
+    perks: {
+      unlocked: [],
+      equipped: []
+    },
+    unlockedPlanets: ["dev_planet", "terra_prime"],
+    stats: {
+      runsStarted: 0,
+      runsCompleted: 0,
+      deaths: 0,
+      blocksMined: 0,
+      resourcesMined: 0,
+      creditsEarned: 0,
+      deepestTileReached: 0
+    }
+  };
+}
+
+// public/scripts/PlayerState/saveGame.ts
+var SAVE_KEY = "gravity-dig-save-v1";
+function createDefaultSaveGame() {
+  return {
+    version: 1,
+    profile: createDefaultPlayerProfile()
+  };
+}
+function loadSaveGame() {
+  if (typeof localStorage === "undefined") return createDefaultSaveGame();
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return createDefaultSaveGame();
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.version !== 1 || !parsed.profile) return createDefaultSaveGame();
+    const defaults = createDefaultPlayerProfile();
+    return {
+      version: 1,
+      profile: {
+        ...defaults,
+        ...parsed.profile,
+        inventory: normalizeInventory(parsed.profile.inventory, defaults.inventory.slots.length, defaults.inventory.stackLimit),
+        equipment: parsed.profile.equipment ?? defaults.equipment,
+        upgrades: parsed.profile.upgrades ?? defaults.upgrades,
+        perks: parsed.profile.perks ?? defaults.perks,
+        stats: parsed.profile.stats ?? defaults.stats
+      },
+      activeRun: parsed.activeRun
+    };
+  } catch {
+    return createDefaultSaveGame();
+  }
+}
+function saveGame(save) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+}
+
+// public/scripts/PlayerState/playerConfig.ts
+var TILE_SIZE = 96;
+var PLAYER_SPEED = 470;
+var JUMP_VELOCITY = -1040;
+var MINING_RANGE = 330;
+var MINING_DAMAGE_PER_SEC = 120;
+var ENERGY_REGEN_PER_SEC = 18;
+var ENERGY_COST_PER_SEC = 12;
+
+// public/scripts/PlayerState/catalogs/perks.ts
+var PERK_DEFINITIONS = {
+  magnet_core: {
+    id: "magnet_core",
+    label: "Magnet-Kern",
+    source: "artifact",
+    effects: []
+  },
+  luck_amulet: {
+    id: "luck_amulet",
+    label: "Gl\xFCcks-Amulett",
+    source: "artifact",
+    effects: []
+  },
+  energy_artifact: {
+    id: "energy_artifact",
+    label: "Energie-Zelle",
+    source: "artifact",
+    effects: [{ stat: "energyCostPerSec", op: "multiply", value: 0.8 }]
+  },
+  double_drop: {
+    id: "double_drop",
+    label: "Doppelg\xE4nger",
+    source: "artifact",
+    effects: []
+  },
+  phoenix_feather: {
+    id: "phoenix_feather",
+    label: "Phoenix-Feder",
+    source: "artifact",
+    effects: []
+  }
+};
+
+// public/scripts/PlayerState/catalogs/upgrades.ts
+var UPGRADE_DEFINITIONS = {
+  laser_mk2: {
+    id: "laser_mk2",
+    label: "Laser MK2",
+    category: "laser",
+    cost: { credits: 100 },
+    effects: [{ stat: "miningRange", op: "add", value: TILE_SIZE }]
+  },
+  laser_mk3: {
+    id: "laser_mk3",
+    label: "Laser MK3",
+    category: "laser",
+    cost: { credits: 300 },
+    prerequisites: ["laser_mk2"],
+    effects: [{ stat: "miningRange", op: "add", value: TILE_SIZE * 2 }]
+  },
+  laser_mk4: {
+    id: "laser_mk4",
+    label: "Laser MK4",
+    category: "laser",
+    cost: { credits: 800 },
+    prerequisites: ["laser_mk3"],
+    effects: [{ stat: "miningRange", op: "add", value: TILE_SIZE * 3 }]
+  },
+  piercing_laser: {
+    id: "piercing_laser",
+    label: "Durchschlags-Laser",
+    category: "laser",
+    cost: { credits: 500 },
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.15 }]
+  },
+  fast_laser: {
+    id: "fast_laser",
+    label: "Schnell-Laser",
+    category: "laser",
+    cost: { credits: 600 },
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.5 }]
+  },
+  auto_laser: {
+    id: "auto_laser",
+    label: "Auto-Laser",
+    category: "laser",
+    cost: { credits: 1e3 },
+    effects: [{ stat: "energyCostPerSec", op: "multiply", value: 0.9 }]
+  },
+  spectral_laser: {
+    id: "spectral_laser",
+    label: "Spektral-Laser",
+    category: "laser",
+    cost: { credits: 1500 },
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }]
+  },
+  visor_mk1: {
+    id: "visor_mk1",
+    label: "Visier MK1",
+    category: "visor",
+    cost: { credits: 150 },
+    effects: [{ stat: "sightRadius", op: "set", value: 4 }]
+  },
+  visor_mk2: {
+    id: "visor_mk2",
+    label: "Visier MK2",
+    category: "visor",
+    cost: { credits: 400 },
+    prerequisites: ["visor_mk1"],
+    effects: [{ stat: "sightRadius", op: "set", value: 5 }]
+  },
+  radar_visor: {
+    id: "radar_visor",
+    label: "Radar-Visier",
+    category: "visor",
+    cost: { credits: 900 },
+    prerequisites: ["visor_mk2"],
+    effects: [{ stat: "sightRadius", op: "set", value: 6 }]
+  },
+  quantum_visor: {
+    id: "quantum_visor",
+    label: "Quantum-Visier",
+    category: "visor",
+    cost: { credits: 2e3 },
+    prerequisites: ["radar_visor"],
+    effects: [{ stat: "sightRadius", op: "set", value: 7 }]
+  },
+  battery_mk1: {
+    id: "battery_mk1",
+    label: "Batterie MK1",
+    category: "battery",
+    cost: { credits: 400 },
+    effects: [{ stat: "maxEnergy", op: "set", value: 150 }]
+  },
+  battery_mk2: {
+    id: "battery_mk2",
+    label: "Batterie MK2",
+    category: "battery",
+    cost: { credits: 900 },
+    prerequisites: ["battery_mk1"],
+    effects: [{ stat: "maxEnergy", op: "set", value: 250 }]
+  },
+  battery_mk3: {
+    id: "battery_mk3",
+    label: "Batterie MK3",
+    category: "battery",
+    cost: { credits: 2e3 },
+    prerequisites: ["battery_mk2"],
+    effects: [{ stat: "maxEnergy", op: "set", value: 400 }]
+  },
+  battery_fusion: {
+    id: "battery_fusion",
+    label: "Batterie Fusion",
+    category: "battery",
+    cost: { credits: 5e3 },
+    prerequisites: ["battery_mk3"],
+    effects: [{ stat: "maxEnergy", op: "set", value: 700 }]
+  },
+  boots_mk1: {
+    id: "boots_mk1",
+    label: "Stiefel MK1",
+    category: "boots",
+    cost: { credits: 500 },
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.05 }]
+  },
+  boots_mk2: {
+    id: "boots_mk2",
+    label: "Stiefel MK2",
+    category: "boots",
+    cost: { credits: 1200 },
+    prerequisites: ["boots_mk1"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.1 }]
+  },
+  boots_mk3: {
+    id: "boots_mk3",
+    label: "Stiefel MK3",
+    category: "boots",
+    cost: { credits: 3e3 },
+    prerequisites: ["boots_mk2"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.16 }]
+  },
+  boots_mk4: {
+    id: "boots_mk4",
+    label: "Stiefel MK4",
+    category: "boots",
+    cost: { credits: 6e3 },
+    prerequisites: ["boots_mk3"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.22 }]
+  },
+  core_compass: {
+    id: "core_compass",
+    label: "Core-Compass",
+    category: "core",
+    cost: { credits: 800 },
+    effects: []
+  },
+  core_scanner: {
+    id: "core_scanner",
+    label: "Core-Scanner",
+    category: "core",
+    cost: { credits: 2e3 },
+    prerequisites: ["core_compass"],
+    effects: []
+  },
+  advanced_mapper: {
+    id: "advanced_mapper",
+    label: "Advanced-Mapper",
+    category: "core",
+    cost: { credits: 5e3 },
+    prerequisites: ["core_scanner"],
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }]
+  },
+  cargo_mk1: {
+    id: "cargo_mk1",
+    label: "Erweiterter Laderaum I",
+    category: "cargo",
+    cost: { credits: 300 },
+    effects: [{ stat: "cargoSlots", op: "set", value: 2 }]
+  },
+  cargo_mk2: {
+    id: "cargo_mk2",
+    label: "Erweiterter Laderaum II",
+    category: "cargo",
+    cost: { credits: 800 },
+    prerequisites: ["cargo_mk1"],
+    effects: [{ stat: "cargoSlots", op: "set", value: 3 }]
+  },
+  cargo_mk3: {
+    id: "cargo_mk3",
+    label: "Erweiterter Laderaum III",
+    category: "cargo",
+    cost: { credits: 2e3 },
+    prerequisites: ["cargo_mk2"],
+    effects: [{ stat: "cargoSlots", op: "set", value: 4 }]
+  },
+  cargo_stack_mk1: {
+    id: "cargo_stack_mk1",
+    label: "Stack-Kompression I",
+    category: "cargo",
+    cost: { credits: 600 },
+    effects: [{ stat: "cargoStackLimit", op: "set", value: 5 }]
+  },
+  cargo_stack_mk2: {
+    id: "cargo_stack_mk2",
+    label: "Stack-Kompression II",
+    category: "cargo",
+    cost: { credits: 1500 },
+    prerequisites: ["cargo_stack_mk1"],
+    effects: [{ stat: "cargoStackLimit", op: "set", value: 10 }]
+  },
+  engine_mk1: {
+    id: "engine_mk1",
+    label: "Triebwerke MK1",
+    category: "ship",
+    cost: { credits: 500 },
+    effects: [{ stat: "fuelEfficiency", op: "multiply", value: 1.1 }]
+  },
+  engine_mk2: {
+    id: "engine_mk2",
+    label: "Triebwerke MK2",
+    category: "ship",
+    cost: { credits: 1500 },
+    prerequisites: ["engine_mk1"],
+    effects: [{ stat: "fuelEfficiency", op: "multiply", value: 1.25 }]
+  },
+  engine_mk3: {
+    id: "engine_mk3",
+    label: "Triebwerke MK3",
+    category: "ship",
+    cost: { credits: 4e3 },
+    prerequisites: ["engine_mk2"],
+    effects: [{ stat: "fuelEfficiency", op: "multiply", value: 1.4 }]
+  }
+};
+
+// public/scripts/PlayerState/stats.ts
+function computeEffectiveStats(profile) {
+  const stats = {
+    maxHealth: 100,
+    maxEnergy: 100,
+    energyRegenPerSec: ENERGY_REGEN_PER_SEC,
+    energyCostPerSec: ENERGY_COST_PER_SEC,
+    miningDamagePerSec: MINING_DAMAGE_PER_SEC,
+    miningRange: MINING_RANGE,
+    moveSpeed: PLAYER_SPEED,
+    jumpVelocity: JUMP_VELOCITY,
+    cargoSlots: 2,
+    cargoStackLimit: 3,
+    sightRadius: 3,
+    fuelEfficiency: 1
+  };
+  const modifiers = collectModifiers(profile);
+  for (const modifier of modifiers) applyModifier(stats, modifier);
+  return stats;
+}
+function collectModifiers(profile) {
+  const upgradeModifiers = profile.upgrades.purchased.flatMap((upgradeId) => UPGRADE_DEFINITIONS[upgradeId]?.effects ?? []);
+  const perkModifiers = profile.perks.equipped.flatMap((perkId) => PERK_DEFINITIONS[perkId]?.effects ?? []);
+  return [...upgradeModifiers, ...perkModifiers];
+}
+function applyModifier(stats, modifier) {
+  if (modifier.op === "add") {
+    stats[modifier.stat] += modifier.value;
+    return;
+  }
+  if (modifier.op === "multiply") {
+    stats[modifier.stat] *= modifier.value;
+    return;
+  }
+  stats[modifier.stat] = modifier.value;
+}
+
+// public/scripts/PlayerState/PlayerStateManager.node.ts
+var PlayerStateManager = class extends ScriptNode {
+  id = "dynamic.player-state";
+  name = "Player State";
+  saveGameState;
+  activeRunState;
+  effectivePlayerStats;
+  saveTimerMs = 0;
+  miningActive = false;
+  init() {
+    this.saveGameState = loadSaveGame();
+    this.effectivePlayerStats = computeEffectiveStats(this.saveGameState.profile);
+  }
+  get save() {
+    return this.saveGameState;
+  }
+  get run() {
+    if (!this.activeRunState) throw new Error("No active run has been started");
+    return this.activeRunState;
+  }
+  getActiveRun() {
+    return this.activeRunState;
+  }
+  get stats() {
+    return this.effectivePlayerStats;
+  }
+  getActiveRunSeed(fallback) {
+    return this.saveGameState.activeRun?.seed ?? fallback;
+  }
+  startRun(planetId, seed, restoreActiveRun) {
+    const activeRun = restoreActiveRun && this.saveGameState.activeRun?.planetId === planetId && this.saveGameState.activeRun.seed === seed ? this.saveGameState.activeRun : void 0;
+    this.activeRunState = activeRun ? normalizeRunState(activeRun, this.effectivePlayerStats) : createRunState(planetId, seed, this.effectivePlayerStats);
+    this.saveTimerMs = 0;
+    this.miningActive = false;
+    this.saveActiveRun();
+    return this.activeRunState;
+  }
+  update(deltaMs) {
+    if (!this.activeRunState) return;
+    if (!this.miningActive) this.recoverEnergy(deltaMs / 1e3);
+    this.saveTimerMs += deltaMs;
+    if (this.saveTimerMs < 1e3) return;
+    this.saveTimerMs = 0;
+    this.saveActiveRun();
+  }
+  setMiningActive(active) {
+    this.miningActive = active;
+  }
+  hasMiningEnergy() {
+    return this.run.energy > 0;
+  }
+  consumeMiningEnergy(deltaSeconds) {
+    this.run.energy = Math.max(0, this.run.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
+  }
+  recoverEnergy(deltaSeconds) {
+    this.run.energy = Math.min(this.effectivePlayerStats.maxEnergy, this.run.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds);
+  }
+  refillEnergy() {
+    this.run.energy = this.effectivePlayerStats.maxEnergy;
+    this.saveActiveRun();
+  }
+  recordMinedTile(tileType) {
+    this.syncCargoToStats();
+    if (tileType in ITEM_DEFINITIONS) {
+      addItem(this.run.cargo, tileType, 1);
+      this.saveGameState.profile.stats.resourcesMined += 1;
+    }
+    this.saveGameState.profile.stats.blocksMined += 1;
+    this.saveActiveRun();
+  }
+  syncCargoToStats() {
+    if (!this.activeRunState) return;
+    this.activeRunState.cargo = normalizeInventory(
+      this.activeRunState.cargo,
+      this.effectivePlayerStats.cargoSlots,
+      this.effectivePlayerStats.cargoStackLimit
+    );
+  }
+  hasCargo() {
+    return this.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
+  }
+  returnCargoToShip() {
+    const cargo = this.run.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    if (cargo.length === 0) {
+      this.refillEnergy();
+      return { message: "Schiffsdock: Energie aufgef\xFCllt", transferred: 0, credits: 0 };
+    }
+    let credits = 0;
+    let transferred = 0;
+    for (const slot of cargo) {
+      if (!slot.itemId) continue;
+      const itemId = slot.itemId;
+      const definition = ITEM_DEFINITIONS[itemId];
+      const quantity = slot.quantity;
+      addItem(this.saveGameState.profile.inventory, itemId, quantity);
+      credits += definition.value * quantity;
+      transferred += quantity;
+      delete slot.itemId;
+      slot.quantity = 0;
+    }
+    this.saveGameState.profile.credits += credits;
+    this.saveGameState.profile.stats.creditsEarned += credits;
+    this.refillEnergy();
+    return { message: `Cargo gesichert: ${transferred} Items \xB7 +${credits} Credits`, transferred, credits };
+  }
+  saveActiveRun() {
+    if (!this.activeRunState) return;
+    this.saveGameState.activeRun = this.activeRunState;
+    saveGame(this.saveGameState);
   }
 };
 
@@ -1266,10 +2032,13 @@ var modules = [
   createDynamicNodeModule(ExamplePulseNode, "ExamplePulse"),
   createDynamicNodeModule(MenuScript, "GameMenu-MenuScript"),
   createDynamicNodeModule(MiningScript, "Gameplay-MiningScript"),
+  createDynamicNodeModule(PlayerAnimationScript, "Gameplay-PlayerAnimationScript"),
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
   createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
+  createDynamicNodeModule(GameplayInputScript, "Managers-GameplayInput"),
   createDynamicNodeModule(LevelManager, "Managers-LevelManager"),
+  createDynamicNodeModule(PlayerStateManager, "PlayerState-PlayerStateManager"),
   createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript"),
   createDynamicNodeModule(StatusHudScript, "UI-StatusHudScript")
 ];
@@ -1278,4 +2047,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.6e1f09a59f70.js.map
+//# sourceMappingURL=dynamic-nodes.ef59899c32af.js.map

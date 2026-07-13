@@ -1,4 +1,7 @@
-import type { InventorySlot } from '../player/types';
+export interface InventorySlot {
+  itemId?: string;
+  quantity: number;
+}
 
 export type InputMode = 'touch' | 'desktop' | 'gamepad';
 

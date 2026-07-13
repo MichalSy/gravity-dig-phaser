@@ -2,7 +2,17 @@
   "version": 1,
   "root": {
     "name": "GameplayInput",
-    "nodeTypeId": "c981faaa-6359-537c-ad47-d1605cde3381",
-    "instanceId": "fbaaed08-59d2-56c0-918f-dcbe121bf650"
+    "nodeTypeId": "dynamic.gameplay-input",
+    "instanceId": "fbaaed08-59d2-56c0-918f-dcbe121bf650",
+    "props": {
+      "deviceNodeId": "87b03f69-911d-55e3-a00f-d2f92f460f4e"
+    },
+    "children": [
+      {
+        "name": "InputDevice",
+        "nodeTypeId": "c981faaa-6359-537c-ad47-d1605cde3381",
+        "instanceId": "87b03f69-911d-55e3-a00f-d2f92f460f4e"
+      }
+    ]
   }
 }

@@ -5,7 +5,11 @@ import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
-import { PlayerStateManagerNode } from './PlayerStateManagerNode';
+
+interface PlayerStateLike {
+  getActiveRunSeed(fallback: string): string;
+  startRun(planetId: string, seed: string, restoreActiveRun: boolean): unknown;
+}
 
 export interface GameWorldNodeOptions extends GameNodeOptions {
   instantiatePrefab(prefabId: string): GameNode;
@@ -16,7 +20,7 @@ export class GameWorldNode extends GameNode {
 
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
-  private playerState!: PlayerStateManagerNode;
+  private playerState!: PlayerStateLike;
   private shipInstance?: GameNode;
   private playerInstance?: GameNode;
   private worldView!: WorldView;
@@ -36,7 +40,7 @@ export class GameWorldNode extends GameNode {
 
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('Level');
-    this.playerState = this.requireNode<PlayerStateManagerNode>('PlayerState');
+    this.playerState = this.requireNode('PlayerState') as unknown as PlayerStateLike;
   }
 
   afterResolved(): void {

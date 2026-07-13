@@ -3,6 +3,7 @@ import {
   AudioNode,
   ButtonNode,
   CollisionRectNode,
+  createDynamicScriptNode,
   DynamicScriptNode,
   getDefinitionNodeTypeId,
   ImageNode,
@@ -17,8 +18,8 @@ import {
   type EditorPreviewSetPropsChange,
   type SceneNodeJson,
 } from '@gravity-dig/game-core';
-import { GameplayInputNode } from '../app/nodes';
-import { GameRootNode, GameWorldNode, LevelNode, PlayerAnimatorNode, PlayerStateManagerNode } from '../game/nodes';
+import { InputDeviceNode } from '../app/nodes';
+import { GameRootNode, GameWorldNode, LevelNode } from '../game/nodes';
 import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 
@@ -38,14 +39,12 @@ export function createGravityDigNodeFactory(bindings: GravityDigNodeFactoryBindi
     .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
     .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
-    .register(NODE_TYPE_IDS.GameplayInputNode, (definition) => new GameplayInputNode(optionsFrom(definition)))
-    .register(NODE_TYPE_IDS.PlayerStateManagerNode, (definition) => new PlayerStateManagerNode(optionsFrom(definition)))
+    .register(NODE_TYPE_IDS.InputDeviceNode, (definition) => new InputDeviceNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
       ...optionsFrom(definition),
       instantiatePrefab: (prefabId) => factory.createPrefab(prefabId, {}, { origin: 'runtime-code', createdByInstanceId: definition.instanceId }),
     }))
-    .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
@@ -68,7 +67,7 @@ export function registerGravityDigDynamicModule(
   bindings: Pick<GravityDigNodeFactoryBindings, 'createScriptActions' | 'onDynamicScriptNode'>,
 ): void {
   factory.register(module.nodeTypeId, (definition) => {
-    const node = new DynamicScriptNode({
+    const node = createDynamicScriptNode({
       module,
       nodeTypeId: getDefinitionNodeTypeId(definition),
       instanceId: definition.instanceId,

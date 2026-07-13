@@ -1,1 +1,1 @@
-export { GameplayInputNode } from './GameplayInputNode';
+export { InputDeviceNode } from './InputDeviceNode';

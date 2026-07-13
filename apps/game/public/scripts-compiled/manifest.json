@@ -1,63 +1,81 @@
 {
   "version": 1,
   "bundle": {
-    "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-    "hash": "6e1f09a59f70"
+    "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+    "hash": "ef59899c32af"
   },
   "nodes": [
     {
       "nodeTypeId": "dynamic.example-pulse",
       "source": "public/scripts/ExamplePulse.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.menu-script",
       "source": "public/scripts/GameMenu/MenuScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.mining-tool",
       "source": "public/scripts/Gameplay/MiningScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
+    },
+    {
+      "nodeTypeId": "dynamic.player-animation",
+      "source": "public/scripts/Gameplay/PlayerAnimationScript.node.ts",
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.player-movement",
       "source": "public/scripts/Gameplay/PlayerMovementScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.ship",
       "source": "public/scripts/Gameplay/ShipScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.loading-script",
       "source": "public/scripts/Loading/LoadingScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
+    },
+    {
+      "nodeTypeId": "dynamic.gameplay-input",
+      "source": "public/scripts/Managers/GameplayInput.node.ts",
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.level-manager",
       "source": "public/scripts/Managers/LevelManager.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
+    },
+    {
+      "nodeTypeId": "dynamic.player-state",
+      "source": "public/scripts/PlayerState/PlayerStateManager.node.ts",
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.bottom-hud",
       "source": "public/scripts/UI/BottomHudScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     },
     {
       "nodeTypeId": "dynamic.status-hud",
       "source": "public/scripts/UI/StatusHudScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.6e1f09a59f70.js",
-      "hash": "6e1f09a59f70"
+      "url": "/scripts-compiled/dynamic-nodes.ef59899c32af.js",
+      "hash": "ef59899c32af"
     }
   ]
 }

@@ -2,41 +2,13 @@ import Phaser from 'phaser';
 import { PLAYER_SIZE } from '../config/gameConfig';
 import type { HudState, InputMode } from '../ui/HudState';
 import type { LevelData } from './level';
-import type { PlayerStateManagerNode } from './nodes/PlayerStateManagerNode';
 import { SHIP_DOCK_CENTER_X, SHIP_DOCK_CENTER_Y, SHIP_DOCK_RADIUS } from './world/worldGeometry';
 
-export interface PlayerAnimationState {
-  facing: 'east' | 'west';
-  animationId: string;
-  flipX: boolean;
-  footstepActive: boolean;
+interface PlayerStateLike {
+  run: { health: number; energy: number; fuel: number; cargo: HudState['cargo'] };
+  stats: { maxHealth: number; maxEnergy: number };
 }
 
-export function computePlayerAnimationState(args: {
-  playerX: number;
-  aimX?: number;
-  previousFacing: 'east' | 'west';
-  velocity: Phaser.Math.Vector2;
-  grounded: boolean;
-}): PlayerAnimationState {
-  let facing = args.previousFacing;
-  if (args.aimX !== undefined && Math.abs(args.aimX - args.playerX) > 10) {
-    facing = args.aimX >= args.playerX ? 'east' : 'west';
-  } else if (Math.abs(args.velocity.x) > 1) {
-    facing = args.velocity.x > 0 ? 'east' : 'west';
-  }
-
-  const airborne = !args.grounded;
-  const moving = Math.abs(args.velocity.x) > 1;
-  const animationName = airborne ? (args.velocity.y <= 30 ? 'jump' : 'fall') : moving ? 'walk' : 'idle';
-
-  return {
-    facing,
-    animationId: `${animationName}.east`,
-    flipX: facing === 'west',
-    footstepActive: !airborne && moving,
-  };
-}
 
 export function isAtShipDock(playerX: number, playerY: number): boolean {
   return Phaser.Math.Distance.Between(playerX, playerY, SHIP_DOCK_CENTER_X, SHIP_DOCK_CENTER_Y) <= SHIP_DOCK_RADIUS;
@@ -51,7 +23,7 @@ export function buildShipDockPrompt(args: { atDock: boolean; hasCargo: boolean; 
 export function buildHudState(args: {
   level: LevelData;
   inputMode: InputMode;
-  playerState: PlayerStateManagerNode;
+  playerState: PlayerStateLike;
 }): HudState {
   return {
     title: 'GRAVITY DIG — Mobile Phaser-Port',
