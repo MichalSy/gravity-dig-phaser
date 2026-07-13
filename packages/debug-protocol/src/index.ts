@@ -245,6 +245,7 @@ export interface DebugNodeDescriptor {
   ownedRole?: string;
   creationOrigin?: 'scene' | 'runtime-code' | 'runtime-script';
   runtimeRoot?: boolean;
+  managerPath?: string;
   prefabPath?: string;
   prefabId?: string;
   prefabNodePath?: string[];
@@ -386,6 +387,8 @@ export interface DebugAssetListMessage {
 export interface EditorChangeTarget {
   /** Stable authoring path by node names, e.g. ['UI.Gameplay', 'UI.BottomHud', 'UI.ActionFrame']. */
   nodePath: string[];
+  /** Public manager source for persistent singleton roots. */
+  managerPath?: string;
   /** Prefab source and instance metadata used to persist sparse instance overrides. */
   prefabPath?: string;
   prefabId?: string;

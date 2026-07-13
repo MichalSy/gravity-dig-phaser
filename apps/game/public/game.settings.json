@@ -1,0 +1,49 @@
+{
+  "$schema": "schemas/game-settings.schema.json",
+  "version": 1,
+  "scenes": {
+    "startup": "menu",
+    "editorDefault": "gameplay",
+    "definitions": {
+      "menu": {
+        "path": "scenes/menu.scene.json",
+        "assetGroup": "startup"
+      },
+      "loading": {
+        "path": "scenes/loading.scene.json",
+        "assetGroup": "startup"
+      },
+      "gameplay": {
+        "path": "scenes/gameplay.scene.json",
+        "assetGroup": "gameplay"
+      }
+    }
+  },
+  "managers": [
+    {
+      "id": "gameplay-input",
+      "path": "managers/gameplay-input.manager.json",
+      "mountWhen": ["gameplay"],
+      "lifetime": "runtime",
+      "modes": ["play", "editor"],
+      "order": 100
+    },
+    {
+      "id": "player-state",
+      "path": "managers/player-state.manager.json",
+      "mountWhen": ["gameplay"],
+      "lifetime": "runtime",
+      "modes": ["play", "editor"],
+      "order": 200
+    },
+    {
+      "id": "level",
+      "path": "managers/level.manager.json",
+      "mountWhen": ["gameplay"],
+      "lifetime": "runtime",
+      "modes": ["play", "editor"],
+      "dependsOn": ["player-state"],
+      "order": 300
+    }
+  ]
+}

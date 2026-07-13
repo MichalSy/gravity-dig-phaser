@@ -102,6 +102,7 @@ function serializeNode(
     ownedRole: editorMetadata.ownedRole,
     creationOrigin: creationMetadata.origin,
     runtimeRoot: creationMetadata.runtimeRoot,
+    managerPath: creationMetadata.managerPath,
     prefabPath: creationMetadata.prefabPath,
     prefabId: creationMetadata.prefabId,
     prefabNodePath: creationMetadata.prefabNodePath,

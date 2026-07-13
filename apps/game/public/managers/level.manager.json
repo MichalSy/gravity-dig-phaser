@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "root": {
+    "name": "LevelGenerator",
+    "nodeTypeId": "dynamic.level-manager",
+    "instanceId": "4db9689e-faf9-53f2-83a7-4b7d5e44a9de",
+    "props": {
+      "planetConfigAssetId": "dev-planet",
+      "defaultDifficulty": 1,
+      "defaultSeed": "gravity-dig-phaser"
+    }
+  }
+}

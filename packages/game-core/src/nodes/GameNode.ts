@@ -76,6 +76,7 @@ export type NodeCreationOrigin = 'scene' | 'runtime-code' | 'runtime-script';
 export interface NodeCreationMetadata {
   origin: NodeCreationOrigin;
   runtimeRoot?: boolean;
+  managerPath?: string;
   prefabPath?: string;
   prefabId?: string;
   prefabNodePath?: string[];

@@ -1570,6 +1570,7 @@ export default function Home() {
           kind: 'setProps',
           target: {
             nodePath,
+            managerPath: node.managerPath,
             prefabPath: node.prefabPath,
             prefabId: node.prefabId,
             prefabNodePath: node.prefabNodePath,
@@ -1659,7 +1660,7 @@ export default function Home() {
   const workspaceMessage = backendStatus?.workspace?.message ?? 'Editor startet ...';
   const showWorkspaceActivity = !backendStatus?.workspace?.exists || backendStatus?.workspace?.busy || explorerRoots.length === 0;
   const hierarchySections = splitHierarchyRoots(displayedTreeRoots, viewportMode);
-  const hierarchyNodeCount = openPrefabPath ? countNodes(displayedTreeRoots) : viewportMode === 'editor' ? countNodes(hierarchySections.scenes) : countNodes(displayedTreeRoots);
+  const hierarchyNodeCount = countNodes(displayedTreeRoots);
 
   return (
     <main className={styles.appShell}>
@@ -2681,6 +2682,15 @@ function HierarchyTree({
   if (mode === 'editor') {
     return (
       <div className={styles.hierarchyGroups}>
+        <section className={styles.hierarchyGroup}>
+          <button type="button" className={styles.hierarchyGroupHeader} onClick={onTogglePersistentManagers} aria-expanded={persistentManagersOpen}>
+            {persistentManagersOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <Boxes size={13} />
+            <span>Persistent Managers</span>
+            <span className={styles.hierarchyGroupCount}>{countNodes(persistentManagers)}</span>
+          </button>
+          {persistentManagersOpen && <NodeTree nodes={persistentManagers} {...treeProps} />}
+        </section>
         <section className={styles.hierarchyGroup}>
           <div className={styles.hierarchyGroupHeaderStatic}>
             <Layers size={13} />
@@ -3984,7 +3994,7 @@ function splitHierarchyRoots(roots: DebugNodeDescriptor[], mode: ViewportMode): 
     : roots.find(isPlayRuntimeRootNode) ?? roots.find(isAppRootNode) ?? roots.find(isRuntimeRootNode);
   const scenes = runtimeRoot?.children ?? [];
   return {
-    persistentManagers: mode === 'editor' ? [] : roots.filter((node) => node !== runtimeRoot),
+    persistentManagers: roots.filter((node) => node !== runtimeRoot),
     scenes: mode === 'editor' ? scenes.filter((node) => node.active && (node.effectiveActive ?? true)) : scenes,
   };
 }

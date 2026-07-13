@@ -2,22 +2,16 @@ import Phaser from 'phaser';
 import '../style.css';
 import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
-import { GameRootNode, GameWorldNode, LevelGeneratorManagerNode, LevelNode, PlayerAnimatorNode, PlayerStateManagerNode } from '../game/nodes';
+import { GameRootNode, GameWorldNode, LevelNode, PlayerAnimatorNode, PlayerStateManagerNode } from '../game/nodes';
 import { GameplayInputNode } from '../app/nodes';
 import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
-import { AnimatedImageNode, AudioNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, LineNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, PrefabManager, RectangleNode, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type SceneFileJson, type SceneNodeJson } from '../nodes';
+import { AnimatedImageNode, AudioNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, LineNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, RectangleNode, RuntimeManagerHost, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type GameNode, type GameSettings, type SceneFileJson, type SceneNodeJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
 import { VIEWPORT_REFRESH_EVENT } from '../utils/screen';
 
-const sceneFiles = {
-  menu: 'scenes/menu.scene.json',
-  loading: 'scenes/loading.scene.json',
-  gameplay: 'scenes/gameplay.scene.json',
-} as const;
-
 type RuntimeMode = 'editor' | 'play';
-type RuntimeSceneId = keyof typeof sceneFiles;
+type RuntimeSceneId = 'menu' | 'loading' | 'gameplay';
 
 interface StartRuntimeMessage {
   type: 'gravity-dig:runtime:start';
@@ -31,6 +25,8 @@ class EditorRuntimeScene extends Phaser.Scene {
   private runtime?: NodeRuntime;
   private factory?: SceneNodeFactoryRegistry;
   private prefabManager?: PrefabManager;
+  private managerHost?: RuntimeManagerHost;
+  private gameSettings?: GameSettings;
   private prefabManagerApiBase?: string;
   private currentMode?: RuntimeMode;
   private currentEditorRoot?: NodeRoot;
@@ -39,7 +35,6 @@ class EditorRuntimeScene extends Phaser.Scene {
   private playLoadingScene?: GameNode;
   private debugBridge?: DebugBridgeNode;
   private playGameplayMounted = false;
-  private gameplayPersistentMounted = false;
   private editorApiBase?: string;
   private lastStartSignature?: string;
   private startQueue: Promise<void> = Promise.resolve();
@@ -147,7 +142,8 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.playMenuScene = undefined;
     this.playLoadingScene = undefined;
     this.playGameplayMounted = false;
-    this.gameplayPersistentMounted = false;
+    this.managerHost = undefined;
+    this.gameSettings = undefined;
     this.dynamicModules.clear();
 
     const mode = message.mode === 'editor' ? NodeRuntimeMode.Editor : NodeRuntimeMode.Play;
@@ -157,6 +153,16 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.runtime.registerAnimationSets(GAME_ANIMATION_SETS);
     this.runtime.registerFontAssets(GAME_FONT_ASSETS);
     await this.refreshFactory(message.editorApiBase);
+    this.gameSettings = parseGameSettings(await this.fetchJson<unknown>(message.editorApiBase, 'game.settings.json'));
+    if (!this.factory || !this.prefabManager) throw new Error('Runtime factory is not ready');
+    this.managerHost = new RuntimeManagerHost({
+      runtime: this.runtime,
+      factory: this.factory,
+      prefabManager: this.prefabManager,
+      settings: this.gameSettings,
+      mode: message.mode,
+      loadManager: (path) => this.fetchJson<SceneFileJson>(message.editorApiBase, path),
+    });
 
     if (message.sessionId && message.editorApiBase) {
       this.addDebugBridge(this.runtime, { sessionId: message.sessionId, editorApiUrl: message.editorApiBase });
@@ -171,6 +177,7 @@ class EditorRuntimeScene extends Phaser.Scene {
       this.prefabManagerApiBase = editorApiBase;
     }
     this.factory = this.createFactory(this.prefabManager);
+    this.managerHost?.updateFactory(this.factory, this.prefabManager);
   }
 
   private async showEditorScene(message: StartRuntimeMessage): Promise<void> {
@@ -184,8 +191,8 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#050816');
     this.currentEditorRoot = runtime.addRoot(new NodeRoot({ rootName: `Editor-${message.scene}-Root` }));
 
-    if (this.needsGameplayRuntime(message.scene)) this.addGameplayRuntimeNodes(runtime);
-    const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles[message.scene]);
+    await this.requireManagerHost().activateScene(message.scene);
+    const scene = await this.fetchJson<SceneFileJson>(message.editorApiBase, this.scenePath(message.scene));
     await this.prefabManager?.ensureDefinitions(scene.root);
     if (message.scene === 'gameplay') await Promise.all([
       this.prefabManager?.ensure('prefabs/player.prefab.json'),
@@ -206,7 +213,8 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#050816');
     this.playRoot = runtime.addRoot(new NodeRoot({ rootName: 'Play-Runtime-Root' }));
-    const menu = await this.fetchJson<SceneFileJson>(message.editorApiBase, sceneFiles.menu);
+    const startupSceneId = this.requireGameSettings().scenes.startup;
+    const menu = await this.fetchJson<SceneFileJson>(message.editorApiBase, this.scenePath(startupSceneId));
     await this.prefabManager?.ensureDefinitions(menu.root);
     this.playMenuScene = this.playRoot.addChild(this.createScene(menu));
   }
@@ -217,7 +225,7 @@ class EditorRuntimeScene extends Phaser.Scene {
       this.playMenuScene = undefined;
     }
     if (!this.playRoot || this.playLoadingScene) return;
-    const loading = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.loading);
+    const loading = await this.fetchJson<SceneFileJson>(this.editorApiBase, this.scenePath('loading'));
     await this.prefabManager?.ensureDefinitions(loading.root);
     this.playLoadingScene = this.playRoot.addChild(this.createScene(loading));
     this.runtime?.resolve();
@@ -230,16 +238,15 @@ class EditorRuntimeScene extends Phaser.Scene {
         source.callScriptMethod('setProgress', 1);
         source.callScriptMethod('complete');
       },
-      'game:mount': () => this.mountGameplay(),
+      'game:mount': () => { void this.mountGameplay(); },
       'player:jump': () => this.sound.play('jump', { volume: 0.42, detune: Phaser.Math.Between(-40, 40) }),
     };
   }
 
-  private mountGameplay(): void {
+  private async mountGameplay(): Promise<void> {
     if (this.playGameplayMounted || !this.playRoot) return;
     this.playGameplayMounted = true;
-    const runtime = this.requireRuntime();
-    this.addGameplayRuntimeNodes(runtime);
+    await this.requireManagerHost().activateScene('gameplay');
 
     if (this.playMenuScene) {
       this.playRoot.removeChild(this.playMenuScene);
@@ -255,7 +262,7 @@ class EditorRuntimeScene extends Phaser.Scene {
 
   private async mountGameplayScenes(root: NodeRoot): Promise<void> {
     try {
-      const gameplay = await this.fetchJson<SceneFileJson>(this.editorApiBase, sceneFiles.gameplay);
+      const gameplay = await this.fetchJson<SceneFileJson>(this.editorApiBase, this.scenePath('gameplay'));
       await this.prefabManager?.ensureDefinitions(gameplay.root);
       await Promise.all([
         this.prefabManager?.ensure('prefabs/player.prefab.json'),
@@ -269,21 +276,25 @@ class EditorRuntimeScene extends Phaser.Scene {
     }
   }
 
-  private needsGameplayRuntime(scene: RuntimeSceneId): boolean {
-    return scene === 'gameplay';
-  }
-
-  private addGameplayRuntimeNodes(runtime: NodeRuntime): void {
-    if (this.gameplayPersistentMounted) return;
-    this.gameplayPersistentMounted = true;
-    runtime.addPersistentNode(new GameplayInputNode());
-    runtime.addPersistentNode(new PlayerStateManagerNode());
-    runtime.addPersistentNode(new LevelGeneratorManagerNode());
-  }
-
   private requireRuntime(): NodeRuntime {
     if (!this.runtime) throw new Error('Runtime ist nicht bereit');
     return this.runtime;
+  }
+
+  private requireManagerHost(): RuntimeManagerHost {
+    if (!this.managerHost) throw new Error('Manager host is not ready');
+    return this.managerHost;
+  }
+
+  private requireGameSettings(): GameSettings {
+    if (!this.gameSettings) throw new Error('Game settings are not loaded');
+    return this.gameSettings;
+  }
+
+  private scenePath(sceneId: string): string {
+    const definition = this.requireGameSettings().scenes.definitions[sceneId];
+    if (!definition) throw new Error(`Scene '${sceneId}' is not defined in game.settings.json`);
+    return definition.path;
   }
 
   private addDebugBridge(runtime: NodeRuntime, config: { sessionId: string; editorApiUrl: string }): void {
@@ -339,6 +350,8 @@ class EditorRuntimeScene extends Phaser.Scene {
       .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
       .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.GameplayInputNode, (definition) => new GameplayInputNode(optionsFrom(definition)))
+      .register(NODE_TYPE_IDS.PlayerStateManagerNode, (definition) => new PlayerStateManagerNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
       .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
         ...optionsFrom(definition),

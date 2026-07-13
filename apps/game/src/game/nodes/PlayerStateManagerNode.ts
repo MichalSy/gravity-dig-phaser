@@ -1,5 +1,5 @@
 import type { DebugNodePatch } from '@gravity-dig/debug-protocol';
-import { NODE_TYPE_IDS, exposedPropGroup, GameNode, propNumber, type ExposedPropGroup, type NodeDebugProps } from '../../nodes';
+import { NODE_TYPE_IDS, exposedPropGroup, GameNode, propNumber, type ExposedPropGroup, type GameNodeOptions, type NodeDebugProps } from '../../nodes';
 import { ITEM_DEFINITIONS } from '../../player/catalogs/items';
 import { addItem, normalizeInventory } from '../../player/inventory';
 import { createRunState, normalizeRunState } from '../../player/RunState';
@@ -51,8 +51,8 @@ export class PlayerStateManagerNode extends GameNode {
   private saveTimerMs = 0;
   private miningActive = false;
 
-  constructor() {
-    super({ name: 'PlayerState', className: 'PlayerStateManagerNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'PlayerState', className: 'PlayerStateManagerNode', ...options });
   }
 
   init(): void {

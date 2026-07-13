@@ -16,5 +16,6 @@ export * from './SceneNode';
 export * from './DisplayNodeFactory';
 export * from './NodeRuntime';
 export * from './NodeRuntimeMode';
+export * from './RuntimeManagerHost';
 export * from './NodeRoot';
 export * from './NodeTypeIds';

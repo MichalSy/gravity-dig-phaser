@@ -40,6 +40,19 @@ type NodeCreationOrigin = 'scene' | 'runtime-code' | 'runtime-script';
 
 The editor displays runtime roots with a `RUNTIME` badge. Names, UUID formats, and node types must never be used to infer creation origin.
 
+### 2.1 Public game settings and managers
+
+`apps/game/public/game.settings.json` is the versioned project bootstrap contract shared by PLAY and EDIT. It defines scene paths and manager composition; neither `AppScene` nor the editor runtime owns a duplicate manager list.
+
+Singleton manager roots live under `public/managers/*.manager.json`. They use the normal `SceneFileJson` node-tree format, but carry an explicit stable `instanceId` rather than prefab instance semantics. Each settings entry declares:
+
+- `mountWhen`: scenes that first require the manager;
+- `lifetime: "runtime" | "scene"`: whether it survives node-scene changes;
+- `modes`: PLAY and/or EDIT;
+- `dependsOn` and `order`: deterministic startup dependencies.
+
+`RuntimeManagerHost` validates settings, loads manager trees through the shared factory, and routes them through `NodeRuntime.addPersistentNode()`. Runtime-lifetime managers remain mounted after their activating scene is left; scene-lifetime managers are removed in reverse order. Manager roots propagate `managerPath` creation metadata so the editor can persist Inspector changes directly to their public manager file.
+
 ## 3. Node types and exposed properties
 
 Core node classes live under `packages/game-core/src/nodes/`. `apps/game/src/` contains the Phaser/bootstrap adapter and native engine services. The concrete Gravity Dig game project lives under `apps/game/public/`: scenes, prefabs, assets, configuration, presentation, and gameplay ScriptNodes.
@@ -211,6 +224,14 @@ The prefab uses only generic engine capabilities:
 - `ImageNode.setAssetId()` updates runtime crack-prefab instances.
 
 `public/prefabs/mining-crack.prefab.json` is instantiated and removed by the mining script through the normal prefab lifecycle. There is no native `MiningLaserNode` or Phaser-specific `MiningLaserView`; engine code contains no mining presentation policy.
+
+### 7.2 Public level generation
+
+Gravity Dig's procedural generator is public gameplay code under `public/scripts/LevelGeneration/`. Terrain distribution, resources, world replacements, seed handling, planet types, tile health, and boundary policy are not engine responsibilities.
+
+`public/scripts/Managers/LevelManager.node.ts` reads the configured planet JSON through the generic `ScriptNode.requireJsonAsset()` API and exposes `generateLevel()` to runtime consumers. `LevelNode` remains a native rendering/collision bridge for now: it calls the public manager and translates returned level data into Phaser tilemap rendering. The removed native `LevelGeneratorManagerNode` and native generator modules must not be reintroduced.
+
+The production and editor ScriptNode builds both invoke the canonical esbuild pipeline. Relative helper-module edits anywhere under `public/scripts/` trigger the same rebuild, so modular public gameplay behaves identically in EDIT and PLAY.
 
 ## 8. Editor data flow
 

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { buildMiningInputIntent, buildPlayerInputIntent, getGamepad, type MiningInputIntent, type PlayerInputIntent } from '../../input/gameplayIntents';
-import { NODE_TYPE_IDS, GameNode, type NodeContext } from '../../nodes';
+import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import type { InputMode } from '../../ui/HudState';
 
 const ZERO = new Phaser.Math.Vector2(0, 0);
@@ -34,8 +34,8 @@ export class GameplayInputNode extends GameNode {
   private menuOpen = false;
   private controlPointerResolver: (pointer: Phaser.Input.Pointer) => boolean = () => false;
 
-  constructor() {
-    super({ name: 'GameplayInput', className: 'GameplayInputNode' });
+  constructor(options: GameNodeOptions = {}) {
+    super({ name: 'GameplayInput', className: 'GameplayInputNode', ...options });
   }
 
   init(ctx: NodeContext): void {

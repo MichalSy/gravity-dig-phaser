@@ -31,6 +31,14 @@ var ScriptNode = class {
   getViewportSize() {
     return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 };
   }
+  getJsonAsset(key) {
+    return this.__dynamicNodeContext?.getJsonAsset(key);
+  }
+  requireJsonAsset(key) {
+    const value = this.getJsonAsset(key);
+    if (value === void 0) throw new Error("Required JSON asset " + key + " is not loaded");
+    return value;
+  }
   instantiatePrefab(path, options) {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error("Dynamic node context is not initialized");
@@ -640,6 +648,346 @@ var LoadingScript = class extends ScriptNode {
   }
 };
 
+// public/scripts/LevelGeneration/math.ts
+function clamp2(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+function distanceToCore(context, x, y) {
+  return Math.hypot(x - context.core.x, y - context.core.y);
+}
+function referenceCoreDistance(context) {
+  return Math.max(1, Math.hypot(context.core.x - context.spawn.x, context.core.y - context.spawn.y));
+}
+function distanceToStart(context, x, y) {
+  return Math.hypot(x - context.spawn.x, y - context.spawn.y);
+}
+
+// public/scripts/LevelGeneration/random.ts
+function hashSeed(seed) {
+  const text = String(seed);
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a += 1831565813;
+    let t = a;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function randomInt(random, min, max) {
+  return Math.floor(random() * (max - min + 1)) + min;
+}
+
+// public/scripts/LevelGeneration/tileTypes.ts
+var RESOURCE_TYPES = /* @__PURE__ */ new Set(["copper", "iron", "gold", "diamond"]);
+var TILE_HEALTH = {
+  air: 0,
+  dirt: 20,
+  sand: 15,
+  clay: 25,
+  gravel: 40,
+  stone: 50,
+  basalt: 55,
+  copper: 60,
+  iron: 70,
+  gold: 80,
+  diamond: 110,
+  bedrock: 9999
+};
+function isResourceTile(type) {
+  return RESOURCE_TYPES.has(type);
+}
+
+// public/scripts/LevelGeneration/tileMap.ts
+function tileKey2(x, y) {
+  return `${x},${y}`;
+}
+function setTile(tiles, x, y, type, boundary) {
+  tiles.set(tileKey2(x, y), {
+    x,
+    y,
+    type,
+    health: TILE_HEALTH[type],
+    maxHealth: TILE_HEALTH[type],
+    boundary
+  });
+}
+
+// public/scripts/LevelGeneration/resourceGenerator.ts
+var RESOURCE_PROFILES = [
+  { type: "copper", minCoreRatio: 0.48, maxCoreRatio: Infinity, minAbsY: 0, baseChance: 0.032, veinMin: 3, veinMax: 7 },
+  { type: "iron", minCoreRatio: 0.34, maxCoreRatio: Infinity, minAbsY: 6, baseChance: 0.027, veinMin: 3, veinMax: 7 },
+  { type: "gold", minCoreRatio: 0.16, maxCoreRatio: 0.72, minAbsY: 12, baseChance: 0.019, veinMin: 2, veinMax: 6 },
+  { type: "diamond", minCoreRatio: 0.05, maxCoreRatio: 0.45, minAbsY: 22, baseChance: 0.01, veinMin: 2, veinMax: 4 }
+];
+function spawnResources(context, tiles, random) {
+  const richness = context.scaled.resource_richness ?? 1;
+  for (const cell of tiles.values()) {
+    if (!canReplaceWithResource(cell)) continue;
+    if (distanceToStart(context, cell.x, cell.y) < 10) continue;
+    const profile = pickResourceForCell(context, cell, richness, random);
+    if (!profile) continue;
+    const veinSize = randomInt(random, profile.veinMin, profile.veinMax);
+    spawnVein(cell.x, cell.y, profile.type, veinSize, context, tiles, random);
+  }
+}
+function rebuildResources(tiles) {
+  const resources = /* @__PURE__ */ new Map();
+  for (const cell of tiles.values()) {
+    if (isResourceTile(cell.type)) resources.set(tileKey2(cell.x, cell.y), cell.type);
+  }
+  return resources;
+}
+function pickResourceForCell(context, cell, richness, random) {
+  const coreDistance = distanceToCore(context, cell.x, cell.y);
+  const coreRatio = coreDistance / referenceCoreDistance(context);
+  const absY = Math.abs(cell.y);
+  const possible = RESOURCE_PROFILES.filter(
+    (profile) => coreRatio >= profile.minCoreRatio && coreRatio <= profile.maxCoreRatio && absY >= profile.minAbsY
+  );
+  if (possible.length === 0) return void 0;
+  const zonePressure = clamp2(1.55 - coreRatio, 0.55, 1.45);
+  const depthPressure = clamp2(0.75 + absY / 160, 0.75, 1.6);
+  for (const profile of possible) {
+    const rarityFactor = profile.type === "diamond" ? 0.68 : profile.type === "gold" ? 0.84 : 1;
+    const chance = profile.baseChance * richness * zonePressure * depthPressure * rarityFactor;
+    if (random() < chance) return profile;
+  }
+  return void 0;
+}
+function spawnVein(startX, startY, type, size, context, tiles, random) {
+  let x = startX;
+  let y = startY;
+  for (let i = 0; i < size; i += 1) {
+    const cell = tiles.get(tileKey2(x, y));
+    if (cell && canReplaceWithResource(cell) && distanceToStart(context, x, y) >= 10) {
+      setTile(tiles, x, y, type, false);
+    }
+    x += randomInt(random, -1, 1);
+    y += randomInt(random, -1, 1);
+  }
+}
+function canReplaceWithResource(cell) {
+  return (cell.type === "dirt" || cell.type === "stone" || cell.type === "basalt") && !cell.boundary;
+}
+
+// public/scripts/LevelGeneration/levelConstants.ts
+var WORLD_MIN_X = -10;
+var LEFT_BOUNDARY_THICKNESS = 2;
+var SHIP_TUNNEL_LEFT_X = WORLD_MIN_X;
+var SHIP_TUNNEL_TIP_X = 0;
+var SHIP_TUNNEL_TOP_Y = -1;
+var SHIP_TUNNEL_BOTTOM_Y = 2;
+var SHIP_CEILING_Y = -2;
+var SHIP_FLOOR_Y = 3;
+
+// public/scripts/LevelGeneration/terrainGenerator.ts
+function generateBaseTerrain(context, random) {
+  const tiles = /* @__PURE__ */ new Map();
+  for (let x = WORLD_MIN_X; x <= context.width; x += 1) {
+    for (let y = -context.heightDown; y <= context.heightUp; y += 1) {
+      const type = calculateBaseTile(context, x, y, random);
+      setTile(tiles, x, y, type, false);
+    }
+  }
+  return tiles;
+}
+function calculateBaseTile(context, x, y, random) {
+  const distanceRatio = distanceToCore(context, x, y) / referenceCoreDistance(context);
+  const absY = Math.abs(y);
+  const roll = random();
+  if (distanceRatio < 0.2) {
+    if (roll < 0.62) return "basalt";
+    if (roll < 0.93) return "stone";
+    return absY < 24 ? "gravel" : "basalt";
+  }
+  if (distanceRatio < 0.4) {
+    if (roll < 0.46) return "stone";
+    if (roll < 0.76) return "basalt";
+    if (roll < 0.88) return "gravel";
+    return "dirt";
+  }
+  if (distanceRatio < 0.7) {
+    if (roll < 0.45) return "stone";
+    if (roll < 0.65) return "dirt";
+    if (roll < 0.78) return "gravel";
+    if (roll < 0.9) return absY < 22 ? "clay" : "stone";
+    return "sand";
+  }
+  if (roll < 0.52) return "dirt";
+  if (roll < 0.68) return "sand";
+  if (roll < 0.8) return "clay";
+  if (roll < 0.9) return "gravel";
+  return "stone";
+}
+
+// public/scripts/LevelGeneration/worldContext.ts
+function createWorldContext(config, difficultyLevel, customSeed) {
+  const planet = config.planet;
+  const difficulty = clamp2(Math.round(difficultyLevel), 1, 10);
+  const seed = hashSeed(customSeed);
+  const random = mulberry32(seed);
+  const scaled = applyDifficultyScaling(config, difficulty);
+  const radius = Math.round(scaled.core_radius ?? planet.core.radius);
+  return {
+    random,
+    context: {
+      config,
+      difficulty,
+      seed,
+      scaled,
+      width: planet.base_config.level_width,
+      heightUp: planet.base_config.level_height_up,
+      heightDown: planet.base_config.level_height_down,
+      tileSize: planet.base_config.block_size,
+      core: { ...calculateCore(config, scaled, random), radius },
+      spawn: { x: -2, y: 2 },
+      // World-space tile rect for the drilled-in ship visual plus clearance.
+      spaceshipRect: { x: SHIP_TUNNEL_LEFT_X, y: SHIP_CEILING_Y, w: SHIP_TUNNEL_TIP_X - SHIP_TUNNEL_LEFT_X + 1, h: SHIP_FLOOR_Y - SHIP_CEILING_Y + 1 }
+    }
+  };
+}
+function applyDifficultyScaling(config, difficulty) {
+  const scaled = {};
+  const normalized = (difficulty - 1) / 9;
+  for (const [key, params] of Object.entries(config.planet.difficulty_scaling ?? {})) {
+    let factor = normalized;
+    if (params.formula === "exponential") factor = normalized ** 2;
+    if (params.formula === "logarithmic") factor = Math.log(difficulty) / Math.log(10);
+    scaled[key] = params.mode === "decrease" ? params.max - (params.max - params.min) * factor : params.min + (params.max - params.min) * factor;
+  }
+  scaled.core_radius = config.planet.core.radius;
+  return scaled;
+}
+function calculateCore(config, scaled, random) {
+  const coreDistance = scaled.core_distance ?? config.planet.core.distance.max;
+  const [minY, maxY] = config.planet.core.y_range;
+  return {
+    x: Math.round(coreDistance),
+    y: Math.round(minY + random() * (maxY - minY))
+  };
+}
+
+// public/scripts/LevelGeneration/worldReplacers.ts
+function applyWorldReplacers(context, tiles) {
+  const replacers = [
+    applyStartAndShipChamber,
+    applyStarterResourceDeposits,
+    applyCore,
+    applyWorldBoundaries
+  ];
+  for (const replacer of replacers) replacer(context, tiles);
+}
+function applyStartAndShipChamber(_context, tiles) {
+  for (let x = SHIP_TUNNEL_LEFT_X; x <= SHIP_TUNNEL_TIP_X; x += 1) {
+    setTile(tiles, x, SHIP_CEILING_Y, "bedrock", true);
+    setTile(tiles, x, SHIP_FLOOR_Y, "bedrock", true);
+    for (let y = SHIP_TUNNEL_TOP_Y; y <= SHIP_TUNNEL_BOTTOM_Y; y += 1) {
+      setTile(tiles, x, y, "air", false);
+    }
+  }
+}
+function applyStarterResourceDeposits(context, tiles) {
+  if (context.config.planet.id !== "dev_planet") return;
+  const deposits = [
+    { type: "copper", cells: [[4, 1], [5, 1], [5, 2], [6, 1], [6, 2]] },
+    { type: "iron", cells: [[8, -4], [9, -4], [9, -3], [10, -4], [10, -3]] },
+    { type: "gold", cells: [[10, 5], [11, 5], [11, 6], [12, 5]] },
+    { type: "diamond", cells: [[16, -8], [17, -8], [17, -7]] }
+  ];
+  for (const deposit of deposits) {
+    for (const [x, y] of deposit.cells) {
+      const cell = tiles.get(tileKey2(x, y));
+      if (!cell || cell.type === "air" || cell.type === "bedrock" || cell.boundary) continue;
+      setTile(tiles, x, y, deposit.type, false);
+    }
+  }
+}
+function applyCore(context, tiles) {
+  const { x: cx, y: cy, radius } = context.core;
+  const radiusSq = radius ** 2;
+  for (let x = cx - radius; x <= cx + radius; x += 1) {
+    for (let y = cy - radius; y <= cy + radius; y += 1) {
+      if ((x - cx) ** 2 + (y - cy) ** 2 <= radiusSq) {
+        setTile(tiles, x, y, "bedrock", true);
+      }
+    }
+  }
+}
+function applyWorldBoundaries(context, tiles) {
+  for (let x = WORLD_MIN_X; x <= context.width; x += 1) {
+    setTile(tiles, x, context.heightUp + 1, "bedrock", true);
+    setTile(tiles, x, -context.heightDown - 1, "bedrock", true);
+  }
+  for (let y = -context.heightDown; y <= context.heightUp; y += 1) {
+    for (let x = WORLD_MIN_X; x < WORLD_MIN_X + LEFT_BOUNDARY_THICKNESS; x += 1) {
+      if (y >= SHIP_TUNNEL_TOP_Y && y <= SHIP_TUNNEL_BOTTOM_Y) continue;
+      setTile(tiles, x, y, "bedrock", true);
+    }
+    setTile(tiles, context.width + 1, y, "bedrock", true);
+  }
+}
+
+// public/scripts/LevelGeneration/GravityDigLevelGenerator.ts
+var GravityDigLevelGenerator = class {
+  generate(config, difficultyLevel = 1, customSeed = "gravity-dig-phaser") {
+    const start = performance.now();
+    const { context, random } = createWorldContext(config, difficultyLevel, customSeed);
+    const tiles = generateBaseTerrain(context, random);
+    spawnResources(context, tiles, random);
+    applyWorldReplacers(context, tiles);
+    const resources = rebuildResources(tiles);
+    return {
+      planetId: config.planet.id,
+      planetName: config.planet.name,
+      difficulty: context.difficulty,
+      seed: context.seed,
+      tileSize: context.tileSize,
+      width: context.width,
+      heightUp: context.heightUp,
+      heightDown: context.heightDown,
+      core: context.core,
+      spawn: context.spawn,
+      spaceshipRect: context.spaceshipRect,
+      tiles,
+      resources,
+      generationTimeMs: Math.round(performance.now() - start)
+    };
+  }
+  key(x, y) {
+    return tileKey2(x, y);
+  }
+};
+
+// public/scripts/Managers/LevelManager.node.ts
+var LevelManager = class extends ScriptNode {
+  id = "dynamic.level-manager";
+  name = "Level Manager";
+  planetConfigAssetId = prop.string("dev-planet", { label: "Planet Config Asset ID" });
+  defaultDifficulty = prop.number(1, { label: "Default Difficulty", min: 1, max: 10, step: 1 });
+  defaultSeed = prop.string("gravity-dig-phaser", { label: "Default Seed" });
+  generator = new GravityDigLevelGenerator();
+  planetConfig;
+  init() {
+    this.planetConfig = this.requireJsonAsset(this.planetConfigAssetId);
+  }
+  getConfig() {
+    if (!this.planetConfig) throw new Error(`Planet config '${this.planetConfigAssetId}' is not initialized`);
+    return this.planetConfig;
+  }
+  generateLevel(seed = this.defaultSeed, difficultyLevel = this.defaultDifficulty) {
+    return this.generator.generate(this.getConfig(), difficultyLevel, seed);
+  }
+};
+
 // public/scripts/UI/BottomHudScript.node.ts
 var SLOT_PREFAB_ID = "fc891d95-3efb-567e-81d1-7fb0a446ebf5";
 var FIRST_SLOT_ASSET = "hud-hp-fuel-atlas#inventoryFirstSlot";
@@ -718,7 +1066,7 @@ var BottomHudScript = class extends ScriptNode {
   updateHud() {
     const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
-    const energyPct = clamp2((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
+    const energyPct = clamp3((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
     this.energyFill.setHorizontalFill(energyPct);
     for (let index = 0; index < this.slots.length; index += 1) {
       const cargo = run?.cargo.slots[index];
@@ -775,7 +1123,7 @@ var ITEM_TINTS = {
   repair_kit: 15680580,
   teleport_bracelet: 12616956
 };
-function clamp2(value, min, max) {
+function clamp3(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -811,7 +1159,7 @@ var StatusHudScript = class extends ScriptNode {
     this.updateBarFill(this.fuelFill, FUEL_FRAME, (run?.fuel ?? MAX_FUEL) / MAX_FUEL);
   }
   updateBarFill(node, frame, pct) {
-    const safePct = clamp3(pct, 0, 1);
+    const safePct = clamp4(pct, 0, 1);
     const visible = safePct > 0;
     node.visible = visible;
     node.image.setCrop(0, 0, Math.max(1, Math.round(frame.width * safePct)), frame.height);
@@ -823,7 +1171,7 @@ var StatusHudScript = class extends ScriptNode {
     return node;
   }
 };
-function clamp3(value, min, max) {
+function clamp4(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -847,6 +1195,7 @@ var modules = [
   createDynamicNodeModule(PlayerMovementScript, "Gameplay-PlayerMovementScript"),
   createDynamicNodeModule(ShipScript, "Gameplay-ShipScript"),
   createDynamicNodeModule(LoadingScript, "Loading-LoadingScript"),
+  createDynamicNodeModule(LevelManager, "Managers-LevelManager"),
   createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript"),
   createDynamicNodeModule(StatusHudScript, "UI-StatusHudScript")
 ];
@@ -855,4 +1204,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.33261ef03fc9.js.map
+//# sourceMappingURL=dynamic-nodes.29062ce3155a.js.map

@@ -76,6 +76,9 @@ const editableFileRoots = [
   'apps/game/public/scenes',
   'apps/game/public/prefabs',
   'apps/game/public/config',
+  'apps/game/public/managers',
+  'apps/game/public/schemas',
+  'apps/game/public/game.settings.json',
   'apps/game/public/assets',
   'apps/game/public/scripts',
 ].map((path) => path.replaceAll('/', sep));
@@ -364,6 +367,7 @@ function normalizeSetPropsChange(sessionId: string, change: Partial<EditorSetPro
     sessionId,
     target: {
       nodePath,
+      managerPath: typeof change.target.managerPath === 'string' ? change.target.managerPath : undefined,
       prefabPath: typeof change.target.prefabPath === 'string' ? change.target.prefabPath : undefined,
       prefabId: typeof change.target.prefabId === 'string' ? change.target.prefabId : undefined,
       prefabNodePath: Array.isArray(change.target.prefabNodePath) ? normalizeNodePathInput(change.target.prefabNodePath) : undefined,
@@ -734,7 +738,9 @@ async function applyChangeToWorkspace(change: EditorChange): Promise<void> {
     await applyPrefabOverrideToWorkspace(change);
     return;
   }
-  const source = resolveSourceFile(change.target.nodePath);
+  const source = change.target.managerPath
+    ? { filePath: `apps/game/public/${change.target.managerPath}`, nodePath: change.target.nodePath }
+    : resolveSourceFile(change.target.nodePath);
   const filePath = resolveEditablePath(source.filePath);
   const file = JSON.parse(await readFile(filePath.absolutePath, 'utf8')) as { root: SceneNodeJsonLike };
   const node = findNodeByPath(file.root, source.nodePath);
@@ -999,38 +1005,24 @@ interface DynamicNodeBuildManifest {
 export async function buildDynamicNodeModules(): Promise<{ manifest: DynamicNodeBuildManifest }> {
   setWorkspaceActivity('building-dynamic-nodes', 'Dynamic Node Scripts werden kompiliert ...', true);
   try {
-    const sourceDir = await ensureDynamicNodeRoot();
-    const outDir = resolve(workspacePath, 'apps/game/public/scripts-compiled');
-    assertInsideRoot(sourceDir, workspacePath, 'dynamicNodeSourceDir');
-    assertInsideRoot(outDir, workspacePath, 'dynamicNodeOutDir');
-
-    await rm(outDir, { recursive: true, force: true });
-    await mkdir(outDir, { recursive: true });
-
-    const files = await findDynamicNodeSourceFiles(sourceDir);
-    const scriptEntries = await Promise.all(files.map(async (file, index) => {
-      const sourcePath = join(sourceDir, file);
-      const source = await readFile(sourcePath, 'utf8');
-      const baseName = file.replace(/\.node\.tsx?$/, '').replaceAll(sep, '-');
-      const declaredNodeTypeId = source.match(/\bid\s*=\s*['"]([^'"]+)['"]/u)?.[1] ?? baseName;
-      return { index, sourceCode: source, baseName, declaredNodeTypeId, source: `public/scripts/${file.split(sep).join('/')}` };
-    }));
-
-    const bundledSource = transpileDynamicNodeBundleSource(scriptEntries);
-    const hash = createHash('sha256').update(bundledSource).digest('hex').slice(0, 12);
-    const outfileName = `dynamic-nodes.${hash}.js`;
-    const outfile = join(outDir, outfileName);
-    const bundleUrl = `/scripts-compiled/${outfileName}`;
-    await writeFileAtomic(outfile, bundledSource);
-    await writeFileAtomic(`${outfile}.map`, '');
-
-    const manifest: DynamicNodeBuildManifest = {
-      version: 1,
-      bundle: { url: bundleUrl, hash },
-      nodes: scriptEntries.map((entry) => ({ nodeTypeId: entry.declaredNodeTypeId, source: entry.source, url: bundleUrl, hash })),
-    };
-
-    await writeFileAtomic(join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    await ensureDynamicNodeRoot();
+    const gameRoot = resolve(workspacePath, 'apps/game');
+    const buildScript = resolve(gameRoot, 'scripts/build-dynamic-nodes.mjs');
+    assertInsideRoot(buildScript, workspacePath, 'dynamicNodeBuildScript');
+    try {
+      await execFileAsync(process.execPath, [buildScript], {
+        cwd: gameRoot,
+        env: process.env,
+        maxBuffer: 1024 * 1024 * 8,
+      });
+    } catch (error) {
+      const details = error instanceof Error && 'stderr' in error
+        ? String((error as Error & { stderr?: string }).stderr ?? error.message)
+        : error instanceof Error ? error.message : String(error);
+      throw new EditorBackendError(`Dynamic Node Build fehlgeschlagen:\n${details.trim()}`, 422);
+    }
+    const manifestPath = resolve(gameRoot, 'public/scripts-compiled/manifest.json');
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as DynamicNodeBuildManifest;
     return { manifest };
   } finally {
     setWorkspaceActivity('ready', 'Git-Workspace bereit.', false);
@@ -1209,6 +1201,12 @@ class ScriptNode {
   getAppVersion() { return this.__dynamicNodeContext?.getAppVersion() ?? '0.0.0'; }
   getRuntimeMode() { return this.__dynamicNodeContext?.getRuntimeMode() ?? 'play'; }
   getViewportSize() { return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 }; }
+  getJsonAsset(key) { return this.__dynamicNodeContext?.getJsonAsset(key); }
+  requireJsonAsset(key) {
+    const value = this.getJsonAsset(key);
+    if (value === undefined) throw new Error('Required JSON asset ' + key + ' is not loaded');
+    return value;
+  }
   instantiatePrefab(path, options) {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error('Dynamic node context is not initialized');
@@ -1273,7 +1271,8 @@ function isHiddenPublicExplorerEntry(relativePath: string, entryName: string): b
 }
 
 function isDynamicNodeSourcePath(path: string): boolean {
-  return path.replaceAll('\\', '/').startsWith('apps/game/public/scripts/') && /\.node\.tsx?$/.test(path);
+  const normalized = path.replaceAll('\\', '/');
+  return normalized.startsWith('apps/game/public/scripts/') && /\.tsx?$/.test(normalized);
 }
 
 function isEditorSourcePath(path: string): boolean {

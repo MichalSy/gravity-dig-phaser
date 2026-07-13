@@ -4,12 +4,14 @@ import { tileKey } from '../../utils/tileMath';
 import type { LevelData, TileCell } from '../level';
 import { collidesBox, getCellAtWorld } from '../level/levelCollision';
 import { LevelTilemapView } from '../level/LevelTilemapView';
-import { LevelGeneratorManagerNode } from './LevelGeneratorManagerNode';
+interface LevelGeneratorTarget extends GameNode {
+  callScriptMethod(name: string, ...args: unknown[]): unknown;
+}
 
 export class LevelNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.LevelNode;
 
-  private levelGenerator!: LevelGeneratorManagerNode;
+  private levelGenerator!: LevelGeneratorTarget;
   private tilemapView!: LevelTilemapView;
   private currentLevel?: LevelData;
   override readonly dependencies = ['LevelGenerator'] as const;
@@ -23,7 +25,7 @@ export class LevelNode extends GameNode {
   }
 
   resolve(): void {
-    this.levelGenerator = this.requireNode<LevelGeneratorManagerNode>('LevelGenerator');
+    this.levelGenerator = this.requireNode<LevelGeneratorTarget>('LevelGenerator');
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
@@ -52,7 +54,8 @@ export class LevelNode extends GameNode {
   }
 
   generate(seed: number | string, difficultyLevel = 1): LevelData {
-    this.currentLevel = this.levelGenerator.generateLevel(seed, difficultyLevel);
+    this.currentLevel = this.levelGenerator.callScriptMethod('generateLevel', seed, difficultyLevel) as LevelData;
+    if (!this.currentLevel) throw new Error('LevelManager did not return level data');
     this.tilemapView.draw(this.currentLevel);
     return this.currentLevel;
   }

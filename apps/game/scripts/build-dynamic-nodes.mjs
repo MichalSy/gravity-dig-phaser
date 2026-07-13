@@ -139,6 +139,14 @@ export class ScriptNode {
   getViewportSize() {
     return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 };
   }
+  getJsonAsset(key) {
+    return this.__dynamicNodeContext?.getJsonAsset(key);
+  }
+  requireJsonAsset(key) {
+    const value = this.getJsonAsset(key);
+    if (value === undefined) throw new Error('Required JSON asset ' + key + ' is not loaded');
+    return value;
+  }
   instantiatePrefab(path, options) {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error('Dynamic node context is not initialized');

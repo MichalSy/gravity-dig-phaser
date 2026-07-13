@@ -1,57 +1,63 @@
 {
   "version": 1,
   "bundle": {
-    "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-    "hash": "33261ef03fc9"
+    "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+    "hash": "29062ce3155a"
   },
   "nodes": [
     {
       "nodeTypeId": "dynamic.example-pulse",
       "source": "public/scripts/ExamplePulse.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.menu-script",
       "source": "public/scripts/GameMenu/MenuScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.mining-tool",
       "source": "public/scripts/Gameplay/MiningScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.player-movement",
       "source": "public/scripts/Gameplay/PlayerMovementScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.ship",
       "source": "public/scripts/Gameplay/ShipScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.loading-script",
       "source": "public/scripts/Loading/LoadingScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
+    },
+    {
+      "nodeTypeId": "dynamic.level-manager",
+      "source": "public/scripts/Managers/LevelManager.node.ts",
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.bottom-hud",
       "source": "public/scripts/UI/BottomHudScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     },
     {
       "nodeTypeId": "dynamic.status-hud",
       "source": "public/scripts/UI/StatusHudScript.node.ts",
-      "url": "/scripts-compiled/dynamic-nodes.33261ef03fc9.js",
-      "hash": "33261ef03fc9"
+      "url": "/scripts-compiled/dynamic-nodes.29062ce3155a.js",
+      "hash": "29062ce3155a"
     }
   ]
 }

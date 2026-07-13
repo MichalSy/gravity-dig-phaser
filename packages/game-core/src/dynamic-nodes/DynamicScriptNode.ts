@@ -24,6 +24,7 @@ export interface DynamicScriptContext {
   getAppVersion(): string;
   getRuntimeMode(): 'editor' | 'play';
   getViewportSize(): { width: number; height: number };
+  getJsonAsset(key: string): unknown;
   instantiatePrefab(path: string, options?: { name?: string; props?: Record<string, unknown> }): GameNode;
   emit(action: string): void;
 }
@@ -262,6 +263,7 @@ export class DynamicScriptNode extends GameNode {
       getAppVersion: () => __APP_VERSION__,
       getRuntimeMode: () => ctx.runtime.mode,
       getViewportSize: () => ({ width: ctx.phaserScene.scale.width, height: ctx.phaserScene.scale.height }),
+      getJsonAsset: (key) => ctx.phaserScene.cache.json.get(key) as unknown,
       instantiatePrefab: (path, options) => {
         if (!this.prefabFactory) throw new Error(`Dynamic node '${this.debugName()}' cannot instantiate prefab '${path}'`);
         return this.prefabFactory(path, options);

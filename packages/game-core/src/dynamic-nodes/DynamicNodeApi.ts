@@ -62,6 +62,16 @@ export abstract class ScriptNode {
     return this.__dynamicNodeContext?.getViewportSize() ?? { width: 1280, height: 720 };
   }
 
+  getJsonAsset<T = unknown>(key: string): T | undefined {
+    return this.__dynamicNodeContext?.getJsonAsset(key) as T | undefined;
+  }
+
+  requireJsonAsset<T = unknown>(key: string): T {
+    const value = this.getJsonAsset<T>(key);
+    if (value === undefined) throw new Error(`Required JSON asset '${key}' is not loaded`);
+    return value;
+  }
+
   instantiatePrefab<T = GameNode>(path: string, options?: { name?: string; props?: Record<string, unknown> }): T {
     const node = this.__dynamicNodeContext?.instantiatePrefab(path, options);
     if (!node) throw new Error('Dynamic node context is not initialized');

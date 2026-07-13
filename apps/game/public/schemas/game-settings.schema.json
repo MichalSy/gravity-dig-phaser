@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gravity Dig Game Settings",
+  "type": "object",
+  "required": ["version", "scenes", "managers"],
+  "properties": {
+    "version": { "const": 1 },
+    "scenes": {
+      "type": "object",
+      "required": ["startup", "editorDefault", "definitions"],
+      "properties": {
+        "startup": { "type": "string" },
+        "editorDefault": { "type": "string" },
+        "definitions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string" },
+              "assetGroup": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "managers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "mountWhen", "lifetime", "modes"],
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "mountWhen": { "type": "array", "items": { "type": "string" } },
+          "lifetime": { "enum": ["runtime", "scene"] },
+          "modes": { "type": "array", "items": { "enum": ["play", "editor"] } },
+          "dependsOn": { "type": "array", "items": { "type": "string" } },
+          "order": { "type": "number" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
