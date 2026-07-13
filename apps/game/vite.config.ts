@@ -8,6 +8,7 @@ const base = process.env.VITE_BASE_PATH ?? '/';
 export default defineConfig({
   base,
   build: {
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),

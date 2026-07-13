@@ -15,14 +15,6 @@
           {
             "name": "World",
             "nodeTypeId": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1"
-          },
-          {
-            "name": "ExamplePulseScript",
-            "nodeTypeId": "dynamic.example-pulse",
-            "props": {
-              "intervalMs": 1500,
-              "enabled": true
-            }
           }
         ]
       },

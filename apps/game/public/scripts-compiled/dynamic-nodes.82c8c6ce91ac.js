@@ -61,22 +61,6 @@ var prop = {
   nodeRefList: (value = [], options = {}) => marker(value, { type: "NodeRefList", ...options })
 };
 
-// public/scripts/ExamplePulse.node.ts
-var ExamplePulseNode = class extends ScriptNode {
-  id = "dynamic.example-pulse";
-  name = "Example Pulse Script";
-  intervalMs = prop.number(1e3, { min: 100, max: 5e3, step: 100, label: "Interval ms" });
-  enabled = prop.boolean(true, { label: "Enabled" });
-  elapsedMs = 0;
-  update(deltaMs) {
-    if (!this.enabled) return;
-    this.elapsedMs += deltaMs;
-    if (this.elapsedMs < this.intervalMs) return;
-    this.elapsedMs = 0;
-    this.log("pulse", { intervalMs: this.intervalMs });
-  }
-};
-
 // public/scripts/GameMenu/MenuScript.node.ts
 function wrapIndex(value, length) {
   return (value % length + length) % length;
@@ -2029,7 +2013,6 @@ function createDynamicNodeModule(ScriptClass, baseName) {
   };
 }
 var modules = [
-  createDynamicNodeModule(ExamplePulseNode, "ExamplePulse"),
   createDynamicNodeModule(MenuScript, "GameMenu-MenuScript"),
   createDynamicNodeModule(MiningScript, "Gameplay-MiningScript"),
   createDynamicNodeModule(PlayerAnimationScript, "Gameplay-PlayerAnimationScript"),
@@ -2047,4 +2030,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.ef59899c32af.js.map
+//# sourceMappingURL=dynamic-nodes.82c8c6ce91ac.js.map

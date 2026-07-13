@@ -42,7 +42,9 @@ The editor displays runtime roots with a `RUNTIME` badge. Names, UUID formats, a
 
 ### 2.1 Public game settings and managers
 
-`apps/game/public/game.settings.json` is the versioned project bootstrap contract shared by PLAY and EDIT. It defines scene paths and manager composition; neither `AppScene` nor the editor runtime owns a duplicate manager list.
+`apps/game/public/game.settings.json` is the versioned project bootstrap contract shared by PLAY and EDIT. It defines the public asset manifest, scene paths, asset groups, prefab dependencies, action-driven scene transitions, and manager composition. Neither `AppScene` nor the editor runtime owns duplicate scene IDs, asset lists, prefab lists, transitions, or manager lists.
+
+Concrete assets are grouped in `public/assets/assets.manifest.json`. PLAY loads the startup groups first and additional groups through public actions; EDIT loads the configured groups through the same generic loader. Native source contains no Gravity Dig asset keys or paths.
 
 Singleton manager roots live under `public/managers/*.manager.json`. They use the normal `SceneFileJson` node-tree format, but carry an explicit stable `instanceId` rather than prefab instance semantics. Each settings entry declares:
 
@@ -229,9 +231,15 @@ The prefab uses only generic engine capabilities:
 
 Gravity Dig's procedural generator is public gameplay code under `public/scripts/LevelGeneration/`. Terrain distribution, resources, world replacements, seed handling, planet types, tile health, and boundary policy are not engine responsibilities.
 
-`public/scripts/Managers/LevelManager.node.ts` reads the configured planet JSON through the generic `ScriptNode.requireJsonAsset()` API and exposes `generateLevel()` to runtime consumers. `LevelNode` remains a native rendering/collision bridge for now: it calls the public manager and translates returned level data into Phaser tilemap rendering. The removed native `LevelGeneratorManagerNode` and native generator modules must not be reintroduced.
+`public/scripts/Managers/LevelManager.node.ts` reads the configured planet JSON through the generic `ScriptNode.requireJsonAsset()` API and owns generation, tile queries, collision rules, frame selection, mutation, health, and resource state. `LevelNode` is only a native Phaser tilemap adapter: it renders generic frame/solid data and delegates all domain operations back to the public manager. The removed native tile domain, collision policy, generator modules, and `LevelGeneratorManagerNode` must not be reintroduced.
 
-The production and editor ScriptNode builds both invoke the canonical esbuild pipeline. Relative helper-module edits anywhere under `public/scripts/` trigger the same rebuild. The editor compares bundle hashes, broadcasts every affected manifest entry, imports the shared bridge bundle once per hash, and reloads matching live `DynamicScriptNode` instances, so modular public gameplay behaves identically in EDIT and PLAY.
+The production and editor ScriptNode builds both invoke the canonical esbuild pipeline. Relative helper-module edits anywhere under `public/scripts/` trigger the same rebuild. The editor compares bundle hashes, transfers the changed shared bundle once, imports it once per hash, and reloads every matching live `DynamicScriptNode` instance with one acknowledgement. Runtime bundle caches retain at most eight generations.
+
+### 7.3 Public gameplay managers
+
+Concrete input mapping, player profile/run/cargo state, upgrades, save-game rules, and player animation selection live under `public/scripts/`. The only native input component is `InputDeviceNode`, which exposes raw keyboard, pointer, and gamepad state without knowing Gravity Dig controls. Animation uses generic `AnimatedImageNode` and `AudioNode` children authored in the player prefab.
+
+`DynamicScriptNode` instances provide a transparent method/property facade. Runtime consumers can use the same stable node reference surface whether a manager is native or public, while script exceptions remain guarded and hot reload still replaces the underlying behavior.
 
 ## 8. Editor data flow
 
@@ -275,6 +283,7 @@ The browser never receives repository credentials. Server APIs validate relative
 Before shipping runtime, prefab, layout, or editor changes, run the relevant subset and the complete build before final delivery:
 
 ```bash
+npm test
 npm run build -w packages/debug-protocol
 npx tsc --noEmit -p apps/game/tsconfig.json
 npx tsc --noEmit -p apps/editor/tsconfig.json
