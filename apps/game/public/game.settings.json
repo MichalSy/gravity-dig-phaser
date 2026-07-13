@@ -51,7 +51,7 @@
   "managers": [
     {
       "id": "gameplay-input",
-      "path": "managers/gameplay-input.manager.json",
+      "path": "scripts/Managers/GameplayInput.manager.json",
       "mountWhen": ["gameplay"],
       "lifetime": "runtime",
       "modes": ["play", "editor"],
@@ -59,7 +59,7 @@
     },
     {
       "id": "player-state",
-      "path": "managers/player-state.manager.json",
+      "path": "scripts/PlayerState/PlayerStateManager.manager.json",
       "mountWhen": ["gameplay"],
       "lifetime": "runtime",
       "modes": ["play", "editor"],
@@ -67,7 +67,7 @@
     },
     {
       "id": "level",
-      "path": "managers/level.manager.json",
+      "path": "scripts/Managers/LevelManager.manager.json",
       "mountWhen": ["gameplay"],
       "lifetime": "runtime",
       "modes": ["play", "editor"],

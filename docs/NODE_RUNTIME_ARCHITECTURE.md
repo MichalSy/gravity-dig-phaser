@@ -46,7 +46,7 @@ The editor displays runtime roots with a `RUNTIME` badge. Names, UUID formats, a
 
 Concrete assets are grouped in `public/assets/assets.manifest.json`. PLAY loads the startup groups first and additional groups through public actions; EDIT loads the configured groups through the same generic loader. Native source contains no Gravity Dig asset keys or paths.
 
-Singleton manager roots live under `public/managers/*.manager.json`. They use the normal `SceneFileJson` node-tree format, but carry an explicit stable `instanceId` rather than prefab instance semantics. Each settings entry declares:
+Singleton manager roots live as `*.manager.json` companions beside their owning Public ScriptNode (for example `GameplayInput.node.ts` and `GameplayInput.manager.json`). They use the normal `SceneFileJson` node-tree format, but carry an explicit stable `instanceId` rather than prefab instance semantics. The editor's file-nesting registry presents companions under the ScriptNode primary while keeping every file independently selectable and editable. Each settings entry declares:
 
 - `mountWhen`: scenes that first require the manager;
 - `lifetime: "runtime" | "scene"`: whether it survives node-scene changes;

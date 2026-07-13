@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent,
 import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, Waypoints } from 'lucide-react';
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
+import { buildNestedFileBundles, type NestedFileBundle } from '../file-nesting';
 import { findPrefabTreeNodeByPath, formatPrefabDocument, isPrefabFilePath, parsePrefabDocument, patchPrefabNode, prefabDocumentToTree, prefabNodeDefinition, prefabNodePropsMessage, type PrefabDocument } from './prefabEditor';
 
 function shouldLogDebugMessage(type: DebugMessage['type']): boolean {
@@ -686,7 +687,9 @@ export default function Home() {
       setSelectedPublicFilePath(pendingPath);
       return;
     }
-    setSelectedPublicFilePath((current) => current && publicFilesInSelectedDirectory.some((file) => file.path === current) ? current : publicFilesInSelectedDirectory[0]?.path);
+    const nestedChildPaths = buildNestedFileBundles(publicFilesInSelectedDirectory).bundledChildPaths;
+    const defaultFilePath = publicFilesInSelectedDirectory.find((file) => !nestedChildPaths.has(file.path))?.path;
+    setSelectedPublicFilePath((current) => current && publicFilesInSelectedDirectory.some((file) => file.path === current) ? current : defaultFilePath);
   }, [publicFilesInSelectedDirectory]);
 
   useEffect(() => {
@@ -1961,6 +1964,22 @@ function PublicAssetExplorer({
   onImageAssetDragEnd(): void;
 }) {
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
+  const [expandedBundlePaths, setExpandedBundlePaths] = useState<Set<string>>(() => new Set());
+  const nestedFiles = useMemo(() => buildNestedFileBundles(files), [files]);
+  const bundleByPrimaryPath = useMemo(
+    () => new Map(nestedFiles.bundles.map((bundle) => [bundle.primary.path, bundle])),
+    [nestedFiles.bundles],
+  );
+  const topLevelFiles = files.filter((file) => !nestedFiles.bundledChildPaths.has(file.path));
+
+  function toggleBundle(path: string): void {
+    setExpandedBundlePaths((current) => {
+      const next = new Set(current);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }
 
   return (
     <section className={styles.assetExplorer}>
@@ -1998,48 +2017,25 @@ function PublicAssetExplorer({
                 <small>Ordner</small>
               </button>
             ))}
-            {files.map((file) => (
-              <button
-                key={file.path}
-                type="button"
-                className={`${styles.assetTile} ${file.path === selectedFilePath ? styles.selectedAssetTile : ''}`}
-                draggable={isDynamicNodeFile(file) || isImageFile(file)}
-                onDragStart={(event) => {
-                  if (isDynamicNodeFile(file)) {
-                    event.dataTransfer.effectAllowed = 'copy';
-                    event.dataTransfer.setData(dynamicNodeDragMimeType, JSON.stringify(file));
-                    event.dataTransfer.setData('text/plain', file.path);
-                    onDynamicNodeDragStart(file);
-                    return;
-                  }
-                  if (!isImageFile(file)) return;
-                  const payload: ImageAssetDragPayload = { filePath: file.path, label: file.name };
-                  event.dataTransfer.effectAllowed = 'copy';
-                  event.dataTransfer.setData(imageAssetDragMimeType, JSON.stringify(payload));
-                  event.dataTransfer.setData('text/plain', file.path);
-                  onImageAssetDragStart(payload);
-                }}
-                onDragEnd={() => {
-                  onDynamicNodeDragEnd();
-                  onImageAssetDragEnd();
-                }}
-                onClick={() => onSelectFile(file.path)}
-                onDoubleClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (isPrefabFilePath(file.path)) {
-                    onOpenPrefab(file.path);
-                    return;
-                  }
-                  if (isCodePreviewFile(file)) onOpenFile(file.path);
-                }}
-                title={file.path}
-              >
-                <PublicFileThumbnail file={file} />
-                <span>{file.name}</span>
-                <small>{formatFileMeta(file)}</small>
-              </button>
-            ))}
+            {topLevelFiles.map((file) => {
+              const bundle = bundleByPrimaryPath.get(file.path);
+              return (
+                <PublicFileBundleTile
+                  key={file.path}
+                  bundle={bundle ?? { primary: file, children: [] }}
+                  expanded={Boolean(bundle && expandedBundlePaths.has(file.path))}
+                  selectedFilePath={selectedFilePath}
+                  onToggle={() => toggleBundle(file.path)}
+                  onSelectFile={onSelectFile}
+                  onOpenFile={onOpenFile}
+                  onOpenPrefab={onOpenPrefab}
+                  onDynamicNodeDragStart={onDynamicNodeDragStart}
+                  onDynamicNodeDragEnd={onDynamicNodeDragEnd}
+                  onImageAssetDragStart={onImageAssetDragStart}
+                  onImageAssetDragEnd={onImageAssetDragEnd}
+                />
+              );
+            })}
             {!selectedDirectory && <p className={styles.empty}>{status}</p>}
             {selectedDirectory && childDirectories.length === 0 && files.length === 0 && <p className={styles.empty}>Dieser Ordner ist leer.</p>}
           </div>
@@ -2047,6 +2043,148 @@ function PublicAssetExplorer({
         <PublicFileDetails file={selectedFile} onOpenImage={onOpenImage} onOpenFile={onOpenFile} onOpenPrefab={onOpenPrefab} />
       </div>
     </section>
+  );
+}
+
+function PublicFileBundleTile({
+  bundle,
+  expanded,
+  selectedFilePath,
+  onToggle,
+  onSelectFile,
+  onOpenFile,
+  onOpenPrefab,
+  onDynamicNodeDragStart,
+  onDynamicNodeDragEnd,
+  onImageAssetDragStart,
+  onImageAssetDragEnd,
+}: {
+  bundle: NestedFileBundle<PublicFileEntry>;
+  expanded: boolean;
+  selectedFilePath?: string;
+  onToggle(): void;
+  onSelectFile(path: string): void;
+  onOpenFile(path: string): void;
+  onOpenPrefab(path: string): void;
+  onDynamicNodeDragStart(file: PublicFileEntry): void;
+  onDynamicNodeDragEnd(): void;
+  onImageAssetDragStart(payload: ImageAssetDragPayload): void;
+  onImageAssetDragEnd(): void;
+}) {
+  const hasChildren = bundle.children.length > 0;
+  return (
+    <div className={`${styles.assetFileBundle} ${expanded ? styles.expandedAssetFileBundle : ''}`}>
+      <div className={styles.assetBundlePrimary}>
+        <PublicAssetFileTile
+          file={bundle.primary}
+          selected={bundle.primary.path === selectedFilePath}
+          onSelectFile={onSelectFile}
+          onOpenFile={onOpenFile}
+          onOpenPrefab={onOpenPrefab}
+          onDynamicNodeDragStart={onDynamicNodeDragStart}
+          onDynamicNodeDragEnd={onDynamicNodeDragEnd}
+          onImageAssetDragStart={onImageAssetDragStart}
+          onImageAssetDragEnd={onImageAssetDragEnd}
+        />
+        {hasChildren && (
+          <button
+            type="button"
+            className={styles.assetBundleToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (expanded && bundle.children.some(({ file }) => file.path === selectedFilePath)) onSelectFile(bundle.primary.path);
+              onToggle();
+            }}
+            aria-label={`${bundle.primary.name}: ${bundle.children.length} verknüpfte Datei${bundle.children.length === 1 ? '' : 'en'} ${expanded ? 'einklappen' : 'aufklappen'}`}
+            title={`${bundle.children.length} verknüpfte Datei${bundle.children.length === 1 ? '' : 'en'}`}
+          >
+            {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            <span>{bundle.children.length}</span>
+          </button>
+        )}
+      </div>
+      {expanded && bundle.children.map((child) => (
+        <PublicAssetFileTile
+          key={child.file.path}
+          file={child.file}
+          relationLabel={child.label}
+          selected={child.file.path === selectedFilePath}
+          onSelectFile={onSelectFile}
+          onOpenFile={onOpenFile}
+          onOpenPrefab={onOpenPrefab}
+          onDynamicNodeDragStart={onDynamicNodeDragStart}
+          onDynamicNodeDragEnd={onDynamicNodeDragEnd}
+          onImageAssetDragStart={onImageAssetDragStart}
+          onImageAssetDragEnd={onImageAssetDragEnd}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PublicAssetFileTile({
+  file,
+  relationLabel,
+  selected,
+  onSelectFile,
+  onOpenFile,
+  onOpenPrefab,
+  onDynamicNodeDragStart,
+  onDynamicNodeDragEnd,
+  onImageAssetDragStart,
+  onImageAssetDragEnd,
+}: {
+  file: PublicFileEntry;
+  relationLabel?: string;
+  selected: boolean;
+  onSelectFile(path: string): void;
+  onOpenFile(path: string): void;
+  onOpenPrefab(path: string): void;
+  onDynamicNodeDragStart(file: PublicFileEntry): void;
+  onDynamicNodeDragEnd(): void;
+  onImageAssetDragStart(payload: ImageAssetDragPayload): void;
+  onImageAssetDragEnd(): void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`${styles.assetTile} ${selected ? styles.selectedAssetTile : ''}`}
+      draggable={isDynamicNodeFile(file) || isImageFile(file)}
+      onDragStart={(event) => {
+        if (isDynamicNodeFile(file)) {
+          event.dataTransfer.effectAllowed = 'copy';
+          event.dataTransfer.setData(dynamicNodeDragMimeType, JSON.stringify(file));
+          event.dataTransfer.setData('text/plain', file.path);
+          onDynamicNodeDragStart(file);
+          return;
+        }
+        if (!isImageFile(file)) return;
+        const payload: ImageAssetDragPayload = { filePath: file.path, label: file.name };
+        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.setData(imageAssetDragMimeType, JSON.stringify(payload));
+        event.dataTransfer.setData('text/plain', file.path);
+        onImageAssetDragStart(payload);
+      }}
+      onDragEnd={() => {
+        onDynamicNodeDragEnd();
+        onImageAssetDragEnd();
+      }}
+      onClick={() => onSelectFile(file.path)}
+      onDoubleClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (isPrefabFilePath(file.path)) {
+          onOpenPrefab(file.path);
+          return;
+        }
+        if (isCodePreviewFile(file)) onOpenFile(file.path);
+      }}
+      title={file.path}
+    >
+      <PublicFileThumbnail file={file} />
+      <span>{file.name}</span>
+      <small>{relationLabel ? `${relationLabel} · ${formatFileMeta(file)}` : formatFileMeta(file)}</small>
+    </button>
   );
 }
 
@@ -4158,12 +4296,11 @@ function isDynamicNodeBuildInputPath(path: string): boolean {
 
 function isEditableMonacoFile(path: string): boolean {
   return path.startsWith('apps/game/src/')
-    || isDynamicNodeBuildInputPath(path)
+    || path.startsWith('apps/game/public/scripts/')
     || path.startsWith('apps/game/public/assets/')
     || path.startsWith('apps/game/public/scenes/')
     || path.startsWith('apps/game/public/prefabs/')
     || path.startsWith('apps/game/public/config/')
-    || path.startsWith('apps/game/public/managers/')
     || path.startsWith('apps/game/public/schemas/')
     || path === 'apps/game/public/game.settings.json';
 }

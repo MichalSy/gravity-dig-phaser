@@ -75,7 +75,6 @@ const editableFileRoots = [
   'apps/game/public/scenes',
   'apps/game/public/prefabs',
   'apps/game/public/config',
-  'apps/game/public/managers',
   'apps/game/public/schemas',
   'apps/game/public/game.settings.json',
   'apps/game/public/assets',
