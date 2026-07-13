@@ -43,5 +43,12 @@ describe('canonical dynamic-node bundle', () => {
     };
     expect(imported.modules.map(({ nodeTypeId }) => nodeTypeId).sort()).toEqual(changed.nodes.map(({ nodeTypeId }) => nodeTypeId).sort());
     expect(imported.modules.every(({ createBehavior }) => typeof createBehavior === 'function')).toBe(true);
+
+    const playerState = imported.modules.find(({ nodeTypeId }) => nodeTypeId === 'dynamic.player-state')?.createBehavior() as {
+      health?: { group?: string; definition?: Record<string, unknown> };
+    } | undefined;
+    expect(playerState?.health?.group).toBe('Run');
+    expect(playerState?.health?.definition).toMatchObject({ type: 'Number', label: 'Health' });
+    expect(playerState?.health?.definition).not.toHaveProperty('group');
   });
 });

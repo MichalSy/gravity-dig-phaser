@@ -48,17 +48,18 @@ var ScriptNode = class {
     this.__dynamicNodeContext?.emit(action);
   }
 };
-function marker(value, definition) {
-  return { __dynamicNodeProp: true, value, definition };
+function marker(value, type, options) {
+  const { group, ...definitionOptions } = options;
+  return { __dynamicNodeProp: true, value, definition: { type, ...definitionOptions }, group };
 }
 var prop = {
-  string: (value, options = {}) => marker(value, { type: "String", ...options }),
-  number: (value, options = {}) => marker(value, { type: "Number", ...options }),
-  boolean: (value, options = {}) => marker(value, { type: "Boolean", ...options }),
-  assetId: (value, options = {}) => marker(value, { type: "AssetId", ...options }),
-  color: (value, options = {}) => marker(value, { type: "Color", ...options }),
-  nodeRef: (value = null, options = {}) => marker(value, { type: "NodeRef", ...options }),
-  nodeRefList: (value = [], options = {}) => marker(value, { type: "NodeRefList", ...options })
+  string: (value, options = {}) => marker(value, "String", options),
+  number: (value, options = {}) => marker(value, "Number", options),
+  boolean: (value, options = {}) => marker(value, "Boolean", options),
+  assetId: (value, options = {}) => marker(value, "AssetId", options),
+  color: (value, options = {}) => marker(value, "Color", options),
+  nodeRef: (value = null, options = {}) => marker(value, "NodeRef", options),
+  nodeRefList: (value = [], options = {}) => marker(value, "NodeRefList", options)
 };
 
 // public/scripts/GameMenu/MenuScript.node.ts
@@ -1704,6 +1705,25 @@ function applyModifier(stats, modifier) {
 var PlayerStateManager = class extends ScriptNode {
   id = "dynamic.player-state";
   name = "Player State";
+  health = prop.number(100, { label: "Health", min: 0, step: 1, group: "Run" });
+  energy = prop.number(100, { label: "Energy", min: 0, step: 1, group: "Run" });
+  fuel = prop.number(100, { label: "Fuel", min: 0, step: 1, group: "Run" });
+  maxHealth = prop.number(100, { label: "Max Health", min: 1, step: 1, group: "Stats" });
+  maxEnergy = prop.number(100, { label: "Max Energy", min: 1, step: 1, group: "Stats" });
+  energyRegenPerSec = prop.number(18, { label: "Energy Regen / sec", min: 0, step: 0.1, group: "Stats" });
+  energyCostPerSec = prop.number(12, { label: "Mining Energy Cost / sec", min: 0, step: 0.1, group: "Stats" });
+  miningDamagePerSec = prop.number(120, { label: "Mining Damage / sec", min: 0, step: 1, group: "Stats" });
+  miningRange = prop.number(330, { label: "Mining Range", min: 0, step: 1, group: "Stats" });
+  moveSpeed = prop.number(470, { label: "Move Speed", min: 0, step: 1, group: "Stats" });
+  jumpVelocity = prop.number(-1040, { label: "Jump Velocity", step: 1, group: "Stats" });
+  cargoSlots = prop.number(2, { label: "Cargo Slots", min: 1, step: 1, group: "Stats" });
+  cargoStackLimit = prop.number(3, { label: "Cargo Stack Limit", min: 1, step: 1, group: "Stats" });
+  sightRadius = prop.number(3, { label: "Sight Radius", min: 0, step: 1, group: "Stats" });
+  fuelEfficiency = prop.number(1, { label: "Fuel Efficiency", min: 0, step: 0.1, group: "Stats" });
+  credits = prop.number(0, { label: "Credits", min: 0, step: 1, group: "Profile" });
+  blocksMined = prop.number(0, { label: "Blocks Mined", min: 0, step: 1, group: "Profile" });
+  resourcesMined = prop.number(0, { label: "Resources Mined", min: 0, step: 1, group: "Profile" });
+  creditsEarned = prop.number(0, { label: "Credits Earned", min: 0, step: 1, group: "Profile" });
   saveGameState;
   activeRunState;
   effectivePlayerStats;
@@ -1712,6 +1732,79 @@ var PlayerStateManager = class extends ScriptNode {
   init() {
     this.saveGameState = loadSaveGame();
     this.effectivePlayerStats = computeEffectiveStats(this.saveGameState.profile);
+  }
+  getInspectorPropValue(name) {
+    const run = this.activeRunState;
+    switch (name) {
+      case "health":
+        return run?.health ?? null;
+      case "energy":
+        return run?.energy ?? null;
+      case "fuel":
+        return run?.fuel ?? null;
+      case "credits":
+        return this.saveGameState.profile.credits;
+      case "blocksMined":
+        return this.saveGameState.profile.stats.blocksMined;
+      case "resourcesMined":
+        return this.saveGameState.profile.stats.resourcesMined;
+      case "creditsEarned":
+        return this.saveGameState.profile.stats.creditsEarned;
+      case "maxHealth":
+      case "maxEnergy":
+      case "energyRegenPerSec":
+      case "energyCostPerSec":
+      case "miningDamagePerSec":
+      case "miningRange":
+      case "moveSpeed":
+      case "jumpVelocity":
+      case "cargoSlots":
+      case "cargoStackLimit":
+      case "sightRadius":
+      case "fuelEfficiency":
+        return this.effectivePlayerStats[name];
+      default:
+        return void 0;
+    }
+  }
+  onInspectorPropChanged(name, value) {
+    if (typeof value !== "number") return;
+    const run = this.activeRunState;
+    switch (name) {
+      case "health":
+        if (run) run.health = clamp3(value, 0, this.effectivePlayerStats.maxHealth);
+        return;
+      case "energy":
+        if (run) run.energy = clamp3(value, 0, this.effectivePlayerStats.maxEnergy);
+        return;
+      case "fuel":
+        if (run) run.fuel = Math.max(0, value);
+        return;
+      case "credits":
+        this.saveGameState.profile.credits = Math.max(0, Math.round(value));
+        return;
+      case "blocksMined":
+      case "resourcesMined":
+      case "creditsEarned":
+        this.saveGameState.profile.stats[name] = Math.max(0, Math.round(value));
+        return;
+      case "maxHealth":
+      case "maxEnergy":
+      case "energyRegenPerSec":
+      case "energyCostPerSec":
+      case "miningDamagePerSec":
+      case "miningRange":
+      case "moveSpeed":
+      case "jumpVelocity":
+      case "cargoSlots":
+      case "cargoStackLimit":
+      case "sightRadius":
+      case "fuelEfficiency":
+        this.effectivePlayerStats[name] = name === "cargoSlots" || name === "cargoStackLimit" ? Math.max(1, Math.round(value)) : value;
+        if (name === "cargoSlots" || name === "cargoStackLimit") this.syncCargoToStats();
+        if (name === "maxHealth" && run) run.health = clamp3(run.health, 0, this.effectivePlayerStats.maxHealth);
+        if (name === "maxEnergy" && run) run.energy = clamp3(run.energy, 0, this.effectivePlayerStats.maxEnergy);
+    }
   }
   get save() {
     return this.saveGameState;
@@ -1811,6 +1904,9 @@ var PlayerStateManager = class extends ScriptNode {
     saveGame(this.saveGameState);
   }
 };
+function clamp3(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
 // public/scripts/UI/BottomHudScript.node.ts
 var SLOT_PREFAB_ID = "fc891d95-3efb-567e-81d1-7fb0a446ebf5";
@@ -1890,7 +1986,7 @@ var BottomHudScript = class extends ScriptNode {
   updateHud() {
     const run = this.playerState.getActiveRun();
     const maxEnergy = Math.max(1, this.playerState.stats.maxEnergy);
-    const energyPct = clamp3((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
+    const energyPct = clamp4((run?.energy ?? maxEnergy) / maxEnergy, 0, 1);
     this.energyFill.setHorizontalFill(energyPct);
     for (let index = 0; index < this.slots.length; index += 1) {
       const cargo = run?.cargo.slots[index];
@@ -1947,7 +2043,7 @@ var ITEM_TINTS = {
   repair_kit: 15680580,
   teleport_bracelet: 12616956
 };
-function clamp3(value, min, max) {
+function clamp4(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -1983,7 +2079,7 @@ var StatusHudScript = class extends ScriptNode {
     this.updateBarFill(this.fuelFill, FUEL_FRAME, (run?.fuel ?? MAX_FUEL) / MAX_FUEL);
   }
   updateBarFill(node, frame, pct) {
-    const safePct = clamp4(pct, 0, 1);
+    const safePct = clamp5(pct, 0, 1);
     const visible = safePct > 0;
     node.visible = visible;
     node.image.setCrop(0, 0, Math.max(1, Math.round(frame.width * safePct)), frame.height);
@@ -1995,7 +2091,7 @@ var StatusHudScript = class extends ScriptNode {
     return node;
   }
 };
-function clamp4(value, min, max) {
+function clamp5(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
@@ -2030,4 +2126,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.82c8c6ce91ac.js.map
+//# sourceMappingURL=dynamic-nodes.acdc52c0e591.js.map

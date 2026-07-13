@@ -156,17 +156,18 @@ export class ScriptNode {
     this.__dynamicNodeContext?.emit(action);
   }
 }
-function marker(value, definition) {
-  return { __dynamicNodeProp: true, value, definition };
+function marker(value, type, options) {
+  const { group, ...definitionOptions } = options;
+  return { __dynamicNodeProp: true, value, definition: { type, ...definitionOptions }, group };
 }
 export const prop = {
-  string: (value, options = {}) => marker(value, { type: 'String', ...options }),
-  number: (value, options = {}) => marker(value, { type: 'Number', ...options }),
-  boolean: (value, options = {}) => marker(value, { type: 'Boolean', ...options }),
-  assetId: (value, options = {}) => marker(value, { type: 'AssetId', ...options }),
-  color: (value, options = {}) => marker(value, { type: 'Color', ...options }),
-  nodeRef: (value = null, options = {}) => marker(value, { type: 'NodeRef', ...options }),
-  nodeRefList: (value = [], options = {}) => marker(value, { type: 'NodeRefList', ...options }),
+  string: (value, options = {}) => marker(value, 'String', options),
+  number: (value, options = {}) => marker(value, 'Number', options),
+  boolean: (value, options = {}) => marker(value, 'Boolean', options),
+  assetId: (value, options = {}) => marker(value, 'AssetId', options),
+  color: (value, options = {}) => marker(value, 'Color', options),
+  nodeRef: (value = null, options = {}) => marker(value, 'NodeRef', options),
+  nodeRefList: (value = [], options = {}) => marker(value, 'NodeRefList', options),
 };
 `,
       }));

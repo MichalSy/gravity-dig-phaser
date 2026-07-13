@@ -11,6 +11,8 @@ export interface DynamicScriptBehavior {
   update?(deltaMs: number): void;
   editorUpdate?(deltaMs: number): void;
   destroy?(): void;
+  getInspectorPropValue?(name: string): unknown;
+  onInspectorPropChanged?(name: string, value: unknown): void;
   [key: string]: unknown;
 }
 
@@ -55,6 +57,7 @@ export class DynamicScriptNode extends GameNode {
   private module: DynamicNodeModule;
   private behavior: DynamicScriptBehavior;
   private scriptPropDefinitions: Record<string, DebugScenePropDefinition>;
+  private scriptPropGroups: DebugScenePropGroup[];
   private scriptContext?: DynamicScriptContext;
   private scriptFault?: ScriptFault;
   private scriptErrorCount = 0;
@@ -70,8 +73,12 @@ export class DynamicScriptNode extends GameNode {
     this.prefabFactory = options.instantiatePrefab;
     const extracted = this.extractScriptPropsSafely(this.behavior);
     this.scriptPropDefinitions = extracted.definitions;
+    this.scriptPropGroups = extracted.groups;
     for (const [key, value] of Object.entries(options.props ?? {})) {
-      if (key in this.scriptPropDefinitions) this.behavior[key] = value;
+      if (key in this.scriptPropDefinitions) {
+        this.behavior[key] = value;
+        this.scriptPropOverrides.add(key);
+      }
     }
   }
 
@@ -80,6 +87,7 @@ export class DynamicScriptNode extends GameNode {
     this.scriptContext = scriptContext;
     (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
     this.callScriptLifecycle('init', () => this.behavior.init?.(scriptContext));
+    this.notifyConfiguredInspectorProps();
   }
 
   override resolve(_ctx: NodeContext): void {
@@ -128,6 +136,7 @@ export class DynamicScriptNode extends GameNode {
     this.behavior = this.createGuardedBehavior();
     const extracted = this.extractScriptPropsSafely(this.behavior);
     this.scriptPropDefinitions = extracted.definitions;
+    this.scriptPropGroups = extracted.groups;
     for (const [key, value] of Object.entries(previousValues)) {
       if (key in this.scriptPropDefinitions) this.behavior[key] = value;
     }
@@ -135,6 +144,7 @@ export class DynamicScriptNode extends GameNode {
     if (scriptContext) {
       (this.behavior as DynamicScriptBehavior & { __dynamicNodeContext?: DynamicScriptContext }).__dynamicNodeContext = scriptContext;
       this.callScriptLifecycle('init', () => this.behavior.init?.(scriptContext));
+      this.notifyConfiguredInspectorProps();
       if (this.isResolved) this.callScriptLifecycle('resolve', () => this.behavior.resolve?.(scriptContext));
     }
   }
@@ -168,6 +178,7 @@ export class DynamicScriptNode extends GameNode {
 
       try {
         this.behavior[key] = validatedValue;
+        this.notifyInspectorPropChanged(key, validatedValue);
         if (validatedValue === null) this.scriptPropOverrides.delete(key);
         else this.scriptPropOverrides.add(key);
         result.applied[key] = validatedValue;
@@ -198,6 +209,8 @@ export class DynamicScriptNode extends GameNode {
       if (validatedValue === undefined) continue;
       try {
         this.behavior[key] = validatedValue;
+        this.scriptPropOverrides.add(key);
+        if (this.scriptContext) this.notifyInspectorPropChanged(key, validatedValue);
         applied.add(key);
       } catch (error) {
         this.recordScriptError(`set-initial-prop:${key}`, error);
@@ -226,16 +239,16 @@ export class DynamicScriptNode extends GameNode {
   private getDynamicExposedPropGroups(): DebugScenePropGroup[] {
     return [
       ...GameNode.exposedPropGroups,
-      { name: 'Script', props: this.scriptPropDefinitions },
+      ...this.scriptPropGroups,
     ];
   }
 
-  private extractScriptPropsSafely(behavior: DynamicScriptBehavior): { definitions: Record<string, DebugScenePropDefinition> } {
+  private extractScriptPropsSafely(behavior: DynamicScriptBehavior): { definitions: Record<string, DebugScenePropDefinition>; groups: DebugScenePropGroup[] } {
     try {
       return extractScriptProps(behavior);
     } catch (error) {
       this.recordScriptError('extract-props', error);
-      return { definitions: {} };
+      return { definitions: {}, groups: [] };
     }
   }
 
@@ -250,10 +263,22 @@ export class DynamicScriptNode extends GameNode {
 
   private readDebugScriptValue(key: string): NodeDebugProps[string] {
     try {
-      return debugValue(this.behavior[key]);
+      const value = this.behavior.getInspectorPropValue
+        ? this.behavior.getInspectorPropValue(key)
+        : this.behavior[key];
+      return debugValue(value);
     } catch (error) {
       return `<error: ${errorMessage(error)}>`;
     }
+  }
+
+  private notifyConfiguredInspectorProps(): void {
+    for (const key of this.scriptPropOverrides) this.notifyInspectorPropChanged(key, this.behavior[key]);
+  }
+
+  private notifyInspectorPropChanged(key: string, value: unknown): void {
+    if (!this.behavior.onInspectorPropChanged) return;
+    this.callScriptLifecycle(`inspector-prop:${key}`, () => this.behavior.onInspectorPropChanged?.(key, value));
   }
 
   private createScriptContext(ctx: NodeContext): DynamicScriptContext {
@@ -376,14 +401,19 @@ export function createDynamicScriptNode(options: DynamicScriptNodeOptions): Dyna
   });
 }
 
-function extractScriptProps(behavior: DynamicScriptBehavior): { definitions: Record<string, DebugScenePropDefinition> } {
+function extractScriptProps(behavior: DynamicScriptBehavior): { definitions: Record<string, DebugScenePropDefinition>; groups: DebugScenePropGroup[] } {
   const definitions: Record<string, DebugScenePropDefinition> = {};
+  const groupEntries = new Map<string, Record<string, DebugScenePropDefinition>>();
   for (const [key, value] of Object.entries(behavior)) {
     if (!isDynamicPropMarker(value)) continue;
     definitions[key] = value.definition;
+    const group = value.group?.trim() || 'Script';
+    const props = groupEntries.get(group) ?? {};
+    props[key] = value.definition;
+    groupEntries.set(group, props);
     behavior[key] = value.value;
   }
-  return { definitions };
+  return { definitions, groups: [...groupEntries].map(([name, props]) => ({ name, props })) };
 }
 
 function isDynamicPropMarker(value: unknown): value is DynamicPropMarker {

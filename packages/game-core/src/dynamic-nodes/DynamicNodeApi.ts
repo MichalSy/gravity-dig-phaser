@@ -6,6 +6,7 @@ export interface DynamicPropMarker {
   __dynamicNodeProp: true;
   value: DebugScenePropValue;
   definition: DebugScenePropDefinition;
+  group?: string;
 }
 
 export interface PropOptions {
@@ -15,6 +16,7 @@ export interface PropOptions {
   step?: number;
   readOnly?: boolean;
   reason?: string;
+  group?: string;
 }
 
 export abstract class ScriptNode {
@@ -87,32 +89,35 @@ export abstract class ScriptNode {
   update?(deltaMs: number): void;
   editorUpdate?(deltaMs: number): void;
   destroy?(): void;
+  getInspectorPropValue?(name: string): unknown;
+  onInspectorPropChanged?(name: string, value: DebugScenePropValue): void;
 }
 
-function marker(value: DebugScenePropValue, definition: DebugScenePropDefinition): DynamicPropMarker {
-  return { __dynamicNodeProp: true, value, definition };
+function marker(value: DebugScenePropValue, type: DebugScenePropDefinition['type'], options: PropOptions): DynamicPropMarker {
+  const { group, ...definitionOptions } = options;
+  return { __dynamicNodeProp: true, value, definition: { type, ...definitionOptions }, group };
 }
 
 export const prop = {
   string<T extends string>(value: T, options: PropOptions = {}): T {
-    return marker(value, { type: 'String', ...options }) as unknown as T;
+    return marker(value, 'String', options) as unknown as T;
   },
   number(value: number, options: PropOptions = {}): number {
-    return marker(value, { type: 'Number', ...options }) as unknown as number;
+    return marker(value, 'Number', options) as unknown as number;
   },
   boolean(value: boolean, options: PropOptions = {}): boolean {
-    return marker(value, { type: 'Boolean', ...options }) as unknown as boolean;
+    return marker(value, 'Boolean', options) as unknown as boolean;
   },
   assetId<T extends string>(value: T, options: PropOptions = {}): T {
-    return marker(value, { type: 'AssetId', ...options }) as unknown as T;
+    return marker(value, 'AssetId', options) as unknown as T;
   },
   color<T extends string>(value: T, options: PropOptions = {}): T {
-    return marker(value, { type: 'Color', ...options }) as unknown as T;
+    return marker(value, 'Color', options) as unknown as T;
   },
   nodeRef<T extends string | null>(value: T = null as T, options: PropOptions = {}): T {
-    return marker(value, { type: 'NodeRef', ...options }) as unknown as T;
+    return marker(value, 'NodeRef', options) as unknown as T;
   },
   nodeRefList<T extends string[]>(value: T = [] as unknown as T, options: PropOptions = {}): T {
-    return marker(value, { type: 'NodeRefList', ...options }) as unknown as T;
+    return marker(value, 'NodeRefList', options) as unknown as T;
   },
 };

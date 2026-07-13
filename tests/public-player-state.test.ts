@@ -1,10 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@gravity-dig/game-core', () => ({
+  ScriptNode: class {},
+  prop: { number: (value: number) => value },
+}));
 import { addItem } from '../apps/game/public/scripts/PlayerState/inventory';
 import { createRunState } from '../apps/game/public/scripts/PlayerState/RunState';
 import { createDefaultSaveGame } from '../apps/game/public/scripts/PlayerState/saveGame';
 import { computeEffectiveStats } from '../apps/game/public/scripts/PlayerState/stats';
+import PlayerStateManager from '../apps/game/public/scripts/PlayerState/PlayerStateManager.node';
 
- describe('public player state domain', () => {
+describe('public player state domain', () => {
   it('creates stable defaults and applies inventory constraints outside native runtime code', () => {
     const save = createDefaultSaveGame();
     const stats = computeEffectiveStats(save.profile);
@@ -17,5 +23,23 @@ import { computeEffectiveStats } from '../apps/game/public/scripts/PlayerState/s
       { itemId: 'copper', quantity: 3 },
       { itemId: 'copper', quantity: 3 },
     ]);
+  });
+
+  it('routes inspector patches into live run, stats, and profile state', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    const run = manager.startRun('dev', 'inspector-seed', false);
+
+    manager.onInspectorPropChanged('health', 72);
+    manager.onInspectorPropChanged('maxHealth', 60);
+    manager.onInspectorPropChanged('cargoSlots', 4);
+    manager.onInspectorPropChanged('credits', 125);
+
+    expect(run.health).toBe(60);
+    expect(run.cargo.slots).toHaveLength(4);
+    expect(manager.getInspectorPropValue('maxHealth')).toBe(60);
+    expect(manager.getInspectorPropValue('credits')).toBe(125);
+    vi.unstubAllGlobals();
   });
 });

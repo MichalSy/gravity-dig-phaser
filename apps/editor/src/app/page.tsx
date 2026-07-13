@@ -2844,10 +2844,11 @@ function NodeTreeItem({
   const isSystemRoot = isSystemSceneRootNode(node);
   const isSceneNode = sceneNodeClassNames.has(node.className);
   const isLocked = node.editorLocked === true;
-  const canDragNode = !readOnly && !alwaysExpanded && !isSystemRoot && !isLocked;
-  const canCreateChild = !readOnly && !isSceneNode && !isLocked;
+  const isManagerNode = Boolean(node.managerPath);
+  const canDragNode = !readOnly && !alwaysExpanded && !isSystemRoot && !isLocked && !isManagerNode;
+  const canCreateChild = !readOnly && !isSceneNode && !isLocked && !isManagerNode;
   const canSelectScriptSource = node.nodeTypeId?.startsWith('dynamic.') === true;
-  const canDeleteNode = !readOnly && !alwaysExpanded && !isSystemRoot && !isLocked;
+  const canDeleteNode = !readOnly && !alwaysExpanded && !isSystemRoot && !isLocked && !isManagerNode;
   const isExpanded = effectiveActive && (alwaysExpanded || expandedNodeIds.has(node.id));
   const NodeIcon = iconForNode(node);
 
@@ -2863,7 +2864,7 @@ function NodeTreeItem({
       return;
     }
     if (!isDynamicNodeDragActive() && !isImageAssetDragActive() && !hasDynamicNodeDragType(event) && !hasImageAssetDragType(event)) return;
-    if (isLocked) return;
+    if (isLocked || isManagerNode) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
   }
@@ -2881,7 +2882,7 @@ function NodeTreeItem({
     const imagePayload = readImageAssetDragPayload(event) ?? getDraggedImageAsset();
     const file = readDynamicNodeDragFile(event) ?? getDraggedDynamicNode();
     if (!imagePayload && !file) return;
-    if (isLocked) return;
+    if (isLocked || isManagerNode) return;
     event.preventDefault();
     event.stopPropagation();
     if (imagePayload) {
@@ -2933,7 +2934,9 @@ function NodeTreeItem({
           <NodeIcon className={styles.nodeIcon} size={14} />
           <span className={styles.nodeName}>{node.name}</span>
           <span className={styles.nodeMeta}>{node.className}</span>
-          {node.runtimeRoot && <span className={styles.nodeFlag} title={`${node.creationOrigin ?? 'runtime'}${node.prefabPath ? ` · ${node.prefabPath}` : ''}`}>RUNTIME</span>}
+          {node.managerPath && node.runtimeRoot
+            ? <span className={styles.nodeFlag} title={node.managerPath}>MANAGER</span>
+            : node.runtimeRoot && <span className={styles.nodeFlag} title={`${node.creationOrigin ?? 'runtime'}${node.prefabPath ? ` · ${node.prefabPath}` : ''}`}>RUNTIME</span>}
           {!node.active && <span className={styles.nodeFlag}>inactive</span>}
           {node.active && !effectiveActive && <span className={styles.nodeFlag}>parent inactive</span>}
           {!node.visible && <span className={styles.nodeFlag}>hidden</span>}
