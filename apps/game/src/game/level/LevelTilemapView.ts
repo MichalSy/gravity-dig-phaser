@@ -1,6 +1,4 @@
 import Phaser from 'phaser';
-import { TILE_SIZE } from '../../config/gameConfig';
-import { backwallFrameForTile, atlasFrameForTile } from '../../utils/tileMath';
 import type { LevelData, TileCell } from './types';
 
 export class LevelTilemapView {
@@ -41,16 +39,16 @@ export class LevelTilemapView {
     this.mapOffsetY = minY;
 
     for (const cell of cells) {
-      if (cell.type === 'air') continue;
+      if (cell.foregroundFrame < 0) continue;
       const localX = cell.x - minX;
       const localY = cell.y - minY;
 
-      if (!cell.boundary) backwallData[localY][localX] = backwallFrameForTile(cell.x, cell.y);
-      data[localY][localX] = atlasFrameForTile(cell.type, cell.x, cell.y);
+      if (cell.backwallFrame >= 0) backwallData[localY][localX] = cell.backwallFrame;
+      data[localY][localX] = cell.foregroundFrame;
     }
 
-    this.drawBackwall(backwallData, minX, minY);
-    this.drawForeground(data, minX, minY);
+    this.drawBackwall(backwallData, minX, minY, level.tileSize);
+    this.drawForeground(data, minX, minY, level.tileSize);
   }
 
   clearTile(cell: TileCell): void {
@@ -72,22 +70,22 @@ export class LevelTilemapView {
     this.backwallTilemap = undefined;
   }
 
-  private drawBackwall(data: number[][], minX: number, minY: number): void {
-    this.backwallTilemap = this.scene.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const tileset = this.backwallTilemap.addTilesetImage('backwall-tiles', 'backwall-tiles', TILE_SIZE, TILE_SIZE, 0, 0);
+  private drawBackwall(data: number[][], minX: number, minY: number, tileSize: number): void {
+    this.backwallTilemap = this.scene.make.tilemap({ data, tileWidth: tileSize, tileHeight: tileSize });
+    const tileset = this.backwallTilemap.addTilesetImage('backwall-tiles', 'backwall-tiles', tileSize, tileSize, 0, 0);
     if (!tileset) throw new Error('Failed to create backwall tileset');
 
-    const layer = this.backwallTilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
+    const layer = this.backwallTilemap.createLayer(0, tileset, minX * tileSize, minY * tileSize);
     if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create backwall tile layer');
     this.backwallLayer = layer.setAlpha(0.88);
   }
 
-  private drawForeground(data: number[][], minX: number, minY: number): void {
-    this.tilemap = this.scene.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', TILE_SIZE, TILE_SIZE, 0, 0);
+  private drawForeground(data: number[][], minX: number, minY: number, tileSize: number): void {
+    this.tilemap = this.scene.make.tilemap({ data, tileWidth: tileSize, tileHeight: tileSize });
+    const tileset = this.tilemap.addTilesetImage('tiles', 'tiles', tileSize, tileSize, 0, 0);
     if (!tileset) throw new Error('Failed to create tileset');
 
-    const layer = this.tilemap.createLayer(0, tileset, minX * TILE_SIZE, minY * TILE_SIZE);
+    const layer = this.tilemap.createLayer(0, tileset, minX * tileSize, minY * tileSize);
     if (!layer || layer instanceof Phaser.Tilemaps.TilemapGPULayer) throw new Error('Failed to create tile layer');
     this.tileLayer = layer;
   }

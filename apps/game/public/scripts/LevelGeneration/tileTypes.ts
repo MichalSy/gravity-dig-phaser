@@ -34,3 +34,9 @@ export const TILE_ATLAS_COORDS: Record<Exclude<TileType, 'air'>, [number, number
 export function isResourceTile(type: TileType): boolean {
   return RESOURCE_TYPES.has(type);
 }
+
+export function foregroundFrameForTile(type: TileType): number {
+  if (type === 'air') return -1;
+  const [x, y] = TILE_ATLAS_COORDS[type];
+  return y * 8 + x;
+}

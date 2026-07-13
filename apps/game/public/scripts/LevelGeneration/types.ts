@@ -54,6 +54,9 @@ export interface TileCell {
   health: number;
   maxHealth: number;
   boundary: boolean;
+  solid: boolean;
+  foregroundFrame: number;
+  backwallFrame: number;
 }
 
 export interface LevelData {

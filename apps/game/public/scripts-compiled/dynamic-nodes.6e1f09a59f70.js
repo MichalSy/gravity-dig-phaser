@@ -702,8 +702,26 @@ var TILE_HEALTH = {
   diamond: 110,
   bedrock: 9999
 };
+var TILE_ATLAS_COORDS = {
+  basalt: [2, 0],
+  bedrock: [3, 0],
+  clay: [4, 0],
+  copper: [6, 0],
+  diamond: [0, 1],
+  dirt: [1, 1],
+  gold: [6, 1],
+  gravel: [0, 2],
+  iron: [2, 2],
+  sand: [4, 4],
+  stone: [6, 5]
+};
 function isResourceTile(type) {
   return RESOURCE_TYPES.has(type);
+}
+function foregroundFrameForTile(type) {
+  if (type === "air") return -1;
+  const [x, y] = TILE_ATLAS_COORDS[type];
+  return y * 8 + x;
 }
 
 // public/scripts/LevelGeneration/tileMap.ts
@@ -717,8 +735,22 @@ function setTile(tiles, x, y, type, boundary) {
     type,
     health: TILE_HEALTH[type],
     maxHealth: TILE_HEALTH[type],
-    boundary
+    boundary,
+    solid: type !== "air",
+    foregroundFrame: foregroundFrameForTile(type),
+    backwallFrame: boundary ? -1 : 0
   });
+}
+function clearTile(level, tileX, tileY) {
+  const key = tileKey2(tileX, tileY);
+  const cell = level.tiles.get(key);
+  if (!cell || cell.boundary || cell.type === "air") return false;
+  cell.type = "air";
+  cell.health = 0;
+  cell.solid = false;
+  cell.foregroundFrame = -1;
+  level.resources.delete(key);
+  return true;
 }
 
 // public/scripts/LevelGeneration/resourceGenerator.ts
@@ -967,6 +999,36 @@ var GravityDigLevelGenerator = class {
   }
 };
 
+// public/scripts/LevelGeneration/levelCollision.ts
+function getCell(level, tileX, tileY) {
+  return level.tiles.get(tileKey2(tileX, tileY));
+}
+function getCellAtWorld(level, worldX, worldY) {
+  return getCell(level, Math.floor(worldX / level.tileSize), Math.floor(worldY / level.tileSize));
+}
+function collidesBox(level, centerX, centerY, width, height) {
+  return getBoxProbePoints(centerX, centerY, width, height).some(([x, y]) => isSolidAtWorld(level, x, y));
+}
+function isSolidAtWorld(level, worldX, worldY) {
+  if (isBehindShipNozzleWall(level, worldX, worldY)) return true;
+  const cell = getCellAtWorld(level, worldX, worldY);
+  return !!cell && cell.type !== "air";
+}
+function getBoxProbePoints(centerX, centerY, width, height) {
+  const halfW = width / 2;
+  const halfH = height / 2;
+  return [
+    [centerX - halfW, centerY - halfH],
+    [centerX + halfW, centerY - halfH],
+    [centerX - halfW, centerY + halfH],
+    [centerX + halfW, centerY + halfH]
+  ];
+}
+function isBehindShipNozzleWall(level, worldX, worldY) {
+  const rect = level.spaceshipRect;
+  return worldX < (rect.x + 1.35) * level.tileSize && worldY >= (rect.y + 0.6) * level.tileSize && worldY <= (rect.y + rect.h - 1.05) * level.tileSize;
+}
+
 // public/scripts/Managers/LevelManager.node.ts
 var LevelManager = class extends ScriptNode {
   id = "dynamic.level-manager";
@@ -985,6 +1047,18 @@ var LevelManager = class extends ScriptNode {
   }
   generateLevel(seed = this.defaultSeed, difficultyLevel = this.defaultDifficulty) {
     return this.generator.generate(this.getConfig(), difficultyLevel, seed);
+  }
+  getCell(level, tileX, tileY) {
+    return getCell(level, tileX, tileY);
+  }
+  getCellAtWorld(level, worldX, worldY) {
+    return getCellAtWorld(level, worldX, worldY);
+  }
+  collidesBox(level, centerX, centerY, width, height) {
+    return collidesBox(level, centerX, centerY, width, height);
+  }
+  clearTile(level, tileX, tileY) {
+    return clearTile(level, tileX, tileY);
   }
 };
 
@@ -1204,4 +1278,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.29062ce3155a.js.map
+//# sourceMappingURL=dynamic-nodes.6e1f09a59f70.js.map

@@ -6,7 +6,7 @@ import { createRunState, normalizeRunState } from '../../player/RunState';
 import { loadSaveGame, saveGame } from '../../player/saveGame';
 import { computeEffectiveStats } from '../../player/stats';
 import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from '../../player/types';
-import type { TileType } from '../level';
+
 
 export interface CargoReturnResult {
   message: string;
@@ -131,7 +131,7 @@ export class PlayerStateManagerNode extends GameNode {
     this.saveActiveRun();
   }
 
-  recordMinedTile(tileType: TileType): void {
+  recordMinedTile(tileType: string): void {
     this.syncCargoToStats();
     if (isResourceItem(tileType)) {
       addItem(this.run.cargo, tileType as ItemId, 1);
@@ -266,7 +266,7 @@ export class PlayerStateManagerNode extends GameNode {
   }
 }
 
-function isResourceItem(tileType: TileType): boolean {
+function isResourceItem(tileType: string): boolean {
   return tileType in ITEM_DEFINITIONS;
 }
 

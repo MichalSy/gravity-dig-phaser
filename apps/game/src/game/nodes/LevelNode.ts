@@ -1,8 +1,6 @@
 import type Phaser from 'phaser';
 import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
-import { tileKey } from '../../utils/tileMath';
 import type { LevelData, TileCell } from '../level';
-import { collidesBox, getCellAtWorld } from '../level/levelCollision';
 import { LevelTilemapView } from '../level/LevelTilemapView';
 interface LevelGeneratorTarget extends GameNode {
   callScriptMethod(name: string, ...args: unknown[]): unknown;
@@ -61,21 +59,19 @@ export class LevelNode extends GameNode {
   }
 
   getCell(tileX: number, tileY: number): TileCell | undefined {
-    return this.level.tiles.get(tileKey(tileX, tileY));
+    return this.levelGenerator.callScriptMethod('getCell', this.level, tileX, tileY) as TileCell | undefined;
   }
 
   getCellAtWorld(worldX: number, worldY: number): TileCell | undefined {
-    return getCellAtWorld(this.level, worldX, worldY);
+    return this.levelGenerator.callScriptMethod('getCellAtWorld', this.level, worldX, worldY) as TileCell | undefined;
   }
 
   collidesBox(centerX: number, centerY: number, width: number, height: number): boolean {
-    return collidesBox(this.level, centerX, centerY, width, height);
+    return this.levelGenerator.callScriptMethod('collidesBox', this.level, centerX, centerY, width, height) === true;
   }
 
   clearTile(cell: TileCell): void {
-    this.tilemapView.clearTile(cell);
-    cell.type = 'air';
-    cell.health = 0;
-    this.level.resources.delete(tileKey(cell.x, cell.y));
+    const cleared = this.levelGenerator.callScriptMethod('clearTile', this.level, cell.x, cell.y) === true;
+    if (cleared) this.tilemapView.clearTile(cell);
   }
 }

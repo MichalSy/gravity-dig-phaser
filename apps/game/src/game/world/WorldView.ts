@@ -1,12 +1,5 @@
 import Phaser from 'phaser';
-import { TILE_SIZE } from '../../config/gameConfig';
 import type { LevelData } from '../level';
-import {
-  START_TUNNEL_HEIGHT_TILES,
-  START_TUNNEL_LEFT_TILE,
-  START_TUNNEL_TOP_TILE,
-  START_TUNNEL_WIDTH_TILES,
-} from './worldGeometry';
 
 export class WorldView {
   private readonly scene: Phaser.Scene;
@@ -18,7 +11,7 @@ export class WorldView {
   createDecorations(level: LevelData): Phaser.GameObjects.GameObject[] {
     return [
       this.createBackground(level),
-      this.createStartTunnelBackground(),
+      this.createStartTunnelBackground(level),
       ...this.createCoreMarker(level),
     ];
   }
@@ -33,11 +26,12 @@ export class WorldView {
     return stars;
   }
 
-  private createStartTunnelBackground(): Phaser.GameObjects.Image {
-    const tunnelLeftX = START_TUNNEL_LEFT_TILE * TILE_SIZE;
-    const tunnelTopY = (START_TUNNEL_TOP_TILE + 1) * TILE_SIZE;
-    const tunnelWidth = (START_TUNNEL_WIDTH_TILES - 1) * TILE_SIZE;
-    const tunnelHeight = (START_TUNNEL_HEIGHT_TILES - 2) * TILE_SIZE;
+  private createStartTunnelBackground(level: LevelData): Phaser.GameObjects.Image {
+    const rect = level.spaceshipRect;
+    const tunnelLeftX = rect.x * level.tileSize;
+    const tunnelTopY = (rect.y + 1) * level.tileSize;
+    const tunnelWidth = rect.w * level.tileSize;
+    const tunnelHeight = (rect.h - 2) * level.tileSize;
 
     return this.scene.add
       .image(tunnelLeftX + tunnelWidth / 2, tunnelTopY + tunnelHeight / 2, 'drill-tunnel-bg')
@@ -48,9 +42,10 @@ export class WorldView {
 
   private createCoreMarker(level: LevelData): Phaser.GameObjects.Arc[] {
     const { x, y, radius } = level.core;
+    const tileSize = level.tileSize;
     return [
-      this.scene.add.circle(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, radius * TILE_SIZE, 0x7c3aed, 0.08),
-      this.scene.add.circle(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 18, 0xf0abfc, 0.85),
+      this.scene.add.circle(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, radius * tileSize, 0x7c3aed, 0.08),
+      this.scene.add.circle(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, 18, 0xf0abfc, 0.85),
     ];
   }
 }

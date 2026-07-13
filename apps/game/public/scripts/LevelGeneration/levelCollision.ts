@@ -32,5 +32,8 @@ function getBoxProbePoints(centerX: number, centerY: number, width: number, heig
 }
 
 function isBehindShipNozzleWall(level: LevelData, worldX: number, worldY: number): boolean {
-  return worldX < -8.65 * level.tileSize && worldY >= -1.4 * level.tileSize && worldY <= 2.95 * level.tileSize;
+  const rect = level.spaceshipRect;
+  return worldX < (rect.x + 1.35) * level.tileSize
+    && worldY >= (rect.y + 0.6) * level.tileSize
+    && worldY <= (rect.y + rect.h - 1.05) * level.tileSize;
 }

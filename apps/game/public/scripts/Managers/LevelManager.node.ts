@@ -1,6 +1,8 @@
 import * as Core from '@gravity-dig/game-core';
 import { GravityDigLevelGenerator } from '../LevelGeneration/GravityDigLevelGenerator';
-import type { LevelData, PlanetConfig } from '../LevelGeneration/types';
+import { collidesBox, getCell, getCellAtWorld } from '../LevelGeneration/levelCollision';
+import { clearTile } from '../LevelGeneration/tileMap';
+import type { LevelData, PlanetConfig, TileCell } from '../LevelGeneration/types';
 
 export default class LevelManager extends Core.ScriptNode {
   id = 'dynamic.level-manager';
@@ -24,5 +26,21 @@ export default class LevelManager extends Core.ScriptNode {
 
   generateLevel(seed: number | string = this.defaultSeed, difficultyLevel = this.defaultDifficulty): LevelData {
     return this.generator.generate(this.getConfig(), difficultyLevel, seed);
+  }
+
+  getCell(level: LevelData, tileX: number, tileY: number): TileCell | undefined {
+    return getCell(level, tileX, tileY);
+  }
+
+  getCellAtWorld(level: LevelData, worldX: number, worldY: number): TileCell | undefined {
+    return getCellAtWorld(level, worldX, worldY);
+  }
+
+  collidesBox(level: LevelData, centerX: number, centerY: number, width: number, height: number): boolean {
+    return collidesBox(level, centerX, centerY, width, height);
+  }
+
+  clearTile(level: LevelData, tileX: number, tileY: number): boolean {
+    return clearTile(level, tileX, tileY);
   }
 }
