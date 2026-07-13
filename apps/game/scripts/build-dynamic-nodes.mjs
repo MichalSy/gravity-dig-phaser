@@ -1,4 +1,4 @@
-import { build } from 'esbuild';
+const { build } = await import(process.env.DYNAMIC_NODE_ESBUILD_PATH ?? 'esbuild');
 import { createHash } from 'node:crypto';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';

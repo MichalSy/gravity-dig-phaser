@@ -447,7 +447,7 @@ async function buildDynamicNodesAfterExplorerMutation(paths: string[]): Promise<
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const lines = message.split('\n').map((line) => line.trim()).filter(Boolean);
-    const detail = lines.find((line) => line.includes('ERROR:'));
+    const detail = lines.find((line) => line.includes('ERROR:') || /^Error(?:\s|\[)/.test(line));
     return { dynamicNodeBuildError: detail ? `${lines[0]} ${detail}` : lines[0] ?? 'Dynamic Node Build fehlgeschlagen.' };
   }
 }

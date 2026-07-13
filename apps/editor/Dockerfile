@@ -19,6 +19,9 @@ RUN apk add --no-cache git
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=80
+ENV DYNAMIC_NODE_ESBUILD_PATH=/opt/esbuild/node_modules/esbuild/lib/main.js
+COPY --from=build /app/node_modules/esbuild /opt/esbuild/node_modules/esbuild
+COPY --from=build /app/node_modules/@esbuild /opt/esbuild/node_modules/@esbuild
 COPY --from=build /app/apps/editor/.next/standalone ./
 COPY --from=build /app/apps/editor/.next/static ./apps/editor/.next/static
 COPY --from=build /app/apps/editor/public ./apps/editor/public
