@@ -186,7 +186,7 @@ export class AppScene extends Phaser.Scene {
     if (cached?.hash === entry.hash) return true;
 
     const module = code
-      ? await loadDynamicNodeModuleFromCode(code)
+      ? await loadDynamicNodeModuleFromCode(code, nodeTypeId, entry.hash)
       : entry.url
         ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId })
         : undefined;

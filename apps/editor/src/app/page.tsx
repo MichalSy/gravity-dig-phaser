@@ -1793,10 +1793,12 @@ export default function Home() {
       {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
         if (!result.dynamicNodeBuild?.manifest) return;
+        const previousManifest = dynamicNodeManifestRef.current;
         dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
-        const normalizedPath = result.path.replace(/^apps\/game\//, '');
-        const updatedModule = result.dynamicNodeBuild.manifest.nodes.find((entry) => entry.source === normalizedPath || `apps/game/${entry.source}` === result.path);
-        if (updatedModule) sendDynamicNodeUpdated(updatedModule);
+        for (const updatedModule of result.dynamicNodeBuild.manifest.nodes) {
+          const previousModule = previousManifest?.nodes.find((entry) => entry.nodeTypeId === updatedModule.nodeTypeId);
+          if (!previousModule || previousModule.hash !== updatedModule.hash) sendDynamicNodeUpdated(updatedModule);
+        }
       }} />}
     </main>
   );
@@ -2152,7 +2154,7 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
     if (!file || !canSave || !dirty) return;
     setSaving(true);
     setError(undefined);
-    setSaveStatus(isDynamicNodeFilePath(file.path) ? 'Speichere + kompiliere Script ...' : 'Speichere Datei ...');
+    setSaveStatus(isDynamicNodeBuildInputPath(file.path) ? 'Speichere + kompiliere Scripts ...' : 'Speichere Datei ...');
     try {
       const response = await fetch(editorApi('/files'), {
         method: 'PUT',
@@ -4140,13 +4142,20 @@ function isDynamicNodeFilePath(path: string): boolean {
   return path.startsWith('apps/game/public/scripts/') && /\.node\.tsx?$/.test(path);
 }
 
+function isDynamicNodeBuildInputPath(path: string): boolean {
+  return path.startsWith('apps/game/public/scripts/') && /\.tsx?$/.test(path);
+}
+
 function isEditableMonacoFile(path: string): boolean {
   return path.startsWith('apps/game/src/')
-    || isDynamicNodeFilePath(path)
+    || isDynamicNodeBuildInputPath(path)
     || path.startsWith('apps/game/public/assets/')
     || path.startsWith('apps/game/public/scenes/')
     || path.startsWith('apps/game/public/prefabs/')
-    || path.startsWith('apps/game/public/config/');
+    || path.startsWith('apps/game/public/config/')
+    || path.startsWith('apps/game/public/managers/')
+    || path.startsWith('apps/game/public/schemas/')
+    || path === 'apps/game/public/game.settings.json';
 }
 
 function hasDynamicNodeDragType(event: ReactDragEvent): boolean {

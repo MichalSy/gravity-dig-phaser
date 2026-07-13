@@ -39,6 +39,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private lastStartSignature?: string;
   private startQueue: Promise<void> = Promise.resolve();
   private readonly dynamicModules = new Map<string, { hash: string; module: DynamicNodeModule }>();
+  private readonly dynamicScriptNodes = new Set<DynamicScriptNode>();
 
   constructor() {
     super('EditorRuntime');
@@ -318,15 +319,29 @@ class EditorRuntimeScene extends Phaser.Scene {
     if (!nodeTypeId) return false;
     const cached = this.dynamicModules.get(nodeTypeId);
     if (cached?.hash === entry.hash) return true;
-    const module = code ? await loadDynamicNodeModuleFromCode(code) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
+    const module = code ? await loadDynamicNodeModuleFromCode(code, nodeTypeId, entry.hash) : entry.url ? await loadDynamicNodeModule({ url: entry.url, hash: entry.hash, nodeTypeId }) : undefined;
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
     this.dynamicModules.set(nodeTypeId, { hash: entry.hash, module });
-    this.factory?.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (prefabId, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId }); } }));
+    this.factory?.register(nodeTypeId, (definition) => this.createDynamicScriptNode(module, definition));
     return true;
   }
 
   private async reloadDynamicModule(entry: Pick<DynamicNodeManifestEntry, 'nodeTypeId' | 'hash'> & { url?: string }, code: string): Promise<number> {
-    return await this.ensureDynamicModule(entry, code) ? 0 : 0;
+    const ready = await this.ensureDynamicModule(entry, code);
+    if (!ready || !entry.nodeTypeId) return 0;
+    const cached = this.dynamicModules.get(entry.nodeTypeId);
+    if (!cached) return 0;
+    let reloaded = 0;
+    for (const node of [...this.dynamicScriptNodes]) {
+      if (!node.isInitialized) {
+        this.dynamicScriptNodes.delete(node);
+        continue;
+      }
+      if (node.nodeTypeId !== entry.nodeTypeId) continue;
+      node.reloadModule(cached.module);
+      reloaded += 1;
+    }
+    return reloaded;
   }
 
   private async loadDynamicModules(editorApiBase: string | undefined): Promise<void> {
@@ -375,9 +390,26 @@ class EditorRuntimeScene extends Phaser.Scene {
 
     for (const [nodeTypeId, cached] of this.dynamicModules) {
       const module = cached.module;
-      factory.register(nodeTypeId, (definition) => new DynamicScriptNode({ module, nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, props: definition.props, actions: this.createScriptActions(), instantiatePrefab: (prefabId, options) => { if (!this.factory) throw new Error('Runtime factory is not ready'); return this.factory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId }); } }));
+      factory.register(nodeTypeId, (definition) => this.createDynamicScriptNode(module, definition));
     }
     return factory;
+  }
+
+  private createDynamicScriptNode(module: DynamicNodeModule, definition: SceneNodeJson): DynamicScriptNode {
+    const node = new DynamicScriptNode({
+      module,
+      nodeTypeId: getDefinitionNodeTypeId(definition),
+      instanceId: definition.instanceId,
+      name: definition.name,
+      props: definition.props,
+      actions: this.createScriptActions(),
+      instantiatePrefab: (prefabId, options) => {
+        if (!this.factory) throw new Error('Runtime factory is not ready');
+        return this.factory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId });
+      },
+    });
+    this.dynamicScriptNodes.add(node);
+    return node;
   }
 
   private async fetchJson<T>(editorApiBase: string | undefined, path: string): Promise<T> {

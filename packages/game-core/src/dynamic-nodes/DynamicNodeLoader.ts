@@ -24,6 +24,7 @@ interface DynamicNodeBundleModule {
 }
 
 const dynamicNodeBundleCache = new Map<string, Promise<DynamicNodeModule[]>>();
+const dynamicNodeCodeBundleCache = new Map<string, Promise<DynamicNodeModule[]>>();
 
 export async function loadDynamicNodeModules(manifest: DynamicNodeManifest | undefined): Promise<DynamicNodeModule[]> {
   if (!manifest) return [];
@@ -78,18 +79,31 @@ function isDynamicNodeModule(value: unknown): value is DynamicNodeModule {
     && typeof (value as DynamicNodeModule).createBehavior === 'function';
 }
 
-export async function loadDynamicNodeModuleFromCode(code: string): Promise<DynamicNodeModule | undefined> {
+export async function loadDynamicNodeModuleFromCode(code: string, nodeTypeId?: string, hash?: string): Promise<DynamicNodeModule | undefined> {
+  const modules = await loadDynamicNodeModulesFromCode(code, hash);
+  return nodeTypeId ? modules.find((module) => module.nodeTypeId === nodeTypeId) : modules[0];
+}
+
+export async function loadDynamicNodeModulesFromCode(code: string, hash?: string): Promise<DynamicNodeModule[]> {
+  const cacheKey = hash ? `hash:${hash}` : `code:${code}`;
+  let promise = dynamicNodeCodeBundleCache.get(cacheKey);
+  if (!promise) {
+    promise = importDynamicNodeBundleFromCode(code);
+    dynamicNodeCodeBundleCache.set(cacheKey, promise);
+  }
+  return await promise;
+}
+
+async function importDynamicNodeBundleFromCode(code: string): Promise<DynamicNodeModule[]> {
   const blobUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
   try {
-    const module = await import(/* @vite-ignore */ blobUrl) as { default?: DynamicNodeModule };
-    if (!module.default?.nodeTypeId || typeof module.default.createBehavior !== 'function') {
-      console.warn('[DynamicNode] invalid module from bridge response');
-      return undefined;
-    }
-    return module.default;
+    const module = await import(/* @vite-ignore */ blobUrl) as DynamicNodeBundleModule;
+    const modules = normalizeDynamicNodeBundle(module);
+    if (modules.length === 0) console.warn('[DynamicNode] invalid bundle from bridge response');
+    return modules;
   } catch (error) {
-    console.warn('[DynamicNode] failed to import bridge module', error);
-    return undefined;
+    console.warn('[DynamicNode] failed to import bridge bundle', error);
+    return [];
   } finally {
     URL.revokeObjectURL(blobUrl);
   }

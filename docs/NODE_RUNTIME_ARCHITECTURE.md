@@ -231,7 +231,7 @@ Gravity Dig's procedural generator is public gameplay code under `public/scripts
 
 `public/scripts/Managers/LevelManager.node.ts` reads the configured planet JSON through the generic `ScriptNode.requireJsonAsset()` API and exposes `generateLevel()` to runtime consumers. `LevelNode` remains a native rendering/collision bridge for now: it calls the public manager and translates returned level data into Phaser tilemap rendering. The removed native `LevelGeneratorManagerNode` and native generator modules must not be reintroduced.
 
-The production and editor ScriptNode builds both invoke the canonical esbuild pipeline. Relative helper-module edits anywhere under `public/scripts/` trigger the same rebuild, so modular public gameplay behaves identically in EDIT and PLAY.
+The production and editor ScriptNode builds both invoke the canonical esbuild pipeline. Relative helper-module edits anywhere under `public/scripts/` trigger the same rebuild. The editor compares bundle hashes, broadcasts every affected manifest entry, imports the shared bridge bundle once per hash, and reloads matching live `DynamicScriptNode` instances, so modular public gameplay behaves identically in EDIT and PLAY.
 
 ## 8. Editor data flow
 
