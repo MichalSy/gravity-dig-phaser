@@ -1070,7 +1070,8 @@ function isDynamicNodeSourcePath(path: string): boolean {
 
 function isEditorSourcePath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/');
-  return normalized.startsWith('apps/game/src/') || isDynamicNodeSourcePath(normalized);
+  return normalized.startsWith('apps/game/src/')
+    || (normalized.startsWith('apps/game/public/scripts/') && /\.(?:tsx?|jsx?|json|md|css|scss|html|ya?ml|toml|txt)$/i.test(normalized));
 }
 
 function fileExtension(fileName: string): string | undefined {
