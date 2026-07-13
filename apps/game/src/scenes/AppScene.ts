@@ -1,15 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
-import {
-  GameRootNode,
-  GameWorldNode,
-  LevelNode,
-  PlayerAnimatorNode,
-  PlayerStateManagerNode,
-} from '../game/nodes';
-import { AnimatedImageNode, AudioNode, ButtonNode, CollisionRectNode, getDefinitionNodeTypeId, ImageNode, LineNode, NODE_TYPE_IDS, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, RectangleNode, RuntimeManagerHost, SceneNode, SceneNodeFactoryRegistry, TextNode, TransformNode, type EditorPreviewSetPropsChange, type GameNode, type GameSettings, type SceneFileJson, type SceneNodeJson } from '../nodes';
-import { GameplayInputNode } from '../app/nodes';
-import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
+import { createGravityDigNodeFactory, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, registerGravityDigDynamicModule, RuntimeManagerHost, SceneNodeFactoryRegistry, type EditorPreviewSetPropsChange, type GameNode, type GameSettings, type SceneFileJson } from '../nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
 import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
 
@@ -71,7 +62,12 @@ export class AppScene extends Phaser.Scene {
       if (!response.ok) throw new Error(`Prefab '${path}' konnte nicht geladen werden: HTTP ${response.status}`);
       return await response.json() as SceneFileJson;
     });
-    this.sceneFactory = this.createSceneFactory();
+    this.sceneFactory = createGravityDigNodeFactory({
+      prefabManager: this.prefabManager,
+      previewChanges: this.readPreviewChanges(),
+      createScriptActions: () => this.createScriptActions(),
+      onDynamicScriptNode: (node) => this.dynamicScriptNodes.add(node),
+    });
     await this.registerDynamicNodeModules();
     this.managerHost = new RuntimeManagerHost({
       runtime: this.appRuntime,
@@ -193,22 +189,11 @@ export class AppScene extends Phaser.Scene {
     if (!module || module.nodeTypeId !== nodeTypeId) return false;
 
     this.dynamicModuleCache.set(nodeTypeId, { hash: entry.hash, module });
-    this.sceneFactory.register(module.nodeTypeId, (definition) => this.createDynamicScriptNode(module, definition));
-    return true;
-  }
-
-  private createDynamicScriptNode(module: DynamicNodeModule, definition: SceneNodeJson): DynamicScriptNode {
-    const node = new DynamicScriptNode({
-      module,
-      nodeTypeId: getDefinitionNodeTypeId(definition),
-      instanceId: definition.instanceId,
-      name: definition.name,
-      props: definition.props,
-      actions: this.createScriptActions(),
-      instantiatePrefab: (prefabId, options) => this.sceneFactory.createPrefab(prefabId, options, { origin: 'runtime-script', createdByInstanceId: definition.instanceId }),
+    registerGravityDigDynamicModule(this.sceneFactory, module, {
+      createScriptActions: () => this.createScriptActions(),
+      onDynamicScriptNode: (node) => this.dynamicScriptNodes.add(node),
     });
-    this.dynamicScriptNodes.add(node);
-    return node;
+    return true;
   }
 
   private createScriptActions(): Record<string, (source: DynamicScriptNode) => void> {
@@ -252,41 +237,11 @@ export class AppScene extends Phaser.Scene {
     return await response.json() as SceneFileJson;
   }
 
-  private createSceneFactory(): SceneNodeFactoryRegistry {
-    return new SceneNodeFactoryRegistry()
-      .withPreviewChanges(this.readPreviewChanges())
-      .withPrefabManager(this.prefabManager)
-      .register(NODE_TYPE_IDS.TransformNode, (definition) => new TransformNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.SceneNode, (definition) => new SceneNode({ nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, rootName: definition.name ?? 'Scene', ...(definition.props ?? {}) }))
-      .register(NODE_TYPE_IDS.ButtonNode, (definition) => new ButtonNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.GameplayInputNode, (definition) => new GameplayInputNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.PlayerStateManagerNode, (definition) => new PlayerStateManagerNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
-        ...optionsFrom(definition),
-        instantiatePrefab: (prefabId) => this.sceneFactory.createPrefab(prefabId, {}, { origin: 'runtime-code', createdByInstanceId: definition.instanceId }),
-      }))
-      .register(NODE_TYPE_IDS.PlayerAnimatorNode, (definition) => new PlayerAnimatorNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.InputModeDetectorNode, (definition) => new InputModeDetectorNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.TouchControlsNode, (definition) => new TouchControlsNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.ImageNode, (definition) => new ImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof ImageNode>[0]))
-      .register(NODE_TYPE_IDS.TextNode, (definition) => new TextNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.AnimatedImageNode, (definition) => new AnimatedImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof AnimatedImageNode>[0]))
-      .register(NODE_TYPE_IDS.CollisionRectNode, (definition) => new CollisionRectNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.LineNode, (definition) => new LineNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.RectangleNode, (definition) => new RectangleNode(optionsFrom(definition)))
-      .register(NODE_TYPE_IDS.AudioNode, (definition) => new AudioNode(optionsFrom(definition)));
-  }
+
 
   private readPreviewChanges(): EditorPreviewSetPropsChange[] {
     const payload = this.cache.json.get(PREVIEW_CHANGES_KEY) as { changes?: EditorPreviewSetPropsChange[] } | undefined;
     return payload?.changes?.filter((change) => change.kind === 'setProps' && Array.isArray(change.target.nodePath)) ?? [];
   }
 
-}
-
-function optionsFrom(definition: SceneNodeJson): Record<string, unknown> {
-  return { nodeTypeId: getDefinitionNodeTypeId(definition), instanceId: definition.instanceId, name: definition.name, ...(definition.props ?? {}) };
 }
