@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
+import type { DebugDynamicNodeBundleReference } from '@gravity-dig/debug-protocol';
 import '../style.css';
 import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { createGravityDigNodeFactory, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, registerGravityDigDynamicModule, RuntimeManagerHost, SceneNodeFactoryRegistry, type GameNode, type GameSettings, type SceneFileJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
-import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
+import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, loadDynamicNodeModulesFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
 import { VIEWPORT_REFRESH_EVENT } from '../utils/screen';
 
 type RuntimeMode = 'editor' | 'play';
@@ -308,7 +309,7 @@ class EditorRuntimeScene extends Phaser.Scene {
       },
       hasDynamicModule: (module) => this.hasDynamicModule(module),
       ensureDynamicModule: (module, code) => this.ensureDynamicModule(module, code),
-      reloadDynamicModule: (module, code) => this.reloadDynamicModule(module, code),
+      reloadDynamicBundle: (bundle, code) => this.reloadDynamicBundle(bundle, code),
     }));
   }
 
@@ -331,22 +332,29 @@ class EditorRuntimeScene extends Phaser.Scene {
     return true;
   }
 
-  private async reloadDynamicModule(entry: Pick<DynamicNodeManifestEntry, 'nodeTypeId' | 'hash'> & { url?: string }, code: string): Promise<number> {
-    const ready = await this.ensureDynamicModule(entry, code);
-    if (!ready || !entry.nodeTypeId) return 0;
-    const cached = this.dynamicModules.get(entry.nodeTypeId);
-    if (!cached) return 0;
+  private async reloadDynamicBundle(bundle: DebugDynamicNodeBundleReference, code: string): Promise<{ modules: number; reloaded: number }> {
+    const importedModules = await loadDynamicNodeModulesFromCode(code, bundle.hash);
+    const expectedTypeIds = new Set(bundle.nodeTypeIds);
+    const modules = importedModules.filter((module) => expectedTypeIds.has(module.nodeTypeId));
+    if (modules.length !== expectedTypeIds.size) throw new Error(`Bundle '${bundle.hash}' enthält nicht alle erwarteten Dynamic Nodes.`);
     let reloaded = 0;
-    for (const node of [...this.dynamicScriptNodes]) {
-      if (!node.isInitialized) {
-        this.dynamicScriptNodes.delete(node);
-        continue;
+    for (const module of modules) {
+      this.dynamicModules.set(module.nodeTypeId, { hash: bundle.hash, module });
+      if (this.factory) registerGravityDigDynamicModule(this.factory, module, {
+        createScriptActions: () => this.createScriptActions(),
+        onDynamicScriptNode: (node) => this.dynamicScriptNodes.add(node),
+      });
+      for (const node of [...this.dynamicScriptNodes]) {
+        if (!node.isInitialized) {
+          this.dynamicScriptNodes.delete(node);
+          continue;
+        }
+        if (node.nodeTypeId !== module.nodeTypeId) continue;
+        node.reloadModule(module);
+        reloaded += 1;
       }
-      if (node.nodeTypeId !== entry.nodeTypeId) continue;
-      node.reloadModule(cached.module);
-      reloaded += 1;
     }
-    return reloaded;
+    return { modules: modules.length, reloaded };
   }
 
   private async loadDynamicModules(editorApiBase: string | undefined): Promise<void> {

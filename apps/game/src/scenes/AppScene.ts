@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
+import type { DebugDynamicNodeBundleReference } from '@gravity-dig/debug-protocol';
 import { GAME_ANIMATION_SETS, GAME_FONT_ASSETS, GAME_GRAPHIC_ASSETS, loadGameAssets, loadMenuAssets, MENU_GRAPHIC_ASSETS } from '../assets/AssetLoader';
 import { createGravityDigNodeFactory, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, registerGravityDigDynamicModule, RuntimeManagerHost, SceneNodeFactoryRegistry, type EditorPreviewSetPropsChange, type GameNode, type GameSettings, type SceneFileJson } from '../nodes';
 import { DebugBridgeNode, readDebugConnectionConfig } from '../debug';
-import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
+import { DynamicScriptNode, loadDynamicNodeModule, loadDynamicNodeModuleFromCode, loadDynamicNodeModulesFromCode, type DynamicNodeManifest, type DynamicNodeManifestEntry, type DynamicNodeModule } from '../nodes';
 
 const GAME_SETTINGS_KEY = 'game:settings';
 const PREVIEW_CHANGES_KEY = 'editor:preview-changes';
@@ -87,7 +88,7 @@ export class AppScene extends Phaser.Scene {
       createNode: (definition) => this.sceneFactory.createTree(definition),
       hasDynamicModule: (module) => this.hasDynamicNodeModule(module),
       ensureDynamicModule: (module, code) => this.ensureDynamicNodeModule(module, code),
-      reloadDynamicModule: (module, code) => this.reloadDynamicNodeModule(module, code),
+      reloadDynamicBundle: (bundle, code) => this.reloadDynamicNodeBundle(bundle, code),
     }));
 
     this.appRoot = this.appRuntime.addRoot(new NodeRoot({ rootName: this.launchMode === 'editor' ? 'Editor-Root' : 'App-Root' }));
@@ -205,22 +206,29 @@ export class AppScene extends Phaser.Scene {
     };
   }
 
-  private async reloadDynamicNodeModule(entry: DynamicNodeManifestEntry | { nodeTypeId?: string; hash: string; url?: string }, code: string): Promise<number> {
-    const ready = await this.ensureDynamicNodeModule(entry, code);
-    if (!ready || !entry.nodeTypeId) return 0;
-    const cached = this.dynamicModuleCache.get(entry.nodeTypeId);
-    if (!cached) return 0;
+  private async reloadDynamicNodeBundle(bundle: DebugDynamicNodeBundleReference, code: string): Promise<{ modules: number; reloaded: number }> {
+    const importedModules = await loadDynamicNodeModulesFromCode(code, bundle.hash);
+    const expectedTypeIds = new Set(bundle.nodeTypeIds);
+    const modules = importedModules.filter((module) => expectedTypeIds.has(module.nodeTypeId));
+    if (modules.length !== expectedTypeIds.size) throw new Error(`Bundle '${bundle.hash}' enthält nicht alle erwarteten Dynamic Nodes.`);
     let reloaded = 0;
-    for (const node of [...this.dynamicScriptNodes]) {
-      if (!node.isInitialized) {
-        this.dynamicScriptNodes.delete(node);
-        continue;
+    for (const module of modules) {
+      this.dynamicModuleCache.set(module.nodeTypeId, { hash: bundle.hash, module });
+      registerGravityDigDynamicModule(this.sceneFactory, module, {
+        createScriptActions: () => this.createScriptActions(),
+        onDynamicScriptNode: (node) => this.dynamicScriptNodes.add(node),
+      });
+      for (const node of [...this.dynamicScriptNodes]) {
+        if (!node.isInitialized) {
+          this.dynamicScriptNodes.delete(node);
+          continue;
+        }
+        if (node.nodeTypeId !== module.nodeTypeId) continue;
+        node.reloadModule(module);
+        reloaded += 1;
       }
-      if (node.nodeTypeId !== entry.nodeTypeId) continue;
-      node.reloadModule(cached.module);
-      reloaded += 1;
     }
-    return reloaded;
+    return { modules: modules.length, reloaded };
   }
 
   private async createScene(sceneId: string): Promise<GameNode> {

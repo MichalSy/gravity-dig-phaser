@@ -25,6 +25,7 @@ interface DynamicNodeBundleModule {
 
 const dynamicNodeBundleCache = new Map<string, Promise<DynamicNodeModule[]>>();
 const dynamicNodeCodeBundleCache = new Map<string, Promise<DynamicNodeModule[]>>();
+const MAX_DYNAMIC_NODE_BUNDLE_CACHE_ENTRIES = 8;
 
 export async function loadDynamicNodeModules(manifest: DynamicNodeManifest | undefined): Promise<DynamicNodeModule[]> {
   if (!manifest) return [];
@@ -46,7 +47,7 @@ async function loadDynamicNodeBundle(entry: Pick<DynamicNodeManifestBundle, 'url
   let promise = dynamicNodeBundleCache.get(cacheKey);
   if (!promise) {
     promise = importDynamicNodeBundle(url, entry);
-    dynamicNodeBundleCache.set(cacheKey, promise);
+    cacheDynamicNodeBundle(dynamicNodeBundleCache, cacheKey, promise);
   }
   return await promise;
 }
@@ -89,9 +90,25 @@ export async function loadDynamicNodeModulesFromCode(code: string, hash?: string
   let promise = dynamicNodeCodeBundleCache.get(cacheKey);
   if (!promise) {
     promise = importDynamicNodeBundleFromCode(code);
-    dynamicNodeCodeBundleCache.set(cacheKey, promise);
+    cacheDynamicNodeBundle(dynamicNodeCodeBundleCache, cacheKey, promise);
   }
   return await promise;
+}
+
+function cacheDynamicNodeBundle(
+  cache: Map<string, Promise<DynamicNodeModule[]>>,
+  key: string,
+  promise: Promise<DynamicNodeModule[]>,
+): void {
+  cache.set(key, promise);
+  while (cache.size > MAX_DYNAMIC_NODE_BUNDLE_CACHE_ENTRIES) {
+    const oldestKey = cache.keys().next().value as string | undefined;
+    if (!oldestKey) break;
+    cache.delete(oldestKey);
+  }
+  void promise.catch(() => {
+    if (cache.get(key) === promise) cache.delete(key);
+  });
 }
 
 async function importDynamicNodeBundleFromCode(code: string): Promise<DynamicNodeModule[]> {

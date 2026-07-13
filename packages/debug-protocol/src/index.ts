@@ -99,6 +99,12 @@ export interface DebugDynamicNodeModuleReference {
   hash: string;
 }
 
+export interface DebugDynamicNodeBundleReference {
+  url: string;
+  hash: string;
+  nodeTypeIds: string[];
+}
+
 export interface DebugNodeCreateMessage {
   type: 'node:create';
   sessionId: string;
@@ -155,20 +161,22 @@ export interface DebugDynamicNodeModuleErrorMessage {
   sentAt: number;
 }
 
-export interface DebugDynamicNodeUpdatedMessage {
-  type: 'dynamic-node:updated';
+export interface DebugDynamicNodeBundleUpdatedMessage {
+  type: 'dynamic-node:bundle-updated';
   sessionId: string;
   requestId: string;
-  module: DebugDynamicNodeModuleReference;
+  bundle: DebugDynamicNodeBundleReference;
+  code: string;
   sentAt: number;
 }
 
-export interface DebugDynamicNodeUpdateAckMessage {
-  type: 'dynamic-node:update:ack';
+export interface DebugDynamicNodeBundleUpdateAckMessage {
+  type: 'dynamic-node:bundle-update:ack';
   sessionId: string;
   requestId: string;
-  module: DebugDynamicNodeModuleReference;
+  bundle: DebugDynamicNodeBundleReference;
   applied: boolean;
+  modules: number;
   reloaded: number;
   rejected?: string;
   sentAt: number;
@@ -469,8 +477,8 @@ export type DebugMessage =
   | DebugDynamicNodeModuleRequestMessage
   | DebugDynamicNodeModuleResponseMessage
   | DebugDynamicNodeModuleErrorMessage
-  | DebugDynamicNodeUpdatedMessage
-  | DebugDynamicNodeUpdateAckMessage
+  | DebugDynamicNodeBundleUpdatedMessage
+  | DebugDynamicNodeBundleUpdateAckMessage
   | DebugNodeDeleteMessage
   | DebugNodeDeleteAckMessage
   | DebugNodeMoveMessage

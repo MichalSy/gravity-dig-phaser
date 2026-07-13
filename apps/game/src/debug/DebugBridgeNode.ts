@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodeDeleteMessage, DebugNodeMoveMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
+import type { DebugDynamicNodeBundleReference, DebugDynamicNodeModuleResponseMessage, DebugMessage, DebugNodeCreateMessage, DebugNodeDeleteMessage, DebugNodeMoveMessage, DebugNodePatchMessage, DebugDynamicNodeModuleReference } from '@gravity-dig/debug-protocol';
 import { GameNode, NODE_TYPE_IDS, SCENE_PROP_RECORDS, type NodeContext, type PointLike, type SceneNodeJson } from '../nodes';
 import type { DebugConnectionConfig } from './debugConfig';
 import { captureDebugNodeTree, diffDebugNodeTrees, type DebugNodeTreeSnapshot } from './debugNodeTree';
@@ -8,7 +8,7 @@ export interface DebugBridgeLiveAuthoring {
   createNode(definition: SceneNodeJson): GameNode;
   hasDynamicModule(module: DebugDynamicNodeModuleReference): boolean;
   ensureDynamicModule(module: DebugDynamicNodeModuleReference, code?: string): Promise<boolean>;
-  reloadDynamicModule(module: DebugDynamicNodeModuleReference, code: string): Promise<number>;
+  reloadDynamicBundle(bundle: DebugDynamicNodeBundleReference, code: string): Promise<{ modules: number; reloaded: number }>;
 }
 
 interface PendingDynamicNodeCreate {
@@ -16,11 +16,6 @@ interface PendingDynamicNodeCreate {
   requestedAt: number;
 }
 
-interface PendingDynamicNodeUpdate {
-  requestId: string;
-  module: DebugDynamicNodeModuleReference;
-  requestedAt: number;
-}
 
 interface SelectedNodeDragState {
   pointerId: number;
@@ -63,7 +58,7 @@ export class DebugBridgeNode extends GameNode {
   private lastSelectedPropsSignature = '';
   private overlay?: Phaser.GameObjects.Graphics;
   private readonly pendingCreates = new Map<string, PendingDynamicNodeCreate>();
-  private readonly pendingUpdates = new Map<string, PendingDynamicNodeUpdate>();
+
   private selectedNodeDrag?: SelectedNodeDragState;
   private postMessageHandler?: (event: MessageEvent) => void;
 
@@ -132,7 +127,7 @@ export class DebugBridgeNode extends GameNode {
     this.selectedOverlayLayerIds = undefined;
     this.lastSelectedPropsSignature = '';
     this.pendingCreates.clear();
-    this.pendingUpdates.clear();
+
     this.nodesById.clear();
     this.nodesByInstanceId.clear();
   }
@@ -247,7 +242,7 @@ export class DebugBridgeNode extends GameNode {
     if (message.type === 'node:create') void this.applyNodeCreate(message);
     if (message.type === 'node:delete') this.applyNodeDelete(message);
     if (message.type === 'node:move') this.applyNodeMove(message);
-    if (message.type === 'dynamic-node:updated') this.requestDynamicNodeUpdate(message);
+    if (message.type === 'dynamic-node:bundle-updated') void this.applyDynamicNodeBundleUpdate(message);
     if (message.type === 'dynamic-node:module-response') void this.handleDynamicModuleResponse(message);
     if (message.type === 'dynamic-node:module-error') this.rejectPendingDynamicModuleRequest(message.requestId, message.error);
     if (message.type === 'debug:overlay-settings') {
@@ -391,21 +386,6 @@ export class DebugBridgeNode extends GameNode {
       }
       this.pendingCreates.delete(message.requestId);
       await this.createInjectedNode(pendingCreate.message);
-      return;
-    }
-
-    const pendingUpdate = this.pendingUpdates.get(message.requestId);
-    if (!pendingUpdate) return;
-    try {
-      const reloaded = await this.liveAuthoring?.reloadDynamicModule(message.module, message.code) ?? 0;
-      this.pendingUpdates.delete(message.requestId);
-      this.sendDynamicNodeUpdateAck(pendingUpdate, true, reloaded);
-      this.sendNodeDefinitions();
-      this.sendTreeSnapshot();
-      this.sendSelectedNodeProps(true);
-    } catch (error) {
-      this.pendingUpdates.delete(message.requestId);
-      this.sendDynamicNodeUpdateAck(pendingUpdate, false, 0, error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -456,28 +436,36 @@ export class DebugBridgeNode extends GameNode {
     return url.toString();
   }
 
-  private requestDynamicNodeUpdate(message: Extract<DebugMessage, { type: 'dynamic-node:updated' }>): void {
+  private async applyDynamicNodeBundleUpdate(message: Extract<DebugMessage, { type: 'dynamic-node:bundle-updated' }>): Promise<void> {
     if (!this.liveAuthoring) {
-      this.sendDynamicNodeUpdateAck({ requestId: message.requestId, module: message.module, requestedAt: Date.now() }, false, 0, 'Live Authoring fehlt.');
+      this.sendDynamicNodeBundleUpdateAck(message, false, 0, 0, 'Live Authoring fehlt.');
       return;
     }
-    this.pendingUpdates.set(message.requestId, { requestId: message.requestId, module: message.module, requestedAt: Date.now() });
-    this.send({
-      type: 'dynamic-node:module-request',
-      sessionId: this.config.sessionId,
-      requestId: message.requestId,
-      module: message.module,
-      sentAt: Date.now(),
-    });
+    try {
+      const result = await this.liveAuthoring.reloadDynamicBundle(message.bundle, message.code);
+      this.sendDynamicNodeBundleUpdateAck(message, true, result.modules, result.reloaded);
+      this.sendNodeDefinitions();
+      this.sendTreeSnapshot();
+      this.sendSelectedNodeProps(true);
+    } catch (error) {
+      this.sendDynamicNodeBundleUpdateAck(message, false, 0, 0, error instanceof Error ? error.message : String(error));
+    }
   }
 
-  private sendDynamicNodeUpdateAck(pending: PendingDynamicNodeUpdate, applied: boolean, reloaded: number, rejected?: string): void {
+  private sendDynamicNodeBundleUpdateAck(
+    message: Extract<DebugMessage, { type: 'dynamic-node:bundle-updated' }>,
+    applied: boolean,
+    modules: number,
+    reloaded: number,
+    rejected?: string,
+  ): void {
     this.send({
-      type: 'dynamic-node:update:ack',
+      type: 'dynamic-node:bundle-update:ack',
       sessionId: this.config.sessionId,
-      requestId: pending.requestId,
-      module: pending.module,
+      requestId: message.requestId,
+      bundle: message.bundle,
       applied,
+      modules,
       reloaded,
       rejected,
       sentAt: Date.now(),
@@ -493,10 +481,6 @@ export class DebugBridgeNode extends GameNode {
 
   private rejectPendingDynamicModuleRequest(requestId: string, reason: string): void {
     if (this.pendingCreates.has(requestId)) this.rejectPendingCreate(requestId, reason);
-    const pendingUpdate = this.pendingUpdates.get(requestId);
-    if (!pendingUpdate) return;
-    this.pendingUpdates.delete(requestId);
-    this.sendDynamicNodeUpdateAck(pendingUpdate, false, 0, reason);
   }
 
   private sendNodeCreateAck(message: DebugNodeCreateMessage, applied: boolean, rejected?: string, node?: GameNode, nodeId?: string): void {

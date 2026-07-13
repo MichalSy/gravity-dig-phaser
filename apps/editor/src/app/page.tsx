@@ -115,6 +115,7 @@ interface DynamicNodeManifestEntry {
 
 interface DynamicNodeManifest {
   version: 1;
+  bundle?: { url: string; hash: string };
   nodes: DynamicNodeManifestEntry[];
 }
 
@@ -519,8 +520,8 @@ export default function Home() {
         return;
       }
 
-      if (message.type === 'dynamic-node:update:ack') {
-        setPatchStatus(message.applied ? `Script hot-reloaded: ${message.module.nodeTypeId} · ${message.reloaded} Instanz(en)` : `Script Reload abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
+      if (message.type === 'dynamic-node:bundle-update:ack') {
+        setPatchStatus(message.applied ? `Script-Bundle hot-reloaded: ${message.modules} Module · ${message.reloaded} Instanz(en)` : `Script Reload abgelehnt: ${message.rejected ?? 'Unbekannter Fehler'}`);
         return;
       }
 
@@ -1096,22 +1097,29 @@ export default function Home() {
     return true;
   }
 
-  function sendDynamicNodeUpdated(module: DynamicNodeManifestEntry): void {
-    if (!sessionId || !isBridgeReady() || !module.nodeTypeId) return;
-    const message: DebugMessage = {
-      type: 'dynamic-node:updated',
-      sessionId,
-      requestId: createSessionId(),
-      module: {
-        nodeTypeId: module.nodeTypeId,
-        source: module.source,
-        url: module.url,
-        hash: module.hash,
-      },
-      sentAt: Date.now(),
-    };
-    sendDebugMessage(message);
-    setPatchStatus(`Script Update gesendet: ${module.nodeTypeId}`);
+  async function sendDynamicNodeBundleUpdated(manifest: DynamicNodeManifest): Promise<void> {
+    if (!sessionId || !isBridgeReady()) return;
+    const bundle = manifest.bundle;
+    if (!bundle) {
+      setPatchStatus('Script-Bundle-Update nicht gesendet: Bundle-Metadaten fehlen.');
+      return;
+    }
+    try {
+      const nodeTypeIds = manifest.nodes.flatMap((module) => module.nodeTypeId ? [module.nodeTypeId] : []);
+      const code = await readPublicTextFile(`scripts-compiled/${bundle.url.split('/').at(-1) ?? ''}`);
+      const message: DebugMessage = {
+        type: 'dynamic-node:bundle-updated',
+        sessionId,
+        requestId: createSessionId(),
+        bundle: { url: bundle.url, hash: bundle.hash, nodeTypeIds },
+        code,
+        sentAt: Date.now(),
+      };
+      sendDebugMessage(message);
+      setPatchStatus(`Script-Bundle gesendet: ${nodeTypeIds.length} Module`);
+    } catch (error) {
+      setPatchStatus(`Script-Bundle konnte nicht gesendet werden: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async function respondToDynamicNodeModuleRequest(message: Extract<DebugMessage, { type: 'dynamic-node:module-request' }>): Promise<void> {
@@ -1795,9 +1803,8 @@ export default function Home() {
         if (!result.dynamicNodeBuild?.manifest) return;
         const previousManifest = dynamicNodeManifestRef.current;
         dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
-        for (const updatedModule of result.dynamicNodeBuild.manifest.nodes) {
-          const previousModule = previousManifest?.nodes.find((entry) => entry.nodeTypeId === updatedModule.nodeTypeId);
-          if (!previousModule || previousModule.hash !== updatedModule.hash) sendDynamicNodeUpdated(updatedModule);
+        if (!previousManifest?.bundle || previousManifest.bundle.hash !== result.dynamicNodeBuild.manifest.bundle?.hash) {
+          void sendDynamicNodeBundleUpdated(result.dynamicNodeBuild.manifest);
         }
       }} />}
     </main>
