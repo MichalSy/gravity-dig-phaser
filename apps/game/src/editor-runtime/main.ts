@@ -142,7 +142,10 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.gameSettings = parseGameSettings(await this.fetchJson<unknown>(message.editorApiBase, 'game.settings.json'));
     const assetManifest = parsePublicAssetManifest(await this.fetchJson<unknown>(message.editorApiBase, this.gameSettings.assets.manifest));
     const assetGroups = [...new Set(Object.values(this.gameSettings.scenes.definitions).flatMap((definition) => definition.assetGroups))];
-    await loadAssetGroups(this, assetManifest, assetGroups);
+    const assetRevision = Date.now().toString(36);
+    await loadAssetGroups(this, assetManifest, assetGroups, undefined, message.editorApiBase
+      ? (path) => this.contentUrl(message.editorApiBase, path, assetRevision)
+      : undefined);
     const assets = runtimeAssetDefinitions(this, assetManifest, assetGroups);
     this.runtime.registerImageAssets(assets.images);
     this.runtime.registerAnimationSets(assets.animationSets);
@@ -372,10 +375,11 @@ class EditorRuntimeScene extends Phaser.Scene {
     return JSON.parse(text) as T;
   }
 
-  private contentUrl(editorApiBase: string | undefined, path: string): string {
+  private contentUrl(editorApiBase: string | undefined, path: string, cacheBust?: string): string {
     if (!editorApiBase) return new URL(path, import.meta.env.BASE_URL).toString();
     const url = new URL('/api/editor/public-files/content', editorApiBase);
     url.searchParams.set('path', path);
+    if (cacheBust) url.searchParams.set('cacheBust', cacheBust);
     return url.toString();
   }
 }

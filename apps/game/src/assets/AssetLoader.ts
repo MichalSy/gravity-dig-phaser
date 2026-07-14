@@ -56,6 +56,7 @@ export async function loadAssetGroups(
   manifest: PublicAssetManifest,
   groupIds: readonly string[],
   onProgress?: (progress: number) => void,
+  resolveAssetPath: (path: string) => string = versioned,
 ): Promise<void> {
   if (groupIds.length === 0) {
     onProgress?.(1);
@@ -66,33 +67,33 @@ export async function loadAssetGroups(
   for (const group of groups) {
     for (const asset of group.images) {
       if (!scene.textures.exists(asset.key)) {
-        scene.load.image(asset.key, versioned(asset.path));
+        scene.load.image(asset.key, resolveAssetPath(asset.path));
         queued = true;
       }
       if (asset.meta && !scene.cache.json.exists(imageAtlasMetaKey(asset.key))) {
-        scene.load.json(imageAtlasMetaKey(asset.key), versioned(imageAtlasMetaPath(asset.path)));
+        scene.load.json(imageAtlasMetaKey(asset.key), resolveAssetPath(imageAtlasMetaPath(asset.path)));
         queued = true;
       }
     }
     for (const asset of group.audio) if (!scene.cache.audio.exists(asset.key)) {
-      scene.load.audio(asset.key, versioned(asset.path));
+      scene.load.audio(asset.key, resolveAssetPath(asset.path));
       queued = true;
     }
     for (const asset of group.json) if (!scene.cache.json.exists(asset.key)) {
-      scene.load.json(asset.key, versioned(asset.path));
+      scene.load.json(asset.key, resolveAssetPath(asset.path));
       queued = true;
     }
     for (const set of group.animationSets) {
       const key = animationSetMetaKey(set.key);
       if (!scene.cache.json.exists(key)) {
-        scene.load.json(key, versioned(set.path));
+        scene.load.json(key, resolveAssetPath(set.path));
         queued = true;
       }
     }
     for (const path of group.fontManifests) {
       const key = fontManifestCacheKey(path);
       if (!scene.cache.json.exists(key)) {
-        scene.load.json(key, versioned(path));
+        scene.load.json(key, resolveAssetPath(path));
         queued = true;
       }
     }
