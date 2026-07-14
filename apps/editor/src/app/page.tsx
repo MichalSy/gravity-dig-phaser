@@ -2799,7 +2799,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
   const [status, setStatus] = useState('Atlasprojekt wird geladen ...');
   const [busy, setBusy] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<AtlasUploadProgress | undefined>();
-  const [revision, setRevision] = useState(() => Date.now());
+  const [revision, setRevision] = useState(() => Date.now() + Math.random());
 
   async function loadProject(preferredFrameId?: string): Promise<void> {
     const response = await fetch(editorApi(`/atlas-project?imagePath=${encodeURIComponent(file.path)}`), { cache: 'no-store' });
