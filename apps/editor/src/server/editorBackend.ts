@@ -18,6 +18,7 @@ import {
   type AtlasFrameUpload,
   type AtlasMutation,
 } from '../atlas-project/server';
+import { isEditorSourcePath, normalizeEditorSourcePath } from './editorSourcePath';
 
 interface SaveRequest {
   message?: string;
@@ -934,8 +935,8 @@ async function resolvePublicFilePath(relativePath: string): Promise<{ absolutePa
 async function resolveNodeFilePath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
   const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
   if (!normalizedPath || normalizedPath.split(sep).includes('..')) throw new EditorBackendError('Invalid node file path.', 400);
-  const fullRelativePath = normalizeNodeFilePath(normalizedPath);
-  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}public${sep}scripts${sep}`) ? await ensureDynamicNodeRoot() : await ensureNodeRoot();
+  const fullRelativePath = normalizeEditorSourcePath(normalizedPath.split(sep).join('/')).replaceAll('/', sep);
+  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}public${sep}`) ? await ensurePublicRoot() : await ensureNodeRoot();
   const absolutePath = resolve(workspacePath, fullRelativePath);
   assertInsideRoot(absolutePath, rootPath, 'nodeFile');
   const fileStat = await stat(absolutePath);
@@ -1189,9 +1190,9 @@ function resolvePublicDirectoryPath(rootPath: string, relativePath: string): { a
 
 async function resolveNodeDirectoryPath(relativePath: string): Promise<{ absolutePath: string; relativePath: string }> {
   const normalizedPath = relativePath.replace(/^\/+/, '').replaceAll('/', sep);
-  const fullRelativePath = normalizedPath === `apps${sep}game` ? normalizedPath : normalizeNodeFilePath(normalizedPath);
+  const fullRelativePath = normalizedPath === `apps${sep}game` ? normalizedPath : normalizeEditorSourcePath(normalizedPath.split(sep).join('/')).replaceAll('/', sep);
   if (fullRelativePath === `apps${sep}game`) return { absolutePath: await ensureNodeRoot(), relativePath: 'apps/game' };
-  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}public${sep}scripts`) ? await ensureDynamicNodeRoot() : await ensureNodeRoot();
+  const rootPath = fullRelativePath.startsWith(`apps${sep}game${sep}public${sep}`) ? await ensurePublicRoot() : await ensureNodeRoot();
   const absolutePath = resolve(workspacePath, fullRelativePath);
   assertInsideRoot(absolutePath, rootPath, 'nodeDirectory');
   return { absolutePath, relativePath: fullRelativePath.split(sep).join('/') };
@@ -1296,11 +1297,6 @@ async function readNodeDirectory(absolutePath: string, relativePath: string): Pr
   return { name: relativePath.split('/').at(-1) ?? relativePath, path: relativePath, kind: 'directory', children };
 }
 
-function normalizeNodeFilePath(normalizedPath: string): string {
-  if (normalizedPath.startsWith(`apps${sep}game${sep}src${sep}`) || normalizedPath.startsWith(`apps${sep}game${sep}public${sep}scripts${sep}`)) return normalizedPath;
-  return join('apps/game/src', normalizedPath);
-}
-
 function isHiddenPublicExplorerEntry(relativePath: string, entryName: string): boolean {
   return relativePath === 'apps/game/public' && entryName === 'scripts-compiled';
 }
@@ -1308,12 +1304,6 @@ function isHiddenPublicExplorerEntry(relativePath: string, entryName: string): b
 function isDynamicNodeSourcePath(path: string): boolean {
   const normalized = path.replaceAll('\\', '/');
   return normalized.startsWith('apps/game/public/scripts/') && /\.tsx?$/.test(normalized);
-}
-
-function isEditorSourcePath(path: string): boolean {
-  const normalized = path.replaceAll('\\', '/');
-  return normalized.startsWith('apps/game/src/')
-    || (normalized.startsWith('apps/game/public/scripts/') && /\.(?:tsx?|jsx?|json|md|css|scss|html|ya?ml|toml|txt)$/i.test(normalized));
 }
 
 function fileExtension(fileName: string): string | undefined {
