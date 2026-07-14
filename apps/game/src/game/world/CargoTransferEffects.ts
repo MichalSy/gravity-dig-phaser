@@ -14,7 +14,7 @@ interface CargoFlight {
 }
 
 const ITEM_SIZE = 38;
-const ARRIVAL_SOUND_KEY = 'cargo-arrival-ping';
+const ARRIVAL_SOUND_KEY = 'cargo-credit-chime';
 const ITEM_TINTS: Record<string, number> = {
   dirt: 0x9a6a45, sand: 0xd8bd78, clay: 0xb96855, gravel: 0x8f8b83, stone: 0x9ca3af,
   basalt: 0x4b5563, copper: 0xd97745, iron: 0x94a3b8, gold: 0xfacc15, diamond: 0x67e8f9,
@@ -83,8 +83,8 @@ export class CargoTransferEffects {
       this.flights.splice(index, 1);
       if (this.scene.cache.audio.exists(ARRIVAL_SOUND_KEY)) {
         this.scene.sound.play(ARRIVAL_SOUND_KEY, {
-          volume: 0.5,
-          detune: Phaser.Math.Between(-80, 90),
+          volume: 0.65,
+          detune: Phaser.Math.Between(-55, 70),
         });
       }
     }

@@ -201,6 +201,12 @@ export class MiningEffects {
       onComplete: () => {
         drop.marker.destroy();
         drop.image.destroy();
+        if (this.scene.cache.audio.exists('resource-pickup')) {
+          this.scene.sound.play('resource-pickup', {
+            volume: 0.72,
+            detune: Phaser.Math.Between(-65, 75),
+          });
+        }
       },
     });
     return true;

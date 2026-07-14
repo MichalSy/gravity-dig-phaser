@@ -38,6 +38,7 @@ describe('mining drops and fragments', () => {
   let collector = { x: 1_000, y: 1_000 };
   let cargoHasSpace = false;
   let collected: string[];
+  let sounds: string[];
   let effects: MiningEffects;
 
   beforeEach(() => {
@@ -45,6 +46,7 @@ describe('mining drops and fragments', () => {
     collector = { x: 1_000, y: 1_000 };
     cargoHasSpace = false;
     collected = [];
+    sounds = [];
     const scene = {
       add: {
         circle: (x: number, y: number) => new FakeImage(x, y),
@@ -62,6 +64,8 @@ describe('mining drops and fragments', () => {
       tweens: {
         add: (options: { targets: FakeImage; onComplete(): void }) => options.onComplete(),
       },
+      cache: { audio: { exists: (key: string) => key === 'resource-pickup' } },
+      sound: { play: (key: string) => sounds.push(key) },
     };
     effects = new MiningEffects(scene as never, {
       collidesBox: (_x, y) => y >= 100,
@@ -97,5 +101,6 @@ describe('mining drops and fragments', () => {
     effects.update(50);
     expect(drop.destroyed).toBe(true);
     expect(collected).toEqual(['copper']);
+    expect(sounds).toEqual(['resource-pickup']);
   });
 });

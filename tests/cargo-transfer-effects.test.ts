@@ -49,7 +49,7 @@ describe('cargo transfer effects', () => {
           return image;
         },
       },
-      cache: { audio: { exists: (key: string) => key === 'cargo-arrival-ping' } },
+      cache: { audio: { exists: (key: string) => key === 'cargo-credit-chime' } },
       sound: { play: (key: string) => sounds.push(key) },
     };
     effects = new CargoTransferEffects(scene as never);
@@ -67,6 +67,6 @@ describe('cargo transfer effects', () => {
 
     for (let index = 0; index < 30; index += 1) effects.update(50);
     expect(images[0].destroyed).toBe(true);
-    expect(sounds).toEqual(['cargo-arrival-ping']);
+    expect(sounds).toEqual(['cargo-credit-chime']);
   });
 });
