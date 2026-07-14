@@ -60,7 +60,9 @@ export function parseAtlasProject(value: unknown): AtlasProject {
   const frames = value.frames.map((entry, index): AtlasProjectFrame => {
     if (!isRecord(entry) || typeof entry.id !== 'string' || !entry.id.trim()) throw new Error(`Atlas frame ${index} has no valid id.`);
     if (typeof entry.source !== 'string' || !isSafeSourceName(entry.source)) throw new Error(`Atlas frame '${entry.id}' has an invalid source.`);
-    const frame: AtlasProjectFrame = { id: entry.id.trim(), source: entry.source };
+    const id = entry.id.trim();
+    if (entry.source.replace(/\.[^.]+$/u, '') !== id) throw new Error(`Atlas frame '${id}' source must be named after its id.`);
+    const frame: AtlasProjectFrame = { id, source: entry.source };
     if (entry.slot !== undefined) frame.slot = integer(entry.slot, `Atlas frame '${entry.id}' slot`, 0);
     if (entry.rect !== undefined) frame.rect = parseRect(entry.rect, `Atlas frame '${entry.id}' rect`);
     if (entry.pivot !== undefined) {

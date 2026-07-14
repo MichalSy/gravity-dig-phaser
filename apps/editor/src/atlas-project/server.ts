@@ -174,18 +174,14 @@ export async function addAtlasProjectFrame(workspacePath: string, imagePath: str
   if (upload.replaceFrameId) {
     const frame = requireFrame(project, upload.replaceFrameId);
     if (project.type === 'packed') frame.rect = { ...frame.rect!, width: metadata.width, height: metadata.height };
-    const extension = extname(safeSourceName(upload.name)).toLowerCase();
-    const source = `${frame.id}${extension}`;
-    const occupied = project.frames.find((candidate) => candidate.id !== frame.id && candidate.source === source);
-    if (occupied) throw new Error(`Atlas source '${source}' already belongs to frame '${occupied.id}'.`);
+    const source = `${frame.id}${atlasSourceExtension(metadata.format)}`;
     if (source !== frame.source) sourceChanges.set(frame.source, null);
     frame.source = source;
     sourceChanges.set(source, upload.content);
   } else {
     const uploadedSource = safeSourceName(upload.name);
-    const extension = extname(uploadedSource).toLowerCase();
     const id = uniqueFrameId(project, uploadedSource.replace(/\.[^.]+$/u, ''));
-    const source = `${id}${extension}`;
+    const source = `${id}${atlasSourceExtension(metadata.format)}`;
     let frame: AtlasProjectFrame;
     if (project.type === 'grid') {
       if (!Number.isInteger(upload.slot) || upload.slot! < 0 || upload.slot! >= project.columns! * project.rows!) throw new Error('Target grid slot is invalid.');
@@ -355,6 +351,12 @@ function safeSourceName(name: string): string {
   const source = basename(name.trim()).replace(/[^a-zA-Z0-9._-]/gu, '-');
   if (!source || source === '.' || source === '..' || !['.png', '.webp', '.jpg', '.jpeg'].includes(extname(source).toLowerCase())) throw new Error('Atlas frame filename is invalid.');
   return source;
+}
+
+function atlasSourceExtension(format: string | undefined): string {
+  if (format === 'png' || format === 'webp') return `.${format}`;
+  if (format === 'jpeg') return '.jpg';
+  throw new Error(`Unsupported atlas frame image format '${format ?? 'unknown'}'.`);
 }
 
 function uniqueFrameId(project: AtlasProject, requested: string): string {

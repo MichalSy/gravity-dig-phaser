@@ -140,7 +140,8 @@ describe('atlas project generator', () => {
       { id: 'same-upload-2', source: 'same-upload-2.png', slot: 1 },
     ]);
 
-    await addAtlasProjectFrame(root, imagePath, { name: 'irrelevant-file-name.webp', content: await solid(2, 2, { r: 70, g: 80, b: 90 }), replaceFrameId: 'same-upload' });
+    const replacement = await sharp(await solid(2, 2, { r: 70, g: 80, b: 90 })).webp().toBuffer();
+    await addAtlasProjectFrame(root, imagePath, { name: 'irrelevant-file-name.webp', content: replacement, replaceFrameId: 'same-upload' });
     const after = await readAtlasProjectDocument(root, imagePath);
     expect(after.project.frames[0]).toEqual({ id: 'same-upload', source: 'same-upload.webp', slot: 0 });
     expect(after.sourceHashes?.['same-upload']).not.toBe(before.sourceHashes?.['same-upload']);
