@@ -26,6 +26,7 @@ class FakeImage {
   setCrop() { return this; }
   setDisplaySize() { return this; }
   setStrokeStyle() { return this; }
+  setDepth() { return this; }
   setPosition(x: number, y: number) { this.x = x; this.y = y; return this; }
   setAngle(value: number) { this.angle = value; return this; }
   setAlpha(value: number) { this.alpha = value; return this; }
@@ -47,6 +48,11 @@ describe('mining drops and fragments', () => {
     const scene = {
       add: {
         circle: (x: number, y: number) => new FakeImage(x, y),
+        rectangle: (x: number, y: number) => {
+          const fragment = new FakeImage(x, y);
+          images.push(fragment);
+          return fragment;
+        },
         image: (x: number, y: number) => {
           const image = new FakeImage(x, y);
           images.push(image);
@@ -69,9 +75,9 @@ describe('mining drops and fragments', () => {
   });
 
   it('lets fragments fly away and cleans them up', () => {
-    effects.emitFragments(9, 20, 20, 3);
+    effects.emitFragments('dirt', 20, 20, 3);
     expect(images).toHaveLength(3);
-    for (let index = 0; index < 20; index += 1) effects.update(50);
+    for (let index = 0; index < 50; index += 1) effects.update(50);
     expect(images.every((image) => image.destroyed)).toBe(true);
   });
 

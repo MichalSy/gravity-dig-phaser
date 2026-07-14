@@ -142,7 +142,7 @@ var MenuScript = class extends ScriptNode {
 var PLAYER_HEIGHT = 64;
 var RESOURCE_TILE_TYPES = /* @__PURE__ */ new Set(["copper", "iron", "gold", "diamond"]);
 var DROPPABLE_TILE_TYPES = /* @__PURE__ */ new Set(["dirt", "sand", "clay", "gravel", "stone", "basalt", "copper", "iron", "gold", "diamond"]);
-var FRAGMENT_INTERVAL_MS = 55;
+var FRAGMENT_INTERVAL_MS = 45;
 var MiningScript = class extends ScriptNode {
   id = "dynamic.mining-tool";
   name = "Mining Tool Script";
@@ -316,9 +316,9 @@ var MiningScript = class extends ScriptNode {
     const minedType = cell.type;
     const frame = cell.foregroundFrame;
     const center = this.tileCenter(cell);
-    this.world.emitMiningFragments(frame, center.x, center.y, 9);
+    if (!this.levelNode.clearTile(cell)) return;
+    this.world.emitMiningFragments(minedType, center.x, center.y, 12);
     if (DROPPABLE_TILE_TYPES.has(minedType)) this.world.spawnResourceDrop(minedType, frame, center.x, center.y);
-    this.levelNode.clearTile(cell);
     this.removeCrackOverlay(cell);
     this.playerState.recordMinedTile(minedType);
     const detune = Math.round(Math.random() * 90 - 45);
@@ -329,7 +329,7 @@ var MiningScript = class extends ScriptNode {
     if (this.fragmentTimerMs < FRAGMENT_INTERVAL_MS) return;
     this.fragmentTimerMs %= FRAGMENT_INTERVAL_MS;
     const center = this.tileCenter(cell);
-    this.world.emitMiningFragments(cell.foregroundFrame, center.x, center.y, 2);
+    this.world.emitMiningFragments(cell.type, center.x, center.y, 3);
   }
   tileCenter(cell) {
     return { x: cell.x * this.tileSize + this.tileSize / 2, y: cell.y * this.tileSize + this.tileSize / 2 };
@@ -2147,4 +2147,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.02d37af856b9.js.map
+//# sourceMappingURL=dynamic-nodes.528a9276d8eb.js.map

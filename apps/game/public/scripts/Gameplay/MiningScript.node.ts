@@ -11,14 +11,14 @@ type TileCell = {
 
 type LevelNodeLike = {
   getCellAtWorld(x: number, y: number): TileCell | undefined;
-  clearTile(cell: TileCell): void;
+  clearTile(cell: TileCell): boolean;
 };
 
 type WorldNodeLike = Core.GameNode & {
   player: { x: number; y: number };
   addChild<T extends Core.GameNode>(child: T): T;
   removeChild(child: Core.GameNode): void;
-  emitMiningFragments(frame: number, x: number, y: number, count?: number): void;
+  emitMiningFragments(materialId: string, x: number, y: number, count?: number): void;
   spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void;
 };
 
@@ -55,7 +55,7 @@ type CrackNodeLike = Core.ImageNode;
 const PLAYER_HEIGHT = 64;
 const RESOURCE_TILE_TYPES = new Set(['copper', 'iron', 'gold', 'diamond']);
 const DROPPABLE_TILE_TYPES = new Set(['dirt', 'sand', 'clay', 'gravel', 'stone', 'basalt', 'copper', 'iron', 'gold', 'diamond']);
-const FRAGMENT_INTERVAL_MS = 55;
+const FRAGMENT_INTERVAL_MS = 45;
 
 export default class MiningScript extends Core.ScriptNode {
   id = 'dynamic.mining-tool';
@@ -252,9 +252,9 @@ export default class MiningScript extends Core.ScriptNode {
     const minedType = cell.type;
     const frame = cell.foregroundFrame;
     const center = this.tileCenter(cell);
-    this.world.emitMiningFragments(frame, center.x, center.y, 9);
+    if (!this.levelNode.clearTile(cell)) return;
+    this.world.emitMiningFragments(minedType, center.x, center.y, 12);
     if (DROPPABLE_TILE_TYPES.has(minedType)) this.world.spawnResourceDrop(minedType, frame, center.x, center.y);
-    this.levelNode.clearTile(cell);
     this.removeCrackOverlay(cell);
     this.playerState.recordMinedTile(minedType);
     const detune = Math.round(Math.random() * 90 - 45);
@@ -266,7 +266,7 @@ export default class MiningScript extends Core.ScriptNode {
     if (this.fragmentTimerMs < FRAGMENT_INTERVAL_MS) return;
     this.fragmentTimerMs %= FRAGMENT_INTERVAL_MS;
     const center = this.tileCenter(cell);
-    this.world.emitMiningFragments(cell.foregroundFrame, center.x, center.y, 2);
+    this.world.emitMiningFragments(cell.type, center.x, center.y, 3);
   }
 
   private tileCenter(cell: Pick<TileCell, 'x' | 'y'>) {

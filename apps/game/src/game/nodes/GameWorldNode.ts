@@ -74,8 +74,8 @@ export class GameWorldNode extends GameNode {
     this.miningEffects.update(deltaMs);
   }
 
-  emitMiningFragments(frame: number, x: number, y: number, count = 2): void {
-    this.miningEffects.emitFragments(frame, x, y, count);
+  emitMiningFragments(materialId: string, x: number, y: number, count = 3): void {
+    this.miningEffects.emitFragments(materialId, x, y, count);
   }
 
   spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void {

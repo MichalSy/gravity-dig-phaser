@@ -12,7 +12,7 @@ export interface MiningEffectsOptions {
 }
 
 interface MiningParticle {
-  image: Phaser.GameObjects.Image;
+  fragment: Phaser.GameObjects.Rectangle;
   velocityX: number;
   velocityY: number;
   angularVelocity: number;
@@ -31,11 +31,21 @@ interface ResourceDrop {
 }
 
 const DROP_SIZE = 30;
-const TILE_SIZE = 96;
-const TILE_ATLAS_COLUMNS = 8;
 const DROP_PICKUP_RADIUS = 58;
 const DROP_GRAVITY = 1_700;
-const PARTICLE_GRAVITY = 720;
+const PARTICLE_GRAVITY = 250;
+const MATERIAL_COLORS: Record<string, number> = {
+  dirt: 0x9a6334,
+  sand: 0xd8b96f,
+  clay: 0xb96849,
+  gravel: 0x85878c,
+  stone: 0x68717c,
+  basalt: 0x3f3b45,
+  copper: 0xd17a3d,
+  iron: 0xb4bec8,
+  gold: 0xf6c945,
+  diamond: 0x69e7f2,
+};
 
 export class MiningEffects {
   private readonly particles: MiningParticle[] = [];
@@ -50,29 +60,33 @@ export class MiningEffects {
 
   getSceneObjects(): Phaser.GameObjects.GameObject[] {
     return [
-      ...this.particles.map((particle) => particle.image),
+      ...this.particles.map((particle) => particle.fragment),
       ...this.drops.map((drop) => drop.marker),
       ...this.drops.map((drop) => drop.image),
     ];
   }
 
-  emitFragments(frame: number, x: number, y: number, count = 2): void {
-    if (frame < 0) return;
+  emitFragments(materialId: string, x: number, y: number, count = 3): void {
+    const color = MATERIAL_COLORS[materialId] ?? 0x9a6334;
     for (let index = 0; index < count; index += 1) {
-      const size = Phaser.Math.Between(5, 11);
-      const image = this.scene.add.image(
+      const width = Phaser.Math.Between(9, 17);
+      const height = Phaser.Math.Between(7, 14);
+      const fragment = this.scene.add.rectangle(
         x + Phaser.Math.Between(-16, 16),
         y + Phaser.Math.Between(-16, 16),
-        'tiles',
+        width,
+        height,
+        color,
+        1,
       )
-        .setCrop((frame % TILE_ATLAS_COLUMNS) * TILE_SIZE, Math.floor(frame / TILE_ATLAS_COLUMNS) * TILE_SIZE, TILE_SIZE, TILE_SIZE)
-        .setDisplaySize(size, size)
+        .setStrokeStyle(1, 0xffe5a3, 0.8)
+        .setDepth(40)
         .setAngle(Phaser.Math.Between(0, 359));
-      const lifetimeMs = Phaser.Math.Between(380, 620);
+      const lifetimeMs = Phaser.Math.Between(1_600, 2_100);
       this.particles.push({
-        image,
-        velocityX: Phaser.Math.Between(-190, 190),
-        velocityY: Phaser.Math.Between(-270, -90),
+        fragment,
+        velocityX: Phaser.Math.Between(-180, 180),
+        velocityY: Phaser.Math.Between(-180, -90),
         angularVelocity: Phaser.Math.Between(-540, 540),
         remainingMs: lifetimeMs,
         lifetimeMs,
@@ -83,10 +97,11 @@ export class MiningEffects {
   spawnDrop(itemId: string, frame: number, x: number, y: number): void {
     if (frame < 0) return;
     const marker = this.scene.add.circle(x, y, DROP_SIZE * 0.64, 0xfbbf24, 0.18)
-      .setStrokeStyle(2, 0xfde68a, 0.92);
-    const image = this.scene.add.image(x, y, 'tiles')
-      .setCrop((frame % TILE_ATLAS_COLUMNS) * TILE_SIZE, Math.floor(frame / TILE_ATLAS_COLUMNS) * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+      .setStrokeStyle(2, 0xfde68a, 0.92)
+      .setDepth(39);
+    const image = this.scene.add.image(x, y, `item-${itemId}`)
       .setDisplaySize(DROP_SIZE, DROP_SIZE)
+      .setDepth(40)
       .setAngle(Phaser.Math.Between(-18, 18));
     this.drops.push({
       marker,
@@ -107,7 +122,7 @@ export class MiningEffects {
   }
 
   clear(): void {
-    for (const particle of this.particles) particle.image.destroy();
+    for (const particle of this.particles) particle.fragment.destroy();
     for (const drop of this.drops) {
       drop.marker.destroy();
       drop.image.destroy();
@@ -125,12 +140,12 @@ export class MiningEffects {
       const particle = this.particles[index];
       particle.remainingMs -= elapsedMs;
       particle.velocityY += PARTICLE_GRAVITY * deltaSeconds;
-      particle.image.x += particle.velocityX * deltaSeconds;
-      particle.image.y += particle.velocityY * deltaSeconds;
-      particle.image.angle += particle.angularVelocity * deltaSeconds;
-      particle.image.setAlpha(Math.max(0, particle.remainingMs / particle.lifetimeMs));
+      particle.fragment.x += particle.velocityX * deltaSeconds;
+      particle.fragment.y += particle.velocityY * deltaSeconds;
+      particle.fragment.angle += particle.angularVelocity * deltaSeconds;
+      particle.fragment.setAlpha(Math.max(0, particle.remainingMs / particle.lifetimeMs));
       if (particle.remainingMs > 0) continue;
-      particle.image.destroy();
+      particle.fragment.destroy();
       this.particles.splice(index, 1);
     }
   }

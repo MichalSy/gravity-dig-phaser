@@ -70,8 +70,9 @@ export class LevelNode extends GameNode {
     return this.levelGenerator.callScriptMethod('collidesBox', this.level, centerX, centerY, width, height) === true;
   }
 
-  clearTile(cell: TileCell): void {
+  clearTile(cell: TileCell): boolean {
     const cleared = this.levelGenerator.callScriptMethod('clearTile', this.level, cell.x, cell.y) === true;
     if (cleared) this.tilemapView.clearTile(cell);
+    return cleared;
   }
 }
