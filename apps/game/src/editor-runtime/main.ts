@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { DebugDynamicNodeBundleReference } from '@gravity-dig/debug-protocol';
 import '../style.css';
-import { loadAssetGroups, parsePublicAssetManifest, runtimeAssetDefinitions } from '../assets/AssetLoader';
+import { loadAssetGroups, parsePublicAssetManifest, runtimeAssetDefinitions, type PublicAssetManifest } from '../assets/AssetLoader';
 import { GAME_HEIGHT, GAME_WIDTH } from '../config/gameConfig';
 import { createGravityDigNodeFactory, NodeRoot, NodeRuntime, NodeRuntimeMode, parseGameSettings, PrefabManager, registerGravityDigDynamicModule, RuntimeManagerHost, SceneNodeFactoryRegistry, type GameNode, type GameSettings, type SceneFileJson } from '../nodes';
 import { DebugBridgeNode } from '../debug';
@@ -25,6 +25,7 @@ class EditorRuntimeScene extends Phaser.Scene {
   private prefabManager?: PrefabManager;
   private managerHost?: RuntimeManagerHost;
   private gameSettings?: GameSettings;
+  private assetManifest?: PublicAssetManifest;
   private prefabManagerApiBase?: string;
   private currentMode?: RuntimeMode;
   private currentEditorRoot?: NodeRoot;
@@ -56,6 +57,10 @@ class EditorRuntimeScene extends Phaser.Scene {
   private readonly handleMessage = (event: MessageEvent): void => {
     if (event.origin !== window.location.origin) return;
     const data = event.data as { type?: string; path?: string; prefabId?: string; mode?: RuntimeMode; scene?: RuntimeSceneId } | undefined;
+    if (data?.type === 'gravity-dig:asset:reload' && data.path) {
+      void this.reloadImageAsset(data.path);
+      return;
+    }
     if (data?.type === 'gravity-dig:prefab:reload' && data.prefabId) {
       void this.reloadPrefab(data.prefabId);
       return;
@@ -63,6 +68,34 @@ class EditorRuntimeScene extends Phaser.Scene {
     if (data?.type !== 'gravity-dig:runtime:start' || !data.mode || !data.scene) return;
     void this.start(data as StartRuntimeMessage);
   };
+
+  private async reloadImageAsset(path: string): Promise<void> {
+    try {
+      if (!this.assetManifest || !this.editorApiBase) throw new Error('Runtime assets are not initialized');
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      const asset = Object.values(this.assetManifest.groups).flatMap((group) => group.images).find((candidate) => candidate.path === normalizedPath);
+      if (!asset) throw new Error(`Image asset '${normalizedPath}' is not part of the active manifest`);
+      const texture = this.textures.get(asset.key);
+      const source = texture?.source[0];
+      if (!source) throw new Error(`Texture '${asset.key}' is not loaded`);
+
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = this.contentUrl(this.editorApiBase, normalizedPath, Date.now().toString(36));
+      await new Promise<void>((resolve, reject) => {
+        image.addEventListener('load', () => resolve(), { once: true });
+        image.addEventListener('error', () => reject(new Error(`Could not load '${normalizedPath}'`)), { once: true });
+      });
+      source.updateSource(image);
+      window.parent?.postMessage({ type: 'gravity-dig:asset:reloaded', path: normalizedPath, key: asset.key }, window.location.origin);
+    } catch (error) {
+      window.parent?.postMessage({
+        type: 'gravity-dig:asset:reload-error',
+        path,
+        error: error instanceof Error ? error.message : String(error),
+      }, window.location.origin);
+    }
+  }
 
   private async reloadPrefab(prefabId: string): Promise<void> {
     try {
@@ -134,6 +167,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.debugBridge = undefined;
     this.managerHost = undefined;
     this.gameSettings = undefined;
+    this.assetManifest = undefined;
     this.dynamicModules.clear();
 
     const mode = message.mode === 'editor' ? NodeRuntimeMode.Editor : NodeRuntimeMode.Play;
@@ -141,6 +175,7 @@ class EditorRuntimeScene extends Phaser.Scene {
     this.currentMode = message.mode;
     this.gameSettings = parseGameSettings(await this.fetchJson<unknown>(message.editorApiBase, 'game.settings.json'));
     const assetManifest = parsePublicAssetManifest(await this.fetchJson<unknown>(message.editorApiBase, this.gameSettings.assets.manifest));
+    this.assetManifest = assetManifest;
     const assetGroups = [...new Set(Object.values(this.gameSettings.scenes.definitions).flatMap((definition) => definition.assetGroups))];
     const assetRevision = Date.now().toString(36);
     await loadAssetGroups(this, assetManifest, assetGroups, undefined, message.editorApiBase

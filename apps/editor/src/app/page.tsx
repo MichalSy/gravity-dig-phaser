@@ -778,9 +778,18 @@ export default function Home() {
     setGameFrameKey((current) => current + 1);
   }
 
-  async function atlasProjectChanged(): Promise<void> {
+  function reloadRuntimeImage(imagePath: string): void {
+    const publicPath = imagePath.replace(/^apps\/game\/public/u, '');
+    runtimeFrameRef.current?.contentWindow?.postMessage({
+      type: 'gravity-dig:asset:reload',
+      path: publicPath.startsWith('/') ? publicPath : `/${publicPath}`,
+    }, window.location.origin);
+  }
+
+  async function atlasProjectChanged(imagePath?: string): Promise<void> {
     await Promise.all([refreshPublicFiles(), reloadSelectedDirectoryFiles(), refreshGitStatus()]);
-    reloadGameFrame();
+    if (imagePath) reloadRuntimeImage(imagePath);
+    else reloadGameFrame();
   }
 
   function expandAllNodes(): void {
@@ -2731,6 +2740,35 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
 
 const atlasFrameDragMimeType = 'application/x-gravity-dig-atlas-frame';
 
+interface AtlasUploadProgress {
+  slot?: number;
+  replaceFrameId?: string;
+  percent: number;
+  phase: 'uploading' | 'building';
+}
+
+function postAtlasFrameUpload(form: FormData, onProgress: (percent: number) => void): Promise<{ ok?: boolean; error?: string }> {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open('POST', editorApi('/atlas-project'));
+    request.responseType = 'json';
+    request.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+    });
+    request.addEventListener('load', () => {
+      const result = request.response as { ok?: boolean; error?: string } | null;
+      if (request.status < 200 || request.status >= 300 || !result?.ok) {
+        reject(new Error(result?.error ?? `HTTP ${request.status}`));
+        return;
+      }
+      resolve(result);
+    });
+    request.addEventListener('error', () => reject(new Error('Netzwerkfehler beim Frame-Upload')));
+    request.addEventListener('abort', () => reject(new Error('Frame-Upload abgebrochen')));
+    request.send(form);
+  });
+}
+
 function PublicImageDialog({
   file,
   root,
@@ -2745,7 +2783,7 @@ function PublicImageDialog({
   assets: DebugImageAssetDescriptor[];
   onImageAssetDragStart(payload: ImageAssetDragPayload): void;
   onImageAssetDragEnd(): void;
-  onAtlasChanged(): Promise<void>;
+  onAtlasChanged(imagePath: string): Promise<void>;
   onClose(): void;
 }) {
   if (!file || !/\.atlas\.(?:png|webp)$/i.test(file.name)) {
@@ -2754,12 +2792,13 @@ function PublicImageDialog({
   return <AtlasProjectEditorDialog file={file} onAtlasChanged={onAtlasChanged} onClose={onClose} />;
 }
 
-function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: PublicFileEntry; onAtlasChanged(): Promise<void>; onClose(): void }) {
+function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: PublicFileEntry; onAtlasChanged(imagePath: string): Promise<void>; onClose(): void }) {
   const [document, setDocument] = useState<AtlasProjectDocument | undefined>();
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
   const [selectedGridSlot, setSelectedGridSlot] = useState<number | undefined>();
   const [status, setStatus] = useState('Atlasprojekt wird geladen ...');
   const [busy, setBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<AtlasUploadProgress | undefined>();
   const [revision, setRevision] = useState(0);
 
   async function loadProject(preferredFrameId?: string): Promise<void> {
@@ -2794,7 +2833,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
       });
       const result = await response.json() as { ok?: boolean; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      await onAtlasChanged();
+      await onAtlasChanged(file.path);
       await loadProject(preferredFrameId);
     } catch (error) {
       setStatus(`Atlasänderung fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
@@ -2805,7 +2844,8 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
 
   async function uploadFrame(uploadFile: File, target: { slot?: number; x?: number; y?: number; replaceFrameId?: string }): Promise<void> {
     setBusy(true);
-    setStatus(`${uploadFile.name} wird eingefügt ...`);
+    setUploadProgress({ slot: target.slot, replaceFrameId: target.replaceFrameId, percent: 0, phase: 'uploading' });
+    setStatus(`${uploadFile.name} wird hochgeladen ...`);
     try {
       const form = new FormData();
       form.set('imagePath', file.path);
@@ -2814,14 +2854,17 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
       if (target.x !== undefined) form.set('x', String(target.x));
       if (target.y !== undefined) form.set('y', String(target.y));
       if (target.replaceFrameId) form.set('replaceFrameId', target.replaceFrameId);
-      const response = await fetch(editorApi('/atlas-project'), { method: 'POST', body: form });
-      const result = await response.json() as { ok?: boolean; error?: string };
-      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      await onAtlasChanged();
+      await postAtlasFrameUpload(form, (percent) => {
+        setUploadProgress((current) => current ? { ...current, percent, phase: percent >= 100 ? 'building' : 'uploading' } : current);
+        setStatus(percent >= 100 ? `${uploadFile.name} wird verarbeitet und der Atlas neu gebaut ...` : `${uploadFile.name} wird hochgeladen · ${percent}%`);
+      });
+      setUploadProgress((current) => current ? { ...current, percent: 100, phase: 'building' } : current);
+      await onAtlasChanged(file.path);
       await loadProject(target.replaceFrameId);
     } catch (error) {
       setStatus(`Frame konnte nicht eingefügt werden: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
+      setUploadProgress(undefined);
       setBusy(false);
     }
   }
@@ -2872,6 +2915,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
               <GridAtlasEditor
                 document={document}
                 busy={busy}
+                uploadProgress={uploadProgress}
                 selectedFrameId={selectedFrameId}
                 selectedSlot={selectedGridSlot}
                 revision={revision}
@@ -2903,9 +2947,10 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
   );
 }
 
-function GridAtlasEditor({ document, busy, selectedFrameId, selectedSlot, revision, onSelect, onMove, onUpload, onAddRow }: {
+function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, selectedSlot, revision, onSelect, onMove, onUpload, onAddRow }: {
   document: AtlasProjectDocument;
   busy: boolean;
+  uploadProgress?: AtlasUploadProgress;
   selectedFrameId?: string;
   selectedSlot?: number;
   revision: number;
@@ -2976,6 +3021,14 @@ function GridAtlasEditor({ document, busy, selectedFrameId, selectedSlot, revisi
               title={frame ? `${frame.id} · Slot ${slot}` : `Leerer Slot ${slot}`}
             >
               {frame ? <img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} /> : <span className={styles.emptyAtlasSlot}><Plus size={18} /> Leer</span>}
+              {uploadProgress?.slot === slot && (
+                <span className={styles.atlasFrameUploadOverlay} aria-live="polite">
+                  <span>{uploadProgress.phase === 'building' ? 'Atlas wird gebaut …' : `${uploadProgress.percent}%`}</span>
+                  <span className={styles.atlasFrameUploadTrack}>
+                    <span style={{ width: `${uploadProgress.percent}%` }} />
+                  </span>
+                </span>
+              )}
               <small>{frame?.id ?? `Slot ${slot}`}<b>{slot}</b></small>
             </button>
           );

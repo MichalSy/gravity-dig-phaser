@@ -1660,6 +1660,37 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 .gridAtlasSlot small { min-width: 0; display: flex; justify-content: space-between; gap: 4px; color: #cbd5e1; font-size: 9px; overflow: hidden; }
 .gridAtlasSlot small b { color: #7dd3fc; }
 .emptyAtlasSlot { display: flex; align-items: center; justify-content: center; gap: 4px; color: #64748b; font-size: 10px; }
+.atlasFrameUploadOverlay {
+  position: absolute;
+  inset: 4px 4px 18px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  color: #f8fafc;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(2px);
+  border-radius: 5px;
+}
+.atlasFrameUploadTrack {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.24);
+}
+.atlasFrameUploadTrack > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0ea5e9, #22c55e);
+  transition: width 120ms ease-out;
+}
 
 .packedAtlasScroll {
   min-height: 420px;
