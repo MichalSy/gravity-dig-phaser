@@ -84,10 +84,15 @@ describe('atlas project generator', () => {
     expect(await pixel(join(directory, 'terrain.atlas.webp'), 2, 0)).toEqual([40, 160, 70, 255]);
     expect(await pixel(join(directory, 'terrain.atlas.webp'), 3, 1)).toEqual([40, 160, 70, 255]);
 
-    await mutateAtlasProject(root, imagePath, { operation: 'move-frame', frameId: 'dirt', slot: 4 });
+    await mutateAtlasProject(root, imagePath, { operation: 'rename-frame', frameId: 'dirt', newFrameId: 'earth' });
+    await expect(readFile(join(directory, 'terrain.atlas.frames/dirt.png'))).rejects.toThrow();
+    expect(await readFile(join(directory, 'terrain.atlas.frames/earth.png'))).toBeTruthy();
+    await expect(mutateAtlasProject(root, imagePath, { operation: 'rename-frame', frameId: 'earth', newFrameId: 'stone' })).rejects.toThrow("already exists");
+
+    await mutateAtlasProject(root, imagePath, { operation: 'move-frame', frameId: 'earth', slot: 4 });
     const metadata = JSON.parse(await readFile(join(directory, 'terrain.atlas.json'), 'utf8'));
     expect(metadata.frames).toEqual([
-      { id: 'dirt', source: 'dirt.png', slot: 4 },
+      { id: 'earth', source: 'earth.png', slot: 4 },
       { id: 'stone', source: 'stone.png', slot: 1 },
     ]);
     expect(await pixel(join(directory, 'terrain.atlas.webp'), 2, 0)).toEqual([80, 90, 100, 255]);

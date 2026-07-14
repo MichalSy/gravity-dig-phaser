@@ -2826,7 +2826,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
     return () => { disposed = true; };
   }, [file.path]);
 
-  async function mutate(mutation: Record<string, unknown>, preferredFrameId = selectedFrameId): Promise<void> {
+  async function mutate(mutation: Record<string, unknown>, preferredFrameId = selectedFrameId): Promise<boolean> {
     setBusy(true);
     setStatus('Atlas wird neu gebaut ...');
     try {
@@ -2839,8 +2839,10 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       await onAtlasChanged(file.path);
       await loadProject(preferredFrameId);
+      return true;
     } catch (error) {
       setStatus(`Atlasänderung fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -2914,6 +2916,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
                 selectedSlot={selectedGridSlot}
                 onSelect={(frameId, slot) => { setSelectedFrameId(frameId); setSelectedGridSlot(slot); }}
                 onMove={(frameId, slot) => void mutate({ operation: 'move-frame', frameId, slot }, frameId)}
+                onRename={(frameId, newFrameId) => mutate({ operation: 'rename-frame', frameId, newFrameId }, newFrameId)}
                 onUpload={uploadFrame}
                 onAddRow={() => void mutate({ operation: 'resize', rows: project.rows! + 1 }, selectedFrameId)}
               />
@@ -2924,6 +2927,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
                 selectedFrameId={selectedFrameId}
                 onSelect={setSelectedFrameId}
                 onMove={(frameId, x, y) => void mutate({ operation: 'move-frame', frameId, x, y }, frameId)}
+                onRename={(frameId, newFrameId) => mutate({ operation: 'rename-frame', frameId, newFrameId }, newFrameId)}
                 onUpload={uploadFrame}
                 onResize={(width, height) => void mutate({ operation: 'resize', width, height }, selectedFrameId)}
               />
@@ -2939,7 +2943,7 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
   );
 }
 
-function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, selectedSlot, onSelect, onMove, onUpload, onAddRow }: {
+function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, selectedSlot, onSelect, onMove, onRename, onUpload, onAddRow }: {
   document: AtlasProjectDocument;
   busy: boolean;
   uploadProgress?: AtlasUploadProgress;
@@ -2947,13 +2951,21 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
   selectedSlot?: number;
   onSelect(frameId: string | undefined, slot: number): void;
   onMove(frameId: string, slot: number): void;
+  onRename(frameId: string, newFrameId: string): Promise<boolean>;
   onUpload(file: File, target: { slot?: number; replaceFrameId?: string }): void;
   onAddRow(): void;
 }) {
   const project = document.project;
   const [dragOverSlot, setDragOverSlot] = useState<number | undefined>();
+  const [editingFrameId, setEditingFrameId] = useState<string | undefined>();
+  const [frameNameDraft, setFrameNameDraft] = useState('');
   const framesBySlot = new Map(project.frames.map((frame) => [frame.slot!, frame]));
   const slotCount = project.columns! * project.rows!;
+  async function commitFrameName(frame: AtlasProjectFrame): Promise<void> {
+    const newFrameId = frameNameDraft.trim();
+    if (!newFrameId || newFrameId === frame.id) { setEditingFrameId(undefined); return; }
+    if (await onRename(frame.id, newFrameId)) setEditingFrameId(undefined);
+  }
   return (
     <>
       <div className={styles.atlasEditorToolbar}>
@@ -2977,7 +2989,13 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
               type="button"
               className={`${styles.gridAtlasSlot} ${selectedSlot === slot ? styles.selectedGridAtlasSlot : ''} ${frame && frame.id === selectedFrameId ? styles.selectedGridAtlasFrame : ''} ${dragOverSlot === slot ? styles.gridAtlasDropTarget : ''}`}
               disabled={busy}
-              draggable={Boolean(frame)}
+              draggable={Boolean(frame) && editingFrameId !== frame?.id}
+              onDoubleClick={(event) => {
+                if (!frame || busy) return;
+                event.preventDefault();
+                setEditingFrameId(frame.id);
+                setFrameNameDraft(frame.id);
+              }}
               onDragStart={(event) => {
                 if (!frame) return;
                 event.dataTransfer.effectAllowed = 'move';
@@ -3020,7 +3038,27 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
                   </span>
                 </span>
               )}
-              <small>{frame?.id ?? `Slot ${slot}`}<b>{slot}</b></small>
+              <small>
+                {frame && editingFrameId === frame.id ? (
+                  <input
+                    className={styles.atlasFrameNameInput}
+                    value={frameNameDraft}
+                    autoFocus
+                    spellCheck={false}
+                    aria-label={`Frame ${frame.id} umbenennen`}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onClick={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => event.stopPropagation()}
+                    onChange={(event) => setFrameNameDraft(event.target.value)}
+                    onBlur={() => void commitFrameName(frame)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.currentTarget.blur();
+                      if (event.key === 'Escape') { event.preventDefault(); setEditingFrameId(undefined); }
+                    }}
+                  />
+                ) : <span>{frame?.id ?? `Slot ${slot}`}</span>}
+                <b>{slot}</b>
+              </small>
             </button>
           );
         })}
@@ -3029,19 +3067,27 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
   );
 }
 
-function PackedAtlasEditor({ document, busy, selectedFrameId, onSelect, onMove, onUpload, onResize }: {
+function PackedAtlasEditor({ document, busy, selectedFrameId, onSelect, onMove, onRename, onUpload, onResize }: {
   document: AtlasProjectDocument;
   busy: boolean;
   selectedFrameId?: string;
   onSelect(frameId: string): void;
   onMove(frameId: string, x: number, y: number): void;
+  onRename(frameId: string, newFrameId: string): Promise<boolean>;
   onUpload(file: File, target: { x?: number; y?: number }): void;
   onResize(width: number, height: number): void;
 }) {
   const project = document.project;
   const [width, setWidth] = useState(project.width!);
   const [height, setHeight] = useState(project.height!);
+  const [editingFrameId, setEditingFrameId] = useState<string | undefined>();
+  const [frameNameDraft, setFrameNameDraft] = useState('');
   useEffect(() => { setWidth(project.width!); setHeight(project.height!); }, [project.width, project.height]);
+  async function commitFrameName(frame: AtlasProjectFrame): Promise<void> {
+    const newFrameId = frameNameDraft.trim();
+    if (!newFrameId || newFrameId === frame.id) { setEditingFrameId(undefined); return; }
+    if (await onRename(frame.id, newFrameId)) setEditingFrameId(undefined);
+  }
   return (
     <>
       <div className={styles.atlasEditorToolbar}>
@@ -3076,12 +3122,40 @@ function PackedAtlasEditor({ document, busy, selectedFrameId, onSelect, onMove, 
               type="button"
               className={`${styles.packedAtlasFrame} ${frame.id === selectedFrameId ? styles.selectedPackedAtlasFrame : ''}`}
               style={{ left: frame.rect!.x, top: frame.rect!.y, width: frame.rect!.width, height: frame.rect!.height }}
-              draggable
+              draggable={editingFrameId !== frame.id}
               disabled={busy}
               onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(atlasFrameDragMimeType, frame.id); }}
               onClick={() => onSelect(frame.id)}
+              onDoubleClick={(event) => {
+                if (busy) return;
+                event.preventDefault();
+                setEditingFrameId(frame.id);
+                setFrameNameDraft(frame.id);
+              }}
               title={`${frame.id} · ${frame.rect!.x},${frame.rect!.y}`}
-            ><img src={atlasFrameSourceUrl(document, frame)} alt={frame.id} /></button>
+            >
+              <img src={atlasFrameSourceUrl(document, frame)} alt={frame.id} />
+              <span className={styles.packedAtlasFrameName}>
+                {editingFrameId === frame.id ? (
+                  <input
+                    className={styles.atlasFrameNameInput}
+                    value={frameNameDraft}
+                    autoFocus
+                    spellCheck={false}
+                    aria-label={`Frame ${frame.id} umbenennen`}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onClick={(event) => event.stopPropagation()}
+                    onDoubleClick={(event) => event.stopPropagation()}
+                    onChange={(event) => setFrameNameDraft(event.target.value)}
+                    onBlur={() => void commitFrameName(frame)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.currentTarget.blur();
+                      if (event.key === 'Escape') { event.preventDefault(); setEditingFrameId(undefined); }
+                    }}
+                  />
+                ) : frame.id}
+              </span>
+            </button>
           ))}
         </div>
       </div>

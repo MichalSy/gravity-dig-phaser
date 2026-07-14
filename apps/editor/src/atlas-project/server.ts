@@ -15,6 +15,7 @@ import {
 
 export type AtlasMutation =
   | { operation: 'move-frame'; frameId: string; slot?: number; x?: number; y?: number }
+  | { operation: 'rename-frame'; frameId: string; newFrameId: string }
   | { operation: 'delete-frame'; frameId: string; deleteSource?: boolean }
   | { operation: 'resize'; columns?: number; rows?: number; width?: number; height?: number };
 
@@ -127,7 +128,24 @@ export async function mutateAtlasProject(workspacePath: string, imagePath: strin
   const project = structuredClone(document.project);
   const sourceChanges = new Map<string, Buffer | null>();
 
-  if (mutation.operation === 'move-frame') {
+  if (mutation.operation === 'rename-frame') {
+    const frame = requireFrame(project, mutation.frameId);
+    const newFrameId = mutation.newFrameId.trim();
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(newFrameId)) throw new Error('Frame name may contain only letters, numbers, dots, underscores, and dashes.');
+    if (project.frames.some((candidate) => candidate.id !== frame.id && candidate.id === newFrameId)) throw new Error(`Atlas frame '${newFrameId}' already exists.`);
+    const oldSource = frame.source;
+    const newSource = `${newFrameId}${extname(oldSource).toLowerCase()}`;
+    if (project.frames.some((candidate) => candidate.id !== frame.id && candidate.source === newSource)) throw new Error(`Atlas source '${newSource}' already exists.`);
+    if (newFrameId !== frame.id) {
+      const oldSourcePath = await resolveExistingRegularPath(workspacePath, `${document.framesDirectoryPath}/${oldSource}`);
+      const newSourcePath = resolvePublicPath(workspacePath, `${document.framesDirectoryPath}/${newSource}`);
+      if (await lstat(newSourcePath).catch(() => undefined)) throw new Error(`Atlas source '${newSource}' already exists.`);
+      sourceChanges.set(oldSource, null);
+      sourceChanges.set(newSource, await readFile(oldSourcePath));
+      frame.id = newFrameId;
+      frame.source = newSource;
+    }
+  } else if (mutation.operation === 'move-frame') {
     const frame = requireFrame(project, mutation.frameId);
     if (project.type === 'grid') {
       if (!Number.isInteger(mutation.slot) || mutation.slot! < 0 || mutation.slot! >= project.columns! * project.rows!) throw new Error('Target grid slot is invalid.');
