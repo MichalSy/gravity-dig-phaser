@@ -38,6 +38,7 @@ export interface AtlasProjectDocument {
   metadataPath: string;
   framesDirectoryPath: string;
   project: AtlasProject;
+  sourceHashes?: Record<string, string>;
 }
 
 export function atlasProjectPaths(imagePath: string): { imagePath: string; metadataPath: string; framesDirectoryPath: string } {

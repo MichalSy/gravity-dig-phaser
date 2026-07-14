@@ -1,7 +1,7 @@
 import { constants as fsConstants } from 'node:fs';
 import { lstat, mkdir, open, readFile, realpath, rename, rm } from 'node:fs/promises';
 import { basename, dirname, extname, relative, resolve } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import {
   atlasFrameRect,
@@ -107,7 +107,11 @@ export async function readAtlasProjectDocument(workspacePath: string, imagePath:
   const framesDirectoryPath = await resolveExistingDirectoryPath(workspacePath, paths.framesDirectoryPath);
   const project = parseAtlasProject(JSON.parse(await readFile(metadataPath, 'utf8')));
   if (paths.imagePath.toLowerCase().endsWith(`.${project.output.format}`) === false) throw new Error(`Atlas output format '${project.output.format}' does not match ${paths.imagePath}.`);
-  return { ...paths, project };
+  const sourceHashes = Object.fromEntries(await Promise.all(project.frames.map(async (frame) => {
+    const content = await readFile(await resolveExistingRegularPath(workspacePath, `${paths.framesDirectoryPath}/${frame.source}`));
+    return [frame.id, createHash('sha256').update(content).digest('hex')] as const;
+  })));
+  return { ...paths, project, sourceHashes };
 }
 
 export async function buildAtlasProject(workspacePath: string, imagePath: string): Promise<AtlasBuildResult> {
@@ -170,11 +174,18 @@ export async function addAtlasProjectFrame(workspacePath: string, imagePath: str
   if (upload.replaceFrameId) {
     const frame = requireFrame(project, upload.replaceFrameId);
     if (project.type === 'packed') frame.rect = { ...frame.rect!, width: metadata.width, height: metadata.height };
-    sourceChanges.set(frame.source, upload.content);
+    const extension = extname(safeSourceName(upload.name)).toLowerCase();
+    const source = `${frame.id}${extension}`;
+    const occupied = project.frames.find((candidate) => candidate.id !== frame.id && candidate.source === source);
+    if (occupied) throw new Error(`Atlas source '${source}' already belongs to frame '${occupied.id}'.`);
+    if (source !== frame.source) sourceChanges.set(frame.source, null);
+    frame.source = source;
+    sourceChanges.set(source, upload.content);
   } else {
-    const source = safeSourceName(upload.name);
-    const id = uniqueFrameId(project, source.replace(/\.[^.]+$/u, ''));
-    if (project.frames.some((frame) => frame.source === source)) throw new Error(`Atlas source '${source}' already exists.`);
+    const uploadedSource = safeSourceName(upload.name);
+    const extension = extname(uploadedSource).toLowerCase();
+    const id = uniqueFrameId(project, uploadedSource.replace(/\.[^.]+$/u, ''));
+    const source = `${id}${extension}`;
     let frame: AtlasProjectFrame;
     if (project.type === 'grid') {
       if (!Number.isInteger(upload.slot) || upload.slot! < 0 || upload.slot! >= project.columns! * project.rows!) throw new Error('Target grid slot is invalid.');

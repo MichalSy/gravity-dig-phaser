@@ -2805,10 +2805,14 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
     const response = await fetch(editorApi(`/atlas-project?imagePath=${encodeURIComponent(file.path)}`), { cache: 'no-store' });
     const result = await response.json() as { ok?: boolean; document?: AtlasProjectDocument; error?: string };
     if (!response.ok || !result.ok || !result.document) throw new Error(result.error ?? `HTTP ${response.status}`);
-    setDocument(result.document);
     const nextFrameId = preferredFrameId && result.document.project.frames.some((frame) => frame.id === preferredFrameId)
       ? preferredFrameId
       : result.document.project.frames[0]?.id;
+    if (preferredFrameId && nextFrameId) {
+      const changedFrame = result.document.project.frames.find((frame) => frame.id === nextFrameId);
+      if (changedFrame) await preloadImage(atlasFrameSourceUrl(result.document, changedFrame));
+    }
+    setDocument(result.document);
     setSelectedFrameId(nextFrameId);
     setRevision((current) => current + 1);
     setStatus(`${result.document.project.type === 'grid' ? 'Grid' : 'Packed'} · ${result.document.project.frames.length} Frames`);
@@ -2900,16 +2904,6 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
           </div>
         </div>
         <div className={styles.atlasEditorBody}>
-          <aside className={styles.atlasEditorSidebar}>
-            <div className={styles.frameListHeader}>{project.frames.length} Frames · Source of Truth</div>
-            {project.frames.map((frame) => (
-              <button key={frame.id} type="button" className={`${styles.frameListItem} ${frame.id === selectedFrameId ? styles.selectedFrameListItem : ''}`} onClick={() => setSelectedFrameId(frame.id)}>
-                <img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} />
-                <span>{frame.id}</span>
-                <small>{project.type === 'grid' ? `Slot ${frame.slot}` : `${frame.rect?.x},${frame.rect?.y} · ${frame.rect?.width}×${frame.rect?.height}`}</small>
-              </button>
-            ))}
-          </aside>
           <section className={styles.atlasEditorWorkspace}>
             {project.type === 'grid' ? (
               <GridAtlasEditor
@@ -2918,7 +2912,6 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
                 uploadProgress={uploadProgress}
                 selectedFrameId={selectedFrameId}
                 selectedSlot={selectedGridSlot}
-                revision={revision}
                 onSelect={(frameId, slot) => { setSelectedFrameId(frameId); setSelectedGridSlot(slot); }}
                 onMove={(frameId, slot) => void mutate({ operation: 'move-frame', frameId, slot }, frameId)}
                 onUpload={uploadFrame}
@@ -2929,7 +2922,6 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
                 document={document}
                 busy={busy}
                 selectedFrameId={selectedFrameId}
-                revision={revision}
                 onSelect={setSelectedFrameId}
                 onMove={(frameId, x, y) => void mutate({ operation: 'move-frame', frameId, x, y }, frameId)}
                 onUpload={uploadFrame}
@@ -2947,13 +2939,12 @@ function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: Pub
   );
 }
 
-function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, selectedSlot, revision, onSelect, onMove, onUpload, onAddRow }: {
+function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, selectedSlot, onSelect, onMove, onUpload, onAddRow }: {
   document: AtlasProjectDocument;
   busy: boolean;
   uploadProgress?: AtlasUploadProgress;
   selectedFrameId?: string;
   selectedSlot?: number;
-  revision: number;
   onSelect(frameId: string | undefined, slot: number): void;
   onMove(frameId: string, slot: number): void;
   onUpload(file: File, target: { slot?: number; replaceFrameId?: string }): void;
@@ -2972,7 +2963,7 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
           const upload = event.target.files?.[0];
           if (!upload || selectedSlot === undefined) return;
           const occupied = framesBySlot.get(selectedSlot);
-          if (!occupied || window.confirm(`Grafik von '${occupied.id}' ersetzen?`)) onUpload(upload, { slot: selectedSlot, ...(occupied ? { replaceFrameId: occupied.id } : {}) });
+          onUpload(upload, { slot: selectedSlot, ...(occupied ? { replaceFrameId: occupied.id } : {}) });
           event.currentTarget.value = '';
         }} /></label>
         <span>{selectedSlot === undefined ? 'Slot wählen oder Bild direkt hineinziehen' : `Zielslot ${selectedSlot}`}</span>
@@ -3015,12 +3006,12 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
                   ?? Array.from(event.dataTransfer.items).find((item) => item.kind === 'file')?.getAsFile()
                   ?? undefined;
                 if (!upload) return;
-                if (!frame || window.confirm(`Grafik von '${frame.id}' ersetzen?`)) onUpload(upload, { slot, ...(frame ? { replaceFrameId: frame.id } : {}) });
+                onUpload(upload, { slot, ...(frame ? { replaceFrameId: frame.id } : {}) });
               }}
               onClick={() => onSelect(frame?.id, slot)}
               title={frame ? `${frame.id} · Slot ${slot}` : `Leerer Slot ${slot}`}
             >
-              {frame ? <img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} /> : <span className={styles.emptyAtlasSlot}><Plus size={18} /> Leer</span>}
+              {frame ? <img src={atlasFrameSourceUrl(document, frame)} alt={frame.id} /> : <span className={styles.emptyAtlasSlot}><Plus size={18} /> Leer</span>}
               {uploadProgress?.slot === slot && (
                 <span className={styles.atlasFrameUploadOverlay} aria-live="polite">
                   <span>{uploadProgress.phase === 'building' ? 'Atlas wird gebaut …' : `${uploadProgress.percent}%`}</span>
@@ -3038,11 +3029,10 @@ function GridAtlasEditor({ document, busy, uploadProgress, selectedFrameId, sele
   );
 }
 
-function PackedAtlasEditor({ document, busy, selectedFrameId, revision, onSelect, onMove, onUpload, onResize }: {
+function PackedAtlasEditor({ document, busy, selectedFrameId, onSelect, onMove, onUpload, onResize }: {
   document: AtlasProjectDocument;
   busy: boolean;
   selectedFrameId?: string;
-  revision: number;
   onSelect(frameId: string): void;
   onMove(frameId: string, x: number, y: number): void;
   onUpload(file: File, target: { x?: number; y?: number }): void;
@@ -3091,7 +3081,7 @@ function PackedAtlasEditor({ document, busy, selectedFrameId, revision, onSelect
               onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(atlasFrameDragMimeType, frame.id); }}
               onClick={() => onSelect(frame.id)}
               title={`${frame.id} · ${frame.rect!.x},${frame.rect!.y}`}
-            ><img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} /></button>
+            ><img src={atlasFrameSourceUrl(document, frame)} alt={frame.id} /></button>
           ))}
         </div>
       </div>
@@ -3099,8 +3089,20 @@ function PackedAtlasEditor({ document, busy, selectedFrameId, revision, onSelect
   );
 }
 
-function atlasFrameSourceUrl(document: AtlasProjectDocument, frame: AtlasProjectFrame, revision: number): string {
-  return editorApi(`/public-files/content?path=${encodeURIComponent(`${document.framesDirectoryPath}/${frame.source}`)}&atlasRevision=${revision}`);
+function atlasFrameSourceUrl(document: AtlasProjectDocument, frame: AtlasProjectFrame): string {
+  const contentHash = document.sourceHashes?.[frame.id] ?? 'unversioned';
+  return editorApi(`/public-files/content?path=${encodeURIComponent(`${document.framesDirectoryPath}/${frame.source}`)}&contentHash=${encodeURIComponent(contentHash)}`);
+}
+
+async function preloadImage(src: string): Promise<void> {
+  const image = new Image();
+  image.decoding = 'async';
+  await new Promise<void>((resolve, reject) => {
+    image.addEventListener('load', () => resolve(), { once: true });
+    image.addEventListener('error', () => reject(new Error('Aktualisierte Framegrafik konnte nicht geladen werden.')), { once: true });
+    image.src = src;
+  });
+  await image.decode().catch(() => undefined);
 }
 
 function PublicImageViewerDialog({ file, root, assets, onImageAssetDragStart, onImageAssetDragEnd, onClose }: { file?: PublicFileEntry; root: PublicFileEntry; assets: DebugImageAssetDescriptor[]; onImageAssetDragStart(payload: ImageAssetDragPayload): void; onImageAssetDragEnd(): void; onClose(): void }) {

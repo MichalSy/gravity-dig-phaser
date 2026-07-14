@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { addAtlasProjectFrame, buildAtlasProject, createAtlasProject, mutateAtlasProject, saveAtlasProjectMetadata } from '../apps/editor/src/atlas-project/server';
+import { addAtlasProjectFrame, buildAtlasProject, createAtlasProject, mutateAtlasProject, readAtlasProjectDocument, saveAtlasProjectMetadata } from '../apps/editor/src/atlas-project/server';
 import { parseAtlasProject } from '../apps/editor/src/atlas-project/types';
 
 const roots: string[] = [];
@@ -117,6 +117,36 @@ describe('atlas project generator', () => {
     const metadata = JSON.parse(await readFile(join(directory, 'effects.atlas.json'), 'utf8'));
     expect(metadata).toMatchObject({ width: 10, height: 9, frames: [] });
     await expect(readFile(join(directory, 'effects.atlas.frames/spark.png'))).rejects.toThrow();
+  });
+
+  it('names sources after unique frame ids and revisions only the changed frame hash', async () => {
+    const root = await workspace();
+    const directory = join(root, 'apps/game/public/assets');
+    await mkdir(join(directory, 'named.atlas.frames'));
+    await writeFile(join(directory, 'named.atlas.json'), JSON.stringify({
+      version: 1,
+      type: 'grid', tileWidth: 2, tileHeight: 2, columns: 2, rows: 1,
+      output: { format: 'png' },
+      frames: [],
+    }));
+    await writeFile(join(directory, 'named.atlas.png'), await solid(4, 2, { r: 0, g: 0, b: 0, alpha: 0 }));
+    const imagePath = 'apps/game/public/assets/named.atlas.png';
+
+    await addAtlasProjectFrame(root, imagePath, { name: 'same upload.png', content: await solid(2, 2, { r: 10, g: 20, b: 30 }), slot: 0 });
+    await addAtlasProjectFrame(root, imagePath, { name: 'same upload.png', content: await solid(2, 2, { r: 40, g: 50, b: 60 }), slot: 1 });
+    const before = await readAtlasProjectDocument(root, imagePath);
+    expect(before.project.frames).toEqual([
+      { id: 'same-upload', source: 'same-upload.png', slot: 0 },
+      { id: 'same-upload-2', source: 'same-upload-2.png', slot: 1 },
+    ]);
+
+    await addAtlasProjectFrame(root, imagePath, { name: 'irrelevant-file-name.webp', content: await solid(2, 2, { r: 70, g: 80, b: 90 }), replaceFrameId: 'same-upload' });
+    const after = await readAtlasProjectDocument(root, imagePath);
+    expect(after.project.frames[0]).toEqual({ id: 'same-upload', source: 'same-upload.webp', slot: 0 });
+    expect(after.sourceHashes?.['same-upload']).not.toBe(before.sourceHashes?.['same-upload']);
+    expect(after.sourceHashes?.['same-upload-2']).toBe(before.sourceHashes?.['same-upload-2']);
+    await expect(readFile(join(directory, 'named.atlas.frames/same-upload.png'))).rejects.toThrow();
+    expect(await readFile(join(directory, 'named.atlas.frames/same-upload.webp'))).toBeTruthy();
   });
 
   it('rejects symlinked frame sources and paths outside public', async () => {
