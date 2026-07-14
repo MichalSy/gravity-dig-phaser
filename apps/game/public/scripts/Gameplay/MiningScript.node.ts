@@ -6,6 +6,7 @@ type TileCell = {
   type: string;
   health: number;
   maxHealth: number;
+  foregroundFrame: number;
 };
 
 type LevelNodeLike = {
@@ -17,6 +18,8 @@ type WorldNodeLike = Core.GameNode & {
   player: { x: number; y: number };
   addChild<T extends Core.GameNode>(child: T): T;
   removeChild(child: Core.GameNode): void;
+  emitMiningFragments(frame: number, x: number, y: number, count?: number): void;
+  spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void;
 };
 
 type MovementControllerLike = {
@@ -51,6 +54,8 @@ type CrackNodeLike = Core.ImageNode;
 
 const PLAYER_HEIGHT = 64;
 const RESOURCE_TILE_TYPES = new Set(['copper', 'iron', 'gold', 'diamond']);
+const DROPPABLE_TILE_TYPES = new Set(['dirt', 'sand', 'clay', 'gravel', 'stone', 'basalt', 'copper', 'iron', 'gold', 'diamond']);
+const FRAGMENT_INTERVAL_MS = 55;
 
 export default class MiningScript extends Core.ScriptNode {
   id = 'dynamic.mining-tool';
@@ -95,6 +100,7 @@ export default class MiningScript extends Core.ScriptNode {
   private readonly currentAimWorld = new Vec2(1, 0);
   private miningPressed = false;
   private target?: TileCell;
+  private fragmentTimerMs = 0;
 
   resolve() {
     this.levelNode = this.requireResolvedNode<LevelNodeLike>(this.levelNodeId, 'Level');
@@ -128,6 +134,7 @@ export default class MiningScript extends Core.ScriptNode {
   stopFiring() {
     this.target = undefined;
     this.miningPressed = false;
+    this.fragmentTimerMs = 0;
     this.playerState?.setMiningActive(false);
     this.clearPresentation();
   }
@@ -160,11 +167,13 @@ export default class MiningScript extends Core.ScriptNode {
     this.clearPresentation(false);
 
     if (!target) {
+      this.fragmentTimerMs = 0;
       this.laserAudio.stop();
       return;
     }
     this.showTargetAndBeam(target, origin, firing);
     if (!firing || !this.playerState.hasMiningEnergy()) {
+      this.fragmentTimerMs = 0;
       this.laserAudio.stop();
       return;
     }
@@ -172,6 +181,7 @@ export default class MiningScript extends Core.ScriptNode {
     this.laserAudio.play();
     this.playerState.consumeMiningEnergy(deltaSeconds);
     target.health -= this.playerState.stats.miningDamagePerSec * deltaSeconds;
+    this.emitMiningFragments(target, deltaSeconds * 1_000);
     this.updateCrackOverlay(target);
     if (target.health <= 0) this.mineTile(target);
   }
@@ -240,11 +250,23 @@ export default class MiningScript extends Core.ScriptNode {
 
   private mineTile(cell: TileCell) {
     const minedType = cell.type;
+    const frame = cell.foregroundFrame;
+    const center = this.tileCenter(cell);
+    this.world.emitMiningFragments(frame, center.x, center.y, 9);
+    if (DROPPABLE_TILE_TYPES.has(minedType)) this.world.spawnResourceDrop(minedType, frame, center.x, center.y);
     this.levelNode.clearTile(cell);
     this.removeCrackOverlay(cell);
     this.playerState.recordMinedTile(minedType);
     const detune = Math.round(Math.random() * 90 - 45);
     (RESOURCE_TILE_TYPES.has(minedType) ? this.gemBreakAudio : this.dirtBreakAudio).playOneShot({ detune });
+  }
+
+  private emitMiningFragments(cell: TileCell, deltaMs: number) {
+    this.fragmentTimerMs += deltaMs;
+    if (this.fragmentTimerMs < FRAGMENT_INTERVAL_MS) return;
+    this.fragmentTimerMs %= FRAGMENT_INTERVAL_MS;
+    const center = this.tileCenter(cell);
+    this.world.emitMiningFragments(cell.foregroundFrame, center.x, center.y, 2);
   }
 
   private tileCenter(cell: Pick<TileCell, 'x' | 'y'>) {

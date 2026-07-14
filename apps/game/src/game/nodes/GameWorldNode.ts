@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 import { createGameWorldData, type GameWorldData } from '../nodeData';
+import { MiningEffects } from '../world/MiningEffects';
 import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
@@ -9,6 +10,7 @@ import { LevelNode } from './LevelNode';
 interface PlayerStateLike {
   getActiveRunSeed(fallback: string): string;
   startRun(planetId: string, seed: string, restoreActiveRun: boolean): unknown;
+  tryCollectMinedItem(itemId: string): boolean;
 }
 
 export interface GameWorldNodeOptions extends GameNodeOptions {
@@ -24,6 +26,7 @@ export class GameWorldNode extends GameNode {
   private shipInstance?: GameNode;
   private playerInstance?: GameNode;
   private worldView!: WorldView;
+  private miningEffects!: MiningEffects;
   private readonly instantiatePrefab: (path: string) => GameNode;
   override readonly dependencies = ['Level', 'PlayerState'] as const;
   readonly data: GameWorldData = createGameWorldData();
@@ -36,6 +39,11 @@ export class GameWorldNode extends GameNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.worldView = new WorldView(this.phaserScene);
+    this.miningEffects = new MiningEffects(this.phaserScene, {
+      collidesBox: (x, y, width, height) => Boolean(this.levelNode) && this.levelNode.collidesBox(x, y, width, height),
+      getCollector: () => this.data.player,
+      collectItem: (itemId) => Boolean(this.playerState) && this.playerState.tryCollectMinedItem(itemId),
+    });
   }
 
   resolve(): void {
@@ -50,15 +58,28 @@ export class GameWorldNode extends GameNode {
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     const [sky, tunnel, coreOuter, coreInner] = this.data.sceneObjects;
     const [backwall, foreground] = this.levelNode?.getSceneObjects() ?? [];
-    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...super.getSceneObjectsInHierarchy()]
+    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...this.miningEffects.getSceneObjects(), ...super.getSceneObjectsInHierarchy()]
       .filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
   }
 
   destroy(): void {
+    this.miningEffects.destroy();
     this.clearSceneObjects();
     this.destroyPlayer();
     this.destroyShip();
     this.data.player = undefined;
+  }
+
+  update(deltaMs: number): void {
+    this.miningEffects.update(deltaMs);
+  }
+
+  emitMiningFragments(frame: number, x: number, y: number, count = 2): void {
+    this.miningEffects.emitFragments(frame, x, y, count);
+  }
+
+  spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void {
+    this.miningEffects.spawnDrop(itemId, frame, x, y);
   }
 
   get level() {
@@ -72,6 +93,7 @@ export class GameWorldNode extends GameNode {
   }
 
   createLevel(seed = this.playerState.getActiveRunSeed('gravity-dig-phaser'), restoreActiveRun = true): void {
+    this.miningEffects.clear();
     this.clearSceneObjects();
     this.destroyPlayer();
     this.destroyShip();

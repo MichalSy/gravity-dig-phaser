@@ -25,6 +25,24 @@ describe('public player state domain', () => {
     ]);
   });
 
+  it('keeps mined resources on the ground until cargo can accept them', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    const run = manager.startRun('dev', 'pickup-seed', false);
+
+    manager.recordMinedTile('copper');
+    expect(run.cargo.slots.every((slot) => slot.quantity === 0)).toBe(true);
+    expect(manager.tryCollectMinedItem('copper')).toBe(true);
+    expect(run.cargo.slots[0]).toEqual({ itemId: 'copper', quantity: 1 });
+
+    addItem(run.cargo, 'copper', 5);
+    const fullCargo = structuredClone(run.cargo.slots);
+    expect(manager.tryCollectMinedItem('iron')).toBe(false);
+    expect(run.cargo.slots).toEqual(fullCargo);
+    vi.unstubAllGlobals();
+  });
+
   it('routes inspector patches into live run, stats, and profile state', () => {
     vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
     const manager = new PlayerStateManager();

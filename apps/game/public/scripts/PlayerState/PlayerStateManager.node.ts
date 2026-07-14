@@ -164,13 +164,17 @@ export default class PlayerStateManager extends Core.ScriptNode {
   }
 
   recordMinedTile(tileType: string) {
-    this.syncCargoToStats();
-    if (tileType in ITEM_DEFINITIONS) {
-      addItem(this.run.cargo, tileType as ItemId, 1);
-      this.saveGameState.profile.stats.resourcesMined += 1;
-    }
+    if (tileType in ITEM_DEFINITIONS) this.saveGameState.profile.stats.resourcesMined += 1;
     this.saveGameState.profile.stats.blocksMined += 1;
     this.saveActiveRun();
+  }
+
+  tryCollectMinedItem(tileType: string): boolean {
+    if (!(tileType in ITEM_DEFINITIONS)) return false;
+    this.syncCargoToStats();
+    if (addItem(this.run.cargo, tileType as ItemId, 1) !== 1) return false;
+    this.saveActiveRun();
+    return true;
   }
 
   syncCargoToStats() {
