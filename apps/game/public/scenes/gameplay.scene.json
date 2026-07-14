@@ -28,7 +28,13 @@
           },
           {
             "prefab": "prefabs/status-hud.prefab.json",
-            "prefabId": "b818f0d5-5274-5f7d-b1d0-a6adbc18c3c2"
+            "prefabId": "b818f0d5-5274-5f7d-b1d0-a6adbc18c3c2",
+            "props": {
+              "scale": {
+                "x": 0.25,
+                "y": 0.25
+              }
+            }
           },
           {
             "prefab": "prefabs/bottom-hud.prefab.json",
