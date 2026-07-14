@@ -33,6 +33,11 @@ type BottomHudLike = {
   getCargoSlotScreenPosition(index: number): { x: number; y: number } | undefined;
 };
 
+type UpgradeDialogLike = {
+  open(): void;
+  isOpen(): boolean;
+};
+
 type ShipImageLike = Core.ImageNode & {
   image: { frame: { width: number; height: number } };
   scaleX: number;
@@ -60,6 +65,7 @@ export default class ShipScript extends Core.ScriptNode {
   shipImageNodeId = Core.prop.nodeRef(null, { label: 'Ship Image' });
   promptNodeId = Core.prop.nodeRef(null, { label: 'Prompt Text' });
   bottomHudNodeId = Core.prop.nodeRef(null, { label: 'Bottom HUD Behavior' });
+  upgradeDialogNodeId = Core.prop.nodeRef(null, { label: 'Upgrade Dialog Behavior' });
   shipWidth = Core.prop.number(548.16, { label: 'Ship Width', min: 1, step: 1 });
   shipHeight = Core.prop.number(336, { label: 'Ship Height', min: 1, step: 1 });
   promptOffsetY = Core.prop.number(57.6, { label: 'Prompt Offset Y', min: 0, step: 1 });
@@ -70,6 +76,7 @@ export default class ShipScript extends Core.ScriptNode {
   private shipImage!: ShipImageLike;
   private promptText!: ShipPromptLike;
   private bottomHud!: BottomHudLike;
+  private upgradeDialog!: UpgradeDialogLike;
   private lastMessage = '';
   private lastMessageTimerMs = 0;
   private transferTimerMs = 0;
@@ -80,6 +87,7 @@ export default class ShipScript extends Core.ScriptNode {
     this.shipImage = this.requireResolvedNode<ShipImageLike>(this.shipImageNodeId, 'ShipImage');
     this.promptText = this.requireResolvedNode<ShipPromptLike>(this.promptNodeId, 'ShipPrompt');
     this.bottomHud = this.requireResolvedNode<BottomHudLike>(this.bottomHudNodeId, 'BottomHudBehavior');
+    this.upgradeDialog = this.requireResolvedNode<UpgradeDialogLike>(this.upgradeDialogNodeId, 'UpgradeDialogBehavior');
     this.layoutShipImage();
     this.resetPrompt();
   }
@@ -98,10 +106,12 @@ export default class ShipScript extends Core.ScriptNode {
       this.transferTimerMs = 0;
     }
 
-    const message = this.lastMessageTimerMs > 0
+    const message = this.upgradeDialog.isOpen()
+      ? ''
+      : this.lastMessageTimerMs > 0
       ? this.lastMessage
       : atDock
-        ? `${hasCargo ? 'Cargo wird automatisch verladen' : 'Energie wird aufgeladen'} · Credits: ${this.playerState.save.profile.credits}`
+        ? `[E] UPGRADES\n${hasCargo ? 'Cargo wird automatisch verladen' : 'Energie wird aufgeladen'} · ${this.playerState.save.profile.credits} C`
         : '';
 
     this.promptText.setText?.(message);
@@ -110,7 +120,11 @@ export default class ShipScript extends Core.ScriptNode {
   }
 
   interact() {
-    if (!this.isAtDock(this.world.player)) this.showMessage('Zu weit vom Schiff entfernt');
+    if (!this.isAtDock(this.world.player)) {
+      this.showMessage('Zu weit vom Schiff entfernt');
+      return;
+    }
+    this.upgradeDialog.open();
   }
 
   resetPrompt() {

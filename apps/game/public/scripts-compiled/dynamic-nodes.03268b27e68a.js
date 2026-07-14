@@ -625,6 +625,7 @@ var ShipScript = class extends ScriptNode {
   shipImageNodeId = prop.nodeRef(null, { label: "Ship Image" });
   promptNodeId = prop.nodeRef(null, { label: "Prompt Text" });
   bottomHudNodeId = prop.nodeRef(null, { label: "Bottom HUD Behavior" });
+  upgradeDialogNodeId = prop.nodeRef(null, { label: "Upgrade Dialog Behavior" });
   shipWidth = prop.number(548.16, { label: "Ship Width", min: 1, step: 1 });
   shipHeight = prop.number(336, { label: "Ship Height", min: 1, step: 1 });
   promptOffsetY = prop.number(57.6, { label: "Prompt Offset Y", min: 0, step: 1 });
@@ -634,6 +635,7 @@ var ShipScript = class extends ScriptNode {
   shipImage;
   promptText;
   bottomHud;
+  upgradeDialog;
   lastMessage = "";
   lastMessageTimerMs = 0;
   transferTimerMs = 0;
@@ -643,6 +645,7 @@ var ShipScript = class extends ScriptNode {
     this.shipImage = this.requireResolvedNode(this.shipImageNodeId, "ShipImage");
     this.promptText = this.requireResolvedNode(this.promptNodeId, "ShipPrompt");
     this.bottomHud = this.requireResolvedNode(this.bottomHudNodeId, "BottomHudBehavior");
+    this.upgradeDialog = this.requireResolvedNode(this.upgradeDialogNodeId, "UpgradeDialogBehavior");
     this.layoutShipImage();
     this.resetPrompt();
   }
@@ -658,13 +661,18 @@ var ShipScript = class extends ScriptNode {
     } else {
       this.transferTimerMs = 0;
     }
-    const message = this.lastMessageTimerMs > 0 ? this.lastMessage : atDock ? `${hasCargo ? "Cargo wird automatisch verladen" : "Energie wird aufgeladen"} \xB7 Credits: ${this.playerState.save.profile.credits}` : "";
+    const message = this.upgradeDialog.isOpen() ? "" : this.lastMessageTimerMs > 0 ? this.lastMessage : atDock ? `[E] UPGRADES
+${hasCargo ? "Cargo wird automatisch verladen" : "Energie wird aufgeladen"} \xB7 ${this.playerState.save.profile.credits} C` : "";
     this.promptText.setText?.(message);
     this.promptText.position = this.promptText.worldToLocalPosition({ x: player.x, y: player.y - this.promptOffsetY });
     this.promptText.visible = Boolean(message);
   }
   interact() {
-    if (!this.isAtDock(this.world.player)) this.showMessage("Zu weit vom Schiff entfernt");
+    if (!this.isAtDock(this.world.player)) {
+      this.showMessage("Zu weit vom Schiff entfernt");
+      return;
+    }
+    this.upgradeDialog.open();
   }
   resetPrompt() {
     this.lastMessage = "";
@@ -1275,156 +1283,6 @@ var ITEM_DEFINITIONS = {
   teleport_bracelet: { id: "teleport_bracelet", label: "Teleport-Armband", category: "consumable", value: 200, stackSize: 5 }
 };
 
-// public/scripts/PlayerState/inventory.ts
-function createInventory(slotCount, stackLimit) {
-  return {
-    slots: Array.from({ length: Math.max(0, Math.floor(slotCount)) }, () => ({ quantity: 0 })),
-    stackLimit
-  };
-}
-function normalizeInventory(raw, slotCount, stackLimit) {
-  const fallback = createInventory(slotCount, stackLimit);
-  if (!raw || typeof raw !== "object") return fallback;
-  const maybe = raw;
-  if (Array.isArray(maybe.slots)) {
-    const slots = maybe.slots.slice(0, slotCount).map(normalizeSlot);
-    while (slots.length < slotCount) slots.push({ quantity: 0 });
-    return { slots, stackLimit };
-  }
-  if (maybe.items && typeof maybe.items === "object") {
-    const inventory = fallback;
-    for (const [itemId, count] of Object.entries(maybe.items)) {
-      addItem(inventory, itemId, count ?? 0);
-    }
-    return inventory;
-  }
-  return fallback;
-}
-function addItem(inventory, itemId, quantity = 1) {
-  let remaining = Math.max(0, Math.floor(quantity));
-  let accepted = 0;
-  while (remaining > 0) {
-    const slot = findWritableSlot(inventory, itemId, 1);
-    if (!slot) break;
-    if (!slot.itemId || slot.quantity <= 0) {
-      slot.itemId = itemId;
-      slot.quantity = 0;
-    }
-    const space = inventory.stackLimit - slot.quantity;
-    const added = Math.min(space, remaining);
-    slot.quantity += added;
-    accepted += added;
-    remaining -= added;
-  }
-  return accepted;
-}
-function findWritableSlot(inventory, itemId, quantity) {
-  const stack = inventory.slots.find((slot) => slot.itemId === itemId && slot.quantity + quantity <= inventory.stackLimit);
-  if (stack) return stack;
-  return inventory.slots.find((slot) => !slot.itemId || slot.quantity <= 0);
-}
-function normalizeSlot(slot) {
-  if (!slot || typeof slot !== "object") return { quantity: 0 };
-  const raw = slot;
-  if (!raw.itemId || !raw.quantity || raw.quantity <= 0) return { quantity: 0 };
-  return { itemId: raw.itemId, quantity: Math.floor(raw.quantity) };
-}
-
-// public/scripts/PlayerState/RunState.ts
-function createRunState(planetId, seed, stats) {
-  return {
-    planetId,
-    seed,
-    health: stats.maxHealth,
-    energy: stats.maxEnergy,
-    fuel: 100,
-    cargo: createInventory(stats.cargoSlots, stats.cargoStackLimit),
-    temporaryEffects: [],
-    discoveredTiles: []
-  };
-}
-function normalizeRunState(run, stats) {
-  return {
-    ...run,
-    health: Math.min(run.health, stats.maxHealth),
-    energy: Math.min(run.energy, stats.maxEnergy),
-    cargo: normalizeInventory(run.cargo, stats.cargoSlots, stats.cargoStackLimit),
-    temporaryEffects: run.temporaryEffects ?? [],
-    discoveredTiles: run.discoveredTiles ?? []
-  };
-}
-
-// public/scripts/PlayerState/PlayerProfile.ts
-function createDefaultPlayerProfile() {
-  return {
-    version: 1,
-    credits: 0,
-    inventory: createInventory(8, 99),
-    equipment: {
-      laser: "laser_mk1",
-      visor: "standard_visor",
-      battery: "standard_battery",
-      boots: "no_boots",
-      coreDetector: "no_core_detector"
-    },
-    upgrades: {
-      purchased: []
-    },
-    perks: {
-      unlocked: [],
-      equipped: []
-    },
-    unlockedPlanets: ["dev_planet", "terra_prime"],
-    stats: {
-      runsStarted: 0,
-      runsCompleted: 0,
-      deaths: 0,
-      blocksMined: 0,
-      resourcesMined: 0,
-      creditsEarned: 0,
-      deepestTileReached: 0
-    }
-  };
-}
-
-// public/scripts/PlayerState/saveGame.ts
-var SAVE_KEY = "gravity-dig-save-v1";
-function createDefaultSaveGame() {
-  return {
-    version: 1,
-    profile: createDefaultPlayerProfile()
-  };
-}
-function loadSaveGame() {
-  if (typeof localStorage === "undefined") return createDefaultSaveGame();
-  const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) return createDefaultSaveGame();
-  try {
-    const parsed = JSON.parse(raw);
-    if (parsed.version !== 1 || !parsed.profile) return createDefaultSaveGame();
-    const defaults = createDefaultPlayerProfile();
-    return {
-      version: 1,
-      profile: {
-        ...defaults,
-        ...parsed.profile,
-        inventory: normalizeInventory(parsed.profile.inventory, defaults.inventory.slots.length, defaults.inventory.stackLimit),
-        equipment: parsed.profile.equipment ?? defaults.equipment,
-        upgrades: parsed.profile.upgrades ?? defaults.upgrades,
-        perks: parsed.profile.perks ?? defaults.perks,
-        stats: parsed.profile.stats ?? defaults.stats
-      },
-      activeRun: parsed.activeRun
-    };
-  } catch {
-    return createDefaultSaveGame();
-  }
-}
-function saveGame(save) {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-}
-
 // public/scripts/PlayerState/playerConfig.ts
 var TILE_SIZE = 96;
 var PLAYER_SPEED = 470;
@@ -1433,40 +1291,6 @@ var MINING_RANGE = 330;
 var MINING_DAMAGE_PER_SEC = 120;
 var ENERGY_REGEN_PER_SEC = 18;
 var ENERGY_COST_PER_SEC = 12;
-
-// public/scripts/PlayerState/catalogs/perks.ts
-var PERK_DEFINITIONS = {
-  magnet_core: {
-    id: "magnet_core",
-    label: "Magnet-Kern",
-    source: "artifact",
-    effects: []
-  },
-  luck_amulet: {
-    id: "luck_amulet",
-    label: "Gl\xFCcks-Amulett",
-    source: "artifact",
-    effects: []
-  },
-  energy_artifact: {
-    id: "energy_artifact",
-    label: "Energie-Zelle",
-    source: "artifact",
-    effects: [{ stat: "energyCostPerSec", op: "multiply", value: 0.8 }]
-  },
-  double_drop: {
-    id: "double_drop",
-    label: "Doppelg\xE4nger",
-    source: "artifact",
-    effects: []
-  },
-  phoenix_feather: {
-    id: "phoenix_feather",
-    label: "Phoenix-Feder",
-    source: "artifact",
-    effects: []
-  }
-};
 
 // public/scripts/PlayerState/catalogs/upgrades.ts
 var UPGRADE_DEFINITIONS = {
@@ -1614,6 +1438,29 @@ var UPGRADE_DEFINITIONS = {
     prerequisites: ["boots_mk3"],
     effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.22 }]
   },
+  speed_mk1: {
+    id: "speed_mk1",
+    label: "Servo-Antrieb I",
+    category: "boots",
+    cost: { credits: 100 },
+    effects: [{ stat: "moveSpeed", op: "set", value: 520 }]
+  },
+  speed_mk2: {
+    id: "speed_mk2",
+    label: "Servo-Antrieb II",
+    category: "boots",
+    cost: { credits: 300 },
+    prerequisites: ["speed_mk1"],
+    effects: [{ stat: "moveSpeed", op: "set", value: 575 }]
+  },
+  speed_mk3: {
+    id: "speed_mk3",
+    label: "Servo-Antrieb III",
+    category: "boots",
+    cost: { credits: 750 },
+    prerequisites: ["speed_mk2"],
+    effects: [{ stat: "moveSpeed", op: "set", value: 635 }]
+  },
   core_compass: {
     id: "core_compass",
     label: "Core-Compass",
@@ -1641,39 +1488,47 @@ var UPGRADE_DEFINITIONS = {
     id: "cargo_mk1",
     label: "Erweiterter Laderaum I",
     category: "cargo",
-    cost: { credits: 300 },
-    effects: [{ stat: "cargoSlots", op: "set", value: 2 }]
+    cost: { credits: 150 },
+    effects: [{ stat: "cargoSlots", op: "set", value: 3 }]
   },
   cargo_mk2: {
     id: "cargo_mk2",
     label: "Erweiterter Laderaum II",
     category: "cargo",
-    cost: { credits: 800 },
+    cost: { credits: 450 },
     prerequisites: ["cargo_mk1"],
-    effects: [{ stat: "cargoSlots", op: "set", value: 3 }]
+    effects: [{ stat: "cargoSlots", op: "set", value: 4 }]
   },
   cargo_mk3: {
     id: "cargo_mk3",
     label: "Erweiterter Laderaum III",
     category: "cargo",
-    cost: { credits: 2e3 },
+    cost: { credits: 1e3 },
     prerequisites: ["cargo_mk2"],
-    effects: [{ stat: "cargoSlots", op: "set", value: 4 }]
+    effects: [{ stat: "cargoSlots", op: "set", value: 5 }]
   },
   cargo_stack_mk1: {
     id: "cargo_stack_mk1",
     label: "Stack-Kompression I",
     category: "cargo",
-    cost: { credits: 600 },
+    cost: { credits: 250 },
     effects: [{ stat: "cargoStackLimit", op: "set", value: 5 }]
   },
   cargo_stack_mk2: {
     id: "cargo_stack_mk2",
     label: "Stack-Kompression II",
     category: "cargo",
-    cost: { credits: 1500 },
+    cost: { credits: 700 },
     prerequisites: ["cargo_stack_mk1"],
-    effects: [{ stat: "cargoStackLimit", op: "set", value: 10 }]
+    effects: [{ stat: "cargoStackLimit", op: "set", value: 8 }]
+  },
+  cargo_stack_mk3: {
+    id: "cargo_stack_mk3",
+    label: "Stack-Kompression III",
+    category: "cargo",
+    cost: { credits: 1600 },
+    prerequisites: ["cargo_stack_mk2"],
+    effects: [{ stat: "cargoStackLimit", op: "set", value: 12 }]
   },
   engine_mk1: {
     id: "engine_mk1",
@@ -1697,6 +1552,210 @@ var UPGRADE_DEFINITIONS = {
     cost: { credits: 4e3 },
     prerequisites: ["engine_mk2"],
     effects: [{ stat: "fuelEfficiency", op: "multiply", value: 1.4 }]
+  }
+};
+
+// public/scripts/PlayerState/inventory.ts
+function createInventory(slotCount, stackLimit) {
+  return {
+    slots: Array.from({ length: Math.max(0, Math.floor(slotCount)) }, () => ({ quantity: 0 })),
+    stackLimit
+  };
+}
+function normalizeInventory(raw, slotCount, stackLimit) {
+  const fallback = createInventory(slotCount, stackLimit);
+  if (!raw || typeof raw !== "object") return fallback;
+  const maybe = raw;
+  if (Array.isArray(maybe.slots)) {
+    const slots = maybe.slots.slice(0, slotCount).map(normalizeSlot);
+    while (slots.length < slotCount) slots.push({ quantity: 0 });
+    return { slots, stackLimit };
+  }
+  if (maybe.items && typeof maybe.items === "object") {
+    const inventory = fallback;
+    for (const [itemId, count] of Object.entries(maybe.items)) {
+      addItem(inventory, itemId, count ?? 0);
+    }
+    return inventory;
+  }
+  return fallback;
+}
+function getInventoryCount(inventory, itemId) {
+  return inventory.slots.reduce((sum, slot) => sum + (slot.itemId === itemId ? slot.quantity : 0), 0);
+}
+function addItem(inventory, itemId, quantity = 1) {
+  let remaining = Math.max(0, Math.floor(quantity));
+  let accepted = 0;
+  while (remaining > 0) {
+    const slot = findWritableSlot(inventory, itemId, 1);
+    if (!slot) break;
+    if (!slot.itemId || slot.quantity <= 0) {
+      slot.itemId = itemId;
+      slot.quantity = 0;
+    }
+    const space = inventory.stackLimit - slot.quantity;
+    const added = Math.min(space, remaining);
+    slot.quantity += added;
+    accepted += added;
+    remaining -= added;
+  }
+  return accepted;
+}
+function removeItem(inventory, itemId, quantity = 1) {
+  let remaining = Math.max(0, Math.floor(quantity));
+  let removed = 0;
+  for (const slot of inventory.slots) {
+    if (slot.itemId !== itemId || remaining <= 0) continue;
+    const amount = Math.min(slot.quantity, remaining);
+    slot.quantity -= amount;
+    removed += amount;
+    remaining -= amount;
+    if (slot.quantity <= 0) clearSlot(slot);
+  }
+  return removed;
+}
+function findWritableSlot(inventory, itemId, quantity) {
+  const stack = inventory.slots.find((slot) => slot.itemId === itemId && slot.quantity + quantity <= inventory.stackLimit);
+  if (stack) return stack;
+  return inventory.slots.find((slot) => !slot.itemId || slot.quantity <= 0);
+}
+function normalizeSlot(slot) {
+  if (!slot || typeof slot !== "object") return { quantity: 0 };
+  const raw = slot;
+  if (!raw.itemId || !raw.quantity || raw.quantity <= 0) return { quantity: 0 };
+  return { itemId: raw.itemId, quantity: Math.floor(raw.quantity) };
+}
+function clearSlot(slot) {
+  delete slot.itemId;
+  slot.quantity = 0;
+}
+
+// public/scripts/PlayerState/RunState.ts
+function createRunState(planetId, seed, stats) {
+  return {
+    planetId,
+    seed,
+    health: stats.maxHealth,
+    energy: stats.maxEnergy,
+    fuel: 100,
+    cargo: createInventory(stats.cargoSlots, stats.cargoStackLimit),
+    temporaryEffects: [],
+    discoveredTiles: []
+  };
+}
+function normalizeRunState(run, stats) {
+  return {
+    ...run,
+    health: Math.min(run.health, stats.maxHealth),
+    energy: Math.min(run.energy, stats.maxEnergy),
+    cargo: normalizeInventory(run.cargo, stats.cargoSlots, stats.cargoStackLimit),
+    temporaryEffects: run.temporaryEffects ?? [],
+    discoveredTiles: run.discoveredTiles ?? []
+  };
+}
+
+// public/scripts/PlayerState/PlayerProfile.ts
+function createDefaultPlayerProfile() {
+  return {
+    version: 1,
+    credits: 0,
+    inventory: createInventory(8, 99),
+    equipment: {
+      laser: "laser_mk1",
+      visor: "standard_visor",
+      battery: "standard_battery",
+      boots: "no_boots",
+      coreDetector: "no_core_detector"
+    },
+    upgrades: {
+      purchased: []
+    },
+    perks: {
+      unlocked: [],
+      equipped: []
+    },
+    unlockedPlanets: ["dev_planet", "terra_prime"],
+    stats: {
+      runsStarted: 0,
+      runsCompleted: 0,
+      deaths: 0,
+      blocksMined: 0,
+      resourcesMined: 0,
+      creditsEarned: 0,
+      deepestTileReached: 0
+    }
+  };
+}
+
+// public/scripts/PlayerState/saveGame.ts
+var SAVE_KEY = "gravity-dig-save-v1";
+function createDefaultSaveGame() {
+  return {
+    version: 1,
+    profile: createDefaultPlayerProfile()
+  };
+}
+function loadSaveGame() {
+  if (typeof localStorage === "undefined") return createDefaultSaveGame();
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return createDefaultSaveGame();
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.version !== 1 || !parsed.profile) return createDefaultSaveGame();
+    const defaults = createDefaultPlayerProfile();
+    return {
+      version: 1,
+      profile: {
+        ...defaults,
+        ...parsed.profile,
+        inventory: normalizeInventory(parsed.profile.inventory, defaults.inventory.slots.length, defaults.inventory.stackLimit),
+        equipment: parsed.profile.equipment ?? defaults.equipment,
+        upgrades: parsed.profile.upgrades ?? defaults.upgrades,
+        perks: parsed.profile.perks ?? defaults.perks,
+        stats: parsed.profile.stats ?? defaults.stats
+      },
+      activeRun: parsed.activeRun
+    };
+  } catch {
+    return createDefaultSaveGame();
+  }
+}
+function saveGame(save) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+}
+
+// public/scripts/PlayerState/catalogs/perks.ts
+var PERK_DEFINITIONS = {
+  magnet_core: {
+    id: "magnet_core",
+    label: "Magnet-Kern",
+    source: "artifact",
+    effects: []
+  },
+  luck_amulet: {
+    id: "luck_amulet",
+    label: "Gl\xFCcks-Amulett",
+    source: "artifact",
+    effects: []
+  },
+  energy_artifact: {
+    id: "energy_artifact",
+    label: "Energie-Zelle",
+    source: "artifact",
+    effects: [{ stat: "energyCostPerSec", op: "multiply", value: 0.8 }]
+  },
+  double_drop: {
+    id: "double_drop",
+    label: "Doppelg\xE4nger",
+    source: "artifact",
+    effects: []
+  },
+  phoenix_feather: {
+    id: "phoenix_feather",
+    label: "Phoenix-Feder",
+    source: "artifact",
+    effects: []
   }
 };
 
@@ -1899,6 +1958,40 @@ var PlayerStateManager = class extends ScriptNode {
       this.effectivePlayerStats.cargoSlots,
       this.effectivePlayerStats.cargoStackLimit
     );
+  }
+  getProfileCredits() {
+    return this.saveGameState.profile.credits;
+  }
+  isUpgradePurchased(upgradeId) {
+    return this.saveGameState.profile.upgrades.purchased.includes(upgradeId);
+  }
+  purchaseUpgrade(upgradeId) {
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
+    if (!definition) return { ok: false, message: "Upgrade nicht gefunden" };
+    if (this.isUpgradePurchased(upgradeId)) return { ok: false, message: "Bereits installiert" };
+    const missingPrerequisite = definition.prerequisites?.find((id) => !this.isUpgradePurchased(id));
+    if (missingPrerequisite) return { ok: false, message: "Vorherige Stufe erforderlich" };
+    const credits = definition.cost.credits ?? 0;
+    if (this.saveGameState.profile.credits < credits) return { ok: false, message: "Nicht genug Credits" };
+    for (const [itemId, quantity] of Object.entries(definition.cost.items ?? {})) {
+      if (getInventoryCount(this.saveGameState.profile.inventory, itemId) < quantity) {
+        return { ok: false, message: `Es fehlen ${quantity}\xD7 ${ITEM_DEFINITIONS[itemId].label}` };
+      }
+    }
+    this.saveGameState.profile.credits -= credits;
+    for (const [itemId, quantity] of Object.entries(definition.cost.items ?? {})) {
+      removeItem(this.saveGameState.profile.inventory, itemId, quantity);
+    }
+    this.saveGameState.profile.upgrades.purchased.push(upgradeId);
+    this.effectivePlayerStats = computeEffectiveStats(this.saveGameState.profile);
+    if (this.activeRunState) {
+      this.activeRunState.energy = Math.min(this.activeRunState.energy, this.effectivePlayerStats.maxEnergy);
+      this.syncCargoToStats();
+      this.saveActiveRun();
+    } else {
+      saveGame(this.saveGameState);
+    }
+    return { ok: true, message: `${definition.label} installiert` };
   }
   hasCargo() {
     return this.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
@@ -2122,6 +2215,123 @@ function clamp5(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+// public/scripts/UI/UpgradeDialogScript.node.ts
+var ROWS = [
+  { label: "BEWEGUNGSTEMPO", ids: ["speed_mk1", "speed_mk2", "speed_mk3"], stat: "moveSpeed", suffix: " px/s" },
+  { label: "CARGO-SLOTS", ids: ["cargo_mk1", "cargo_mk2", "cargo_mk3"], stat: "cargoSlots", suffix: "" },
+  { label: "STACKGR\xD6SSE", ids: ["cargo_stack_mk1", "cargo_stack_mk2", "cargo_stack_mk3"], stat: "cargoStackLimit", suffix: "" }
+];
+var UpgradeDialogScript = class extends ScriptNode {
+  id = "dynamic.upgrade-dialog";
+  name = "Upgrade Dialog";
+  playerStateNodeId = prop.nodeRef(null, { label: "Player State" });
+  gameplayInputNodeId = prop.nodeRef(null, { label: "Gameplay Input" });
+  dialogRootNodeId = prop.nodeRef(null, { label: "Dialog Root" });
+  creditsTextNodeId = prop.nodeRef(null, { label: "Credits Text" });
+  statusTextNodeId = prop.nodeRef(null, { label: "Status Text" });
+  closeButtonNodeId = prop.nodeRef(null, { label: "Close Button" });
+  valueTextNodeIds = prop.nodeRefList([], { label: "Value Texts" });
+  buyButtonNodeIds = prop.nodeRefList([], { label: "Buy Buttons" });
+  buyLabelNodeIds = prop.nodeRefList([], { label: "Buy Labels" });
+  playerState;
+  dialogRoot;
+  gameplayInput;
+  creditsText;
+  statusText;
+  values = [];
+  buttons = [];
+  buttonLabels = [];
+  keyHandler;
+  opened = false;
+  resolve() {
+    this.playerState = this.resolveNode(this.playerStateNodeId, "PlayerState");
+    this.gameplayInput = this.resolveNode(this.gameplayInputNodeId, "GameplayInput");
+    this.dialogRoot = this.requireNodeRef(this.dialogRootNodeId, "Dialog root");
+    this.creditsText = this.requireNodeRef(this.creditsTextNodeId, "Credits text");
+    this.statusText = this.requireNodeRef(this.statusTextNodeId, "Status text");
+    this.values = this.valueTextNodeIds.map((id, index) => this.requireNodeRef(id, `Value text ${index}`));
+    this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef(id, `Buy button ${index}`));
+    this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef(id, `Buy label ${index}`));
+    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(index)));
+    this.requireNodeRef(this.closeButtonNodeId, "Close button").setClickAction?.(() => this.close());
+    this.keyHandler = (event) => {
+      if (event.key === "Escape" && this.isOpen()) this.close();
+    };
+    window.addEventListener("keydown", this.keyHandler);
+    this.close();
+  }
+  destroy() {
+    this.buttons.forEach((button) => button.setClickAction?.());
+    if (this.keyHandler) window.removeEventListener("keydown", this.keyHandler);
+    this.keyHandler = void 0;
+    this.gameplayInput?.setMenuOpen(false);
+  }
+  open() {
+    this.opened = true;
+    this.dialogRoot.applySceneProps({ active: true });
+    this.setDialogVisible(true);
+    this.gameplayInput?.setMenuOpen(true);
+    this.statusText.setText("W\xE4hle ein Upgrade");
+    this.updateView();
+  }
+  close() {
+    this.opened = false;
+    if (this.dialogRoot) {
+      this.setDialogVisible(false);
+      this.dialogRoot.applySceneProps({ active: false });
+    }
+    this.gameplayInput?.setMenuOpen(false);
+  }
+  isOpen() {
+    return this.opened;
+  }
+  purchase(rowIndex) {
+    const row = ROWS[rowIndex];
+    const nextId = row?.ids.find((id) => !this.playerState.isUpgradePurchased(id));
+    if (!nextId) return;
+    const result = this.playerState.purchaseUpgrade(nextId);
+    this.statusText.setText(result.message);
+    this.updateView();
+  }
+  updateView() {
+    this.creditsText.setText(`${this.playerState.getProfileCredits()} CREDITS`);
+    ROWS.forEach((row, index) => {
+      const current = Math.round(this.playerState.stats[row.stat]);
+      const nextId = row.ids.find((id) => !this.playerState.isUpgradePurchased(id));
+      const next = nextId ? UPGRADE_DEFINITIONS[nextId] : void 0;
+      const nextValue = next?.effects.find((effect) => effect.stat === row.stat)?.value;
+      this.values[index]?.setText(next ? `${row.label}
+${current}${row.suffix}  \u2192  ${Math.round(nextValue ?? current)}${row.suffix}` : `${row.label}
+${current}${row.suffix}  \xB7  MAX`);
+      const cost = next?.cost.credits ?? 0;
+      const affordable = Boolean(next && this.playerState.getProfileCredits() >= cost);
+      if (this.buttons[index]) this.buttons[index].enabled = affordable;
+      this.buttonLabels[index]?.setText(next ? `${cost} C` : "MAX");
+    });
+  }
+  setDialogVisible(visible) {
+    const visit = (node) => {
+      if ("visible" in node) node.applySceneProps({ visible });
+      node.children.forEach(visit);
+    };
+    visit(this.dialogRoot);
+    this.dialogRoot.getSceneObjectsInHierarchy().forEach((object) => {
+      object.setVisible?.(visible);
+    });
+  }
+  resolveNode(nodeId, fallbackName) {
+    const node = nodeId ? this.getNodeById(nodeId) : this.getNode(fallbackName);
+    if (!node) throw new Error(`Required node '${fallbackName}' was not resolved`);
+    return node;
+  }
+  requireNodeRef(nodeId, label) {
+    if (!nodeId) throw new Error(`${label} node is not configured`);
+    const node = this.getNodeById(nodeId);
+    if (!node) throw new Error(`${label} node was not resolved`);
+    return node;
+  }
+};
+
 // node_modules/.script-build/dynamic-nodes.entry.ts
 function createDynamicNodeModule(ScriptClass, baseName) {
   const probe = new ScriptClass();
@@ -2146,11 +2356,12 @@ var modules = [
   createDynamicNodeModule(LevelManager, "Managers-LevelManager"),
   createDynamicNodeModule(PlayerStateManager, "PlayerState-PlayerStateManager"),
   createDynamicNodeModule(BottomHudScript, "UI-BottomHudScript"),
-  createDynamicNodeModule(StatusHudScript, "UI-StatusHudScript")
+  createDynamicNodeModule(StatusHudScript, "UI-StatusHudScript"),
+  createDynamicNodeModule(UpgradeDialogScript, "UI-UpgradeDialogScript")
 ];
 var dynamic_nodes_entry_default = { modules };
 export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.035b0a7e1c72.js.map
+//# sourceMappingURL=dynamic-nodes.03268b27e68a.js.map

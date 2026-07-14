@@ -90,6 +90,9 @@ export type UpgradeId =
   | 'boots_mk2'
   | 'boots_mk3'
   | 'boots_mk4'
+  | 'speed_mk1'
+  | 'speed_mk2'
+  | 'speed_mk3'
   | 'core_compass'
   | 'core_scanner'
   | 'advanced_mapper'
@@ -98,6 +101,7 @@ export type UpgradeId =
   | 'cargo_mk3'
   | 'cargo_stack_mk1'
   | 'cargo_stack_mk2'
+  | 'cargo_stack_mk3'
   | 'engine_mk1'
   | 'engine_mk2'
   | 'engine_mk3';

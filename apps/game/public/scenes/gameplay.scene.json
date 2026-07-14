@@ -60,6 +60,10 @@
           {
             "name": "UI.TouchControls",
             "nodeTypeId": "a690aad8-ce49-5365-9c2d-0d636d5dcb77"
+          },
+          {
+            "prefab": "prefabs/upgrade-dialog.prefab.json",
+            "prefabId": "a0000000-4f5c-4d31-9000-000000000001"
           }
         ]
       }

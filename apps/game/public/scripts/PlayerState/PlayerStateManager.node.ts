@@ -1,15 +1,21 @@
 import * as Core from '@gravity-dig/game-core';
 import { ITEM_DEFINITIONS } from './catalogs/items';
-import { addItem, normalizeInventory } from './inventory';
+import { UPGRADE_DEFINITIONS } from './catalogs/upgrades';
+import { addItem, getInventoryCount, normalizeInventory, removeItem } from './inventory';
 import { createRunState, normalizeRunState } from './RunState';
 import { loadSaveGame, saveGame } from './saveGame';
 import { computeEffectiveStats } from './stats';
-import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from './types';
+import type { EffectivePlayerStats, ItemId, RunState, SaveGame, UpgradeId } from './types';
 
 export interface CargoTransferItem {
   itemId: ItemId;
   slotIndex: number;
   credits: number;
+}
+
+export interface UpgradePurchaseResult {
+  ok: boolean;
+  message: string;
 }
 
 export default class PlayerStateManager extends Core.ScriptNode {
@@ -176,6 +182,42 @@ export default class PlayerStateManager extends Core.ScriptNode {
       this.effectivePlayerStats.cargoSlots,
       this.effectivePlayerStats.cargoStackLimit,
     );
+  }
+
+  getProfileCredits() { return this.saveGameState.profile.credits; }
+
+  isUpgradePurchased(upgradeId: UpgradeId) {
+    return this.saveGameState.profile.upgrades.purchased.includes(upgradeId);
+  }
+
+  purchaseUpgrade(upgradeId: UpgradeId): UpgradePurchaseResult {
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
+    if (!definition) return { ok: false, message: 'Upgrade nicht gefunden' };
+    if (this.isUpgradePurchased(upgradeId)) return { ok: false, message: 'Bereits installiert' };
+    const missingPrerequisite = definition.prerequisites?.find((id) => !this.isUpgradePurchased(id));
+    if (missingPrerequisite) return { ok: false, message: 'Vorherige Stufe erforderlich' };
+    const credits = definition.cost.credits ?? 0;
+    if (this.saveGameState.profile.credits < credits) return { ok: false, message: 'Nicht genug Credits' };
+    for (const [itemId, quantity] of Object.entries(definition.cost.items ?? {}) as [ItemId, number][]) {
+      if (getInventoryCount(this.saveGameState.profile.inventory, itemId) < quantity) {
+        return { ok: false, message: `Es fehlen ${quantity}× ${ITEM_DEFINITIONS[itemId].label}` };
+      }
+    }
+
+    this.saveGameState.profile.credits -= credits;
+    for (const [itemId, quantity] of Object.entries(definition.cost.items ?? {}) as [ItemId, number][]) {
+      removeItem(this.saveGameState.profile.inventory, itemId, quantity);
+    }
+    this.saveGameState.profile.upgrades.purchased.push(upgradeId);
+    this.effectivePlayerStats = computeEffectiveStats(this.saveGameState.profile);
+    if (this.activeRunState) {
+      this.activeRunState.energy = Math.min(this.activeRunState.energy, this.effectivePlayerStats.maxEnergy);
+      this.syncCargoToStats();
+      this.saveActiveRun();
+    } else {
+      saveGame(this.saveGameState);
+    }
+    return { ok: true, message: `${definition.label} installiert` };
   }
 
   hasCargo() {

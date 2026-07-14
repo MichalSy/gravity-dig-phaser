@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "prefabId": "a0000000-4f5c-4d31-9000-000000000001",
+  "root": {
+    "name": "UI.UpgradeDialog",
+    "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+    "nodeId": "a1000000-4f5c-4d31-9000-000000000001",
+    "props": {
+      "parentAnchor": "center",
+      "origin": { "x": 0, "y": 0 },
+      "position": { "x": -380, "y": -260 },
+      "size": { "width": 760, "height": 520 },
+      "sizeMode": "explicit",
+      "debugScrollFactor": 0
+    },
+    "children": [
+      {
+        "name": "DialogBackdrop",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "a2000000-4f5c-4d31-9000-000000000002",
+        "props": {
+          "parentAnchor": "center",
+          "position": { "x": 0, "y": 0 },
+          "origin": { "x": 0.5, "y": 0.5 },
+          "size": { "width": 760, "height": 520 },
+          "sizeMode": "explicit",
+          "fillColor": "#0b1220",
+          "fillAlpha": 0.97,
+          "strokeColor": "#facc15",
+          "strokeAlpha": 0.9,
+          "strokeWidth": 4,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "DialogTitle",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "a3000000-4f5c-4d31-9000-000000000003",
+        "props": {
+          "text": "SCHIFF-UPGRADES",
+          "fontId": "silkscreen-latin-700",
+          "fontSize": 34,
+          "color": "#fff4c7",
+          "origin": { "x": 0, "y": 0.5 },
+          "parentAnchor": "center",
+          "position": { "x": -330, "y": -220 },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "CreditsText",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "a4000000-4f5c-4d31-9000-000000000004",
+        "props": {
+          "text": "0 CREDITS",
+          "fontId": "silkscreen-latin-700",
+          "fontSize": 20,
+          "color": "#facc15",
+          "origin": { "x": 1, "y": 0.5 },
+          "parentAnchor": "center",
+          "position": { "x": 265, "y": -220 },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "CloseButton",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "a5000000-4f5c-4d31-9000-000000000005",
+        "props": {
+          "enabled": true,
+          "size": { "width": 48, "height": 48 },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": { "x": 330, "y": -220 },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "a6000000-4f5c-4d31-9000-000000000006",
+            "props": { "text": "X", "fontId": "silkscreen-latin-700", "fontSize": 24, "color": "#ffffff", "scrollFactor": 0 }
+          }
+        ]
+      },
+      {
+        "name": "SpeedCard",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "b1000000-4f5c-4d31-9000-000000000011",
+        "props": { "parentAnchor": "center", "position": { "x": 0, "y": -105 }, "origin": { "x": 0.5, "y": 0.5 }, "size": { "width": 680, "height": 96 }, "sizeMode": "explicit", "fillColor": "#172033", "fillAlpha": 1, "strokeColor": "#334155", "strokeAlpha": 1, "strokeWidth": 2, "scrollFactor": 0 }
+      },
+      {
+        "name": "SlotsCard",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "b2000000-4f5c-4d31-9000-000000000012",
+        "props": { "parentAnchor": "center", "position": { "x": 0, "y": 10 }, "origin": { "x": 0.5, "y": 0.5 }, "size": { "width": 680, "height": 96 }, "sizeMode": "explicit", "fillColor": "#172033", "fillAlpha": 1, "strokeColor": "#334155", "strokeAlpha": 1, "strokeWidth": 2, "scrollFactor": 0 }
+      },
+      {
+        "name": "StackCard",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "b3000000-4f5c-4d31-9000-000000000013",
+        "props": { "parentAnchor": "center", "position": { "x": 0, "y": 125 }, "origin": { "x": 0.5, "y": 0.5 }, "size": { "width": 680, "height": 96 }, "sizeMode": "explicit", "fillColor": "#172033", "fillAlpha": 1, "strokeColor": "#334155", "strokeAlpha": 1, "strokeWidth": 2, "scrollFactor": 0 }
+      },
+      {
+        "name": "SpeedValue",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "c1000000-4f5c-4d31-9000-000000000021",
+        "props": { "text": "BEWEGUNGSTEMPO", "fontId": "silkscreen-latin-700", "fontSize": 19, "lineSpacing": 8, "color": "#e2e8f0", "origin": { "x": 0, "y": 0.5 }, "parentAnchor": "center", "position": { "x": -305, "y": -105 }, "scrollFactor": 0 }
+      },
+      {
+        "name": "SlotsValue",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "c2000000-4f5c-4d31-9000-000000000022",
+        "props": { "text": "CARGO-SLOTS", "fontId": "silkscreen-latin-700", "fontSize": 19, "lineSpacing": 8, "color": "#e2e8f0", "origin": { "x": 0, "y": 0.5 }, "parentAnchor": "center", "position": { "x": -305, "y": 10 }, "scrollFactor": 0 }
+      },
+      {
+        "name": "StackValue",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "c3000000-4f5c-4d31-9000-000000000023",
+        "props": { "text": "STACKGRÖSSE", "fontId": "silkscreen-latin-700", "fontSize": 19, "lineSpacing": 8, "color": "#e2e8f0", "origin": { "x": 0, "y": 0.5 }, "parentAnchor": "center", "position": { "x": -305, "y": 125 }, "scrollFactor": 0 }
+      },
+      {
+        "name": "SpeedBuyButton",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "d1000000-4f5c-4d31-9000-000000000031",
+        "props": { "enabled": true, "size": { "width": 170, "height": 58 }, "sizeMode": "explicit", "parentAnchor": "center", "position": { "x": 235, "y": -105 }, "scrollFactor": 0 },
+        "children": [{ "name": "Label", "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302", "nodeId": "e1000000-4f5c-4d31-9000-000000000041", "props": { "text": "100 C", "fontId": "silkscreen-latin-700", "fontSize": 21, "color": "#ffffff", "scrollFactor": 0 } }]
+      },
+      {
+        "name": "SlotsBuyButton",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "d2000000-4f5c-4d31-9000-000000000032",
+        "props": { "enabled": true, "size": { "width": 170, "height": 58 }, "sizeMode": "explicit", "parentAnchor": "center", "position": { "x": 235, "y": 10 }, "scrollFactor": 0 },
+        "children": [{ "name": "Label", "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302", "nodeId": "e2000000-4f5c-4d31-9000-000000000042", "props": { "text": "150 C", "fontId": "silkscreen-latin-700", "fontSize": 21, "color": "#ffffff", "scrollFactor": 0 } }]
+      },
+      {
+        "name": "StackBuyButton",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "d3000000-4f5c-4d31-9000-000000000033",
+        "props": { "enabled": true, "size": { "width": 170, "height": 58 }, "sizeMode": "explicit", "parentAnchor": "center", "position": { "x": 235, "y": 125 }, "scrollFactor": 0 },
+        "children": [{ "name": "Label", "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302", "nodeId": "e3000000-4f5c-4d31-9000-000000000043", "props": { "text": "250 C", "fontId": "silkscreen-latin-700", "fontSize": 21, "color": "#ffffff", "scrollFactor": 0 } }]
+      },
+      {
+        "name": "StatusText",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "f1000000-4f5c-4d31-9000-000000000051",
+        "props": { "text": "Wähle ein Upgrade", "fontId": "silkscreen-latin-700", "fontSize": 16, "color": "#93c5fd", "origin": { "x": 0.5, "y": 0.5 }, "parentAnchor": "center", "position": { "x": 0, "y": 220 }, "scrollFactor": 0 }
+      },
+      {
+        "name": "UpgradeDialogBehavior",
+        "nodeTypeId": "dynamic.upgrade-dialog",
+        "nodeId": "f2000000-4f5c-4d31-9000-000000000052",
+        "props": {
+          "playerStateNodeId": null,
+          "gameplayInputNodeId": null,
+          "dialogRootNodeId": "a1000000-4f5c-4d31-9000-000000000001",
+          "creditsTextNodeId": "a4000000-4f5c-4d31-9000-000000000004",
+          "statusTextNodeId": "f1000000-4f5c-4d31-9000-000000000051",
+          "closeButtonNodeId": "a5000000-4f5c-4d31-9000-000000000005",
+          "valueTextNodeIds": ["c1000000-4f5c-4d31-9000-000000000021", "c2000000-4f5c-4d31-9000-000000000022", "c3000000-4f5c-4d31-9000-000000000023"],
+          "buyButtonNodeIds": ["d1000000-4f5c-4d31-9000-000000000031", "d2000000-4f5c-4d31-9000-000000000032", "d3000000-4f5c-4d31-9000-000000000033"],
+          "buyLabelNodeIds": ["e1000000-4f5c-4d31-9000-000000000041", "e2000000-4f5c-4d31-9000-000000000042", "e3000000-4f5c-4d31-9000-000000000043"]
+        }
+      }
+    ]
+  }
+}
