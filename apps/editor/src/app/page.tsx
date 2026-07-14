@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, UploadCloud, Waypoints } from 'lucide-react';
+import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2, Component, Cpu, Crosshair, Download, Eye, EyeOff, File as FileIcon, FileCode2, Folder, FolderOpen, FolderTree, Frame, Gauge, Image as ImageIcon, ImagePlay, Joystick, Keyboard, Layers, LoaderCircle, Map as MapIcon, MousePointerClick, PanelBottom, Pickaxe, Plus, Power, PowerOff, RadioTower, RectangleHorizontal, Rocket, Route, Search, ShipWheel, Smartphone, Sparkles, SquareDashed, Trash2, Type as TypeIcon, UploadCloud, Waypoints } from 'lucide-react';
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 import { buildNestedFileBundles, type NestedFileBundle } from '../file-nesting';
@@ -2182,6 +2182,8 @@ function PublicAssetExplorer({
   const childDirectories = selectedDirectory?.children?.filter((entry) => entry.kind === 'directory') ?? [];
   const [expandedBundlePaths, setExpandedBundlePaths] = useState<Set<string>>(() => new Set());
   const [uploadDropActive, setUploadDropActive] = useState(false);
+  const [downloadStatus, setDownloadStatus] = useState('');
+  const [downloading, setDownloading] = useState(false);
   const uploadDragDepthRef = useRef(0);
   const selectionAnchorRef = useRef<string | undefined>(undefined);
   const nestableEntries = useMemo(() => [...childDirectories, ...files], [childDirectories, files]);
@@ -2236,6 +2238,37 @@ function PublicAssetExplorer({
       else next.add(path);
       return next;
     });
+  }
+
+  async function downloadSelection(): Promise<void> {
+    if (selectedFiles.length === 0 || downloading) return;
+    setDownloading(true);
+    setDownloadStatus(`${selectedFiles.length} Datei${selectedFiles.length === 1 ? '' : 'en'} wird heruntergeladen ...`);
+    try {
+      const response = await fetch(editorApi('/public-files/download'), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ paths: selectedFiles.map((file) => file.path) }),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => undefined) as { error?: string } | undefined;
+        throw new Error(result?.error ?? `HTTP ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = selectedFiles.length === 1 ? selectedFiles[0].name : 'gravity-dig-assets.zip';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      setDownloadStatus(`${selectedFiles.length} Datei${selectedFiles.length === 1 ? '' : 'en'} heruntergeladen`);
+    } catch (error) {
+      setDownloadStatus(`Download fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   function createAtlas(): void {
@@ -2320,12 +2353,17 @@ function PublicAssetExplorer({
             <div className={styles.fileListTitleRow}>
               <strong>{selectedFiles.length > 1 ? `${selectedFiles.length} Dateien ausgewählt` : compactPublicPath(selectedDirectory?.path ?? 'apps/game/public')}</strong>
               {selectedFiles.length > 0 && (
-                <button type="button" className={`${styles.inlineIconButton} ${styles.deleteFileButton}`} onClick={onDeleteSelection} aria-label={`${selectedFiles.length} ausgewählte Datei${selectedFiles.length === 1 ? '' : 'en'} löschen`} title="Ausgewählte Dateien löschen">
-                  <Trash2 size={14} />
-                </button>
+                <span className={styles.fileSelectionActions}>
+                  <button type="button" className={styles.inlineIconButton} disabled={downloading} onClick={() => void downloadSelection()} aria-label={`${selectedFiles.length} ausgewählte Datei${selectedFiles.length === 1 ? '' : 'en'} herunterladen`} title={selectedFiles.length === 1 ? 'Datei herunterladen' : 'Ausgewählte Dateien als ZIP herunterladen'}>
+                    <Download size={14} />
+                  </button>
+                  <button type="button" className={`${styles.inlineIconButton} ${styles.deleteFileButton}`} onClick={onDeleteSelection} aria-label={`${selectedFiles.length} ausgewählte Datei${selectedFiles.length === 1 ? '' : 'en'} löschen`} title="Ausgewählte Dateien löschen">
+                    <Trash2 size={14} />
+                  </button>
+                </span>
               )}
             </div>
-            <span>{operationStatus || `${childDirectories.length} Ordner · ${filesStatus || `${files.length} Dateien`}`}</span>
+            <span>{downloadStatus || operationStatus || `${childDirectories.length} Ordner · ${filesStatus || `${files.length} Dateien`}`}</span>
           </div>
           <div className={styles.assetGrid}>
             {uploadDropActive && (
