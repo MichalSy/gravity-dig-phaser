@@ -7,6 +7,7 @@ type PlayerBody = {
 
 type WorldNodeLike = {
   player: PlayerBody;
+  launchCargoTransfer(itemId: string, startScreenX: number, startScreenY: number, shipX: number, shipY: number): void;
 };
 
 type CargoSlot = {
@@ -14,10 +15,22 @@ type CargoSlot = {
   quantity: number;
 };
 
+type CargoTransferItem = {
+  itemId: string;
+  slotIndex: number;
+  credits: number;
+};
+
 type PlayerStateLike = {
-  run: { cargo: { slots: CargoSlot[] } };
+  run: { energy: number; cargo: { slots: CargoSlot[] } };
+  stats: { maxEnergy: number };
   save: { profile: { credits: number } };
-  returnCargoToShip(): { message: string };
+  recoverEnergyAtShip(deltaSeconds: number): void;
+  transferNextCargoItemToShip(): CargoTransferItem | undefined;
+};
+
+type BottomHudLike = {
+  getCargoSlotScreenPosition(index: number): { x: number; y: number } | undefined;
 };
 
 type ShipImageLike = Core.ImageNode & {
@@ -35,6 +48,8 @@ type ShipPromptLike = Core.TextNode & {
 const SHIP_DOCK_CENTER_X = -288;
 const SHIP_DOCK_CENTER_Y = 240;
 const SHIP_DOCK_RADIUS = 120;
+const CARGO_TRANSFER_MIN_INTERVAL_MS = 120;
+const CARGO_TRANSFER_MAX_INTERVAL_MS = 230;
 
 export default class ShipScript extends Core.ScriptNode {
   id = 'dynamic.ship';
@@ -44,6 +59,7 @@ export default class ShipScript extends Core.ScriptNode {
   playerStateNodeId = Core.prop.nodeRef(null, { label: 'Player State Node' });
   shipImageNodeId = Core.prop.nodeRef(null, { label: 'Ship Image' });
   promptNodeId = Core.prop.nodeRef(null, { label: 'Prompt Text' });
+  bottomHudNodeId = Core.prop.nodeRef(null, { label: 'Bottom HUD Behavior' });
   shipWidth = Core.prop.number(548.16, { label: 'Ship Width', min: 1, step: 1 });
   shipHeight = Core.prop.number(336, { label: 'Ship Height', min: 1, step: 1 });
   promptOffsetY = Core.prop.number(57.6, { label: 'Prompt Offset Y', min: 0, step: 1 });
@@ -53,14 +69,17 @@ export default class ShipScript extends Core.ScriptNode {
   private playerState!: PlayerStateLike;
   private shipImage!: ShipImageLike;
   private promptText!: ShipPromptLike;
+  private bottomHud!: BottomHudLike;
   private lastMessage = '';
   private lastMessageTimerMs = 0;
+  private transferTimerMs = 0;
 
   resolve() {
     this.world = this.requireResolvedNode<WorldNodeLike>(this.worldNodeId, 'World');
     this.playerState = this.requireResolvedNode<PlayerStateLike>(this.playerStateNodeId, 'PlayerState');
     this.shipImage = this.requireResolvedNode<ShipImageLike>(this.shipImageNodeId, 'ShipImage');
     this.promptText = this.requireResolvedNode<ShipPromptLike>(this.promptNodeId, 'ShipPrompt');
+    this.bottomHud = this.requireResolvedNode<BottomHudLike>(this.bottomHudNodeId, 'BottomHudBehavior');
     this.layoutShipImage();
     this.resetPrompt();
   }
@@ -72,10 +91,17 @@ export default class ShipScript extends Core.ScriptNode {
     const player = this.world.player;
     const atDock = this.isAtDock(player);
     const hasCargo = this.playerState.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    if (atDock) {
+      this.playerState.recoverEnergyAtShip(deltaMs / 1_000);
+      this.updateCargoTransfer(deltaMs);
+    } else {
+      this.transferTimerMs = 0;
+    }
+
     const message = this.lastMessageTimerMs > 0
       ? this.lastMessage
       : atDock
-        ? `${hasCargo ? 'E: Cargo sichern & verkaufen' : 'E: Energie am Schiff auffüllen'} · Credits: ${this.playerState.save.profile.credits}`
+        ? `${hasCargo ? 'Cargo wird automatisch verladen' : 'Energie wird aufgeladen'} · Credits: ${this.playerState.save.profile.credits}`
         : '';
 
     this.promptText.setText?.(message);
@@ -84,19 +110,29 @@ export default class ShipScript extends Core.ScriptNode {
   }
 
   interact() {
-    const player = this.world.player;
-    if (!this.isAtDock(player)) {
-      this.showMessage('Zu weit vom Schiff entfernt');
-      return;
-    }
-    this.showMessage(this.playerState.returnCargoToShip().message);
+    if (!this.isAtDock(this.world.player)) this.showMessage('Zu weit vom Schiff entfernt');
   }
 
   resetPrompt() {
     this.lastMessage = '';
     this.lastMessageTimerMs = 0;
+    this.transferTimerMs = 0;
     this.promptText?.setText?.('');
     if (this.promptText) this.promptText.visible = false;
+  }
+
+  private updateCargoTransfer(deltaMs: number) {
+    this.transferTimerMs = Math.max(0, this.transferTimerMs - deltaMs);
+    if (this.transferTimerMs > 0) return;
+    const slotIndex = this.playerState.run.cargo.slots.findIndex((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    if (slotIndex < 0) return;
+    const start = this.bottomHud.getCargoSlotScreenPosition(slotIndex);
+    if (!start) return;
+    const transfer = this.playerState.transferNextCargoItemToShip();
+    if (!transfer) return;
+    this.world.launchCargoTransfer(transfer.itemId, start.x, start.y, SHIP_DOCK_CENTER_X, SHIP_DOCK_CENTER_Y);
+    this.transferTimerMs = CARGO_TRANSFER_MIN_INTERVAL_MS
+      + Math.random() * (CARGO_TRANSFER_MAX_INTERVAL_MS - CARGO_TRANSFER_MIN_INTERVAL_MS);
   }
 
   private layoutShipImage() {

@@ -43,6 +43,24 @@ describe('public player state domain', () => {
     vi.unstubAllGlobals();
   });
 
+  it('only recharges at the ship and transfers cargo one animated unit at a time', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    const run = manager.startRun('dev', 'ship-transfer-seed', false);
+    run.energy = 20;
+    manager.update(1_000);
+    expect(run.energy).toBe(20);
+    manager.recoverEnergyAtShip(1);
+    expect(run.energy).toBe(38);
+
+    addItem(run.cargo, 'copper', 2);
+    expect(manager.transferNextCargoItemToShip()).toEqual({ itemId: 'copper', slotIndex: 0, credits: 3 });
+    expect(run.cargo.slots[0]).toEqual({ itemId: 'copper', quantity: 1 });
+    expect(manager.save.profile.credits).toBe(3);
+    vi.unstubAllGlobals();
+  });
+
   it('routes inspector patches into live run, stats, and profile state', () => {
     vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
     const manager = new PlayerStateManager();

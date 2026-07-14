@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { emitGameEvent, GAME_EVENTS } from '../gameEvents';
 import { createGameWorldData, type GameWorldData } from '../nodeData';
+import { CargoTransferEffects } from '../world/CargoTransferEffects';
 import { MiningEffects } from '../world/MiningEffects';
 import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
@@ -27,6 +28,7 @@ export class GameWorldNode extends GameNode {
   private playerInstance?: GameNode;
   private worldView!: WorldView;
   private miningEffects!: MiningEffects;
+  private cargoTransferEffects!: CargoTransferEffects;
   private readonly instantiatePrefab: (path: string) => GameNode;
   override readonly dependencies = ['Level', 'PlayerState'] as const;
   readonly data: GameWorldData = createGameWorldData();
@@ -39,6 +41,7 @@ export class GameWorldNode extends GameNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.worldView = new WorldView(this.phaserScene);
+    this.cargoTransferEffects = new CargoTransferEffects(this.phaserScene);
     this.miningEffects = new MiningEffects(this.phaserScene, {
       collidesBox: (x, y, width, height) => Boolean(this.levelNode) && this.levelNode.collidesBox(x, y, width, height),
       getCollector: () => this.data.player,
@@ -58,12 +61,13 @@ export class GameWorldNode extends GameNode {
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     const [sky, tunnel, coreOuter, coreInner] = this.data.sceneObjects;
     const [backwall, foreground] = this.levelNode?.getSceneObjects() ?? [];
-    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...this.miningEffects.getSceneObjects(), ...super.getSceneObjectsInHierarchy()]
+    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...this.miningEffects.getSceneObjects(), ...this.cargoTransferEffects.getSceneObjects(), ...super.getSceneObjectsInHierarchy()]
       .filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
   }
 
   destroy(): void {
     this.miningEffects.destroy();
+    this.cargoTransferEffects.destroy();
     this.clearSceneObjects();
     this.destroyPlayer();
     this.destroyShip();
@@ -72,6 +76,7 @@ export class GameWorldNode extends GameNode {
 
   update(deltaMs: number): void {
     this.miningEffects.update(deltaMs);
+    this.cargoTransferEffects.update(deltaMs);
   }
 
   emitMiningFragments(materialId: string, x: number, y: number, count = 3): void {
@@ -80,6 +85,10 @@ export class GameWorldNode extends GameNode {
 
   spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void {
     this.miningEffects.spawnDrop(itemId, frame, x, y);
+  }
+
+  launchCargoTransfer(itemId: string, startScreenX: number, startScreenY: number, shipX: number, shipY: number): void {
+    this.cargoTransferEffects.launch(itemId, startScreenX, startScreenY, shipX, shipY);
   }
 
   get level() {
@@ -94,6 +103,7 @@ export class GameWorldNode extends GameNode {
 
   createLevel(seed = this.playerState.getActiveRunSeed('gravity-dig-phaser'), restoreActiveRun = true): void {
     this.miningEffects.clear();
+    this.cargoTransferEffects.clear();
     this.clearSceneObjects();
     this.destroyPlayer();
     this.destroyShip();

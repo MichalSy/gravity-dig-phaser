@@ -30,7 +30,6 @@ type MovementControllerLike = {
 
 type PlayerStateLike = {
   stats: { miningRange: number; miningDamagePerSec: number };
-  setMiningActive(active: boolean): void;
   hasMiningEnergy(): boolean;
   consumeMiningEnergy(deltaSeconds: number): void;
   recordMinedTile(tileType: string): void;
@@ -135,7 +134,6 @@ export default class MiningScript extends Core.ScriptNode {
     this.target = undefined;
     this.miningPressed = false;
     this.fragmentTimerMs = 0;
-    this.playerState?.setMiningActive(false);
     this.clearPresentation();
   }
 
@@ -162,7 +160,6 @@ export default class MiningScript extends Core.ScriptNode {
     const target = findFirstMineableTile(origin, aimWorld, this.playerState.stats.miningRange, this.levelNode);
     const firing = intent.miningPressed;
     this.miningPressed = firing;
-    this.playerState.setMiningActive(firing);
     this.target = target;
     this.clearPresentation(false);
 

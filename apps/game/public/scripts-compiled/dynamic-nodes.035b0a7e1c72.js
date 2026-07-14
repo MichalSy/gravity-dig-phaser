@@ -214,7 +214,6 @@ var MiningScript = class extends ScriptNode {
     this.target = void 0;
     this.miningPressed = false;
     this.fragmentTimerMs = 0;
-    this.playerState?.setMiningActive(false);
     this.clearPresentation();
   }
   isMiningPressed() {
@@ -238,7 +237,6 @@ var MiningScript = class extends ScriptNode {
     const target = findFirstMineableTile(origin, aimWorld, this.playerState.stats.miningRange, this.levelNode);
     const firing = intent.miningPressed;
     this.miningPressed = firing;
-    this.playerState.setMiningActive(firing);
     this.target = target;
     this.clearPresentation(false);
     if (!target) {
@@ -617,6 +615,8 @@ var PlayerMovementScript = class extends ScriptNode {
 var SHIP_DOCK_CENTER_X = -288;
 var SHIP_DOCK_CENTER_Y = 240;
 var SHIP_DOCK_RADIUS = 120;
+var CARGO_TRANSFER_MIN_INTERVAL_MS = 120;
+var CARGO_TRANSFER_MAX_INTERVAL_MS = 230;
 var ShipScript = class extends ScriptNode {
   id = "dynamic.ship";
   name = "Ship Script";
@@ -624,6 +624,7 @@ var ShipScript = class extends ScriptNode {
   playerStateNodeId = prop.nodeRef(null, { label: "Player State Node" });
   shipImageNodeId = prop.nodeRef(null, { label: "Ship Image" });
   promptNodeId = prop.nodeRef(null, { label: "Prompt Text" });
+  bottomHudNodeId = prop.nodeRef(null, { label: "Bottom HUD Behavior" });
   shipWidth = prop.number(548.16, { label: "Ship Width", min: 1, step: 1 });
   shipHeight = prop.number(336, { label: "Ship Height", min: 1, step: 1 });
   promptOffsetY = prop.number(57.6, { label: "Prompt Offset Y", min: 0, step: 1 });
@@ -632,13 +633,16 @@ var ShipScript = class extends ScriptNode {
   playerState;
   shipImage;
   promptText;
+  bottomHud;
   lastMessage = "";
   lastMessageTimerMs = 0;
+  transferTimerMs = 0;
   resolve() {
     this.world = this.requireResolvedNode(this.worldNodeId, "World");
     this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
     this.shipImage = this.requireResolvedNode(this.shipImageNodeId, "ShipImage");
     this.promptText = this.requireResolvedNode(this.promptNodeId, "ShipPrompt");
+    this.bottomHud = this.requireResolvedNode(this.bottomHudNodeId, "BottomHudBehavior");
     this.layoutShipImage();
     this.resetPrompt();
   }
@@ -648,24 +652,38 @@ var ShipScript = class extends ScriptNode {
     const player = this.world.player;
     const atDock = this.isAtDock(player);
     const hasCargo = this.playerState.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
-    const message = this.lastMessageTimerMs > 0 ? this.lastMessage : atDock ? `${hasCargo ? "E: Cargo sichern & verkaufen" : "E: Energie am Schiff auff\xFCllen"} \xB7 Credits: ${this.playerState.save.profile.credits}` : "";
+    if (atDock) {
+      this.playerState.recoverEnergyAtShip(deltaMs / 1e3);
+      this.updateCargoTransfer(deltaMs);
+    } else {
+      this.transferTimerMs = 0;
+    }
+    const message = this.lastMessageTimerMs > 0 ? this.lastMessage : atDock ? `${hasCargo ? "Cargo wird automatisch verladen" : "Energie wird aufgeladen"} \xB7 Credits: ${this.playerState.save.profile.credits}` : "";
     this.promptText.setText?.(message);
     this.promptText.position = this.promptText.worldToLocalPosition({ x: player.x, y: player.y - this.promptOffsetY });
     this.promptText.visible = Boolean(message);
   }
   interact() {
-    const player = this.world.player;
-    if (!this.isAtDock(player)) {
-      this.showMessage("Zu weit vom Schiff entfernt");
-      return;
-    }
-    this.showMessage(this.playerState.returnCargoToShip().message);
+    if (!this.isAtDock(this.world.player)) this.showMessage("Zu weit vom Schiff entfernt");
   }
   resetPrompt() {
     this.lastMessage = "";
     this.lastMessageTimerMs = 0;
+    this.transferTimerMs = 0;
     this.promptText?.setText?.("");
     if (this.promptText) this.promptText.visible = false;
+  }
+  updateCargoTransfer(deltaMs) {
+    this.transferTimerMs = Math.max(0, this.transferTimerMs - deltaMs);
+    if (this.transferTimerMs > 0) return;
+    const slotIndex = this.playerState.run.cargo.slots.findIndex((slot) => Boolean(slot.itemId && slot.quantity > 0));
+    if (slotIndex < 0) return;
+    const start = this.bottomHud.getCargoSlotScreenPosition(slotIndex);
+    if (!start) return;
+    const transfer = this.playerState.transferNextCargoItemToShip();
+    if (!transfer) return;
+    this.world.launchCargoTransfer(transfer.itemId, start.x, start.y, SHIP_DOCK_CENTER_X, SHIP_DOCK_CENTER_Y);
+    this.transferTimerMs = CARGO_TRANSFER_MIN_INTERVAL_MS + Math.random() * (CARGO_TRANSFER_MAX_INTERVAL_MS - CARGO_TRANSFER_MIN_INTERVAL_MS);
   }
   layoutShipImage() {
     const frame = this.shipImage.image.frame;
@@ -1746,7 +1764,6 @@ var PlayerStateManager = class extends ScriptNode {
   activeRunState;
   effectivePlayerStats;
   saveTimerMs = 0;
-  miningActive = false;
   init() {
     this.saveGameState = loadSaveGame();
     this.effectivePlayerStats = computeEffectiveStats(this.saveGameState.profile);
@@ -1844,20 +1861,15 @@ var PlayerStateManager = class extends ScriptNode {
     const activeRun = restoreActiveRun && this.saveGameState.activeRun?.planetId === planetId && this.saveGameState.activeRun.seed === seed ? this.saveGameState.activeRun : void 0;
     this.activeRunState = activeRun ? normalizeRunState(activeRun, this.effectivePlayerStats) : createRunState(planetId, seed, this.effectivePlayerStats);
     this.saveTimerMs = 0;
-    this.miningActive = false;
     this.saveActiveRun();
     return this.activeRunState;
   }
   update(deltaMs) {
     if (!this.activeRunState) return;
-    if (!this.miningActive) this.recoverEnergy(deltaMs / 1e3);
     this.saveTimerMs += deltaMs;
     if (this.saveTimerMs < 1e3) return;
     this.saveTimerMs = 0;
     this.saveActiveRun();
-  }
-  setMiningActive(active) {
-    this.miningActive = active;
   }
   hasMiningEnergy() {
     return this.run.energy > 0;
@@ -1865,12 +1877,8 @@ var PlayerStateManager = class extends ScriptNode {
   consumeMiningEnergy(deltaSeconds) {
     this.run.energy = Math.max(0, this.run.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
   }
-  recoverEnergy(deltaSeconds) {
+  recoverEnergyAtShip(deltaSeconds) {
     this.run.energy = Math.min(this.effectivePlayerStats.maxEnergy, this.run.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds);
-  }
-  refillEnergy() {
-    this.run.energy = this.effectivePlayerStats.maxEnergy;
-    this.saveActiveRun();
   }
   recordMinedTile(tileType) {
     if (tileType in ITEM_DEFINITIONS) this.saveGameState.profile.stats.resourcesMined += 1;
@@ -1895,29 +1903,24 @@ var PlayerStateManager = class extends ScriptNode {
   hasCargo() {
     return this.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
   }
-  returnCargoToShip() {
-    const cargo = this.run.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
-    if (cargo.length === 0) {
-      this.refillEnergy();
-      return { message: "Schiffsdock: Energie aufgef\xFCllt", transferred: 0, credits: 0 };
-    }
-    let credits = 0;
-    let transferred = 0;
-    for (const slot of cargo) {
-      if (!slot.itemId) continue;
+  transferNextCargoItemToShip() {
+    for (let slotIndex = 0; slotIndex < this.run.cargo.slots.length; slotIndex += 1) {
+      const slot = this.run.cargo.slots[slotIndex];
+      if (!slot.itemId || slot.quantity <= 0) continue;
       const itemId = slot.itemId;
       const definition = ITEM_DEFINITIONS[itemId];
-      const quantity = slot.quantity;
-      addItem(this.saveGameState.profile.inventory, itemId, quantity);
-      credits += definition.value * quantity;
-      transferred += quantity;
-      delete slot.itemId;
-      slot.quantity = 0;
+      if (!definition || addItem(this.saveGameState.profile.inventory, itemId, 1) !== 1) return void 0;
+      slot.quantity -= 1;
+      if (slot.quantity <= 0) {
+        delete slot.itemId;
+        slot.quantity = 0;
+      }
+      this.saveGameState.profile.credits += definition.value;
+      this.saveGameState.profile.stats.creditsEarned += definition.value;
+      this.saveActiveRun();
+      return { itemId, slotIndex, credits: definition.value };
     }
-    this.saveGameState.profile.credits += credits;
-    this.saveGameState.profile.stats.creditsEarned += credits;
-    this.refillEnergy();
-    return { message: `Cargo gesichert: ${transferred} Items \xB7 +${credits} Credits`, transferred, credits };
+    return void 0;
   }
   saveActiveRun() {
     if (!this.activeRunState) return;
@@ -1961,6 +1964,9 @@ var BottomHudScript = class extends ScriptNode {
   editorUpdate() {
     this.syncSlotCount();
     this.updateHud();
+  }
+  getCargoSlotScreenPosition(index) {
+    return this.slotItems[index]?.getWorldPosition();
   }
   destroy() {
     while (this.slots.length > 0) this.removeLastSlot();
@@ -2147,4 +2153,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.7d4af8c73d03.js.map
+//# sourceMappingURL=dynamic-nodes.035b0a7e1c72.js.map

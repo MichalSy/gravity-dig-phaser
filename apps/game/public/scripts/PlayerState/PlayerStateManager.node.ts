@@ -6,9 +6,9 @@ import { loadSaveGame, saveGame } from './saveGame';
 import { computeEffectiveStats } from './stats';
 import type { EffectivePlayerStats, ItemId, RunState, SaveGame } from './types';
 
-export interface CargoReturnResult {
-  message: string;
-  transferred: number;
+export interface CargoTransferItem {
+  itemId: ItemId;
+  slotIndex: number;
   credits: number;
 }
 
@@ -42,7 +42,6 @@ export default class PlayerStateManager extends Core.ScriptNode {
   private activeRunState?: RunState;
   private effectivePlayerStats!: EffectivePlayerStats;
   private saveTimerMs = 0;
-  private miningActive = false;
 
   init() {
     this.saveGameState = loadSaveGame();
@@ -136,33 +135,26 @@ export default class PlayerStateManager extends Core.ScriptNode {
       ? normalizeRunState(activeRun, this.effectivePlayerStats)
       : createRunState(planetId, seed, this.effectivePlayerStats);
     this.saveTimerMs = 0;
-    this.miningActive = false;
+
     this.saveActiveRun();
     return this.activeRunState;
   }
 
   update(deltaMs: number) {
     if (!this.activeRunState) return;
-    if (!this.miningActive) this.recoverEnergy(deltaMs / 1000);
     this.saveTimerMs += deltaMs;
     if (this.saveTimerMs < 1000) return;
     this.saveTimerMs = 0;
     this.saveActiveRun();
   }
 
-  setMiningActive(active: boolean) { this.miningActive = active; }
   hasMiningEnergy() { return this.run.energy > 0; }
   consumeMiningEnergy(deltaSeconds: number) {
     this.run.energy = Math.max(0, this.run.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
   }
-  recoverEnergy(deltaSeconds: number) {
+  recoverEnergyAtShip(deltaSeconds: number) {
     this.run.energy = Math.min(this.effectivePlayerStats.maxEnergy, this.run.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds);
   }
-  refillEnergy() {
-    this.run.energy = this.effectivePlayerStats.maxEnergy;
-    this.saveActiveRun();
-  }
-
   recordMinedTile(tileType: string) {
     if (tileType in ITEM_DEFINITIONS) this.saveGameState.profile.stats.resourcesMined += 1;
     this.saveGameState.profile.stats.blocksMined += 1;
@@ -190,29 +182,24 @@ export default class PlayerStateManager extends Core.ScriptNode {
     return this.run.cargo.slots.some((slot) => Boolean(slot.itemId && slot.quantity > 0));
   }
 
-  returnCargoToShip(): CargoReturnResult {
-    const cargo = this.run.cargo.slots.filter((slot) => Boolean(slot.itemId && slot.quantity > 0));
-    if (cargo.length === 0) {
-      this.refillEnergy();
-      return { message: 'Schiffsdock: Energie aufgefüllt', transferred: 0, credits: 0 };
-    }
-    let credits = 0;
-    let transferred = 0;
-    for (const slot of cargo) {
-      if (!slot.itemId) continue;
+  transferNextCargoItemToShip(): CargoTransferItem | undefined {
+    for (let slotIndex = 0; slotIndex < this.run.cargo.slots.length; slotIndex += 1) {
+      const slot = this.run.cargo.slots[slotIndex];
+      if (!slot.itemId || slot.quantity <= 0) continue;
       const itemId = slot.itemId;
       const definition = ITEM_DEFINITIONS[itemId];
-      const quantity = slot.quantity;
-      addItem(this.saveGameState.profile.inventory, itemId, quantity);
-      credits += definition.value * quantity;
-      transferred += quantity;
-      delete slot.itemId;
-      slot.quantity = 0;
+      if (!definition || addItem(this.saveGameState.profile.inventory, itemId, 1) !== 1) return undefined;
+      slot.quantity -= 1;
+      if (slot.quantity <= 0) {
+        delete slot.itemId;
+        slot.quantity = 0;
+      }
+      this.saveGameState.profile.credits += definition.value;
+      this.saveGameState.profile.stats.creditsEarned += definition.value;
+      this.saveActiveRun();
+      return { itemId, slotIndex, credits: definition.value };
     }
-    this.saveGameState.profile.credits += credits;
-    this.saveGameState.profile.stats.creditsEarned += credits;
-    this.refillEnergy();
-    return { message: `Cargo gesichert: ${transferred} Items · +${credits} Credits`, transferred, credits };
+    return undefined;
   }
 
   saveActiveRun() {

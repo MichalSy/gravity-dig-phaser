@@ -75,6 +75,10 @@ export default class BottomHudScript extends Core.ScriptNode {
     this.updateHud();
   }
 
+  getCargoSlotScreenPosition(index: number) {
+    return this.slotItems[index]?.getWorldPosition();
+  }
+
   destroy() {
     while (this.slots.length > 0) this.removeLastSlot();
   }
