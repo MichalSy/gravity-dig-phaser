@@ -93,8 +93,8 @@
       "slot": 16
     },
     {
-      "id": "ice",
-      "source": "ice.png",
+      "id": "ice-block",
+      "source": "ice-block.png",
       "slot": 17
     },
     {
@@ -261,6 +261,11 @@
       "id": "void",
       "source": "void.png",
       "slot": 50
+    },
+    {
+      "id": "big-dirt",
+      "source": "big-dirt.png",
+      "slot": 51
     }
   ],
   "tileWidth": 96,
