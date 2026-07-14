@@ -1655,6 +1655,7 @@ button.fileRow:hover { background: rgba(14, 165, 233, 0.1); border-color: rgba(1
 .gridAtlasSlot:hover { border-color: rgba(56, 189, 248, 0.65); }
 .selectedGridAtlasSlot { box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.72); }
 .selectedGridAtlasFrame { border-color: #38bdf8; }
+.gridAtlasDropTarget { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.7); background-color: rgba(34, 197, 94, 0.12); }
 .gridAtlasSlot img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
 .gridAtlasSlot small { min-width: 0; display: flex; justify-content: space-between; gap: 4px; color: #cbd5e1; font-size: 9px; overflow: hidden; }
 .gridAtlasSlot small b { color: #7dd3fc; }

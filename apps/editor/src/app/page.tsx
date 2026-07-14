@@ -2915,6 +2915,7 @@ function GridAtlasEditor({ document, busy, selectedFrameId, selectedSlot, revisi
   onAddRow(): void;
 }) {
   const project = document.project;
+  const [dragOverSlot, setDragOverSlot] = useState<number | undefined>();
   const framesBySlot = new Map(project.frames.map((frame) => [frame.slot!, frame]));
   const slotCount = project.columns! * project.rows!;
   return (
@@ -2938,7 +2939,7 @@ function GridAtlasEditor({ document, busy, selectedFrameId, selectedSlot, revisi
             <button
               key={slot}
               type="button"
-              className={`${styles.gridAtlasSlot} ${selectedSlot === slot ? styles.selectedGridAtlasSlot : ''} ${frame?.id === selectedFrameId ? styles.selectedGridAtlasFrame : ''}`}
+              className={`${styles.gridAtlasSlot} ${selectedSlot === slot ? styles.selectedGridAtlasSlot : ''} ${frame && frame.id === selectedFrameId ? styles.selectedGridAtlasFrame : ''} ${dragOverSlot === slot ? styles.gridAtlasDropTarget : ''}`}
               disabled={busy}
               draggable={Boolean(frame)}
               onDragStart={(event) => {
@@ -2946,12 +2947,28 @@ function GridAtlasEditor({ document, busy, selectedFrameId, selectedSlot, revisi
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData(atlasFrameDragMimeType, frame.id);
               }}
-              onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = event.dataTransfer.types.includes('Files') ? 'copy' : 'move'; }}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragOverSlot(slot);
+                onSelect(frame?.id, slot);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = Array.from(event.dataTransfer.types).includes('Files') ? 'copy' : 'move';
+              }}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOverSlot((current) => current === slot ? undefined : current);
+              }}
               onDrop={(event) => {
                 event.preventDefault();
+                event.stopPropagation();
+                setDragOverSlot(undefined);
+                onSelect(frame?.id, slot);
                 const movingFrameId = event.dataTransfer.getData(atlasFrameDragMimeType);
                 if (movingFrameId) { onMove(movingFrameId, slot); return; }
-                const upload = event.dataTransfer.files[0];
+                const upload = event.dataTransfer.files[0]
+                  ?? Array.from(event.dataTransfer.items).find((item) => item.kind === 'file')?.getAsFile()
+                  ?? undefined;
                 if (!upload) return;
                 if (!frame || window.confirm(`Grafik von '${frame.id}' ersetzen?`)) onUpload(upload, { slot, ...(frame ? { replaceFrameId: frame.id } : {}) });
               }}
