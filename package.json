@@ -14,6 +14,7 @@
     "build:protocol": "npm run build -w packages/debug-protocol",
     "build:game": "npm run build -w apps/game",
     "build:editor": "npm run build -w apps/editor",
+    "build:atlases": "vite-node apps/editor/scripts/build-atlas-projects.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

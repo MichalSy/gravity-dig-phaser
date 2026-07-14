@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "atlas-project.schema.json",
+  "title": "Gravity Dig Atlas Project",
+  "type": "object",
+  "required": ["version", "type", "output", "frames"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "type": { "enum": ["grid", "packed"] },
+    "tileWidth": { "type": "integer", "minimum": 1 },
+    "tileHeight": { "type": "integer", "minimum": 1 },
+    "columns": { "type": "integer", "minimum": 1 },
+    "rows": { "type": "integer", "minimum": 1 },
+    "width": { "type": "integer", "minimum": 1 },
+    "height": { "type": "integer", "minimum": 1 },
+    "output": {
+      "type": "object",
+      "required": ["format"],
+      "properties": {
+        "format": { "enum": ["png", "webp"] },
+        "lossless": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "pattern": "^[^/\\\\]+$" },
+          "slot": { "type": "integer", "minimum": 0 },
+          "rect": {
+            "type": "object",
+            "required": ["x", "y", "width", "height"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 0 },
+              "y": { "type": "integer", "minimum": 0 },
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          },
+          "pivot": {
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "grid" } } },
+      "then": { "required": ["tileWidth", "tileHeight", "columns", "rows"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "packed" } } },
+      "then": { "required": ["width", "height"] }
+    }
+  ],
+  "additionalProperties": false
+}

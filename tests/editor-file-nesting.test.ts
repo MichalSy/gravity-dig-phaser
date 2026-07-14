@@ -5,6 +5,10 @@ function files(...names: string[]): NestableFile[] {
   return names.map((name) => ({ name, path: `folder/${name}`, kind: 'file' }));
 }
 
+function entries(...values: Array<[string, 'file' | 'directory']>): NestableFile[] {
+  return values.map(([name, kind]) => ({ name, path: `folder/${name}`, kind }));
+}
+
 describe('editor file nesting registry', () => {
   it('aggregates children from multiple rules under the same active primary', () => {
     const manager = pairByStem({
@@ -47,6 +51,22 @@ describe('editor file nesting registry', () => {
       ['hud.webp', ['hud.webp.json']],
       ['PlayerStateManager.node.ts', ['PlayerStateManager.manager.json']],
       ['tiles_atlas.webp', ['tiles_atlas.json']],
+    ]);
+  });
+
+  it('groups atlas metadata and a real frames directory under the generated image', () => {
+    const result = buildNestedFileBundles(entries(
+      ['terrain.atlas.webp', 'file'],
+      ['terrain.atlas.json', 'file'],
+      ['terrain.atlas.frames', 'directory'],
+      ['effects.atlas.png', 'file'],
+      ['effects.atlas.json', 'file'],
+      ['effects.atlas.frames', 'directory'],
+    ));
+
+    expect(result.bundles.map(({ primary, children }) => [primary.name, children.map(({ file }) => [file.name, file.kind])])).toEqual([
+      ['effects.atlas.png', [['effects.atlas.json', 'file'], ['effects.atlas.frames', 'directory']]],
+      ['terrain.atlas.webp', [['terrain.atlas.json', 'file'], ['terrain.atlas.frames', 'directory']]],
     ]);
   });
 

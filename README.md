@@ -59,6 +59,7 @@ packages/
 ## Documentation
 
 - [`docs/NODE_RUNTIME_ARCHITECTURE.md`](docs/NODE_RUNTIME_ARCHITECTURE.md) is the canonical current architecture reference.
+- [`docs/atlas-projects.md`](docs/atlas-projects.md) documents editable Grid and Packed atlas bundles, generation, and safety rules.
 - [`docs/README.md`](docs/README.md) indexes current, historical, and legacy documentation.
 - Godot and Unity documents are predecessor/reference material and do not define the current Phaser implementation.
 

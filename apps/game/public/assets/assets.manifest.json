@@ -13,8 +13,8 @@
     },
     "gameplay": {
       "images": [
-        { "key": "tiles", "path": "/assets/tilesets/atlas/tiles_atlas.webp" },
-        { "key": "backwall-tiles", "path": "/assets/tilesets/atlas/backwall_atlas.webp" },
+        { "key": "tiles", "path": "/assets/tilesets/atlas/tiles.atlas.webp" },
+        { "key": "backwall-tiles", "path": "/assets/tilesets/atlas/backwall.atlas.webp" },
         { "key": "ship", "path": "/assets/ships/the_bucket.webp" },
         { "key": "drill-tunnel-bg", "path": "/assets/ships/drill_tunnel_bg.webp" },
         { "key": "laser-dot", "path": "/assets/effects/laser_beam.webp" },

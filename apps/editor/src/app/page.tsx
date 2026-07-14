@@ -6,6 +6,7 @@ import { Activity, Bot, Box, Boxes, Brain, Bug, ChevronDown, ChevronRight, Code2
 import type { DebugFontAssetDescriptor, DebugImageAnimationDescriptor, DebugImageAssetDescriptor, DebugMessage, DebugNodeBounds, DebugNodeDelta, DebugNodeDescriptor, DebugNodePatch, DebugNodePropsMessage, DebugNodeTransform, DebugOverlayLayerDescriptor, DebugSceneNodeDefinition, DebugScenePropDefinition, EditorAddNodeChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
 import styles from './page.module.css';
 import { buildNestedFileBundles, type NestedFileBundle } from '../file-nesting';
+import { atlasFrameRect, parseAtlasProject, type AtlasProjectDocument, type AtlasProjectFrame } from '../atlas-project/types';
 import { updateExplorerSelection } from './explorerSelection';
 import { findPrefabTreeNodeByPath, formatPrefabDocument, isPrefabFilePath, parsePrefabDocument, patchPrefabNode, prefabDocumentToTree, prefabNodeDefinition, prefabNodePropsMessage, type PrefabDocument } from './prefabEditor';
 
@@ -127,6 +128,7 @@ interface EditorFileSaveResult {
   dynamicNodeBuild?: {
     manifest: DynamicNodeManifest;
   };
+  atlasBuilds?: Array<{ imagePath: string }>;
   error?: string;
 }
 
@@ -776,6 +778,11 @@ export default function Home() {
     setGameFrameKey((current) => current + 1);
   }
 
+  async function atlasProjectChanged(): Promise<void> {
+    await Promise.all([refreshPublicFiles(), reloadSelectedDirectoryFiles(), refreshGitStatus()]);
+    reloadGameFrame();
+  }
+
   function expandAllNodes(): void {
     setPersistentManagersOpen(true);
     setExpandedNodeIds(new Set(collectNodeIds(openPrefabPath ? prefabTreeRoots : treeRoots)));
@@ -882,12 +889,14 @@ export default function Home() {
     setSelectedDirectoryFilesStatus(`${files.length} Datei(en) geladen`);
   }
 
-  async function applyExplorerMutationResult(result: { dynamicNodeBuild?: { manifest: DynamicNodeManifest } }): Promise<void> {
+  async function applyExplorerMutationResult(result: { dynamicNodeBuild?: { manifest: DynamicNodeManifest }; atlasBuilds?: unknown[] }): Promise<void> {
     const manifest = result.dynamicNodeBuild?.manifest;
-    if (!manifest) return;
-    const previousManifest = dynamicNodeManifestRef.current;
-    dynamicNodeManifestRef.current = manifest;
-    if (!previousManifest?.bundle || previousManifest.bundle.hash !== manifest.bundle?.hash) await sendDynamicNodeBundleUpdated(manifest);
+    if (manifest) {
+      const previousManifest = dynamicNodeManifestRef.current;
+      dynamicNodeManifestRef.current = manifest;
+      if (!previousManifest?.bundle || previousManifest.bundle.hash !== manifest.bundle?.hash) await sendDynamicNodeBundleUpdated(manifest);
+    }
+    if ((result.atlasBuilds?.length ?? 0) > 0) reloadGameFrame();
   }
 
   async function deleteSelectedPublicFiles(): Promise<void> {
@@ -902,7 +911,7 @@ export default function Home() {
         headers: { 'content-type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ paths }),
       });
-      const result = await response.json() as { ok?: boolean; deleted?: string[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; dynamicNodeBuildError?: string; error?: string };
+      const result = await response.json() as { ok?: boolean; deleted?: string[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; dynamicNodeBuildError?: string; atlasBuilds?: unknown[]; atlasBuildErrors?: string[]; error?: string };
       if (!response.ok || result.ok === false) throw new Error(result.error ?? `HTTP ${response.status}`);
       setDeletePublicFilesOpen(false);
       setPreviewPublicFilePath((current) => current && paths.includes(current) ? undefined : current);
@@ -912,7 +921,8 @@ export default function Home() {
       await applyExplorerMutationResult(result);
       await Promise.all([reloadSelectedDirectoryFiles(targetDirectoryPath), refreshGitStatus()]);
       const deletedCount = result.deleted?.length ?? paths.length;
-      setPublicFileOperationStatus(`${deletedCount} Datei${deletedCount === 1 ? '' : 'en'} gelöscht.${result.dynamicNodeBuildError ? ` Script-Build fehlgeschlagen: ${result.dynamicNodeBuildError}` : ''}`);
+      const atlasWarning = result.atlasBuildErrors?.length ? ` Atlas-Build fehlgeschlagen: ${result.atlasBuildErrors.join(' · ')}` : '';
+      setPublicFileOperationStatus(`${deletedCount} Datei${deletedCount === 1 ? '' : 'en'} gelöscht.${result.dynamicNodeBuildError ? ` Script-Build fehlgeschlagen: ${result.dynamicNodeBuildError}` : ''}${atlasWarning}`);
     } catch (error) {
       setPublicFileOperationStatus(`Löschen fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -935,7 +945,7 @@ export default function Home() {
       form.set('directoryPath', targetDirectoryPath);
       for (const file of files) form.append('files', file, file.name);
       const response = await fetch(editorApi('/public-files'), { method: 'POST', cache: 'no-store', body: form });
-      const result = await response.json() as { ok?: boolean; written?: { path: string; size: number }[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; dynamicNodeBuildError?: string; error?: string };
+      const result = await response.json() as { ok?: boolean; written?: { path: string; size: number }[]; dynamicNodeBuild?: { manifest: DynamicNodeManifest }; dynamicNodeBuildError?: string; atlasBuilds?: unknown[]; atlasBuildErrors?: string[]; error?: string };
       if (!response.ok || result.ok === false) throw new Error(result.error ?? `HTTP ${response.status}`);
       await applyExplorerMutationResult(result);
       await Promise.all([reloadSelectedDirectoryFiles(targetDirectoryPath), refreshGitStatus()]);
@@ -943,10 +953,30 @@ export default function Home() {
       if (selectedPublicDirectoryPathRef.current === targetDirectoryPath) {
         setSelectedPublicFilePaths(new Set(writtenPaths));
         setSelectedPublicFilePath(writtenPaths.at(-1));
-        setPublicFileOperationStatus(`${writtenPaths.length || files.length} Datei${files.length === 1 ? '' : 'en'} hochgeladen · vorhandene Namen überschrieben.${result.dynamicNodeBuildError ? ` Script-Build fehlgeschlagen: ${result.dynamicNodeBuildError}` : ''}`);
+        const atlasWarning = result.atlasBuildErrors?.length ? ` Atlas-Build fehlgeschlagen: ${result.atlasBuildErrors.join(' · ')}` : '';
+        setPublicFileOperationStatus(`${writtenPaths.length || files.length} Datei${files.length === 1 ? '' : 'en'} hochgeladen · vorhandene Namen überschrieben.${result.dynamicNodeBuildError ? ` Script-Build fehlgeschlagen: ${result.dynamicNodeBuildError}` : ''}${atlasWarning}`);
       }
     } catch (error) {
       if (selectedPublicDirectoryPathRef.current === targetDirectoryPath) setPublicFileOperationStatus(`Upload fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async function createAtlasInDirectory(options: Record<string, unknown>): Promise<void> {
+    setPublicFileOperationStatus('Atlasprojekt wird angelegt ...');
+    try {
+      const response = await fetch(editorApi('/atlas-project'), {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(options),
+      });
+      const result = await response.json() as { ok?: boolean; build?: { imagePath: string }; error?: string };
+      if (!response.ok || !result.ok || !result.build) throw new Error(result.error ?? `HTTP ${response.status}`);
+      await Promise.all([refreshPublicFiles(), reloadSelectedDirectoryFiles(), refreshGitStatus()]);
+      selectPublicFileInExplorer(result.build.imagePath);
+      setPreviewPublicFilePath(result.build.imagePath);
+      setPublicFileOperationStatus(`Atlasprojekt ${compactPublicPath(result.build.imagePath)} angelegt.`);
+    } catch (error) {
+      setPublicFileOperationStatus(`Atlasprojekt konnte nicht angelegt werden: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -1890,11 +1920,12 @@ export default function Home() {
             setDeletePublicFilesOpen(true);
           }}
           onUploadFiles={(files) => void uploadPublicFiles(files)}
+          onCreateAtlas={(options) => void createAtlasInDirectory(options)}
           operationStatus={publicFileOperationStatus}
           onOpenFile={setOpenNodeFilePath}
           onOpenPrefab={(path) => void openPrefabEditor(path)}
           onOpenImage={setPreviewPublicFilePath}
-          onRefresh={refreshPublicFiles}
+          onRefresh={() => { void Promise.all([refreshPublicFiles(), reloadSelectedDirectoryFiles()]); }}
           onStartFolderResize={startFolderTreeResize}
           onDynamicNodeDragStart={(file) => {
             draggedDynamicNodeRef.current = file;
@@ -1917,8 +1948,9 @@ export default function Home() {
       {nodeCreateMenu && <NodeCreateContextMenu roots={treeRoots} menu={nodeCreateMenu} onCreate={createGenericChildNode} onClose={() => setNodeCreateMenu(undefined)} />}
       {savePreviewOpen && <GitSavePreviewDialog needsRebase={gitNeedsRebase} onCancel={() => setSavePreviewOpen(false)} onPush={pushGitChanges} />}
       {deletePublicFilesOpen && <DeletePublicFilesDialog files={selectedPublicFiles} status={publicFileOperationStatus} onCancel={() => setDeletePublicFilesOpen(false)} onConfirm={deleteSelectedPublicFiles} />}
-      {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onClose={() => setPreviewPublicFilePath(undefined)} />}
+      {previewPublicFilePath && selectedDirectoryWithFiles && <PublicImageDialog file={selectedPublicFile} root={selectedDirectoryWithFiles} assets={imageAssets} onImageAssetDragStart={(payload) => { draggedImageAssetRef.current = payload; }} onImageAssetDragEnd={() => { draggedImageAssetRef.current = undefined; }} onAtlasChanged={atlasProjectChanged} onClose={() => setPreviewPublicFilePath(undefined)} />}
       {openNodeFilePath && <NodeSourceDialog path={openNodeFilePath} onClose={() => setOpenNodeFilePath(undefined)} onSaved={(result) => {
+        if (result.atlasBuilds?.length) void atlasProjectChanged();
         if (!result.dynamicNodeBuild?.manifest) return;
         const previousManifest = dynamicNodeManifestRef.current;
         dynamicNodeManifestRef.current = result.dynamicNodeBuild.manifest;
@@ -2096,6 +2128,7 @@ function PublicAssetExplorer({
   onSelectionChange,
   onDeleteSelection,
   onUploadFiles,
+  onCreateAtlas,
   operationStatus,
   onOpenFile,
   onOpenPrefab,
@@ -2125,6 +2158,7 @@ function PublicAssetExplorer({
   onSelectionChange(paths: Set<string>, activePath?: string): void;
   onDeleteSelection(): void;
   onUploadFiles(files: File[]): void;
+  onCreateAtlas(options: Record<string, unknown>): void;
   operationStatus: string;
   onOpenFile(path: string): void;
   onOpenPrefab(path: string): void;
@@ -2141,15 +2175,19 @@ function PublicAssetExplorer({
   const [uploadDropActive, setUploadDropActive] = useState(false);
   const uploadDragDepthRef = useRef(0);
   const selectionAnchorRef = useRef<string | undefined>(undefined);
-  const nestedFiles = useMemo(() => buildNestedFileBundles(files), [files]);
+  const nestableEntries = useMemo(() => [...childDirectories, ...files], [childDirectories, files]);
+  const nestedFiles = useMemo(() => buildNestedFileBundles(nestableEntries), [nestableEntries]);
   const bundleByPrimaryPath = useMemo(
     () => new Map(nestedFiles.bundles.map((bundle) => [bundle.primary.path, bundle])),
     [nestedFiles.bundles],
   );
+  const topLevelDirectories = childDirectories.filter((directory) => !nestedFiles.bundledChildPaths.has(directory.path));
   const topLevelFiles = files.filter((file) => !nestedFiles.bundledChildPaths.has(file.path));
   const visibleFilePaths = topLevelFiles.flatMap((file) => {
     const bundle = bundleByPrimaryPath.get(file.path);
-    return bundle && expandedBundlePaths.has(file.path) ? [file.path, ...bundle.children.map((child) => child.file.path)] : [file.path];
+    return bundle && expandedBundlePaths.has(file.path)
+      ? [file.path, ...bundle.children.filter((child) => child.file.kind === 'file').map((child) => child.file.path)]
+      : [file.path];
   });
 
   useEffect(() => {
@@ -2191,9 +2229,38 @@ function PublicAssetExplorer({
     });
   }
 
+  function createAtlas(): void {
+    const name = window.prompt('Atlasname (ohne .atlas):', 'new-atlas')?.trim();
+    if (!name) return;
+    const requestedType = window.prompt("Atlasart: 'grid' für Tilesets oder 'packed' für freie Sprites", 'grid')?.trim().toLowerCase();
+    if (requestedType !== 'grid' && requestedType !== 'packed') return;
+    if (requestedType === 'grid') {
+      onCreateAtlas({
+        directoryPath: selectedDirectoryPath,
+        name,
+        type: 'grid',
+        format: 'webp',
+        tileWidth: Number(window.prompt('Framebreite in Pixeln:', '96')),
+        tileHeight: Number(window.prompt('Framehöhe in Pixeln:', '96')),
+        columns: Number(window.prompt('Spalten:', '8')),
+        rows: Number(window.prompt('Startzeilen:', '1')),
+      });
+    } else {
+      onCreateAtlas({
+        directoryPath: selectedDirectoryPath,
+        name,
+        type: 'packed',
+        format: 'webp',
+        width: Number(window.prompt('Canvasbreite in Pixeln:', '1024')),
+        height: Number(window.prompt('Canvashöhe in Pixeln:', '1024')),
+      });
+    }
+  }
+
   return (
     <section className={styles.assetExplorer}>
       <PanelHeader title="Asset Explorer" meta={roots.length > 0 ? `${fileCount} Files · Git Repo` : status}>
+        {selectedDirectoryPath.startsWith('apps/game/public/') && <button type="button" className={styles.headerButton} onClick={createAtlas}><Plus size={14} /> Atlas</button>}
         <button type="button" className={styles.headerButton} onClick={onRefresh}>Refresh</button>
       </PanelHeader>
       <div ref={bodyRef} className={styles.assetExplorerBody}>
@@ -2259,7 +2326,7 @@ function PublicAssetExplorer({
                 <span>Nach {compactPublicPath(selectedDirectoryPath)} · vorhandene Namen werden überschrieben</span>
               </div>
             )}
-            {childDirectories.map((directory) => (
+            {topLevelDirectories.map((directory) => (
               <button key={directory.path} type="button" className={styles.assetTile} onClick={() => onSelectDirectory(directory.path)}>
                 <div className={styles.fileTileIcon}><Folder size={30} /></div>
                 <span>{directory.name}</span>
@@ -2289,6 +2356,7 @@ function PublicAssetExplorer({
                     toggleBundle(file.path);
                   }}
                   onSelectFile={selectFile}
+                  onSelectDirectory={onSelectDirectory}
                   onOpenFile={onOpenFile}
                   onOpenPrefab={onOpenPrefab}
                   onDynamicNodeDragStart={onDynamicNodeDragStart}
@@ -2314,6 +2382,7 @@ function PublicFileBundleTile({
   selectedFilePaths,
   onToggle,
   onSelectFile,
+  onSelectDirectory,
   onOpenFile,
   onOpenPrefab,
   onDynamicNodeDragStart,
@@ -2326,6 +2395,7 @@ function PublicFileBundleTile({
   selectedFilePaths: ReadonlySet<string>;
   onToggle(): void;
   onSelectFile(path: string, event: ReactMouseEvent<HTMLButtonElement>): void;
+  onSelectDirectory(path: string): void;
   onOpenFile(path: string): void;
   onOpenPrefab(path: string): void;
   onDynamicNodeDragStart(file: PublicFileEntry): void;
@@ -2369,18 +2439,26 @@ function PublicFileBundleTile({
           key={child.file.path}
           className={`${styles.assetBundleChild} ${index === bundle.children.length - 1 ? styles.assetBundleEnd : ''}`}
         >
-          <PublicAssetFileTile
-            file={child.file}
-            relationLabel={child.label}
-            selected={selectedFilePaths.has(child.file.path)}
-            onSelectFile={onSelectFile}
-            onOpenFile={onOpenFile}
-            onOpenPrefab={onOpenPrefab}
-            onDynamicNodeDragStart={onDynamicNodeDragStart}
-            onDynamicNodeDragEnd={onDynamicNodeDragEnd}
-            onImageAssetDragStart={onImageAssetDragStart}
-            onImageAssetDragEnd={onImageAssetDragEnd}
-          />
+          {child.file.kind === 'directory' ? (
+            <button type="button" className={styles.assetTile} onClick={() => onSelectDirectory(child.file.path)} title={child.file.path}>
+              <div className={styles.fileTileIcon}><Folder size={26} /><span>FRAMES</span></div>
+              <span>{child.file.name}</span>
+              <small>{child.label} · Ordner</small>
+            </button>
+          ) : (
+            <PublicAssetFileTile
+              file={child.file}
+              relationLabel={child.label}
+              selected={selectedFilePaths.has(child.file.path)}
+              onSelectFile={onSelectFile}
+              onOpenFile={onOpenFile}
+              onOpenPrefab={onOpenPrefab}
+              onDynamicNodeDragStart={onDynamicNodeDragStart}
+              onDynamicNodeDragEnd={onDynamicNodeDragEnd}
+              onImageAssetDragStart={onImageAssetDragStart}
+              onImageAssetDragEnd={onImageAssetDragEnd}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -2593,7 +2671,11 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
       if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
       setFile({ ...file, content, size: content.length, modifiedAt: Date.now() });
       onSaved?.(result);
-      setSaveStatus(result.dynamicNodeBuild ? `Gespeichert + ${result.dynamicNodeBuild.manifest.nodes.length} Script(s) kompiliert.` : 'Gespeichert.');
+      setSaveStatus(result.dynamicNodeBuild
+        ? `Gespeichert + ${result.dynamicNodeBuild.manifest.nodes.length} Script(s) kompiliert.`
+        : result.atlasBuilds?.length
+          ? `Gespeichert + ${result.atlasBuilds.length} Atlas neu gebaut.`
+          : 'Gespeichert.');
     } catch (saveError) {
       setSaveStatus('');
       setError(saveError instanceof Error ? saveError.message : String(saveError));
@@ -2647,7 +2729,311 @@ function NodeSourceDialog({ path, onClose, onSaved }: { path: string; onClose():
   );
 }
 
-function PublicImageDialog({ file, root, assets, onImageAssetDragStart, onImageAssetDragEnd, onClose }: { file?: PublicFileEntry; root: PublicFileEntry; assets: DebugImageAssetDescriptor[]; onImageAssetDragStart(payload: ImageAssetDragPayload): void; onImageAssetDragEnd(): void; onClose(): void }) {
+const atlasFrameDragMimeType = 'application/x-gravity-dig-atlas-frame';
+
+function PublicImageDialog({
+  file,
+  root,
+  assets,
+  onImageAssetDragStart,
+  onImageAssetDragEnd,
+  onAtlasChanged,
+  onClose,
+}: {
+  file?: PublicFileEntry;
+  root: PublicFileEntry;
+  assets: DebugImageAssetDescriptor[];
+  onImageAssetDragStart(payload: ImageAssetDragPayload): void;
+  onImageAssetDragEnd(): void;
+  onAtlasChanged(): Promise<void>;
+  onClose(): void;
+}) {
+  if (!file || !/\.atlas\.(?:png|webp)$/i.test(file.name)) {
+    return <PublicImageViewerDialog file={file} root={root} assets={assets} onImageAssetDragStart={onImageAssetDragStart} onImageAssetDragEnd={onImageAssetDragEnd} onClose={onClose} />;
+  }
+  return <AtlasProjectEditorDialog file={file} onAtlasChanged={onAtlasChanged} onClose={onClose} />;
+}
+
+function AtlasProjectEditorDialog({ file, onAtlasChanged, onClose }: { file: PublicFileEntry; onAtlasChanged(): Promise<void>; onClose(): void }) {
+  const [document, setDocument] = useState<AtlasProjectDocument | undefined>();
+  const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
+  const [selectedGridSlot, setSelectedGridSlot] = useState<number | undefined>();
+  const [status, setStatus] = useState('Atlasprojekt wird geladen ...');
+  const [busy, setBusy] = useState(false);
+  const [revision, setRevision] = useState(0);
+
+  async function loadProject(preferredFrameId?: string): Promise<void> {
+    const response = await fetch(editorApi(`/atlas-project?imagePath=${encodeURIComponent(file.path)}`), { cache: 'no-store' });
+    const result = await response.json() as { ok?: boolean; document?: AtlasProjectDocument; error?: string };
+    if (!response.ok || !result.ok || !result.document) throw new Error(result.error ?? `HTTP ${response.status}`);
+    setDocument(result.document);
+    const nextFrameId = preferredFrameId && result.document.project.frames.some((frame) => frame.id === preferredFrameId)
+      ? preferredFrameId
+      : result.document.project.frames[0]?.id;
+    setSelectedFrameId(nextFrameId);
+    setRevision((current) => current + 1);
+    setStatus(`${result.document.project.type === 'grid' ? 'Grid' : 'Packed'} · ${result.document.project.frames.length} Frames`);
+  }
+
+  useEffect(() => {
+    let disposed = false;
+    void loadProject().catch((error) => {
+      if (!disposed) setStatus(`Atlasprojekt konnte nicht geladen werden: ${error instanceof Error ? error.message : String(error)}`);
+    });
+    return () => { disposed = true; };
+  }, [file.path]);
+
+  async function mutate(mutation: Record<string, unknown>, preferredFrameId = selectedFrameId): Promise<void> {
+    setBusy(true);
+    setStatus('Atlas wird neu gebaut ...');
+    try {
+      const response = await fetch(editorApi('/atlas-project'), {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ imagePath: file.path, mutation }),
+      });
+      const result = await response.json() as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      await onAtlasChanged();
+      await loadProject(preferredFrameId);
+    } catch (error) {
+      setStatus(`Atlasänderung fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadFrame(uploadFile: File, target: { slot?: number; x?: number; y?: number; replaceFrameId?: string }): Promise<void> {
+    setBusy(true);
+    setStatus(`${uploadFile.name} wird eingefügt ...`);
+    try {
+      const form = new FormData();
+      form.set('imagePath', file.path);
+      form.set('file', uploadFile);
+      if (target.slot !== undefined) form.set('slot', String(target.slot));
+      if (target.x !== undefined) form.set('x', String(target.x));
+      if (target.y !== undefined) form.set('y', String(target.y));
+      if (target.replaceFrameId) form.set('replaceFrameId', target.replaceFrameId);
+      const response = await fetch(editorApi('/atlas-project'), { method: 'POST', body: form });
+      const result = await response.json() as { ok?: boolean; error?: string };
+      if (!response.ok || !result.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
+      await onAtlasChanged();
+      await loadProject(target.replaceFrameId);
+    } catch (error) {
+      setStatus(`Frame konnte nicht eingefügt werden: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!document) {
+    return (
+      <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
+        <div className={`${styles.assetDialog} ${styles.atlasEditorDialog}`} onClick={(event) => event.stopPropagation()}>
+          <div className={styles.dialogHeader}><strong>{file.name}</strong><button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button></div>
+          <p className={styles.empty}>{status}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const project = document.project;
+  const selectedFrame = selectedFrameId ? project.frames.find((frame) => frame.id === selectedFrameId) : undefined;
+  const imageSrc = `${publicFileContentUrl(file)}&atlasRevision=${revision}`;
+  return (
+    <div className={styles.dialogBackdrop} role="dialog" aria-modal="true" onClick={onClose}>
+      <div className={`${styles.assetDialog} ${styles.atlasEditorDialog}`} onClick={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeader}>
+          <div className={styles.atlasEditorTitle}>
+            <strong>{file.name}</strong>
+            <span className={project.type === 'grid' ? styles.gridAtlasBadge : styles.packedAtlasBadge}>{project.type.toUpperCase()}</span>
+            <small>{status}</small>
+          </div>
+          <div className={styles.dialogHeaderActions}>
+            {selectedFrame && <button type="button" className={`${styles.headerButton} ${styles.dangerButton}`} disabled={busy} onClick={() => {
+              if (window.confirm(`Frame '${selectedFrame.id}' und Quelldatei löschen?`)) void mutate({ operation: 'delete-frame', frameId: selectedFrame.id, deleteSource: true }, undefined);
+            }}><Trash2 size={14} /> Frame löschen</button>}
+            <button type="button" className={styles.headerButton} onClick={onClose}>Schließen</button>
+          </div>
+        </div>
+        <div className={styles.atlasEditorBody}>
+          <aside className={styles.atlasEditorSidebar}>
+            <div className={styles.frameListHeader}>{project.frames.length} Frames · Source of Truth</div>
+            {project.frames.map((frame) => (
+              <button key={frame.id} type="button" className={`${styles.frameListItem} ${frame.id === selectedFrameId ? styles.selectedFrameListItem : ''}`} onClick={() => setSelectedFrameId(frame.id)}>
+                <img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} />
+                <span>{frame.id}</span>
+                <small>{project.type === 'grid' ? `Slot ${frame.slot}` : `${frame.rect?.x},${frame.rect?.y} · ${frame.rect?.width}×${frame.rect?.height}`}</small>
+              </button>
+            ))}
+          </aside>
+          <section className={styles.atlasEditorWorkspace}>
+            {project.type === 'grid' ? (
+              <GridAtlasEditor
+                document={document}
+                busy={busy}
+                selectedFrameId={selectedFrameId}
+                selectedSlot={selectedGridSlot}
+                revision={revision}
+                onSelect={(frameId, slot) => { setSelectedFrameId(frameId); setSelectedGridSlot(slot); }}
+                onMove={(frameId, slot) => void mutate({ operation: 'move-frame', frameId, slot }, frameId)}
+                onUpload={uploadFrame}
+                onAddRow={() => void mutate({ operation: 'resize', rows: project.rows! + 1 }, selectedFrameId)}
+              />
+            ) : (
+              <PackedAtlasEditor
+                document={document}
+                busy={busy}
+                selectedFrameId={selectedFrameId}
+                revision={revision}
+                onSelect={setSelectedFrameId}
+                onMove={(frameId, x, y) => void mutate({ operation: 'move-frame', frameId, x, y }, frameId)}
+                onUpload={uploadFrame}
+                onResize={(width, height) => void mutate({ operation: 'resize', width, height }, selectedFrameId)}
+              />
+            )}
+            <div className={styles.atlasGeneratedPreview}>
+              <span>Generierter Runtime-Output</span>
+              <img src={imageSrc} alt={file.name} />
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GridAtlasEditor({ document, busy, selectedFrameId, selectedSlot, revision, onSelect, onMove, onUpload, onAddRow }: {
+  document: AtlasProjectDocument;
+  busy: boolean;
+  selectedFrameId?: string;
+  selectedSlot?: number;
+  revision: number;
+  onSelect(frameId: string | undefined, slot: number): void;
+  onMove(frameId: string, slot: number): void;
+  onUpload(file: File, target: { slot?: number; replaceFrameId?: string }): void;
+  onAddRow(): void;
+}) {
+  const project = document.project;
+  const framesBySlot = new Map(project.frames.map((frame) => [frame.slot!, frame]));
+  const slotCount = project.columns! * project.rows!;
+  return (
+    <>
+      <div className={styles.atlasEditorToolbar}>
+        <strong>{project.tileWidth}×{project.tileHeight}px · {project.columns} Spalten · {project.rows} Zeilen</strong>
+        <button type="button" className={styles.headerButton} disabled={busy} onClick={onAddRow}><Plus size={14} /> Zeile hinzufügen</button>
+        <label className={styles.headerButton}>Bild einfügen<input type="file" accept="image/png,image/webp,image/jpeg" hidden disabled={busy || selectedSlot === undefined} onChange={(event) => {
+          const upload = event.target.files?.[0];
+          if (!upload || selectedSlot === undefined) return;
+          const occupied = framesBySlot.get(selectedSlot);
+          if (!occupied || window.confirm(`Grafik von '${occupied.id}' ersetzen?`)) onUpload(upload, { slot: selectedSlot, ...(occupied ? { replaceFrameId: occupied.id } : {}) });
+          event.currentTarget.value = '';
+        }} /></label>
+        <span>{selectedSlot === undefined ? 'Slot wählen oder Bild direkt hineinziehen' : `Zielslot ${selectedSlot}`}</span>
+      </div>
+      <div className={styles.gridAtlasStage} style={{ gridTemplateColumns: `repeat(${project.columns}, minmax(72px, 1fr))` }}>
+        {Array.from({ length: slotCount }, (_, slot) => {
+          const frame = framesBySlot.get(slot);
+          return (
+            <button
+              key={slot}
+              type="button"
+              className={`${styles.gridAtlasSlot} ${selectedSlot === slot ? styles.selectedGridAtlasSlot : ''} ${frame?.id === selectedFrameId ? styles.selectedGridAtlasFrame : ''}`}
+              disabled={busy}
+              draggable={Boolean(frame)}
+              onDragStart={(event) => {
+                if (!frame) return;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData(atlasFrameDragMimeType, frame.id);
+              }}
+              onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = event.dataTransfer.types.includes('Files') ? 'copy' : 'move'; }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const movingFrameId = event.dataTransfer.getData(atlasFrameDragMimeType);
+                if (movingFrameId) { onMove(movingFrameId, slot); return; }
+                const upload = event.dataTransfer.files[0];
+                if (!upload) return;
+                if (!frame || window.confirm(`Grafik von '${frame.id}' ersetzen?`)) onUpload(upload, { slot, ...(frame ? { replaceFrameId: frame.id } : {}) });
+              }}
+              onClick={() => onSelect(frame?.id, slot)}
+              title={frame ? `${frame.id} · Slot ${slot}` : `Leerer Slot ${slot}`}
+            >
+              {frame ? <img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} /> : <span className={styles.emptyAtlasSlot}><Plus size={18} /> Leer</span>}
+              <small>{frame?.id ?? `Slot ${slot}`}<b>{slot}</b></small>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function PackedAtlasEditor({ document, busy, selectedFrameId, revision, onSelect, onMove, onUpload, onResize }: {
+  document: AtlasProjectDocument;
+  busy: boolean;
+  selectedFrameId?: string;
+  revision: number;
+  onSelect(frameId: string): void;
+  onMove(frameId: string, x: number, y: number): void;
+  onUpload(file: File, target: { x?: number; y?: number }): void;
+  onResize(width: number, height: number): void;
+}) {
+  const project = document.project;
+  const [width, setWidth] = useState(project.width!);
+  const [height, setHeight] = useState(project.height!);
+  useEffect(() => { setWidth(project.width!); setHeight(project.height!); }, [project.width, project.height]);
+  return (
+    <>
+      <div className={styles.atlasEditorToolbar}>
+        <label>Breite <input type="number" min={1} value={width} onChange={(event) => setWidth(Number(event.target.value))} /></label>
+        <label>Höhe <input type="number" min={1} value={height} onChange={(event) => setHeight(Number(event.target.value))} /></label>
+        <button type="button" className={styles.headerButton} disabled={busy} onClick={() => onResize(width, height)}>Canvas anwenden</button>
+        <label className={styles.headerButton}>Sprite hinzufügen<input type="file" accept="image/png,image/webp,image/jpeg" hidden disabled={busy} onChange={(event) => {
+          const upload = event.target.files?.[0];
+          if (upload) onUpload(upload, { x: 0, y: 0 });
+          event.currentTarget.value = '';
+        }} /></label>
+      </div>
+      <div className={styles.packedAtlasScroll}>
+        <div
+          className={styles.packedAtlasStage}
+          style={{ width: project.width, height: project.height }}
+          onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = event.dataTransfer.types.includes('Files') ? 'copy' : 'move'; }}
+          onDrop={(event) => {
+            event.preventDefault();
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const x = Math.max(0, Math.round((event.clientX - bounds.left) * project.width! / bounds.width));
+            const y = Math.max(0, Math.round((event.clientY - bounds.top) * project.height! / bounds.height));
+            const movingFrameId = event.dataTransfer.getData(atlasFrameDragMimeType);
+            if (movingFrameId) { onMove(movingFrameId, x, y); return; }
+            const upload = event.dataTransfer.files[0];
+            if (upload) onUpload(upload, { x, y });
+          }}
+        >
+          {project.frames.map((frame) => (
+            <button
+              key={frame.id}
+              type="button"
+              className={`${styles.packedAtlasFrame} ${frame.id === selectedFrameId ? styles.selectedPackedAtlasFrame : ''}`}
+              style={{ left: frame.rect!.x, top: frame.rect!.y, width: frame.rect!.width, height: frame.rect!.height }}
+              draggable
+              disabled={busy}
+              onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData(atlasFrameDragMimeType, frame.id); }}
+              onClick={() => onSelect(frame.id)}
+              title={`${frame.id} · ${frame.rect!.x},${frame.rect!.y}`}
+            ><img src={atlasFrameSourceUrl(document, frame, revision)} alt={frame.id} /></button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function atlasFrameSourceUrl(document: AtlasProjectDocument, frame: AtlasProjectFrame, revision: number): string {
+  return editorApi(`/public-files/content?path=${encodeURIComponent(`${document.framesDirectoryPath}/${frame.source}`)}&atlasRevision=${revision}`);
+}
+
+function PublicImageViewerDialog({ file, root, assets, onImageAssetDragStart, onImageAssetDragEnd, onClose }: { file?: PublicFileEntry; root: PublicFileEntry; assets: DebugImageAssetDescriptor[]; onImageAssetDragStart(payload: ImageAssetDragPayload): void; onImageAssetDragEnd(): void; onClose(): void }) {
   const [frames, setFrames] = useState<PublicAtlasFrame[]>([]);
   const [selectedFrameId, setSelectedFrameId] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<'frame' | 'atlas'>('frame');
@@ -4526,6 +4912,14 @@ function atlasMetadataCandidatePaths(imagePath: string): string[] {
 
 function parseAtlasFrames(value: unknown): PublicAtlasFrame[] {
   if (!isObjectRecord(value)) return [];
+  if (value.version === 1 && (value.type === 'grid' || value.type === 'packed')) {
+    try {
+      const project = parseAtlasProject(value);
+      return project.frames.map((frame) => ({ id: frame.id, label: frame.id, rect: atlasFrameRect(project, frame) }));
+    } catch {
+      return [];
+    }
+  }
   const tileSize = typeof value.tile_size === 'number' ? value.tile_size : undefined;
   const frames = value.frames;
   if (isObjectRecord(frames)) {

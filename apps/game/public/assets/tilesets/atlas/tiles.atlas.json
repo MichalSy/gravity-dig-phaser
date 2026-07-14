@@ -1,0 +1,270 @@
+{
+  "$schema": "../../../schemas/atlas-project.schema.json",
+  "version": 1,
+  "type": "grid",
+  "output": {
+    "format": "webp",
+    "lossless": true
+  },
+  "frames": [
+    {
+      "id": "antimatter",
+      "source": "tile_antimatter.png",
+      "slot": 0
+    },
+    {
+      "id": "antimatter_block",
+      "source": "tile_antimatter_block.png",
+      "slot": 1
+    },
+    {
+      "id": "basalt",
+      "source": "tile_basalt.png",
+      "slot": 2
+    },
+    {
+      "id": "bedrock",
+      "source": "tile_bedrock.png",
+      "slot": 3
+    },
+    {
+      "id": "clay",
+      "source": "tile_clay.png",
+      "slot": 4
+    },
+    {
+      "id": "clay_block",
+      "source": "tile_clay_block.png",
+      "slot": 5
+    },
+    {
+      "id": "copper",
+      "source": "tile_copper.png",
+      "slot": 6
+    },
+    {
+      "id": "crystal",
+      "source": "tile_crystal.png",
+      "slot": 7
+    },
+    {
+      "id": "diamond",
+      "source": "tile_diamond.png",
+      "slot": 8
+    },
+    {
+      "id": "dirt",
+      "source": "tile_dirt.png",
+      "slot": 9
+    },
+    {
+      "id": "echo",
+      "source": "tile_echo.png",
+      "slot": 10
+    },
+    {
+      "id": "echo_ore",
+      "source": "tile_echo_ore.png",
+      "slot": 11
+    },
+    {
+      "id": "emerald",
+      "source": "tile_emerald.png",
+      "slot": 12
+    },
+    {
+      "id": "explosive",
+      "source": "tile_explosive.png",
+      "slot": 13
+    },
+    {
+      "id": "gold",
+      "source": "tile_gold.png",
+      "slot": 14
+    },
+    {
+      "id": "granite",
+      "source": "tile_granite.png",
+      "slot": 15
+    },
+    {
+      "id": "gravel",
+      "source": "tile_gravel.png",
+      "slot": 16
+    },
+    {
+      "id": "ice",
+      "source": "tile_ice.png",
+      "slot": 17
+    },
+    {
+      "id": "iron",
+      "source": "tile_iron.png",
+      "slot": 18
+    },
+    {
+      "id": "light",
+      "source": "tile_light.png",
+      "slot": 19
+    },
+    {
+      "id": "living",
+      "source": "tile_living.png",
+      "slot": 20
+    },
+    {
+      "id": "living_rock",
+      "source": "tile_living_rock.png",
+      "slot": 21
+    },
+    {
+      "id": "magma",
+      "source": "tile_magma.png",
+      "slot": 22
+    },
+    {
+      "id": "marble",
+      "source": "tile_marble.png",
+      "slot": 23
+    },
+    {
+      "id": "marble_block",
+      "source": "tile_marble_block.png",
+      "slot": 24
+    },
+    {
+      "id": "metal_ore",
+      "source": "tile_metal_ore.png",
+      "slot": 25
+    },
+    {
+      "id": "meteorite",
+      "source": "tile_meteorite.png",
+      "slot": 26
+    },
+    {
+      "id": "mirror",
+      "source": "tile_mirror.png",
+      "slot": 27
+    },
+    {
+      "id": "mirror_shard",
+      "source": "tile_mirror_shard.png",
+      "slot": 28
+    },
+    {
+      "id": "moonstone",
+      "source": "tile_moonstone.png",
+      "slot": 29
+    },
+    {
+      "id": "obsidian",
+      "source": "tile_obsidian.png",
+      "slot": 30
+    },
+    {
+      "id": "platinum",
+      "source": "tile_platinum.png",
+      "slot": 31
+    },
+    {
+      "id": "prisma",
+      "source": "tile_prisma.png",
+      "slot": 32
+    },
+    {
+      "id": "prismatic",
+      "source": "tile_prismatic.png",
+      "slot": 33
+    },
+    {
+      "id": "quantum",
+      "source": "tile_quantum.png",
+      "slot": 34
+    },
+    {
+      "id": "ruby",
+      "source": "tile_ruby.png",
+      "slot": 35
+    },
+    {
+      "id": "sand",
+      "source": "tile_sand.png",
+      "slot": 36
+    },
+    {
+      "id": "sapphire",
+      "source": "tile_sapphire.png",
+      "slot": 37
+    },
+    {
+      "id": "shadow",
+      "source": "tile_shadow.png",
+      "slot": 38
+    },
+    {
+      "id": "shadow_ore",
+      "source": "tile_shadow_ore.png",
+      "slot": 39
+    },
+    {
+      "id": "silver",
+      "source": "tile_silver.png",
+      "slot": 40
+    },
+    {
+      "id": "slate",
+      "source": "tile_slate.png",
+      "slot": 41
+    },
+    {
+      "id": "slate_block",
+      "source": "tile_slate_block.png",
+      "slot": 42
+    },
+    {
+      "id": "soulstone",
+      "source": "tile_soulstone.png",
+      "slot": 43
+    },
+    {
+      "id": "stardust",
+      "source": "tile_stardust.png",
+      "slot": 44
+    },
+    {
+      "id": "stardust_ore",
+      "source": "tile_stardust_ore.png",
+      "slot": 45
+    },
+    {
+      "id": "stone",
+      "source": "tile_stone.png",
+      "slot": 46
+    },
+    {
+      "id": "sunstone",
+      "source": "tile_sunstone.png",
+      "slot": 47
+    },
+    {
+      "id": "sunstone_ore",
+      "source": "tile_sunstone_ore.png",
+      "slot": 48
+    },
+    {
+      "id": "time",
+      "source": "tile_time.png",
+      "slot": 49
+    },
+    {
+      "id": "void",
+      "source": "tile_void.png",
+      "slot": 50
+    }
+  ],
+  "tileWidth": 96,
+  "tileHeight": 96,
+  "columns": 8,
+  "rows": 7
+}

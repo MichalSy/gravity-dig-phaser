@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schemas/atlas-project.schema.json",
+  "version": 1,
+  "type": "grid",
+  "tileWidth": 96,
+  "tileHeight": 96,
+  "columns": 1,
+  "rows": 1,
+  "output": {
+    "format": "webp",
+    "lossless": true
+  },
+  "frames": [
+    {
+      "id": "backwall",
+      "source": "backwall.png",
+      "slot": 0
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { atlasProjectRule } from './rules/atlas-project';
 import { exactImageMetadataRule, imageStemMetadataRule } from './rules/image-metadata';
 import { managerDefinitionRule } from './rules/manager-definition';
 import type {
@@ -9,6 +10,7 @@ import type {
 } from './types';
 
 export const nestedFileRules: readonly NestedFileRule[] = [
+  atlasProjectRule,
   managerDefinitionRule,
   exactImageMetadataRule,
   imageStemMetadataRule,

@@ -7,6 +7,17 @@ import { lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat, unli
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import type { DebugNodeMovePlacement, DebugNodePatch, EditorAddNodeChange, EditorChange, EditorChangeSet, EditorDeleteNodeChange, EditorMoveNodeChange, EditorSetPropsChange } from '@gravity-dig/debug-protocol';
+import {
+  addAtlasProjectFrame as addAtlasProjectFrameInWorkspace,
+  createAtlasProject as createAtlasProjectInWorkspace,
+  mutateAtlasProject as mutateAtlasProjectInWorkspace,
+  readAtlasProjectDocument,
+  rebuildAtlasProjectsForPaths,
+  saveAtlasProjectMetadata,
+  type AtlasCreateOptions,
+  type AtlasFrameUpload,
+  type AtlasMutation,
+} from '../atlas-project/server';
 
 interface SaveRequest {
   message?: string;
@@ -374,8 +385,11 @@ export async function deleteExplorerFiles(body: unknown) {
     await rm(backupRoot, { recursive: true, force: true });
     return resolved.map((file) => file.relativePath);
   });
-  const buildResult = await buildDynamicNodesAfterExplorerMutation(deleted);
-  return { ok: true, deleted, ...buildResult };
+  const [buildResult, atlasResult] = await Promise.all([
+    buildDynamicNodesAfterExplorerMutation(deleted),
+    buildAtlasesAfterExplorerMutation(deleted),
+  ]);
+  return { ok: true, deleted, ...buildResult, ...atlasResult };
 }
 
 export async function uploadExplorerFiles(directoryPath: string, files: { name: string; content: Buffer }[]) {
@@ -427,8 +441,12 @@ export async function uploadExplorerFiles(directoryPath: string, files: { name: 
     await rm(backupRoot, { recursive: true, force: true });
     return targets.map(({ relativePath, content }) => ({ path: relativePath, size: content.length }));
   });
-  const buildResult = await buildDynamicNodesAfterExplorerMutation(written.map((file) => file.path));
-  return { ok: true, written, overwritten: true, ...buildResult };
+  const changedPaths = written.map((file) => file.path);
+  const [buildResult, atlasResult] = await Promise.all([
+    buildDynamicNodesAfterExplorerMutation(changedPaths),
+    buildAtlasesAfterExplorerMutation(changedPaths),
+  ]);
+  return { ok: true, written, overwritten: true, ...buildResult, ...atlasResult };
 }
 
 async function writeNewFileNoFollow(path: string, content: Buffer): Promise<void> {
@@ -452,13 +470,75 @@ async function buildDynamicNodesAfterExplorerMutation(paths: string[]): Promise<
   }
 }
 
+async function buildAtlasesAfterExplorerMutation(paths: string[]): Promise<{ atlasBuilds?: Awaited<ReturnType<typeof rebuildAtlasProjectsForPaths>>['builds']; atlasBuildErrors?: string[] }> {
+  const result = await rebuildAtlasProjectsForPaths(workspacePath, paths);
+  return {
+    ...(result.builds.length > 0 ? { atlasBuilds: result.builds } : {}),
+    ...(result.errors.length > 0 ? { atlasBuildErrors: result.errors } : {}),
+  };
+}
+
+export async function createAtlasProject(options: AtlasCreateOptions) {
+  try {
+    const build = await withWorkspaceLock(async () => {
+      await ensureWorkspaceUnlocked();
+      return createAtlasProjectInWorkspace(workspacePath, options);
+    });
+    return { ok: true, build };
+  } catch (error) {
+    throw new EditorBackendError(error instanceof Error ? error.message : String(error), 422);
+  }
+}
+
+export async function readAtlasProject(imagePath: string) {
+  await ensureWorkspace();
+  try {
+    return { ok: true, document: await readAtlasProjectDocument(workspacePath, imagePath) };
+  } catch (error) {
+    throw new EditorBackendError(error instanceof Error ? error.message : String(error), 422);
+  }
+}
+
+export async function updateAtlasProject(imagePath: string, mutation: AtlasMutation) {
+  try {
+    const build = await withWorkspaceLock(async () => {
+      await ensureWorkspaceUnlocked();
+      return mutateAtlasProjectInWorkspace(workspacePath, imagePath, mutation);
+    });
+    return { ok: true, build };
+  } catch (error) {
+    throw new EditorBackendError(error instanceof Error ? error.message : String(error), 422);
+  }
+}
+
+export async function uploadAtlasProjectFrame(imagePath: string, upload: AtlasFrameUpload) {
+  try {
+    const build = await withWorkspaceLock(async () => {
+      await ensureWorkspaceUnlocked();
+      return addAtlasProjectFrameInWorkspace(workspacePath, imagePath, upload);
+    });
+    return { ok: true, build };
+  } catch (error) {
+    throw new EditorBackendError(error instanceof Error ? error.message : String(error), 422);
+  }
+}
+
 export async function writeEditorFile(relativePath: string, content: string) {
   await ensureWorkspace();
   const safePath = resolveEditablePath(relativePath);
+  if (/\.atlas\.json$/i.test(safePath.relativePath)) {
+    try {
+      const build = await withWorkspaceLock(() => saveAtlasProjectMetadata(workspacePath, safePath.relativePath, content));
+      return { ok: true, path: safePath.relativePath, dynamicNodeBuild: undefined, atlasBuilds: [build] };
+    } catch (error) {
+      throw new EditorBackendError(error instanceof Error ? error.message : String(error), 422);
+    }
+  }
   await mkdir(dirname(safePath.absolutePath), { recursive: true });
   await writeFile(safePath.absolutePath, content);
   const dynamicNodeBuild = isDynamicNodeSourcePath(safePath.relativePath) ? await buildDynamicNodeModules() : undefined;
-  return { ok: true, path: safePath.relativePath, dynamicNodeBuild };
+  const atlasResult = await buildAtlasesAfterExplorerMutation([safePath.relativePath]);
+  return { ok: true, path: safePath.relativePath, dynamicNodeBuild, ...atlasResult };
 }
 
 export async function stageAssetUpload(sessionId: string, body: unknown) {
