@@ -76,7 +76,7 @@ export async function loadAssetGroups(
       }
     }
     for (const asset of group.audio) if (!scene.cache.audio.exists(asset.key)) {
-      scene.load.audio(asset.key, resolveAssetPath(asset.path));
+      scene.load.audio(asset.key, { url: resolveAssetPath(asset.path), type: audioType(asset.path) });
       queued = true;
     }
     for (const asset of group.json) if (!scene.cache.json.exists(asset.key)) {
@@ -152,6 +152,10 @@ function publicAssetPath(path: string): string {
   const base = import.meta.env.BASE_URL || '/';
   if (base === '/') return path;
   return `${base.replace(/\/$/u, '')}${path}`;
+}
+
+function audioType(path: string): string {
+  return path.match(/\.([a-zA-Z0-9]+)(?:$|[?#])/u)?.[1]?.toLowerCase() ?? '';
 }
 
 function versioned(path: string): string {
