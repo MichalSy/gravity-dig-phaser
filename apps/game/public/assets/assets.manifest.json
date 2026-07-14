@@ -20,7 +20,6 @@
         { "key": "laser-dot", "path": "/assets/effects/laser_beam.webp" },
         { "key": "hud-hp-fuel-atlas", "path": "/assets/ui/hud/hud_hp_fuel_atlas.webp", "meta": true },
         { "key": "hud-item-rock", "path": "/assets/ui/hud/hud_item_rock.webp" },
-        { "key": "item-dirt", "path": "/assets/tilesets/icons/icon_dirt.png" },
         { "key": "item-sand", "path": "/assets/tilesets/icons/icon_sand.png" },
         { "key": "item-clay", "path": "/assets/tilesets/icons/icon_clay.png" },
         { "key": "item-gravel", "path": "/assets/tilesets/icons/icon_gravel.png" },

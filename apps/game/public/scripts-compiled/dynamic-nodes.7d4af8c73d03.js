@@ -141,7 +141,7 @@ var MenuScript = class extends ScriptNode {
 // public/scripts/Gameplay/MiningScript.node.ts
 var PLAYER_HEIGHT = 64;
 var RESOURCE_TILE_TYPES = /* @__PURE__ */ new Set(["copper", "iron", "gold", "diamond"]);
-var DROPPABLE_TILE_TYPES = /* @__PURE__ */ new Set(["dirt", "sand", "clay", "gravel", "stone", "basalt", "copper", "iron", "gold", "diamond"]);
+var DROPPABLE_TILE_TYPES = /* @__PURE__ */ new Set(["sand", "clay", "gravel", "stone", "basalt", "copper", "iron", "gold", "diamond"]);
 var FRAGMENT_INTERVAL_MS = 45;
 var MiningScript = class extends ScriptNode {
   id = "dynamic.mining-tool";
@@ -2147,4 +2147,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.528a9276d8eb.js.map
+//# sourceMappingURL=dynamic-nodes.7d4af8c73d03.js.map

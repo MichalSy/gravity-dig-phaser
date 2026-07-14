@@ -54,7 +54,7 @@ type CrackNodeLike = Core.ImageNode;
 
 const PLAYER_HEIGHT = 64;
 const RESOURCE_TILE_TYPES = new Set(['copper', 'iron', 'gold', 'diamond']);
-const DROPPABLE_TILE_TYPES = new Set(['dirt', 'sand', 'clay', 'gravel', 'stone', 'basalt', 'copper', 'iron', 'gold', 'diamond']);
+const DROPPABLE_TILE_TYPES = new Set(['sand', 'clay', 'gravel', 'stone', 'basalt', 'copper', 'iron', 'gold', 'diamond']);
 const FRAGMENT_INTERVAL_MS = 45;
 
 export default class MiningScript extends Core.ScriptNode {
