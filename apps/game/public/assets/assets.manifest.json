@@ -50,7 +50,7 @@
         { "key": "laser-loop", "path": "/assets/sfx/laser-loop.wav" },
         { "key": "block-break-dirt", "path": "/assets/sfx/block-break-dirt.wav" },
         { "key": "block-break-gem", "path": "/assets/sfx/block-break-gem.wav" },
-        { "key": "cargo-arrival-ping", "path": "/assets/sfx/cargo-arrival-ping.mp3" },
+        { "key": "cargo-arrival-ping", "path": "/assets/sfx/cargo-arrival-ping.wav" },
         { "key": "jump", "path": "/assets/sfx/jump.wav" },
         { "key": "walk-1", "path": "/assets/sfx/walk-1.wav" },
         { "key": "walk-2", "path": "/assets/sfx/walk-2.wav" },
