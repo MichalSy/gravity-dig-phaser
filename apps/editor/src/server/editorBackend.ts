@@ -356,10 +356,10 @@ export async function readNodeFile(relativePath: string): Promise<{ path: string
   return { path: filePath.relativePath, content: await readFile(filePath.absolutePath, 'utf8'), modifiedAt: fileStat.mtimeMs, size: fileStat.size };
 }
 
-export async function readPublicFile(relativePath: string): Promise<{ content: Buffer; contentType: string; path: string; size: number }> {
+export async function readPublicFile(relativePath: string): Promise<{ content: Buffer; contentType: string; path: string; size: number; modifiedAt: number }> {
   const filePath = await resolvePublicFilePath(relativePath);
-  const content = await readFile(filePath.absolutePath);
-  return { content, contentType: contentTypeForPath(filePath.relativePath), path: filePath.relativePath, size: content.length };
+  const [content, fileStat] = await Promise.all([readFile(filePath.absolutePath), stat(filePath.absolutePath)]);
+  return { content, contentType: contentTypeForPath(filePath.relativePath), path: filePath.relativePath, size: content.length, modifiedAt: fileStat.mtimeMs };
 }
 
 export async function deleteExplorerFiles(body: unknown) {

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     const path = url.searchParams.get('path') ?? '';
     const size = clamp(Number(url.searchParams.get('size') ?? 128), 48, 256);
     const file = await readPublicFile(path);
-    const cacheKey = `${file.path}:${file.size}:${size}`;
+    const cacheKey = `${file.path}:${file.modifiedAt}:${file.size}:${size}`;
     const cached = thumbnailCache.get(cacheKey);
     if (cached) return thumbnailResponse(cached.content, file.path, cached.sourceSize);
 

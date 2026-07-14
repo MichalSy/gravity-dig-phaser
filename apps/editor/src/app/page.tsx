@@ -2565,7 +2565,7 @@ function QueuedPublicImageThumbnail({ file }: { file: PublicFileEntry }) {
       task.abort();
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [file.path, file.size]);
+  }, [file.path, file.size, file.modifiedAt]);
 
   if (src) return <img className={styles.assetThumbnail} src={src} alt={file.name} loading="lazy" decoding="async" />;
   return <div className={styles.fileTileIcon}><ImageIcon size={30} /><span>{failed ? 'ERR' : 'LÄDT'}</span></div>;
@@ -4955,11 +4955,11 @@ function publicDirectoryAncestorPaths(path: string): string[] {
 }
 
 function publicFileContentUrl(file: PublicFileEntry): string {
-  return editorApi(`/public-files/content?path=${encodeURIComponent(file.path)}`);
+  return editorApi(`/public-files/content?path=${encodeURIComponent(file.path)}&revision=${encodeURIComponent(String(file.modifiedAt ?? file.size ?? 0))}`);
 }
 
 function publicFileThumbnailUrl(file: PublicFileEntry): string {
-  return editorApi(`/public-files/thumbnail?size=128&path=${encodeURIComponent(file.path)}`);
+  return editorApi(`/public-files/thumbnail?size=128&path=${encodeURIComponent(file.path)}&revision=${encodeURIComponent(String(file.modifiedAt ?? file.size ?? 0))}`);
 }
 
 function findAtlasMetadataFile(root: PublicFileEntry, imageFile: PublicFileEntry): PublicFileEntry | undefined {
