@@ -58,7 +58,7 @@ The command discovers every `*.atlas.json` below `apps/game/public` and regenera
 - Symlinked atlas files and source directories are rejected.
 - Source entries are basenames, not relative paths.
 - Frame IDs, sources, Grid slots, and Packed rectangles are validated.
-- Grid source dimensions must exactly match the configured frame dimensions.
+- Grid source images are automatically scaled to the configured `tileWidth` × `tileHeight` during atlas generation. The original files in `.atlas.frames/` remain unchanged.
 - Packed frames must fit inside the configured canvas.
 - Output, metadata, and source mutations use temporary files and rollback backups.
 - Generated images can be PNG or lossless WebP.

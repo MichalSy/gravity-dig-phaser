@@ -75,6 +75,15 @@ describe('atlas project generator', () => {
     expect(await pixel(join(directory, 'terrain.atlas.webp'), 2, 0)).toEqual([120, 70, 20, 255]);
     expect(await pixel(join(directory, 'terrain.atlas.webp'), 2, 2)).toEqual([80, 90, 100, 255]);
 
+    await addAtlasProjectFrame(root, imagePath, {
+      name: 'replacement.png',
+      content: await solid(5, 3, { r: 40, g: 160, b: 70 }),
+      replaceFrameId: 'dirt',
+    });
+    expect(await sharp(await readFile(join(directory, 'terrain.atlas.frames/dirt.png'))).metadata()).toMatchObject({ width: 5, height: 3 });
+    expect(await pixel(join(directory, 'terrain.atlas.webp'), 2, 0)).toEqual([40, 160, 70, 255]);
+    expect(await pixel(join(directory, 'terrain.atlas.webp'), 3, 1)).toEqual([40, 160, 70, 255]);
+
     await mutateAtlasProject(root, imagePath, { operation: 'move-frame', frameId: 'dirt', slot: 4 });
     const metadata = JSON.parse(await readFile(join(directory, 'terrain.atlas.json'), 'utf8'));
     expect(metadata.frames).toEqual([

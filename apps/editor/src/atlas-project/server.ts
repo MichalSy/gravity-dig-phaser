@@ -169,7 +169,6 @@ export async function addAtlasProjectFrame(workspacePath: string, imagePath: str
 
   if (upload.replaceFrameId) {
     const frame = requireFrame(project, upload.replaceFrameId);
-    if (project.type === 'grid' && (metadata.width !== project.tileWidth || metadata.height !== project.tileHeight)) throw new Error(`Grid frames must be exactly ${project.tileWidth}×${project.tileHeight} pixels.`);
     if (project.type === 'packed') frame.rect = { ...frame.rect!, width: metadata.width, height: metadata.height };
     sourceChanges.set(frame.source, upload.content);
   } else {
@@ -178,7 +177,6 @@ export async function addAtlasProjectFrame(workspacePath: string, imagePath: str
     if (project.frames.some((frame) => frame.source === source)) throw new Error(`Atlas source '${source}' already exists.`);
     let frame: AtlasProjectFrame;
     if (project.type === 'grid') {
-      if (metadata.width !== project.tileWidth || metadata.height !== project.tileHeight) throw new Error(`Grid frames must be exactly ${project.tileWidth}×${project.tileHeight} pixels.`);
       if (!Number.isInteger(upload.slot) || upload.slot! < 0 || upload.slot! >= project.columns! * project.rows!) throw new Error('Target grid slot is invalid.');
       if (project.frames.some((candidate) => candidate.slot === upload.slot)) throw new Error(`Grid slot ${upload.slot} is occupied.`);
       frame = { id, source, slot: upload.slot };
@@ -244,7 +242,6 @@ async function renderAtlas(workspacePath: string, document: AtlasProjectDocument
     const rect = atlasFrameRect(document.project, frame);
     const metadata = await sharp(input).metadata();
     if (!metadata.width || !metadata.height) throw new Error(`Atlas frame '${frame.id}' dimensions could not be read.`);
-    if (document.project.type === 'grid' && (metadata.width !== rect.width || metadata.height !== rect.height)) throw new Error(`Grid frame '${frame.id}' must be exactly ${rect.width}×${rect.height} pixels.`);
     const rendered = metadata.width === rect.width && metadata.height === rect.height ? input : await sharp(input).resize(rect.width, rect.height, { fit: 'fill' }).png().toBuffer();
     return { input: rendered, left: rect.x, top: rect.y };
   }));
