@@ -5,9 +5,9 @@ import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { CargoTransferEffects } from '../world/CargoTransferEffects';
 import { MiningEffects } from '../world/MiningEffects';
 import { WorldView } from '../world/WorldView';
-import { WORLD_RENDER_DEPTHS } from '../world/renderDepths';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
+import { LootLayerNode } from './LootLayerNode';
 
 interface PlayerStateLike {
   getActiveRunSeed(fallback: string): string;
@@ -24,6 +24,7 @@ export class GameWorldNode extends GameNode {
 
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
+  private lootLayer!: LootLayerNode;
   private playerState!: PlayerStateLike;
   private shipInstance?: GameNode;
   private playerInstance?: GameNode;
@@ -31,7 +32,7 @@ export class GameWorldNode extends GameNode {
   private miningEffects!: MiningEffects;
   private cargoTransferEffects!: CargoTransferEffects;
   private readonly instantiatePrefab: (path: string) => GameNode;
-  override readonly dependencies = ['Level', 'PlayerState'] as const;
+  override readonly dependencies = ['Level', 'LootLayer', 'PlayerState'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
   constructor(options: GameWorldNodeOptions) {
@@ -47,11 +48,13 @@ export class GameWorldNode extends GameNode {
       collidesBox: (x, y, width, height) => Boolean(this.levelNode) && this.levelNode.collidesBox(x, y, width, height),
       getCollector: () => this.data.player,
       collectItem: (itemId) => Boolean(this.playerState) && this.playerState.tryCollectMinedItem(itemId),
+      addLootObjects: (objects) => this.lootLayer.addLootObjects(objects),
     });
   }
 
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('Level');
+    this.lootLayer = this.requireNode<LootLayerNode>('LootLayer');
     this.playerState = this.requireNode('PlayerState') as unknown as PlayerStateLike;
   }
 
@@ -134,7 +137,6 @@ export class GameWorldNode extends GameNode {
     this.playerInstance = this.addChild(this.instantiatePrefab('08a9bfce-1773-5ca0-8adc-52dc8b2e378e'));
     const movement = findNode(this.playerInstance, 'PlayerMovementController') as unknown as ScriptMethodTarget;
     this.data.player = movement.callScriptMethod('spawnAt', spawn.x, spawn.y) as Phaser.GameObjects.Image;
-    this.data.player.setDepth(WORLD_RENDER_DEPTHS.player);
 
     const bounds = worldBoundsForLevel(this.level);
     this.phaserScene.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);

@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { WORLD_RENDER_DEPTHS } from './renderDepths';
 
 export interface MiningDropCollector {
   x: number;
@@ -10,6 +9,7 @@ export interface MiningEffectsOptions {
   collidesBox(x: number, y: number, width: number, height: number): boolean;
   getCollector(): MiningDropCollector | undefined;
   collectItem(itemId: string): boolean;
+  addLootObjects(objects: readonly Phaser.GameObjects.GameObject[]): void;
 }
 
 interface MiningParticle {
@@ -60,11 +60,7 @@ export class MiningEffects {
   }
 
   getSceneObjects(): Phaser.GameObjects.GameObject[] {
-    return [
-      ...this.particles.map((particle) => particle.fragment),
-      ...this.drops.map((drop) => drop.marker),
-      ...this.drops.map((drop) => drop.image),
-    ];
+    return this.particles.map((particle) => particle.fragment);
   }
 
   emitFragments(materialId: string, x: number, y: number, count = 3): void {
@@ -98,12 +94,11 @@ export class MiningEffects {
   spawnDrop(itemId: string, frame: number, x: number, y: number): void {
     if (frame < 0) return;
     const marker = this.scene.add.circle(x, y, DROP_SIZE * 0.64, 0xfbbf24, 0.18)
-      .setStrokeStyle(2, 0xfde68a, 0.92)
-      .setDepth(WORLD_RENDER_DEPTHS.resourceDropMarker);
+      .setStrokeStyle(2, 0xfde68a, 0.92);
     const image = this.scene.add.image(x, y, `item-${itemId}`)
       .setDisplaySize(DROP_SIZE, DROP_SIZE)
-      .setDepth(WORLD_RENDER_DEPTHS.resourceDrop)
       .setAngle(Phaser.Math.Between(-18, 18));
+    this.options.addLootObjects([marker, image]);
     this.drops.push({
       marker,
       image,

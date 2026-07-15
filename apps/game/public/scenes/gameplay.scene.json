@@ -14,7 +14,13 @@
           },
           {
             "name": "World",
-            "nodeTypeId": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1"
+            "nodeTypeId": "dc19f5fb-ea06-5aab-bd74-2178d2882bf1",
+            "children": [
+              {
+                "name": "LootLayer",
+                "nodeTypeId": "f60ec709-ef57-5eb1-866b-c82240481880"
+              }
+            ]
           }
         ]
       },

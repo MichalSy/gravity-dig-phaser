@@ -10,14 +10,13 @@ vi.mock('phaser', () => ({
 }));
 
 import { MiningEffects } from '../apps/game/src/game/world/MiningEffects';
-import { WORLD_RENDER_DEPTHS } from '../apps/game/src/game/world/renderDepths';
 
 class FakeImage {
   x: number;
   y: number;
   angle = 0;
   alpha = 1;
-  depth = 0;
+  depthCalls = 0;
   destroyed = false;
 
   constructor(x: number, y: number) {
@@ -28,7 +27,7 @@ class FakeImage {
   setCrop() { return this; }
   setDisplaySize() { return this; }
   setStrokeStyle() { return this; }
-  setDepth(value: number) { this.depth = value; return this; }
+  setDepth() { this.depthCalls += 1; return this; }
   setPosition(x: number, y: number) { this.x = x; this.y = y; return this; }
   setAngle(value: number) { this.angle = value; return this; }
   setAlpha(value: number) { this.alpha = value; return this; }
@@ -41,6 +40,7 @@ describe('mining drops and fragments', () => {
   let cargoHasSpace = false;
   let collected: string[];
   let sounds: string[];
+  let lootObjects: FakeImage[];
   let effects: MiningEffects;
 
   beforeEach(() => {
@@ -49,6 +49,7 @@ describe('mining drops and fragments', () => {
     cargoHasSpace = false;
     collected = [];
     sounds = [];
+    lootObjects = [];
     const scene = {
       add: {
         circle: (x: number, y: number) => new FakeImage(x, y),
@@ -77,6 +78,9 @@ describe('mining drops and fragments', () => {
         collected.push(itemId);
         return true;
       },
+      addLootObjects: (objects) => {
+        for (const object of objects) lootObjects.push(object as unknown as FakeImage);
+      },
     });
   });
 
@@ -90,8 +94,9 @@ describe('mining drops and fragments', () => {
   it('leaves a resource on the ground while cargo is full and collects it later', () => {
     effects.spawnDrop('copper', 6, 0, 0);
     const drop = images[0];
-    expect(drop.depth).toBe(WORLD_RENDER_DEPTHS.resourceDrop);
-    expect(drop.depth).toBeLessThan(WORLD_RENDER_DEPTHS.player);
+    expect(lootObjects).toHaveLength(2);
+    expect(lootObjects).toContain(drop);
+    expect(lootObjects.every((object) => object.depthCalls === 0)).toBe(true);
     for (let index = 0; index < 40; index += 1) effects.update(50);
     expect(drop.destroyed).toBe(false);
     expect(drop.y).toBeLessThan(100);
