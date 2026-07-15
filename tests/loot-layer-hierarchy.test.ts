@@ -59,7 +59,9 @@ describe('loot rendering hierarchy', () => {
     expect(visibilitySource).toContain('INNER_SHADOW_ALPHA = 0.3');
     expect(visibilitySource).toContain('OUTER_SHADOW_ALPHA = 0.6');
     expect(visibilitySource).toContain('EXPLORED_SHADOW_ALPHA = 0');
-    expect(visibilitySource).toContain('startAlpha');
+    expect(visibilitySource).toContain('rememberedShadowAlphas');
+    expect(visibilitySource).toContain('Math.min(rememberedAlpha, this.getDistanceShadowAlpha(distanceSquared))');
+    expect(visibilitySource).toContain("return `g${alpha <= INNER_SHADOW_ALPHA ? '30' : '60'}:${x}:${y}`");
     expect(visibilitySource).toContain('animation.startAlpha * (1 - progress)');
     expect(visibilitySource).not.toContain('getRevealOverlayAlpha');
     expect(visibilitySource).toContain('UNEXPLORED_SHADOW_ALPHA = 0.985');

@@ -123,8 +123,10 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 
 Beim Betreten eines neuen Tiles wird das kreisförmige Grid-Sichtfeld als erkundet markiert:
 
-- erkundete Tile-Keys werden mit dem Präfix `g:` in `RunState.discoveredTiles` gespeichert
-- bereits erkundete Bereiche bleiben dauerhaft vollständig hell (`0 %` Shadow)
+- jede erreichte Shadowstufe wird pro Tile gespeichert: `g60:` für maximal 60 %, `g30:` für maximal 30 % und `g:` für vollständig aufgedeckt
+- ein Tile darf ausschließlich heller werden (`100 → 60 → 30 → 0`), niemals wieder dunkler
+- beim Weglaufen bleibt deshalb ein einmal mit 30 % sichtbares Tile bei höchstens 30 %; es springt nicht auf 60 % oder 100 % zurück
+- vollständig erkundete Bereiche bleiben dauerhaft vollständig hell (`0 %` Shadow)
 - Saves aus Game `1.0.450–1.0.451` werden automatisch vom alten Mittelpunktformat ins Gridformat migriert
 - der Zustand wird mit dem aktiven Run gespeichert und nach erneutem Laden desselben Runs wiederhergestellt
 

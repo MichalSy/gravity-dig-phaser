@@ -40,6 +40,7 @@ export class VisibilityFieldNode extends GameNode {
   private overlay?: Phaser.GameObjects.Graphics;
   private animationOverlay?: Phaser.GameObjects.Graphics;
   private readonly revealedTiles = new Set<string>();
+  private readonly rememberedShadowAlphas = new Map<string, number>();
   private readonly revealAnimations = new Map<string, RevealAnimation>();
   private trackedPlayer?: Phaser.GameObjects.Image;
   private currentPlayerTile?: GridTile;
@@ -89,6 +90,7 @@ export class VisibilityFieldNode extends GameNode {
     this.animationOverlay?.destroy();
     this.animationOverlay = undefined;
     this.revealedTiles.clear();
+    this.rememberedShadowAlphas.clear();
     this.revealAnimations.clear();
     this.lastPlayerTileKey = undefined;
     this.currentPlayerTile = undefined;
@@ -98,14 +100,22 @@ export class VisibilityFieldNode extends GameNode {
 
   private resetExploration(player: Phaser.GameObjects.Image): void {
     this.revealedTiles.clear();
+    this.rememberedShadowAlphas.clear();
     this.revealAnimations.clear();
     const migratedKeys: string[] = [];
     const sightRadius = this.getSightRadius();
 
     for (const savedKey of this.playerState.getDiscoveredTiles()) {
-      const gridTile = parseGridKey(savedKey);
-      if (gridTile) {
-        this.revealedTiles.add(tileKey(gridTile.x, gridTile.y));
+      const visibilityTile = parseVisibilityGridKey(savedKey);
+      if (visibilityTile) {
+        const key = tileKey(visibilityTile.x, visibilityTile.y);
+        if (visibilityTile.alpha === EXPLORED_SHADOW_ALPHA) {
+          this.revealedTiles.add(key);
+          this.rememberedShadowAlphas.delete(key);
+        } else if (!this.revealedTiles.has(key)) {
+          const previous = this.rememberedShadowAlphas.get(key) ?? UNEXPLORED_SHADOW_ALPHA;
+          this.rememberedShadowAlphas.set(key, Math.min(previous, visibilityTile.alpha));
+        }
         continue;
       }
 
@@ -138,10 +148,48 @@ export class VisibilityFieldNode extends GameNode {
     this.lastPlayerTileKey = playerTileKey;
 
     const keys = pendingKeys ?? [];
-    this.revealCircle(centerX, centerY, this.getSightRadius(), keys, animate);
+    this.rememberVisibilityAround(centerX, centerY, keys, animate);
     this.currentPlayerTile = { x: centerX, y: centerY };
     if (!pendingKeys && keys.length > 0) this.playerState.discoverTiles(keys);
     return true;
+  }
+
+  private rememberVisibilityAround(
+    centerX: number,
+    centerY: number,
+    persistedKeys: string[],
+    animate: boolean,
+  ): void {
+    const outerRadius = this.getSightRadius() + 2;
+    const radiusSquared = (outerRadius + CIRCLE_EDGE_TILES) ** 2;
+    for (let y = centerY - outerRadius; y <= centerY + outerRadius; y += 1) {
+      for (let x = centerX - outerRadius; x <= centerX + outerRadius; x += 1) {
+        const distanceSquared = (x - centerX) ** 2 + (y - centerY) ** 2;
+        if (distanceSquared > radiusSquared) continue;
+        const targetAlpha = this.getDistanceShadowAlpha(distanceSquared);
+        const key = tileKey(x, y);
+        const previousMaximum = this.getRememberedShadowAlpha(key);
+        if (targetAlpha >= previousMaximum) continue;
+
+        const startAlpha = this.getTargetShadowAlpha(x, y);
+        if (targetAlpha === EXPLORED_SHADOW_ALPHA) {
+          this.revealedTiles.add(key);
+          this.rememberedShadowAlphas.delete(key);
+        } else {
+          this.rememberedShadowAlphas.set(key, targetAlpha);
+        }
+        persistedKeys.push(visibilityGridKey(x, y, targetAlpha));
+
+        if (animate && targetAlpha === EXPLORED_SHADOW_ALPHA && startAlpha > 0) {
+          this.revealAnimations.set(key, {
+            x,
+            y,
+            elapsedMs: -Math.sqrt(distanceSquared) * REVEAL_WAVE_DELAY_MS,
+            startAlpha,
+          });
+        }
+      }
+    }
   }
 
   private revealCircle(
@@ -161,6 +209,7 @@ export class VisibilityFieldNode extends GameNode {
         if (this.revealedTiles.has(key)) continue;
         const startAlpha = this.getTargetShadowAlpha(x, y);
         this.revealedTiles.add(key);
+        this.rememberedShadowAlphas.delete(key);
         persistedKeys.push(gridKey(x, y));
         if (animate && startAlpha > 0) {
           this.revealAnimations.set(key, {
@@ -236,16 +285,26 @@ export class VisibilityFieldNode extends GameNode {
   }
 
   private getTargetShadowAlpha(x: number, y: number): number {
-    if (this.revealedTiles.has(tileKey(x, y))) return EXPLORED_SHADOW_ALPHA;
-
+    const key = tileKey(x, y);
+    const rememberedAlpha = this.getRememberedShadowAlpha(key);
     const center = this.currentPlayerTile;
-    if (center) {
-      const distanceSquared = (x - center.x) ** 2 + (y - center.y) ** 2;
-      const innerRadius = this.getSightRadius() + 1 + CIRCLE_EDGE_TILES;
-      if (distanceSquared <= innerRadius ** 2) return INNER_SHADOW_ALPHA;
-      const outerRadius = this.getSightRadius() + 2 + CIRCLE_EDGE_TILES;
-      if (distanceSquared <= outerRadius ** 2) return OUTER_SHADOW_ALPHA;
-    }
+    if (!center) return rememberedAlpha;
+    const distanceSquared = (x - center.x) ** 2 + (y - center.y) ** 2;
+    return Math.min(rememberedAlpha, this.getDistanceShadowAlpha(distanceSquared));
+  }
+
+  private getRememberedShadowAlpha(key: string): number {
+    if (this.revealedTiles.has(key)) return EXPLORED_SHADOW_ALPHA;
+    return this.rememberedShadowAlphas.get(key) ?? UNEXPLORED_SHADOW_ALPHA;
+  }
+
+  private getDistanceShadowAlpha(distanceSquared: number): number {
+    const sightRadius = this.getSightRadius() + CIRCLE_EDGE_TILES;
+    if (distanceSquared <= sightRadius ** 2) return EXPLORED_SHADOW_ALPHA;
+    const innerRadius = this.getSightRadius() + 1 + CIRCLE_EDGE_TILES;
+    if (distanceSquared <= innerRadius ** 2) return INNER_SHADOW_ALPHA;
+    const outerRadius = this.getSightRadius() + 2 + CIRCLE_EDGE_TILES;
+    if (distanceSquared <= outerRadius ** 2) return OUTER_SHADOW_ALPHA;
     return UNEXPLORED_SHADOW_ALPHA;
   }
 
@@ -273,14 +332,20 @@ function gridKey(x: number, y: number): string {
   return `${GRID_KEY_PREFIX}${x}:${y}`;
 }
 
+function visibilityGridKey(x: number, y: number, alpha: number): string {
+  if (alpha <= EXPLORED_SHADOW_ALPHA) return gridKey(x, y);
+  return `g${alpha <= INNER_SHADOW_ALPHA ? '30' : '60'}:${x}:${y}`;
+}
+
 function parseTileKey(key: string): GridTile | undefined {
   const match = /^(-?\d+):(-?\d+)$/.exec(key);
   if (!match) return undefined;
   return { x: Number(match[1]), y: Number(match[2]) };
 }
 
-function parseGridKey(key: string): GridTile | undefined {
-  const match = /^g:(-?\d+):(-?\d+)$/.exec(key);
+function parseVisibilityGridKey(key: string): (GridTile & { alpha: number }) | undefined {
+  const match = /^g(?:(30|60))?:(-?\d+):(-?\d+)$/.exec(key);
   if (!match) return undefined;
-  return { x: Number(match[1]), y: Number(match[2]) };
+  const alpha = match[1] === '30' ? INNER_SHADOW_ALPHA : match[1] === '60' ? OUTER_SHADOW_ALPHA : 0;
+  return { x: Number(match[2]), y: Number(match[3]), alpha };
 }
