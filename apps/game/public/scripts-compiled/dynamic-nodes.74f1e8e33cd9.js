@@ -636,6 +636,7 @@ var ShipScript = class extends ScriptNode {
   promptText;
   bottomHud;
   upgradeDialog;
+  gameplayInput;
   lastMessage = "";
   lastMessageTimerMs = 0;
   transferTimerMs = 0;
@@ -646,6 +647,7 @@ var ShipScript = class extends ScriptNode {
     this.promptText = this.requireResolvedNode(this.promptNodeId, "ShipPrompt");
     this.bottomHud = this.requireResolvedNode(this.bottomHudNodeId, "BottomHudBehavior");
     this.upgradeDialog = this.requireResolvedNode(this.upgradeDialogNodeId, "UpgradeDialogBehavior");
+    this.gameplayInput = this.requireResolvedNode(null, "GameplayInput");
     this.layoutShipImage();
     this.resetPrompt();
   }
@@ -661,7 +663,8 @@ var ShipScript = class extends ScriptNode {
     } else {
       this.transferTimerMs = 0;
     }
-    const message = this.upgradeDialog.isOpen() ? "" : this.lastMessageTimerMs > 0 ? this.lastMessage : atDock ? `[E] UPGRADES
+    const upgradePrompt = this.gameplayInput.getInputMode() === "touch" ? "UPGRADES VERF\xDCGBAR" : "[E] UPGRADES";
+    const message = this.upgradeDialog.isOpen() ? "" : this.lastMessageTimerMs > 0 ? this.lastMessage : atDock ? `${upgradePrompt}
 ${hasCargo ? "Cargo wird automatisch verladen" : "Energie wird aufgeladen"} \xB7 ${this.playerState.save.profile.credits} C` : "";
     this.promptText.setText?.(message);
     this.promptText.position = this.promptText.worldToLocalPosition({ x: player.x, y: player.y - this.promptOffsetY });
@@ -673,6 +676,9 @@ ${hasCargo ? "Cargo wird automatisch verladen" : "Energie wird aufgeladen"} \xB7
       return;
     }
     this.upgradeDialog.open();
+  }
+  isPlayerAtDock() {
+    return this.isAtDock(this.world.player);
   }
   resetPrompt() {
     this.lastMessage = "";
@@ -2364,4 +2370,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.03268b27e68a.js.map
+//# sourceMappingURL=dynamic-nodes.74f1e8e33cd9.js.map

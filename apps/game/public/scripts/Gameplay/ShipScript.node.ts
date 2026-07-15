@@ -38,6 +38,10 @@ type UpgradeDialogLike = {
   isOpen(): boolean;
 };
 
+type GameplayInputLike = {
+  getInputMode(): 'desktop' | 'touch' | 'gamepad';
+};
+
 type ShipImageLike = Core.ImageNode & {
   image: { frame: { width: number; height: number } };
   scaleX: number;
@@ -77,6 +81,7 @@ export default class ShipScript extends Core.ScriptNode {
   private promptText!: ShipPromptLike;
   private bottomHud!: BottomHudLike;
   private upgradeDialog!: UpgradeDialogLike;
+  private gameplayInput!: GameplayInputLike;
   private lastMessage = '';
   private lastMessageTimerMs = 0;
   private transferTimerMs = 0;
@@ -88,6 +93,7 @@ export default class ShipScript extends Core.ScriptNode {
     this.promptText = this.requireResolvedNode<ShipPromptLike>(this.promptNodeId, 'ShipPrompt');
     this.bottomHud = this.requireResolvedNode<BottomHudLike>(this.bottomHudNodeId, 'BottomHudBehavior');
     this.upgradeDialog = this.requireResolvedNode<UpgradeDialogLike>(this.upgradeDialogNodeId, 'UpgradeDialogBehavior');
+    this.gameplayInput = this.requireResolvedNode<GameplayInputLike>(null, 'GameplayInput');
     this.layoutShipImage();
     this.resetPrompt();
   }
@@ -106,12 +112,13 @@ export default class ShipScript extends Core.ScriptNode {
       this.transferTimerMs = 0;
     }
 
+    const upgradePrompt = this.gameplayInput.getInputMode() === 'touch' ? 'UPGRADES VERFÜGBAR' : '[E] UPGRADES';
     const message = this.upgradeDialog.isOpen()
       ? ''
       : this.lastMessageTimerMs > 0
       ? this.lastMessage
       : atDock
-        ? `[E] UPGRADES\n${hasCargo ? 'Cargo wird automatisch verladen' : 'Energie wird aufgeladen'} · ${this.playerState.save.profile.credits} C`
+        ? `${upgradePrompt}\n${hasCargo ? 'Cargo wird automatisch verladen' : 'Energie wird aufgeladen'} · ${this.playerState.save.profile.credits} C`
         : '';
 
     this.promptText.setText?.(message);
@@ -125,6 +132,10 @@ export default class ShipScript extends Core.ScriptNode {
       return;
     }
     this.upgradeDialog.open();
+  }
+
+  isPlayerAtDock() {
+    return this.isAtDock(this.world.player);
   }
 
   resetPrompt() {

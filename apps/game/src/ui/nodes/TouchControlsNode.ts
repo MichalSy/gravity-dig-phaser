@@ -5,20 +5,25 @@ import { NODE_TYPE_IDS, GameNode, type GameNodeOptions, type NodeContext } from 
 interface GameplayInputLike {
   setControlPointerResolver(resolver: (pointer: Phaser.Input.Pointer) => boolean): void;
   getInputMode(): 'desktop' | 'touch' | 'gamepad';
-  setMenuOpen(open: boolean): void;
   isMenuOpen(): boolean;
   setMoveVector(vector: Phaser.Math.Vector2): void;
   setAimVector(vector: Phaser.Math.Vector2): void;
   setAiming(aiming: boolean): void;
 }
 
+interface ShipInteractionLike {
+  interact(): void;
+  isPlayerAtDock(): boolean;
+}
+
 export class TouchControlsNode extends GameNode {
   static override readonly nodeTypeId: string = NODE_TYPE_IDS.TouchControlsNode;
 
   private inputState!: GameplayInputLike;
+  private shipInteraction!: ShipInteractionLike;
   private leftJoystick!: VirtualJoystick;
   private rightJoystick!: VirtualJoystick;
-  private controlsHint!: Phaser.GameObjects.Text;
+  private upgradeButton!: Phaser.GameObjects.Container;
   private phaserScene!: Phaser.Scene;
   override readonly dependencies = ['GameplayInput'] as const;
 
@@ -31,17 +36,24 @@ export class TouchControlsNode extends GameNode {
     this.phaserScene.input.addPointer(3);
     this.leftJoystick = new VirtualJoystick(this.phaserScene, 'left', 'MOVE');
     this.rightJoystick = new VirtualJoystick(this.phaserScene, 'right', 'LASER');
-    this.controlsHint = this.phaserScene.add
-      .text(0, 0, 'Mobile: linker Stick laufen/springen · rechter Stick zielen & minen', {
-        fontFamily: 'Arial, sans-serif',
-        fontSize: '15px',
-        color: '#e2e8f0',
-        backgroundColor: 'rgba(2,6,23,0.45)',
-        padding: { x: 10, y: 6 },
+
+    const background = this.phaserScene.add
+      .rectangle(0, 0, 184, 58, 0x0b1220, 0.94)
+      .setStrokeStyle(3, 0x38bdf8, 1);
+    const label = this.phaserScene.add
+      .text(0, 0, 'UPGRADES', {
+        fontFamily: 'Silkscreen, monospace',
+        fontSize: '19px',
+        color: '#e0f2fe',
       })
       .setOrigin(0.5)
+      .setResolution(Math.max(2, window.devicePixelRatio || 1));
+    this.upgradeButton = this.phaserScene.add
+      .container(0, 0, [background, label])
+      .setSize(184, 58)
       .setScrollFactor(0)
-            .setResolution(Math.max(2, window.devicePixelRatio || 1));
+      .setDepth(200)
+      .setVisible(false);
 
     this.phaserScene.input.on('pointerdown', this.handlePointerDown, this);
     this.phaserScene.input.on('pointermove', this.handlePointerMove, this);
@@ -54,14 +66,13 @@ export class TouchControlsNode extends GameNode {
   }
 
   afterResolved(): void {
+    this.shipInteraction = this.requireNode('ShipBehavior') as unknown as ShipInteractionLike;
     this.inputState.setControlPointerResolver((pointer) => this.containsPointer(pointer));
   }
 
   update(): void {
     const inputMode = this.inputState.getInputMode();
     const width = this.phaserScene.scale.width;
-    const height = this.phaserScene.scale.height;
-    const compact = height <= 430 || width <= 760;
     const touchMode = inputMode === 'touch';
 
     this.leftJoystick.layout();
@@ -71,27 +82,25 @@ export class TouchControlsNode extends GameNode {
       this.rightJoystick.setVisible(false);
     }
 
-    this.inputState.setMenuOpen(false);
     this.inputState.setMoveVector(touchMode ? this.leftJoystick.vector : Phaser.Math.Vector2.ZERO);
     this.inputState.setAimVector(touchMode ? this.rightJoystick.aim : Phaser.Math.Vector2.RIGHT);
     this.inputState.setAiming(this.rightJoystick.active);
 
-    this.controlsHint
-      .setPosition(width / 2, Math.max(24, height - 26))
-      .setWordWrapWidth(Math.max(320, width - 48))
-      .setVisible(!compact && touchMode);
+    this.upgradeButton
+      .setPosition(width - 140, 58)
+      .setVisible(touchMode && !this.inputState.isMenuOpen() && this.shipInteraction.isPlayerAtDock());
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     return [
       ...this.leftJoystick.getSceneObjects(),
       ...this.rightJoystick.getSceneObjects(),
-      this.controlsHint,
+      this.upgradeButton,
     ];
   }
 
   containsPointer(pointer: Phaser.Input.Pointer): boolean {
-    return this.leftJoystick.contains(pointer) || this.rightJoystick.contains(pointer);
+    return this.containsUpgradeButton(pointer) || this.leftJoystick.contains(pointer) || this.rightJoystick.contains(pointer);
   }
 
   destroy(): void {
@@ -99,13 +108,19 @@ export class TouchControlsNode extends GameNode {
     this.phaserScene?.input.off('pointermove', this.handlePointerMove, this);
     this.phaserScene?.input.off('pointerup', this.handlePointerUp, this);
     this.phaserScene?.input.off('pointerupoutside', this.handlePointerUp, this);
-    this.controlsHint?.destroy();
+    this.upgradeButton?.destroy(true);
     this.leftJoystick?.setVisible(false);
     this.rightJoystick?.setVisible(false);
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     if (!this.isTouchInputEnabled()) return;
+    if (this.containsUpgradeButton(pointer)) {
+      this.shipInteraction.interact();
+      pointer.event.preventDefault();
+      return;
+    }
+
     const handled = pointer.x < this.phaserScene.scale.width / 2
       ? this.leftJoystick.handlePointerDown(pointer)
       : this.rightJoystick.handlePointerDown(pointer);
@@ -126,5 +141,9 @@ export class TouchControlsNode extends GameNode {
 
   private isTouchInputEnabled(): boolean {
     return this.inputState.getInputMode() === 'touch' && !this.inputState.isMenuOpen();
+  }
+
+  private containsUpgradeButton(pointer: Phaser.Input.Pointer): boolean {
+    return this.upgradeButton.visible && this.upgradeButton.getBounds().contains(pointer.x, pointer.y);
   }
 }
