@@ -11,6 +11,7 @@ type TileCell = {
 
 type LevelNodeLike = {
   getCellAtWorld(x: number, y: number): TileCell | undefined;
+  getCell(tileX: number, tileY: number): TileCell | undefined;
   clearTile(cell: TileCell): boolean;
 };
 
@@ -19,6 +20,7 @@ type WorldNodeLike = Core.GameNode & {
   addChild<T extends Core.GameNode>(child: T): T;
   removeChild(child: Core.GameNode): void;
   emitMiningFragments(materialId: string, x: number, y: number, count?: number): void;
+  emitChainLightning(points: readonly { x: number; y: number }[]): void;
   spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void;
 };
 
@@ -29,7 +31,7 @@ type MovementControllerLike = {
 };
 
 type PlayerStateLike = {
-  stats: { miningRange: number; miningDamagePerSec: number };
+  stats: { miningRange: number; miningDamagePerSec: number; chainMiningTargets: number };
   hasMiningEnergy(): boolean;
   consumeMiningEnergy(deltaSeconds: number): void;
   recordMinedTile(tileType: string): void;
@@ -55,6 +57,11 @@ const PLAYER_HEIGHT = 64;
 const RESOURCE_TILE_TYPES = new Set(['copper', 'iron', 'gold', 'diamond']);
 const DROPPABLE_TILE_TYPES = new Set(['sand', 'clay', 'gravel', 'stone', 'basalt', 'copper', 'iron', 'gold', 'diamond']);
 const FRAGMENT_INTERVAL_MS = 45;
+const CHAIN_OFFSETS = [
+  { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 },
+  { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: 1, y: 1 },
+  { x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: -2 }, { x: 0, y: 2 },
+] as const;
 
 export default class MiningScript extends Core.ScriptNode {
   id = 'dynamic.mining-tool';
@@ -245,7 +252,7 @@ export default class MiningScript extends Core.ScriptNode {
     this.crackOverlays.clear();
   }
 
-  private mineTile(cell: TileCell) {
+  private mineTile(cell: TileCell, triggerChain = true) {
     const minedType = cell.type;
     const frame = cell.foregroundFrame;
     const center = this.tileCenter(cell);
@@ -256,6 +263,26 @@ export default class MiningScript extends Core.ScriptNode {
     this.playerState.recordMinedTile(minedType);
     const detune = Math.round(Math.random() * 90 - 45);
     (RESOURCE_TILE_TYPES.has(minedType) ? this.gemBreakAudio : this.dirtBreakAudio).playOneShot({ detune });
+    if (triggerChain) this.triggerChainMining(cell, center);
+  }
+
+  private triggerChainMining(originCell: TileCell, origin: { x: number; y: number }) {
+    const targetCount = Math.max(0, Math.round(this.playerState.stats.chainMiningTargets));
+    if (targetCount === 0) return;
+    const candidates: TileCell[] = [];
+    for (const offset of CHAIN_OFFSETS) {
+      const cell = this.levelNode.getCell(originCell.x + offset.x, originCell.y + offset.y);
+      if (!cell || !cell.type || cell.type === 'air' || cell.type === 'bedrock') continue;
+      candidates.push(cell);
+      if (candidates.length >= targetCount) break;
+    }
+    if (candidates.length === 0) return;
+    const points = [origin];
+    for (const cell of candidates) {
+      points.push(this.tileCenter(cell));
+      this.mineTile(cell, false);
+    }
+    this.world.emitChainLightning(points);
   }
 
   private emitMiningFragments(cell: TileCell, deltaMs: number) {

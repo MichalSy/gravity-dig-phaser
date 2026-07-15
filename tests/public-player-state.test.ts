@@ -87,6 +87,34 @@ describe('public player state domain', () => {
     expect(manager.getProfileCredits()).toBe(1_595);
   });
 
+  it('enforces skill-tree prerequisites and applies active branch abilities', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    manager.startRun('test-planet', 'skill-tree-seed', false);
+    manager.onInspectorPropChanged('credits', 20_000);
+
+    expect(manager.purchaseUpgrade('chain_lightning')).toEqual({ ok: false, message: 'Vorherige Stufe erforderlich' });
+    expect(manager.purchaseUpgrade('prospector_core').ok).toBe(true);
+    expect(manager.stats.maxEnergy).toBe(110);
+    expect(manager.purchaseUpgrade('laser_focus').ok).toBe(true);
+    expect(manager.purchaseUpgrade('chain_lightning').ok).toBe(true);
+    expect(manager.stats.miningDamagePerSec).toBe(150);
+    expect(manager.stats.chainMiningTargets).toBe(2);
+    expect(manager.purchaseUpgrade('spring_boots').ok).toBe(true);
+    expect(manager.purchaseUpgrade('micro_jetpack').ok).toBe(true);
+    expect(manager.stats.airJumps).toBe(1);
+    expect(manager.purchaseUpgrade('wide_visor').ok).toBe(true);
+    expect(manager.purchaseUpgrade('ore_scanner').ok).toBe(true);
+    expect(manager.stats.sightRadius).toBe(3);
+    expect(manager.stats.oreScannerRadius).toBe(4);
+    expect(manager.purchaseUpgrade('cargo_tetris').ok).toBe(true);
+    expect(manager.purchaseUpgrade('pocket_wormhole').ok).toBe(true);
+    expect(manager.stats.cargoSlots).toBe(3);
+    expect(manager.stats.cargoStackLimit).toBe(6);
+    expect(manager.stats.pickupRadius).toBe(140);
+  });
+
   it('routes inspector patches into live run, stats, and profile state', () => {
     vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
     const manager = new PlayerStateManager();

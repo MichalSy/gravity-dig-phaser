@@ -143,6 +143,20 @@ var PLAYER_HEIGHT = 64;
 var RESOURCE_TILE_TYPES = /* @__PURE__ */ new Set(["copper", "iron", "gold", "diamond"]);
 var DROPPABLE_TILE_TYPES = /* @__PURE__ */ new Set(["sand", "clay", "gravel", "stone", "basalt", "copper", "iron", "gold", "diamond"]);
 var FRAGMENT_INTERVAL_MS = 45;
+var CHAIN_OFFSETS = [
+  { x: -1, y: 0 },
+  { x: 1, y: 0 },
+  { x: 0, y: -1 },
+  { x: 0, y: 1 },
+  { x: -1, y: -1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 1 },
+  { x: 1, y: 1 },
+  { x: -2, y: 0 },
+  { x: 2, y: 0 },
+  { x: 0, y: -2 },
+  { x: 0, y: 2 }
+];
 var MiningScript = class extends ScriptNode {
   id = "dynamic.mining-tool";
   name = "Mining Tool Script";
@@ -310,7 +324,7 @@ var MiningScript = class extends ScriptNode {
     for (const overlay of this.crackOverlays.values()) this.world?.removeChild(overlay);
     this.crackOverlays.clear();
   }
-  mineTile(cell) {
+  mineTile(cell, triggerChain = true) {
     const minedType = cell.type;
     const frame = cell.foregroundFrame;
     const center = this.tileCenter(cell);
@@ -321,6 +335,25 @@ var MiningScript = class extends ScriptNode {
     this.playerState.recordMinedTile(minedType);
     const detune = Math.round(Math.random() * 90 - 45);
     (RESOURCE_TILE_TYPES.has(minedType) ? this.gemBreakAudio : this.dirtBreakAudio).playOneShot({ detune });
+    if (triggerChain) this.triggerChainMining(cell, center);
+  }
+  triggerChainMining(originCell, origin) {
+    const targetCount = Math.max(0, Math.round(this.playerState.stats.chainMiningTargets));
+    if (targetCount === 0) return;
+    const candidates = [];
+    for (const offset of CHAIN_OFFSETS) {
+      const cell = this.levelNode.getCell(originCell.x + offset.x, originCell.y + offset.y);
+      if (!cell || !cell.type || cell.type === "air" || cell.type === "bedrock") continue;
+      candidates.push(cell);
+      if (candidates.length >= targetCount) break;
+    }
+    if (candidates.length === 0) return;
+    const points = [origin];
+    for (const cell of candidates) {
+      points.push(this.tileCenter(cell));
+      this.mineTile(cell, false);
+    }
+    this.world.emitChainLightning(points);
   }
   emitMiningFragments(cell, deltaMs) {
     this.fragmentTimerMs += deltaMs;
@@ -490,6 +523,7 @@ var PlayerMovementScript = class extends ScriptNode {
   coyoteTimerSeconds = 0;
   jumpBufferTimerSeconds = 0;
   jumpHeld = false;
+  airJumpsRemaining = 0;
   resolve() {
     this.levelNode = this.requireResolvedNode(this.levelNodeId, "Level");
     this.playerState = this.requireResolvedNode(this.playerStateNodeId, "PlayerState");
@@ -511,6 +545,7 @@ var PlayerMovementScript = class extends ScriptNode {
     this.coyoteTimerSeconds = 0;
     this.jumpBufferTimerSeconds = 0;
     this.jumpHeld = false;
+    this.airJumpsRemaining = this.playerState.stats.airJumps;
   }
   blockInput() {
     this.inputBlocked = true;
@@ -554,15 +589,21 @@ var PlayerMovementScript = class extends ScriptNode {
       this.jump();
       return;
     }
+    if (this.airJumpsRemaining > 0) {
+      this.airJumpsRemaining -= 1;
+      this.jump(true);
+      return;
+    }
     this.jumpBufferTimerSeconds = 0.1;
   }
   applyPhysics(deltaSeconds) {
     const wasGrounded = this.grounded;
-    this.velocity.y += GRAVITY * deltaSeconds;
+    this.velocity.y += GRAVITY * this.playerState.stats.gravityMultiplier * deltaSeconds;
     this.moveAxis(this.velocity.x * deltaSeconds, 0);
     this.grounded = false;
     this.moveAxis(0, this.velocity.y * deltaSeconds);
     this.stabilizeGroundContact();
+    if (this.grounded) this.airJumpsRemaining = this.playerState.stats.airJumps;
     if (wasGrounded && !this.grounded) this.coyoteTimerSeconds = 0.1;
     if (this.coyoteTimerSeconds > 0) this.coyoteTimerSeconds -= deltaSeconds;
     if (this.jumpBufferTimerSeconds > 0 && (this.grounded || this.coyoteTimerSeconds > 0)) {
@@ -595,11 +636,11 @@ var PlayerMovementScript = class extends ScriptNode {
       break;
     }
   }
-  jump() {
+  jump(jetpack = false) {
     this.velocity.y = this.playerState.stats.jumpVelocity;
     this.grounded = false;
     this.coyoteTimerSeconds = 0;
-    this.emit("player:jump");
+    this.emit(jetpack ? "player:jetpack" : "player:jump");
   }
   resolveNode(instanceId, fallbackName) {
     return (instanceId ? this.getNodeById(instanceId) : void 0) ?? this.getNode(fallbackName);
@@ -1301,7 +1342,151 @@ var ENERGY_COST_PER_SEC = 12;
 var LIFE_SUPPORT_ENERGY_COST_PER_SEC = 1.5;
 
 // public/scripts/PlayerState/catalogs/upgrades.ts
+var SKILL_TREE_IDS = [
+  "prospector_core",
+  "spring_boots",
+  "micro_jetpack",
+  "rocket_pants",
+  "wide_visor",
+  "ore_scanner",
+  "xray_potato",
+  "laser_focus",
+  "chain_lightning",
+  "storm_subscription",
+  "cargo_tetris",
+  "pocket_wormhole",
+  "rubber_duck_protocol"
+];
 var UPGRADE_DEFINITIONS = {
+  prospector_core: {
+    id: "prospector_core",
+    label: "Prospektor-Kern",
+    description: "Schaltet die vier Forschungs\xE4ste frei und spendiert 10 Energie.",
+    category: "core",
+    cost: { credits: 50 },
+    effects: [{ stat: "maxEnergy", op: "add", value: 10 }],
+    tree: { x: 0, y: 0, branch: "core" }
+  },
+  spring_boots: {
+    id: "spring_boots",
+    label: "Federstiefel",
+    description: "12 % h\xF6her springen. Boing ist eine Wissenschaft.",
+    category: "boots",
+    cost: { credits: 100 },
+    prerequisites: ["prospector_core"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.12 }],
+    tree: { x: -1, y: 1, branch: "movement" }
+  },
+  micro_jetpack: {
+    id: "micro_jetpack",
+    label: "Mikro-Jetpack",
+    description: "Ein zus\xE4tzlicher Sprung in der Luft.",
+    category: "boots",
+    cost: { credits: 350 },
+    prerequisites: ["spring_boots"],
+    effects: [{ stat: "airJumps", op: "set", value: 1 }],
+    tree: { x: -2, y: 2, branch: "movement" }
+  },
+  rocket_pants: {
+    id: "rocket_pants",
+    label: "Raketenhose",
+    description: "Zwei Luftspr\xFCnge und 28 % weniger Schwerkraft. Garantie erloschen.",
+    category: "boots",
+    cost: { credits: 900 },
+    prerequisites: ["micro_jetpack"],
+    effects: [{ stat: "airJumps", op: "set", value: 2 }, { stat: "gravityMultiplier", op: "multiply", value: 0.72 }],
+    tree: { x: -3, y: 3, branch: "movement" }
+  },
+  wide_visor: {
+    id: "wide_visor",
+    label: "Weitwinkel-Visier",
+    description: "Erh\xF6ht die permanente Sichtweite auf 3 Tiles.",
+    category: "visor",
+    cost: { credits: 100 },
+    prerequisites: ["prospector_core"],
+    effects: [{ stat: "sightRadius", op: "set", value: 3 }],
+    tree: { x: 1, y: -1, branch: "vision" }
+  },
+  ore_scanner: {
+    id: "ore_scanner",
+    label: "Erz-Scanner",
+    description: "Markiert Erzadern im Radius von 4 Tiles durch den Fog.",
+    category: "visor",
+    cost: { credits: 350 },
+    prerequisites: ["wide_visor"],
+    effects: [{ stat: "oreScannerRadius", op: "set", value: 4 }],
+    tree: { x: 2, y: -2, branch: "vision" }
+  },
+  xray_potato: {
+    id: "xray_potato",
+    label: "R\xF6ntgen-Kartoffel",
+    description: "Scanner-Radius 7 und +1 Sicht. Fragt nicht, warum sie summt.",
+    category: "visor",
+    cost: { credits: 900 },
+    prerequisites: ["ore_scanner"],
+    effects: [{ stat: "oreScannerRadius", op: "set", value: 7 }, { stat: "sightRadius", op: "add", value: 1 }],
+    tree: { x: 3, y: -3, branch: "vision" }
+  },
+  laser_focus: {
+    id: "laser_focus",
+    label: "Laser-Fokus",
+    description: "25 % mehr Mining-Schaden.",
+    category: "laser",
+    cost: { credits: 125 },
+    prerequisites: ["prospector_core"],
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.25 }],
+    tree: { x: 1, y: 1, branch: "mining" }
+  },
+  chain_lightning: {
+    id: "chain_lightning",
+    label: "Kettenblitz",
+    description: "Jeder zerst\xF6rte Block zerlegt zwei benachbarte Bl\xF6cke.",
+    category: "laser",
+    cost: { credits: 450 },
+    prerequisites: ["laser_focus"],
+    effects: [{ stat: "chainMiningTargets", op: "set", value: 2 }],
+    tree: { x: 2, y: 2, branch: "mining" }
+  },
+  storm_subscription: {
+    id: "storm_subscription",
+    label: "Gewitter-Abo",
+    description: "Vier Kettenziele und 15 % mehr Schaden. Monatlich k\xFCndbar.*",
+    category: "laser",
+    cost: { credits: 1100 },
+    prerequisites: ["chain_lightning"],
+    effects: [{ stat: "chainMiningTargets", op: "set", value: 4 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.15 }],
+    tree: { x: 3, y: 3, branch: "mining" }
+  },
+  cargo_tetris: {
+    id: "cargo_tetris",
+    label: "Cargo-Tetris",
+    description: "+1 Cargo-Slot. Reihen verschwinden leider nicht.",
+    category: "cargo",
+    cost: { credits: 100 },
+    prerequisites: ["prospector_core"],
+    effects: [{ stat: "cargoSlots", op: "add", value: 1 }],
+    tree: { x: -1, y: -1, branch: "utility" }
+  },
+  pocket_wormhole: {
+    id: "pocket_wormhole",
+    label: "Taschen-Wurmloch",
+    description: "+3 Stackgr\xF6\xDFe und 140 Pixel Sammelradius.",
+    category: "cargo",
+    cost: { credits: 400 },
+    prerequisites: ["cargo_tetris"],
+    effects: [{ stat: "cargoStackLimit", op: "add", value: 3 }, { stat: "pickupRadius", op: "set", value: 140 }],
+    tree: { x: -2, y: -2, branch: "utility" }
+  },
+  rubber_duck_protocol: {
+    id: "rubber_duck_protocol",
+    label: "Goldene Gummiente",
+    description: "+25 Leben, 220 Pixel Magnet und 15 % weniger Schwerkraft. Quak.",
+    category: "core",
+    cost: { credits: 1e3 },
+    prerequisites: ["pocket_wormhole"],
+    effects: [{ stat: "maxHealth", op: "add", value: 25 }, { stat: "pickupRadius", op: "set", value: 220 }, { stat: "gravityMultiplier", op: "multiply", value: 0.85 }],
+    tree: { x: -3, y: -3, branch: "utility" }
+  },
   laser_mk2: {
     id: "laser_mk2",
     label: "Laser MK2",
@@ -1781,7 +1966,12 @@ function computeEffectiveStats(profile) {
     cargoSlots: 2,
     cargoStackLimit: 3,
     sightRadius: 2,
-    fuelEfficiency: 1
+    fuelEfficiency: 1,
+    airJumps: 0,
+    gravityMultiplier: 1,
+    oreScannerRadius: 0,
+    chainMiningTargets: 0,
+    pickupRadius: 58
   };
   const modifiers = collectModifiers(profile);
   for (const modifier of modifiers) applyModifier(stats, modifier);
@@ -2264,26 +2454,6 @@ function clamp5(value, min, max) {
 }
 
 // public/scripts/UI/UpgradeDialogScript.node.ts
-var ROWS = [
-  {
-    label: "TEMPO-VERBESSERUNG",
-    ids: ["speed_mk1", "speed_mk2", "speed_mk3"],
-    stat: "moveSpeed",
-    format: (value) => `+${Math.round((value / PLAYER_SPEED - 1) * 100)} %`
-  },
-  {
-    label: "ANZAHL CARGO-SLOTS",
-    ids: ["cargo_mk1", "cargo_mk2", "cargo_mk3"],
-    stat: "cargoSlots",
-    format: (value) => `${Math.round(value)} Slots`
-  },
-  {
-    label: "CARGO-SLOT-GR\xD6SSE",
-    ids: ["cargo_stack_mk1", "cargo_stack_mk2", "cargo_stack_mk3"],
-    stat: "cargoStackLimit",
-    format: (value) => `${Math.round(value)} Items`
-  }
-];
 var UpgradeDialogScript = class extends ScriptNode {
   id = "dynamic.upgrade-dialog";
   name = "Upgrade Dialog";
@@ -2293,15 +2463,13 @@ var UpgradeDialogScript = class extends ScriptNode {
   creditsTextNodeId = prop.nodeRef(null, { label: "Credits Text" });
   statusTextNodeId = prop.nodeRef(null, { label: "Status Text" });
   closeButtonNodeId = prop.nodeRef(null, { label: "Close Button" });
-  valueTextNodeIds = prop.nodeRefList([], { label: "Value Texts" });
-  buyButtonNodeIds = prop.nodeRefList([], { label: "Buy Buttons" });
-  buyLabelNodeIds = prop.nodeRefList([], { label: "Buy Labels" });
+  buyButtonNodeIds = prop.nodeRefList([], { label: "Skill Buttons" });
+  buyLabelNodeIds = prop.nodeRefList([], { label: "Skill Labels" });
   playerState;
   dialogRoot;
   gameplayInput;
   creditsText;
   statusText;
-  values = [];
   buttons = [];
   buttonLabels = [];
   keyHandler;
@@ -2312,10 +2480,9 @@ var UpgradeDialogScript = class extends ScriptNode {
     this.dialogRoot = this.requireNodeRef(this.dialogRootNodeId, "Dialog root");
     this.creditsText = this.requireNodeRef(this.creditsTextNodeId, "Credits text");
     this.statusText = this.requireNodeRef(this.statusTextNodeId, "Status text");
-    this.values = this.valueTextNodeIds.map((id, index) => this.requireNodeRef(id, `Value text ${index}`));
-    this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef(id, `Buy button ${index}`));
-    this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef(id, `Buy label ${index}`));
-    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(index)));
+    this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef(id, `Skill button ${index}`));
+    this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef(id, `Skill label ${index}`));
+    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(SKILL_TREE_IDS[index])));
     this.requireNodeRef(this.closeButtonNodeId, "Close button").setClickAction?.(() => this.close());
     this.keyHandler = (event) => {
       if (event.key === "Escape" && this.isOpen()) this.close();
@@ -2334,7 +2501,7 @@ var UpgradeDialogScript = class extends ScriptNode {
     this.dialogRoot.applySceneProps({ active: true });
     this.setDialogVisible(true);
     this.gameplayInput?.setMenuOpen(true);
-    this.statusText.setText("W\xE4hle ein Upgrade");
+    this.statusText.setText("Vom Kern aus in vier Richtungen forschen. Jeder Knoten braucht seinen Vorg\xE4nger.");
     this.updateView();
   }
   close() {
@@ -2348,28 +2515,24 @@ var UpgradeDialogScript = class extends ScriptNode {
   isOpen() {
     return this.opened;
   }
-  purchase(rowIndex) {
-    const row = ROWS[rowIndex];
-    const nextId = row?.ids.find((id) => !this.playerState.isUpgradePurchased(id));
-    if (!nextId) return;
-    const result = this.playerState.purchaseUpgrade(nextId);
-    this.statusText.setText(result.message);
+  purchase(upgradeId) {
+    if (!upgradeId) return;
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
+    const result = this.playerState.purchaseUpgrade(upgradeId);
+    this.statusText.setText(`${definition.description ?? definition.label}  \xB7  ${result.message}`);
     this.updateView();
   }
   updateView() {
     this.creditsText.setText(`${this.playerState.getProfileCredits()} CREDITS`);
-    ROWS.forEach((row, index) => {
-      const current = Math.round(this.playerState.stats[row.stat]);
-      const nextId = row.ids.find((id) => !this.playerState.isUpgradePurchased(id));
-      const next = nextId ? UPGRADE_DEFINITIONS[nextId] : void 0;
-      const nextValue = next?.effects.find((effect) => effect.stat === row.stat)?.value;
-      this.values[index]?.setText(next ? `${row.label}
-${row.format(current)}  \u2192  ${row.format(nextValue ?? current)}` : `${row.label}
-${row.format(current)}  \xB7  MAX`);
-      const cost = next?.cost.credits ?? 0;
-      const affordable = Boolean(next && this.playerState.getProfileCredits() >= cost);
-      if (this.buttons[index]) this.buttons[index].enabled = affordable;
-      this.buttonLabels[index]?.setText(next ? `${cost} C` : "MAX");
+    SKILL_TREE_IDS.forEach((upgradeId, index) => {
+      const definition = UPGRADE_DEFINITIONS[upgradeId];
+      const purchased = this.playerState.isUpgradePurchased(upgradeId);
+      const unlocked = (definition.prerequisites ?? []).every((id) => this.playerState.isUpgradePurchased(id));
+      const cost = definition.cost.credits ?? 0;
+      const state = purchased ? "INSTALLIERT" : unlocked ? `${cost} C` : "GESPERRT";
+      this.buttonLabels[index]?.setText(`${definition.label}
+${state}`);
+      if (this.buttons[index]) this.buttons[index].enabled = true;
     });
   }
   setDialogVisible(visible) {
@@ -2427,4 +2590,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.cf3c9aeb6d8e.js.map
+//# sourceMappingURL=dynamic-nodes.162728ba4260.js.map

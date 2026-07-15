@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/items';
-import { UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
+import { SKILL_TREE_IDS, UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
 import { LIFE_SUPPORT_ENERGY_COST_PER_SEC, PLAYER_SPEED } from '../apps/game/public/scripts/PlayerState/playerConfig';
 
 describe('early-game economy balance', () => {
@@ -40,6 +40,26 @@ describe('early-game economy balance', () => {
     ]).toEqual([3, 4, 5, 6]);
     const shipSource = readFileSync('apps/game/public/scripts/Gameplay/ShipScript.node.ts', 'utf8');
     expect(shipSource).toContain('this.playerState.consumeLifeSupportEnergy(deltaMs / 1_000)');
+  });
+
+  it('defines a connected four-branch skill tree with real gameplay hooks', () => {
+    expect(SKILL_TREE_IDS).toHaveLength(13);
+    expect(UPGRADE_DEFINITIONS.prospector_core.prerequisites).toBeUndefined();
+    for (const id of SKILL_TREE_IDS.filter((id) => id !== 'prospector_core')) {
+      expect(UPGRADE_DEFINITIONS[id].prerequisites?.length).toBeGreaterThan(0);
+      expect(UPGRADE_DEFINITIONS[id].tree).toBeDefined();
+    }
+    expect(new Set(SKILL_TREE_IDS.map((id) => UPGRADE_DEFINITIONS[id].tree?.branch))).toEqual(
+      new Set(['core', 'movement', 'vision', 'mining', 'utility']),
+    );
+    expect(readFileSync('apps/game/public/scripts/Gameplay/PlayerMovementScript.node.ts', 'utf8')).toContain('airJumpsRemaining');
+    expect(readFileSync('apps/game/public/scripts/Gameplay/MiningScript.node.ts', 'utf8')).toContain('triggerChainMining');
+    expect(readFileSync('apps/game/src/game/nodes/VisibilityFieldNode.ts', 'utf8')).toContain('redrawScanner');
+    expect(readFileSync('apps/game/src/game/world/MiningEffects.ts', 'utf8')).toContain('getPickupRadius');
+    const skillTreePrefab = JSON.parse(readFileSync('apps/game/public/prefabs/upgrade-dialog.prefab.json', 'utf8'));
+    const behavior = skillTreePrefab.root.children.find((node: { name: string }) => node.name === 'UpgradeDialogBehavior');
+    expect(behavior.props.buyButtonNodeIds).toHaveLength(13);
+    expect(new Set(behavior.props.buyButtonNodeIds).size).toBe(13);
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

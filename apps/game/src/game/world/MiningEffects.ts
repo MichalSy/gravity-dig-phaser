@@ -8,6 +8,7 @@ export interface MiningDropCollector {
 export interface MiningEffectsOptions {
   collidesBox(x: number, y: number, width: number, height: number): boolean;
   getCollector(): MiningDropCollector | undefined;
+  getPickupRadius?(): number;
   collectItem(itemId: string): boolean;
   addLootObjects(objects: readonly Phaser.GameObjects.GameObject[]): void;
   addEffectObjects(objects: readonly Phaser.GameObjects.GameObject[]): void;
@@ -60,6 +61,23 @@ export class MiningEffects {
     this.options = options;
   }
 
+
+  emitChainLightning(points: readonly { x: number; y: number }[]): void {
+    if (points.length < 2) return;
+    const bolt = this.scene.add.graphics();
+    bolt.lineStyle(5, 0x67e8f9, 0.95);
+    bolt.beginPath();
+    bolt.moveTo(points[0].x, points[0].y);
+    for (let index = 1; index < points.length; index += 1) {
+      const previous = points[index - 1];
+      const point = points[index];
+      bolt.lineTo((previous.x + point.x) / 2 + Phaser.Math.Between(-18, 18), (previous.y + point.y) / 2 + Phaser.Math.Between(-18, 18));
+      bolt.lineTo(point.x, point.y);
+    }
+    bolt.strokePath();
+    this.options.addEffectObjects([bolt]);
+    this.scene.tweens.add({ targets: bolt, alpha: 0, duration: 230, ease: 'Quad.easeOut', onComplete: () => bolt.destroy() });
+  }
 
   emitFragments(materialId: string, x: number, y: number, count = 3): void {
     const color = MATERIAL_COLORS[materialId] ?? 0x9a6334;
@@ -149,6 +167,7 @@ export class MiningEffects {
       const drop = this.drops[index];
       drop.pickupDelayMs = Math.max(0, drop.pickupDelayMs - elapsedMs);
       this.moveDrop(drop, deltaSeconds);
+      this.attractDrop(drop, deltaSeconds);
       drop.marker.setPosition(drop.image.x, drop.image.y);
       if (drop.pickupDelayMs > 0 || !this.collectDrop(drop)) continue;
       this.drops.splice(index, 1);
@@ -178,9 +197,24 @@ export class MiningEffects {
     drop.velocityY = 0;
   }
 
+  private attractDrop(drop: ResourceDrop, deltaSeconds: number): void {
+    const collector = this.options.getCollector();
+    if (!collector || drop.pickupDelayMs > 0) return;
+    const distance = Phaser.Math.Distance.Between(drop.image.x, drop.image.y, collector.x, collector.y);
+    const radius = Math.max(DROP_PICKUP_RADIUS, this.options.getPickupRadius?.() ?? DROP_PICKUP_RADIUS);
+    if (distance <= DROP_PICKUP_RADIUS || distance > radius) return;
+    const strength = Math.min(1, deltaSeconds * 7);
+    drop.image.x = Phaser.Math.Linear(drop.image.x, collector.x, strength);
+    drop.image.y = Phaser.Math.Linear(drop.image.y, collector.y, strength);
+    drop.velocityX *= 0.72;
+    drop.velocityY *= 0.72;
+    drop.resting = false;
+  }
+
   private collectDrop(drop: ResourceDrop): boolean {
     const collector = this.options.getCollector();
-    if (!collector || Phaser.Math.Distance.Between(drop.image.x, drop.image.y, collector.x, collector.y) > DROP_PICKUP_RADIUS) return false;
+    const pickupRadius = Math.max(DROP_PICKUP_RADIUS, this.options.getPickupRadius?.() ?? DROP_PICKUP_RADIUS);
+    if (!collector || Phaser.Math.Distance.Between(drop.image.x, drop.image.y, collector.x, collector.y) > pickupRadius) return false;
     if (!this.options.collectItem(drop.itemId)) return false;
 
     this.scene.tweens.add({

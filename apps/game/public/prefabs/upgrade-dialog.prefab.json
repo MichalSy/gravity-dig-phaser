@@ -4,12 +4,21 @@
   "root": {
     "name": "UI.UpgradeDialog",
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
-    "nodeId": "a1000000-4f5c-4d31-9000-000000000001",
+    "nodeId": "tree-root",
     "props": {
       "parentAnchor": "center",
-      "origin": { "x": 0, "y": 0 },
-      "position": { "x": -380, "y": -260 },
-      "size": { "width": 760, "height": 520 },
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "position": {
+        "x": -410,
+        "y": -185
+      },
+      "size": {
+        "width": 820,
+        "height": 370
+      },
       "sizeMode": "explicit",
       "debugScrollFactor": 0
     },
@@ -17,149 +26,1694 @@
       {
         "name": "DialogBackdrop",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "a2000000-4f5c-4d31-9000-000000000002",
+        "nodeId": "tree-backdrop",
         "props": {
           "parentAnchor": "center",
-          "position": { "x": 0, "y": 0 },
-          "origin": { "x": 0.5, "y": 0.5 },
-          "size": { "width": 760, "height": 520 },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 820,
+            "height": 370
+          },
           "sizeMode": "explicit",
-          "fillColor": "#0b1220",
-          "fillAlpha": 0.97,
+          "fillColor": "#07111f",
+          "fillAlpha": 0.98,
           "strokeColor": "#facc15",
-          "strokeAlpha": 0.9,
-          "strokeWidth": 4,
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
           "scrollFactor": 0
         }
       },
       {
         "name": "DialogTitle",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "a3000000-4f5c-4d31-9000-000000000003",
+        "nodeId": "tree-title",
         "props": {
-          "text": "SCHIFF-UPGRADES",
+          "text": "FORSCHUNGS-ORBIT",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 34,
+          "fontSize": 24,
           "color": "#fff4c7",
-          "origin": { "x": 0, "y": 0.5 },
+          "origin": {
+            "x": 0,
+            "y": 0.5
+          },
           "parentAnchor": "center",
-          "position": { "x": -330, "y": -220 },
+          "position": {
+            "x": -382,
+            "y": -158
+          },
           "scrollFactor": 0
         }
       },
       {
         "name": "CreditsText",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "a4000000-4f5c-4d31-9000-000000000004",
+        "nodeId": "tree-credits",
         "props": {
           "text": "0 CREDITS",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 20,
+          "fontSize": 16,
           "color": "#facc15",
-          "origin": { "x": 1, "y": 0.5 },
+          "origin": {
+            "x": 1,
+            "y": 0.5
+          },
           "parentAnchor": "center",
-          "position": { "x": 265, "y": -220 },
+          "position": {
+            "x": 330,
+            "y": -158
+          },
           "scrollFactor": 0
         }
       },
       {
         "name": "CloseButton",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "a5000000-4f5c-4d31-9000-000000000005",
+        "nodeId": "tree-close",
         "props": {
           "enabled": true,
-          "size": { "width": 48, "height": 48 },
+          "size": {
+            "width": 40,
+            "height": 40
+          },
           "sizeMode": "explicit",
           "parentAnchor": "center",
-          "position": { "x": 330, "y": -220 },
+          "position": {
+            "x": 378,
+            "y": -158
+          },
           "scrollFactor": 0
         },
         "children": [
           {
             "name": "Label",
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "a6000000-4f5c-4d31-9000-000000000006",
-            "props": { "text": "X", "fontId": "silkscreen-latin-700", "fontSize": 24, "color": "#ffffff", "scrollFactor": 0 }
+            "nodeId": "tree-close-label",
+            "props": {
+              "text": "X",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 20,
+              "color": "#ffffff",
+              "scrollFactor": 0
+            }
           }
         ]
       },
       {
-        "name": "SpeedCard",
+        "name": "ConnectorH.0.0",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "b1000000-4f5c-4d31-9000-000000000011",
-        "props": { "parentAnchor": "center", "position": { "x": 0, "y": -105 }, "origin": { "x": 0.5, "y": 0.5 }, "size": { "width": 680, "height": 96 }, "sizeMode": "explicit", "fillColor": "#172033", "fillAlpha": 1, "strokeColor": "#334155", "strokeAlpha": 1, "strokeWidth": 2, "scrollFactor": 0 }
+        "nodeId": "conn-h-0-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -57.5,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#4ade80",
+          "fillAlpha": 0.72,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "SlotsCard",
+        "name": "ConnectorV.0.0",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "b2000000-4f5c-4d31-9000-000000000012",
-        "props": { "parentAnchor": "center", "position": { "x": 0, "y": 10 }, "origin": { "x": 0.5, "y": 0.5 }, "size": { "width": 680, "height": 96 }, "sizeMode": "explicit", "fillColor": "#172033", "fillAlpha": 1, "strokeColor": "#334155", "strokeAlpha": 1, "strokeWidth": 2, "scrollFactor": 0 }
+        "nodeId": "conn-v-0-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -115,
+            "y": 25.0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 54
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#4ade80",
+          "fillAlpha": 0.72,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "StackCard",
+        "name": "ConnectorH.0.1",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "b3000000-4f5c-4d31-9000-000000000013",
-        "props": { "parentAnchor": "center", "position": { "x": 0, "y": 125 }, "origin": { "x": 0.5, "y": 0.5 }, "size": { "width": 680, "height": 96 }, "sizeMode": "explicit", "fillColor": "#172033", "fillAlpha": 1, "strokeColor": "#334155", "strokeAlpha": 1, "strokeWidth": 2, "scrollFactor": 0 }
+        "nodeId": "conn-h-0-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -172.5,
+            "y": 50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#4ade80",
+          "fillAlpha": 0.72,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "SpeedValue",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "c1000000-4f5c-4d31-9000-000000000021",
-        "props": { "text": "BEWEGUNGSTEMPO", "fontId": "silkscreen-latin-700", "fontSize": 19, "lineSpacing": 8, "color": "#e2e8f0", "origin": { "x": 0, "y": 0.5 }, "parentAnchor": "center", "position": { "x": -305, "y": -105 }, "scrollFactor": 0 }
+        "name": "ConnectorV.0.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-0-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -230,
+            "y": 67.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 39
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#4ade80",
+          "fillAlpha": 0.72,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "SlotsValue",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "c2000000-4f5c-4d31-9000-000000000022",
-        "props": { "text": "CARGO-SLOTS", "fontId": "silkscreen-latin-700", "fontSize": 19, "lineSpacing": 8, "color": "#e2e8f0", "origin": { "x": 0, "y": 0.5 }, "parentAnchor": "center", "position": { "x": -305, "y": 10 }, "scrollFactor": 0 }
+        "name": "ConnectorH.0.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-0-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -287.5,
+            "y": 85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#4ade80",
+          "fillAlpha": 0.72,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "StackValue",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "c3000000-4f5c-4d31-9000-000000000023",
-        "props": { "text": "STACKGRÖSSE", "fontId": "silkscreen-latin-700", "fontSize": 19, "lineSpacing": 8, "color": "#e2e8f0", "origin": { "x": 0, "y": 0.5 }, "parentAnchor": "center", "position": { "x": -305, "y": 125 }, "scrollFactor": 0 }
+        "name": "ConnectorV.0.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-0-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -345,
+            "y": 97.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 29
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#4ade80",
+          "fillAlpha": 0.72,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "SpeedBuyButton",
+        "name": "ConnectorH.1.0",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-1-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 57.5,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#38bdf8",
+          "fillAlpha": 0.72,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.1.0",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-1-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 115,
+            "y": -25.0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 54
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#38bdf8",
+          "fillAlpha": 0.72,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.1.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-1-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 172.5,
+            "y": -50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#38bdf8",
+          "fillAlpha": 0.72,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.1.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-1-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 230,
+            "y": -67.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 39
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#38bdf8",
+          "fillAlpha": 0.72,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.1.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-1-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 287.5,
+            "y": -85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#38bdf8",
+          "fillAlpha": 0.72,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.1.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-1-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 345,
+            "y": -97.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 29
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#38bdf8",
+          "fillAlpha": 0.72,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.2.0",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-2-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 57.5,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#f472b6",
+          "fillAlpha": 0.72,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.2.0",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-2-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 115,
+            "y": 25.0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 54
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#f472b6",
+          "fillAlpha": 0.72,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.2.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-2-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 172.5,
+            "y": 50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#f472b6",
+          "fillAlpha": 0.72,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.2.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-2-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 230,
+            "y": 67.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 39
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#f472b6",
+          "fillAlpha": 0.72,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.2.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-2-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 287.5,
+            "y": 85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#f472b6",
+          "fillAlpha": 0.72,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.2.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-2-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 345,
+            "y": 97.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 29
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#f472b6",
+          "fillAlpha": 0.72,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.3.0",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-3-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -57.5,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#c084fc",
+          "fillAlpha": 0.72,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.3.0",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-3-0",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -115,
+            "y": -25.0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 54
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#c084fc",
+          "fillAlpha": 0.72,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.3.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-3-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -172.5,
+            "y": -50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#c084fc",
+          "fillAlpha": 0.72,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.3.1",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-3-1",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -230,
+            "y": -67.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 39
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#c084fc",
+          "fillAlpha": 0.72,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorH.3.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-h-3-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -287.5,
+            "y": -85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 119,
+            "height": 4
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#c084fc",
+          "fillAlpha": 0.72,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ConnectorV.3.2",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "conn-v-3-2",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -345,
+            "y": -97.5
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 4,
+            "height": 29
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#c084fc",
+          "fillAlpha": 0.72,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 0,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillFrame.prospector_core",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-00",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#facc15",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.prospector_core",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "d1000000-4f5c-4d31-9000-000000000031",
-        "props": { "enabled": true, "size": { "width": 170, "height": 58 }, "sizeMode": "explicit", "parentAnchor": "center", "position": { "x": 235, "y": -105 }, "scrollFactor": 0 },
-        "children": [{ "name": "Label", "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302", "nodeId": "e1000000-4f5c-4d31-9000-000000000041", "props": { "text": "100 C", "fontId": "silkscreen-latin-700", "fontSize": 21, "color": "#ffffff", "scrollFactor": 0 } }]
+        "nodeId": "skill-btn-00",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-00",
+            "props": {
+              "text": "Prospektor-Kern",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
       },
       {
-        "name": "SlotsBuyButton",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "d2000000-4f5c-4d31-9000-000000000032",
-        "props": { "enabled": true, "size": { "width": 170, "height": 58 }, "sizeMode": "explicit", "parentAnchor": "center", "position": { "x": 235, "y": 10 }, "scrollFactor": 0 },
-        "children": [{ "name": "Label", "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302", "nodeId": "e2000000-4f5c-4d31-9000-000000000042", "props": { "text": "150 C", "fontId": "silkscreen-latin-700", "fontSize": 21, "color": "#ffffff", "scrollFactor": 0 } }]
+        "name": "SkillFrame.spring_boots",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-01",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -115,
+            "y": 50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
       },
       {
-        "name": "StackBuyButton",
+        "name": "SkillButton.spring_boots",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "d3000000-4f5c-4d31-9000-000000000033",
-        "props": { "enabled": true, "size": { "width": 170, "height": 58 }, "sizeMode": "explicit", "parentAnchor": "center", "position": { "x": 235, "y": 125 }, "scrollFactor": 0 },
-        "children": [{ "name": "Label", "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302", "nodeId": "e3000000-4f5c-4d31-9000-000000000043", "props": { "text": "250 C", "fontId": "silkscreen-latin-700", "fontSize": 21, "color": "#ffffff", "scrollFactor": 0 } }]
+        "nodeId": "skill-btn-01",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": -115,
+            "y": 50
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-01",
+            "props": {
+              "text": "Federstiefel",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.micro_jetpack",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-02",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -230,
+            "y": 85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.micro_jetpack",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-02",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": -230,
+            "y": 85
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-02",
+            "props": {
+              "text": "Mikro-Jetpack",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.rocket_pants",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-03",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -345,
+            "y": 110
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#4ade80",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.rocket_pants",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-03",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": -345,
+            "y": 110
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-03",
+            "props": {
+              "text": "Raketenhose",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.wide_visor",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-04",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 115,
+            "y": -50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.wide_visor",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-04",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 115,
+            "y": -50
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-04",
+            "props": {
+              "text": "Weitwinkel-Visier",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 9,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.ore_scanner",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-05",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 230,
+            "y": -85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.ore_scanner",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-05",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 230,
+            "y": -85
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-05",
+            "props": {
+              "text": "Erz-Scanner",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.xray_potato",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-06",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 345,
+            "y": -110
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#38bdf8",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.xray_potato",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-06",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 345,
+            "y": -110
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-06",
+            "props": {
+              "text": "Röntgen-Kartoffel",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 9,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.laser_focus",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-07",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 115,
+            "y": 50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.laser_focus",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-07",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 115,
+            "y": 50
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-07",
+            "props": {
+              "text": "Laser-Fokus",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.chain_lightning",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-08",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 230,
+            "y": 85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.chain_lightning",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-08",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 230,
+            "y": 85
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-08",
+            "props": {
+              "text": "Kettenblitz",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.storm_subscription",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-09",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": 345,
+            "y": 110
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#f472b6",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.storm_subscription",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-09",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 345,
+            "y": 110
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-09",
+            "props": {
+              "text": "Gewitter-Abo",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.cargo_tetris",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-10",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -115,
+            "y": -50
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.cargo_tetris",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-10",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": -115,
+            "y": -50
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-10",
+            "props": {
+              "text": "Cargo-Tetris",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.pocket_wormhole",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-11",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -230,
+            "y": -85
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.pocket_wormhole",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-11",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": -230,
+            "y": -85
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-11",
+            "props": {
+              "text": "Taschen-Wurmloch",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "SkillFrame.rubber_duck_protocol",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "skill-frame-12",
+        "props": {
+          "parentAnchor": "center",
+          "position": {
+            "x": -345,
+            "y": -110
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "size": {
+            "width": 110,
+            "height": 52
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#101b2d",
+          "fillAlpha": 1,
+          "strokeColor": "#c084fc",
+          "strokeAlpha": 1,
+          "strokeWidth": 3,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "SkillButton.rubber_duck_protocol",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "skill-btn-12",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 102,
+            "height": 44
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": -345,
+            "y": -110
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "skill-label-12",
+            "props": {
+              "text": "Goldene Gummiente",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 9,
+              "lineSpacing": 3,
+              "align": "center",
+              "color": "#ffffff",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "BranchLegend",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "tree-legend",
+        "props": {
+          "text": "LILA UTILITY   BLAU SICHT   PINK MINING   GRÜN BEWEGUNG",
+          "fontId": "silkscreen-latin-700",
+          "fontSize": 9,
+          "color": "#94a3b8",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": 142
+          },
+          "scrollFactor": 0
+        }
       },
       {
         "name": "StatusText",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "f1000000-4f5c-4d31-9000-000000000051",
-        "props": { "text": "Wähle ein Upgrade", "fontId": "silkscreen-latin-700", "fontSize": 16, "color": "#93c5fd", "origin": { "x": 0.5, "y": 0.5 }, "parentAnchor": "center", "position": { "x": 0, "y": 220 }, "scrollFactor": 0 }
+        "nodeId": "tree-status",
+        "props": {
+          "text": "Vom Kern aus forschen",
+          "fontId": "silkscreen-latin-700",
+          "fontSize": 11,
+          "color": "#93c5fd",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": 164
+          },
+          "scrollFactor": 0
+        }
       },
       {
         "name": "UpgradeDialogBehavior",
         "nodeTypeId": "dynamic.upgrade-dialog",
-        "nodeId": "f2000000-4f5c-4d31-9000-000000000052",
+        "nodeId": "tree-behavior",
         "props": {
           "playerStateNodeId": null,
           "gameplayInputNodeId": null,
-          "dialogRootNodeId": "a1000000-4f5c-4d31-9000-000000000001",
-          "creditsTextNodeId": "a4000000-4f5c-4d31-9000-000000000004",
-          "statusTextNodeId": "f1000000-4f5c-4d31-9000-000000000051",
-          "closeButtonNodeId": "a5000000-4f5c-4d31-9000-000000000005",
-          "valueTextNodeIds": ["c1000000-4f5c-4d31-9000-000000000021", "c2000000-4f5c-4d31-9000-000000000022", "c3000000-4f5c-4d31-9000-000000000023"],
-          "buyButtonNodeIds": ["d1000000-4f5c-4d31-9000-000000000031", "d2000000-4f5c-4d31-9000-000000000032", "d3000000-4f5c-4d31-9000-000000000033"],
-          "buyLabelNodeIds": ["e1000000-4f5c-4d31-9000-000000000041", "e2000000-4f5c-4d31-9000-000000000042", "e3000000-4f5c-4d31-9000-000000000043"]
+          "dialogRootNodeId": "tree-root",
+          "creditsTextNodeId": "tree-credits",
+          "statusTextNodeId": "tree-status",
+          "closeButtonNodeId": "tree-close",
+          "buyButtonNodeIds": [
+            "skill-btn-00",
+            "skill-btn-01",
+            "skill-btn-02",
+            "skill-btn-03",
+            "skill-btn-04",
+            "skill-btn-05",
+            "skill-btn-06",
+            "skill-btn-07",
+            "skill-btn-08",
+            "skill-btn-09",
+            "skill-btn-10",
+            "skill-btn-11",
+            "skill-btn-12"
+          ],
+          "buyLabelNodeIds": [
+            "skill-label-00",
+            "skill-label-01",
+            "skill-label-02",
+            "skill-label-03",
+            "skill-label-04",
+            "skill-label-05",
+            "skill-label-06",
+            "skill-label-07",
+            "skill-label-08",
+            "skill-label-09",
+            "skill-label-10",
+            "skill-label-11",
+            "skill-label-12"
+          ]
         }
       }
     ]

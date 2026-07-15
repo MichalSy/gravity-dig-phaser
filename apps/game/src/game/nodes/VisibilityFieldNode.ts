@@ -2,9 +2,10 @@ import Phaser from 'phaser';
 import { TILE_SIZE } from '../../config/gameConfig';
 import { GameNode, NODE_TYPE_IDS, type GameNodeOptions, type NodeContext } from '../../nodes';
 import { GameWorldNode } from './GameWorldNode';
+import { LevelNode } from './LevelNode';
 
 interface VisibilityStatsProvider {
-  stats: { sightRadius: number };
+  stats: { sightRadius: number; oreScannerRadius: number };
   getDiscoveredTiles(): readonly string[];
   discoverTiles(tileKeys: readonly string[]): number;
 }
@@ -29,16 +30,19 @@ const GRID_KEY_PREFIX = 'g:';
 const REVEAL_DURATION_MS = 360;
 const REVEAL_WAVE_DELAY_MS = 34;
 const CIRCLE_EDGE_TILES = 0.35;
+const SCANNER_COLORS: Record<string, number> = { copper: 0xfb923c, iron: 0xcbd5e1, gold: 0xfacc15, diamond: 0x67e8f9 };
 
 export class VisibilityFieldNode extends GameNode {
   static override readonly nodeTypeId = NODE_TYPE_IDS.VisibilityFieldNode;
 
-  override readonly dependencies = ['World', 'PlayerState'] as const;
+  override readonly dependencies = ['World', 'PlayerState', 'Level'] as const;
   private scene!: Phaser.Scene;
   private world!: GameWorldNode;
+  private level!: LevelNode;
   private playerState!: VisibilityStatsProvider;
   private overlay?: Phaser.GameObjects.Graphics;
   private animationOverlay?: Phaser.GameObjects.Graphics;
+  private scannerOverlay?: Phaser.GameObjects.Graphics;
   private readonly revealedTiles = new Set<string>();
   private readonly rememberedShadowAlphas = new Map<string, number>();
   private readonly revealAnimations = new Map<string, RevealAnimation>();
@@ -46,6 +50,7 @@ export class VisibilityFieldNode extends GameNode {
   private currentPlayerTile?: GridTile;
   private lastPlayerTileKey?: string;
   private lastViewSignature = '';
+  private scannerTimerMs = 0;
 
   constructor(options: GameNodeOptions = {}) {
     super({ name: 'VisibilityField', className: 'VisibilityFieldNode', ...options });
@@ -57,12 +62,14 @@ export class VisibilityFieldNode extends GameNode {
 
   resolve(): void {
     this.world = this.requireNode<GameWorldNode>('World');
+    this.level = this.requireNode<LevelNode>('Level');
     this.playerState = this.requireNode('PlayerState') as unknown as VisibilityStatsProvider;
   }
 
   afterResolved(): void {
     this.overlay = this.scene.add.graphics().setScrollFactor(1);
     this.animationOverlay = this.scene.add.graphics().setScrollFactor(1);
+    this.scannerOverlay = this.scene.add.graphics().setScrollFactor(1);
     this.redrawGrid();
   }
 
@@ -73,13 +80,18 @@ export class VisibilityFieldNode extends GameNode {
 
     const discovered = this.discoverAround(player);
     const animating = this.updateRevealAnimations(deltaMs);
+    this.scannerTimerMs += deltaMs;
     const viewSignature = this.getViewSignature();
     if (discovered || viewSignature !== this.lastViewSignature) this.redrawGrid(viewSignature);
     if (animating) this.redrawAnimations();
+    if (discovered || this.scannerTimerMs >= 240) {
+      this.scannerTimerMs = 0;
+      this.redrawScanner();
+    }
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
-    return [this.overlay, this.animationOverlay].filter(
+    return [this.overlay, this.animationOverlay, this.scannerOverlay].filter(
       (object): object is Phaser.GameObjects.Graphics => object !== undefined,
     );
   }
@@ -89,12 +101,15 @@ export class VisibilityFieldNode extends GameNode {
     this.overlay = undefined;
     this.animationOverlay?.destroy();
     this.animationOverlay = undefined;
+    this.scannerOverlay?.destroy();
+    this.scannerOverlay = undefined;
     this.revealedTiles.clear();
     this.rememberedShadowAlphas.clear();
     this.revealAnimations.clear();
     this.lastPlayerTileKey = undefined;
     this.currentPlayerTile = undefined;
     this.lastViewSignature = '';
+    this.scannerTimerMs = 0;
     this.trackedPlayer = undefined;
   }
 
@@ -281,6 +296,28 @@ export class VisibilityFieldNode extends GameNode {
         size,
         size,
       );
+    }
+  }
+
+  private redrawScanner(): void {
+    if (!this.scannerOverlay) return;
+    this.scannerOverlay.clear();
+    const center = this.currentPlayerTile;
+    const radius = Math.max(0, Math.round(this.playerState.stats.oreScannerRadius));
+    if (!center || radius === 0) return;
+    const radiusSquared = (radius + CIRCLE_EDGE_TILES) ** 2;
+    const pulse = 0.62 + Math.sin(this.scene.time.now / 180) * 0.18;
+    for (let y = center.y - radius; y <= center.y + radius; y += 1) {
+      for (let x = center.x - radius; x <= center.x + radius; x += 1) {
+        if ((x - center.x) ** 2 + (y - center.y) ** 2 > radiusSquared) continue;
+        const cell = this.level.getCell(x, y);
+        const color = cell ? SCANNER_COLORS[cell.type] : undefined;
+        if (color === undefined) continue;
+        this.scannerOverlay.lineStyle(3, color, pulse);
+        this.scannerOverlay.strokeRect(x * TILE_SIZE + 8, y * TILE_SIZE + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+        this.scannerOverlay.fillStyle(color, 0.08);
+        this.scannerOverlay.fillCircle((x + 0.5) * TILE_SIZE, (y + 0.5) * TILE_SIZE, 8);
+      }
     }
   }
 

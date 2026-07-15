@@ -48,7 +48,28 @@ Jeder zerstörte, droppende Block erzeugt weiterhin genau ein sammelbares Item. 
 | Gold | 30 Cr |
 | Diamant | 100 Cr |
 
-## Aktive Upgrade-Kurven
+## Forschungs-Orbit (Skillbaum)
+
+Die Schiffsoberfläche zeigt einen radialen Skillbaum mit dem `Prospektor-Kern` in der Mitte. Jeder äußere Knoten ist nur kaufbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert.
+
+| Ast | Stufe 1 | Stufe 2 | Stufe 3 |
+|---|---|---|---|
+| Bewegung | Federstiefel: +12 % Sprunghöhe | Mikro-Jetpack: 1 Luftsprung | Raketenhose: 2 Luftsprünge, 28 % weniger Schwerkraft |
+| Sicht | Weitwinkel-Visier: Sicht 3 | Erz-Scanner: Erzmarkierungen Radius 4 | Röntgen-Kartoffel: Scanner 7, +1 Sicht |
+| Mining | Laser-Fokus: +25 % Schaden | Kettenblitz: 2 Nachbarblöcke | Gewitter-Abo: 4 Nachbarblöcke, +15 % Schaden |
+| Utility | Cargo-Tetris: +1 Slot | Taschen-Wurmloch: +3 Stack, Magnet 140 px | Goldene Gummiente: +25 Leben, Magnet 220 px, -15 % Schwerkraft |
+
+Der Kern kostet `50 Cr` und gibt `+10 maximale Energie`. Die Äste kosten pro Stufe ungefähr `100–125 Cr`, `350–450 Cr` und `900–1100 Cr`. Farbcodierung: Grün Bewegung, Blau Sicht, Pink Mining, Lila Utility.
+
+Besondere Laufzeitwirkungen:
+
+- Luftsprünge werden bei Bodenkontakt wieder aufgefüllt.
+- Scannerrahmen werden oberhalb des Fog gerendert und pulsieren in der Materialfarbe.
+- Kettenblitze räumen echte benachbarte Blöcke, erzeugen Drops und besitzen einen sichtbaren Blitzpfad.
+- Der Beutemagnet vergrößert den realen Einsammelradius und zieht Drops zum Player.
+- Alte lineare Upgrades bleiben für bestehende Savegames kompatibel, werden aber nicht mehr als primäre Shopoberfläche angeboten.
+
+## Kompatible lineare Upgrade-Kurven
 
 ### Tempo
 

@@ -1,10 +1,8 @@
 import * as Core from '@gravity-dig/game-core';
-import { UPGRADE_DEFINITIONS } from '../PlayerState/catalogs/upgrades';
-import type { EffectivePlayerStats, UpgradeId } from '../PlayerState/types';
-import { PLAYER_SPEED } from '../PlayerState/playerConfig';
+import { SKILL_TREE_IDS, UPGRADE_DEFINITIONS } from '../PlayerState/catalogs/upgrades';
+import type { UpgradeId } from '../PlayerState/types';
 
 type PlayerStateLike = {
-  stats: EffectivePlayerStats;
   getProfileCredits(): number;
   isUpgradePurchased(upgradeId: UpgradeId): boolean;
   purchaseUpgrade(upgradeId: UpgradeId): { ok: boolean; message: string };
@@ -13,34 +11,6 @@ type PlayerStateLike = {
 type GameplayInputLike = {
   setMenuOpen(open: boolean): void;
 };
-
-type UpgradeRow = {
-  label: string;
-  ids: UpgradeId[];
-  stat: 'moveSpeed' | 'cargoSlots' | 'cargoStackLimit';
-  format(value: number): string;
-};
-
-const ROWS: UpgradeRow[] = [
-  {
-    label: 'TEMPO-VERBESSERUNG',
-    ids: ['speed_mk1', 'speed_mk2', 'speed_mk3'],
-    stat: 'moveSpeed',
-    format: (value) => `+${Math.round((value / PLAYER_SPEED - 1) * 100)} %`,
-  },
-  {
-    label: 'ANZAHL CARGO-SLOTS',
-    ids: ['cargo_mk1', 'cargo_mk2', 'cargo_mk3'],
-    stat: 'cargoSlots',
-    format: (value) => `${Math.round(value)} Slots`,
-  },
-  {
-    label: 'CARGO-SLOT-GRÖSSE',
-    ids: ['cargo_stack_mk1', 'cargo_stack_mk2', 'cargo_stack_mk3'],
-    stat: 'cargoStackLimit',
-    format: (value) => `${Math.round(value)} Items`,
-  },
-];
 
 export default class UpgradeDialogScript extends Core.ScriptNode {
   id = 'dynamic.upgrade-dialog';
@@ -52,16 +22,14 @@ export default class UpgradeDialogScript extends Core.ScriptNode {
   creditsTextNodeId = Core.prop.nodeRef(null, { label: 'Credits Text' });
   statusTextNodeId = Core.prop.nodeRef(null, { label: 'Status Text' });
   closeButtonNodeId = Core.prop.nodeRef(null, { label: 'Close Button' });
-  valueTextNodeIds = Core.prop.nodeRefList([], { label: 'Value Texts' });
-  buyButtonNodeIds = Core.prop.nodeRefList([], { label: 'Buy Buttons' });
-  buyLabelNodeIds = Core.prop.nodeRefList([], { label: 'Buy Labels' });
+  buyButtonNodeIds = Core.prop.nodeRefList([], { label: 'Skill Buttons' });
+  buyLabelNodeIds = Core.prop.nodeRefList([], { label: 'Skill Labels' });
 
   private playerState!: PlayerStateLike;
   private dialogRoot!: Core.TransformNode;
   private gameplayInput?: GameplayInputLike;
   private creditsText!: Core.TextNode;
   private statusText!: Core.TextNode;
-  private values: Core.TextNode[] = [];
   private buttons: Core.ButtonNode[] = [];
   private buttonLabels: Core.TextNode[] = [];
   private keyHandler?: (event: KeyboardEvent) => void;
@@ -73,10 +41,9 @@ export default class UpgradeDialogScript extends Core.ScriptNode {
     this.dialogRoot = this.requireNodeRef<Core.TransformNode>(this.dialogRootNodeId, 'Dialog root');
     this.creditsText = this.requireNodeRef<Core.TextNode>(this.creditsTextNodeId, 'Credits text');
     this.statusText = this.requireNodeRef<Core.TextNode>(this.statusTextNodeId, 'Status text');
-    this.values = this.valueTextNodeIds.map((id, index) => this.requireNodeRef<Core.TextNode>(id, `Value text ${index}`));
-    this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef<Core.ButtonNode>(id, `Buy button ${index}`));
-    this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef<Core.TextNode>(id, `Buy label ${index}`));
-    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(index)));
+    this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef<Core.ButtonNode>(id, `Skill button ${index}`));
+    this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef<Core.TextNode>(id, `Skill label ${index}`));
+    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(SKILL_TREE_IDS[index])));
     this.requireNodeRef<Core.ButtonNode>(this.closeButtonNodeId, 'Close button').setClickAction?.(() => this.close());
     this.keyHandler = (event) => {
       if (event.key === 'Escape' && this.isOpen()) this.close();
@@ -97,7 +64,7 @@ export default class UpgradeDialogScript extends Core.ScriptNode {
     this.dialogRoot.applySceneProps({ active: true });
     this.setDialogVisible(true);
     this.gameplayInput?.setMenuOpen(true);
-    this.statusText.setText('Wähle ein Upgrade');
+    this.statusText.setText('Vom Kern aus in vier Richtungen forschen. Jeder Knoten braucht seinen Vorgänger.');
     this.updateView();
   }
 
@@ -114,29 +81,24 @@ export default class UpgradeDialogScript extends Core.ScriptNode {
     return this.opened;
   }
 
-  private purchase(rowIndex: number) {
-    const row = ROWS[rowIndex];
-    const nextId = row?.ids.find((id) => !this.playerState.isUpgradePurchased(id));
-    if (!nextId) return;
-    const result = this.playerState.purchaseUpgrade(nextId);
-    this.statusText.setText(result.message);
+  private purchase(upgradeId?: UpgradeId) {
+    if (!upgradeId) return;
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
+    const result = this.playerState.purchaseUpgrade(upgradeId);
+    this.statusText.setText(`${definition.description ?? definition.label}  ·  ${result.message}`);
     this.updateView();
   }
 
   private updateView() {
     this.creditsText.setText(`${this.playerState.getProfileCredits()} CREDITS`);
-    ROWS.forEach((row, index) => {
-      const current = Math.round(this.playerState.stats[row.stat]);
-      const nextId = row.ids.find((id) => !this.playerState.isUpgradePurchased(id));
-      const next = nextId ? UPGRADE_DEFINITIONS[nextId] : undefined;
-      const nextValue = next?.effects.find((effect) => effect.stat === row.stat)?.value;
-      this.values[index]?.setText(next
-        ? `${row.label}\n${row.format(current)}  →  ${row.format(nextValue ?? current)}`
-        : `${row.label}\n${row.format(current)}  ·  MAX`);
-      const cost = next?.cost.credits ?? 0;
-      const affordable = Boolean(next && this.playerState.getProfileCredits() >= cost);
-      if (this.buttons[index]) this.buttons[index].enabled = affordable;
-      this.buttonLabels[index]?.setText(next ? `${cost} C` : 'MAX');
+    SKILL_TREE_IDS.forEach((upgradeId, index) => {
+      const definition = UPGRADE_DEFINITIONS[upgradeId];
+      const purchased = this.playerState.isUpgradePurchased(upgradeId);
+      const unlocked = (definition.prerequisites ?? []).every((id) => this.playerState.isUpgradePurchased(id));
+      const cost = definition.cost.credits ?? 0;
+      const state = purchased ? 'INSTALLIERT' : unlocked ? `${cost} C` : 'GESPERRT';
+      this.buttonLabels[index]?.setText(`${definition.label}\n${state}`);
+      if (this.buttons[index]) this.buttons[index].enabled = true;
     });
   }
 

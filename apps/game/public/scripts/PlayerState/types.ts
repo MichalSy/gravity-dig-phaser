@@ -62,7 +62,12 @@ export type PlayerStatKey =
   | 'cargoSlots'
   | 'cargoStackLimit'
   | 'sightRadius'
-  | 'fuelEfficiency';
+  | 'fuelEfficiency'
+  | 'airJumps'
+  | 'gravityMultiplier'
+  | 'oreScannerRadius'
+  | 'chainMiningTargets'
+  | 'pickupRadius';
 
 export interface StatModifier {
   stat: PlayerStatKey;
@@ -71,6 +76,19 @@ export interface StatModifier {
 }
 
 export type UpgradeId =
+  | 'prospector_core'
+  | 'spring_boots'
+  | 'micro_jetpack'
+  | 'rocket_pants'
+  | 'wide_visor'
+  | 'ore_scanner'
+  | 'xray_potato'
+  | 'laser_focus'
+  | 'chain_lightning'
+  | 'storm_subscription'
+  | 'cargo_tetris'
+  | 'pocket_wormhole'
+  | 'rubber_duck_protocol'
   | 'laser_mk2'
   | 'laser_mk3'
   | 'laser_mk4'
@@ -114,10 +132,12 @@ export interface Cost {
 export interface UpgradeDefinition {
   id: UpgradeId;
   label: string;
+  description?: string;
   category: 'laser' | 'visor' | 'battery' | 'boots' | 'core' | 'cargo' | 'ship';
   cost: Cost;
   effects: StatModifier[];
   prerequisites?: UpgradeId[];
+  tree?: { x: number; y: number; branch: 'core' | 'movement' | 'vision' | 'mining' | 'utility' };
 }
 
 export type PerkId =
@@ -195,6 +215,11 @@ export interface EffectivePlayerStats {
   cargoStackLimit: number;
   sightRadius: number;
   fuelEfficiency: number;
+  airJumps: number;
+  gravityMultiplier: number;
+  oreScannerRadius: number;
+  chainMiningTargets: number;
+  pickupRadius: number;
 }
 
 export interface SaveGame {

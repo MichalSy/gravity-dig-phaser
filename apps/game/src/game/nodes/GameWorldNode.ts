@@ -14,6 +14,7 @@ interface PlayerStateLike {
   getActiveRunSeed(fallback: string): string;
   startRun(planetId: string, seed: string, restoreActiveRun: boolean): unknown;
   tryCollectMinedItem(itemId: string): boolean;
+  stats: { pickupRadius: number };
 }
 
 export interface GameWorldNodeOptions extends GameNodeOptions {
@@ -49,6 +50,7 @@ export class GameWorldNode extends GameNode {
     this.miningEffects = new MiningEffects(this.phaserScene, {
       collidesBox: (x, y, width, height) => Boolean(this.levelNode) && this.levelNode.collidesBox(x, y, width, height),
       getCollector: () => this.data.player,
+      getPickupRadius: () => this.playerState?.stats.pickupRadius ?? 58,
       collectItem: (itemId) => Boolean(this.playerState) && this.playerState.tryCollectMinedItem(itemId),
       addLootObjects: (objects) => this.lootLayer.addLootObjects(objects),
       addEffectObjects: (objects) => this.effectsLayer.addEffectObjects(objects),
@@ -89,6 +91,10 @@ export class GameWorldNode extends GameNode {
 
   emitMiningFragments(materialId: string, x: number, y: number, count = 3): void {
     this.miningEffects.emitFragments(materialId, x, y, count);
+  }
+
+  emitChainLightning(points: readonly { x: number; y: number }[]): void {
+    this.miningEffects.emitChainLightning(points);
   }
 
   spawnResourceDrop(itemId: string, frame: number, x: number, y: number): void {

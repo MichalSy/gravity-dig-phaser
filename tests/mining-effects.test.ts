@@ -4,6 +4,7 @@ vi.mock('phaser', () => ({
   default: {
     Math: {
       Between: (min: number, max: number) => Math.round((min + max) / 2),
+      Linear: (start: number, end: number, amount: number) => start + (end - start) * amount,
       Distance: { Between: (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by) },
     },
   },
@@ -38,6 +39,7 @@ describe('mining drops and fragments', () => {
   let images: FakeImage[];
   let collector = { x: 1_000, y: 1_000 };
   let cargoHasSpace = false;
+  let pickupRadius = 58;
   let collected: string[];
   let sounds: string[];
   let lootObjects: FakeImage[];
@@ -48,6 +50,7 @@ describe('mining drops and fragments', () => {
     images = [];
     collector = { x: 1_000, y: 1_000 };
     cargoHasSpace = false;
+    pickupRadius = 58;
     collected = [];
     sounds = [];
     lootObjects = [];
@@ -75,6 +78,7 @@ describe('mining drops and fragments', () => {
     effects = new MiningEffects(scene as never, {
       collidesBox: (_x, y) => y >= 100,
       getCollector: () => collector,
+      getPickupRadius: () => pickupRadius,
       collectItem: (itemId) => {
         if (!cargoHasSpace) return false;
         collected.push(itemId);
@@ -96,6 +100,18 @@ describe('mining drops and fragments', () => {
     expect(effectObjects.every((object) => object.depthCalls === 0)).toBe(true);
     for (let index = 0; index < 50; index += 1) effects.update(50);
     expect(images.every((image) => image.destroyed)).toBe(true);
+  });
+
+  it('uses the pocket-wormhole pickup radius to collect distant drops', () => {
+    effects.spawnDrop('gold', 8, 0, 0);
+    const drop = images[0];
+    for (let index = 0; index < 40; index += 1) effects.update(50);
+    cargoHasSpace = true;
+    pickupRadius = 140;
+    collector = { x: drop.x + 120, y: drop.y };
+    effects.update(50);
+    expect(drop.destroyed).toBe(true);
+    expect(collected).toEqual(['gold']);
   });
 
   it('leaves a resource on the ground while cargo is full and collects it later', () => {

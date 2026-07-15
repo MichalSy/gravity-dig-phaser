@@ -28,6 +28,8 @@ type PlayerStateLike = {
   stats: {
     moveSpeed: number;
     jumpVelocity: number;
+    airJumps: number;
+    gravityMultiplier: number;
   };
 };
 
@@ -64,6 +66,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
   private coyoteTimerSeconds = 0;
   private jumpBufferTimerSeconds = 0;
   private jumpHeld = false;
+  private airJumpsRemaining = 0;
 
   resolve() {
     this.levelNode = this.requireResolvedNode<LevelNodeLike>(this.levelNodeId, 'Level');
@@ -88,6 +91,7 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     this.coyoteTimerSeconds = 0;
     this.jumpBufferTimerSeconds = 0;
     this.jumpHeld = false;
+    this.airJumpsRemaining = this.playerState.stats.airJumps;
   }
 
   blockInput() {
@@ -142,17 +146,24 @@ export default class PlayerMovementScript extends Core.ScriptNode {
       return;
     }
 
+    if (this.airJumpsRemaining > 0) {
+      this.airJumpsRemaining -= 1;
+      this.jump(true);
+      return;
+    }
+
     this.jumpBufferTimerSeconds = 0.1;
   }
 
   private applyPhysics(deltaSeconds: number) {
     const wasGrounded = this.grounded;
-    this.velocity.y += GRAVITY * deltaSeconds;
+    this.velocity.y += GRAVITY * this.playerState.stats.gravityMultiplier * deltaSeconds;
 
     this.moveAxis(this.velocity.x * deltaSeconds, 0);
     this.grounded = false;
     this.moveAxis(0, this.velocity.y * deltaSeconds);
     this.stabilizeGroundContact();
+    if (this.grounded) this.airJumpsRemaining = this.playerState.stats.airJumps;
 
     if (wasGrounded && !this.grounded) this.coyoteTimerSeconds = 0.1;
     if (this.coyoteTimerSeconds > 0) this.coyoteTimerSeconds -= deltaSeconds;
@@ -193,11 +204,11 @@ export default class PlayerMovementScript extends Core.ScriptNode {
     }
   }
 
-  private jump() {
+  private jump(jetpack = false) {
     this.velocity.y = this.playerState.stats.jumpVelocity;
     this.grounded = false;
     this.coyoteTimerSeconds = 0;
-    this.emit('player:jump');
+    this.emit(jetpack ? 'player:jetpack' : 'player:jump');
   }
 
   private resolveNode<T>(instanceId: string | null, fallbackName: string): T | undefined {

@@ -1,7 +1,67 @@
 import { TILE_SIZE } from '../playerConfig';
 import type { UpgradeDefinition, UpgradeId } from '../types';
 
+export const SKILL_TREE_IDS: UpgradeId[] = [
+  'prospector_core',
+  'spring_boots', 'micro_jetpack', 'rocket_pants',
+  'wide_visor', 'ore_scanner', 'xray_potato',
+  'laser_focus', 'chain_lightning', 'storm_subscription',
+  'cargo_tetris', 'pocket_wormhole', 'rubber_duck_protocol',
+];
+
 export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
+  prospector_core: {
+    id: 'prospector_core', label: 'Prospektor-Kern', description: 'Schaltet die vier Forschungsäste frei und spendiert 10 Energie.', category: 'core',
+    cost: { credits: 50 }, effects: [{ stat: 'maxEnergy', op: 'add', value: 10 }], tree: { x: 0, y: 0, branch: 'core' },
+  },
+  spring_boots: {
+    id: 'spring_boots', label: 'Federstiefel', description: '12 % höher springen. Boing ist eine Wissenschaft.', category: 'boots',
+    cost: { credits: 100 }, prerequisites: ['prospector_core'], effects: [{ stat: 'jumpVelocity', op: 'multiply', value: 1.12 }], tree: { x: -1, y: 1, branch: 'movement' },
+  },
+  micro_jetpack: {
+    id: 'micro_jetpack', label: 'Mikro-Jetpack', description: 'Ein zusätzlicher Sprung in der Luft.', category: 'boots',
+    cost: { credits: 350 }, prerequisites: ['spring_boots'], effects: [{ stat: 'airJumps', op: 'set', value: 1 }], tree: { x: -2, y: 2, branch: 'movement' },
+  },
+  rocket_pants: {
+    id: 'rocket_pants', label: 'Raketenhose', description: 'Zwei Luftsprünge und 28 % weniger Schwerkraft. Garantie erloschen.', category: 'boots',
+    cost: { credits: 900 }, prerequisites: ['micro_jetpack'], effects: [{ stat: 'airJumps', op: 'set', value: 2 }, { stat: 'gravityMultiplier', op: 'multiply', value: 0.72 }], tree: { x: -3, y: 3, branch: 'movement' },
+  },
+  wide_visor: {
+    id: 'wide_visor', label: 'Weitwinkel-Visier', description: 'Erhöht die permanente Sichtweite auf 3 Tiles.', category: 'visor',
+    cost: { credits: 100 }, prerequisites: ['prospector_core'], effects: [{ stat: 'sightRadius', op: 'set', value: 3 }], tree: { x: 1, y: -1, branch: 'vision' },
+  },
+  ore_scanner: {
+    id: 'ore_scanner', label: 'Erz-Scanner', description: 'Markiert Erzadern im Radius von 4 Tiles durch den Fog.', category: 'visor',
+    cost: { credits: 350 }, prerequisites: ['wide_visor'], effects: [{ stat: 'oreScannerRadius', op: 'set', value: 4 }], tree: { x: 2, y: -2, branch: 'vision' },
+  },
+  xray_potato: {
+    id: 'xray_potato', label: 'Röntgen-Kartoffel', description: 'Scanner-Radius 7 und +1 Sicht. Fragt nicht, warum sie summt.', category: 'visor',
+    cost: { credits: 900 }, prerequisites: ['ore_scanner'], effects: [{ stat: 'oreScannerRadius', op: 'set', value: 7 }, { stat: 'sightRadius', op: 'add', value: 1 }], tree: { x: 3, y: -3, branch: 'vision' },
+  },
+  laser_focus: {
+    id: 'laser_focus', label: 'Laser-Fokus', description: '25 % mehr Mining-Schaden.', category: 'laser',
+    cost: { credits: 125 }, prerequisites: ['prospector_core'], effects: [{ stat: 'miningDamagePerSec', op: 'multiply', value: 1.25 }], tree: { x: 1, y: 1, branch: 'mining' },
+  },
+  chain_lightning: {
+    id: 'chain_lightning', label: 'Kettenblitz', description: 'Jeder zerstörte Block zerlegt zwei benachbarte Blöcke.', category: 'laser',
+    cost: { credits: 450 }, prerequisites: ['laser_focus'], effects: [{ stat: 'chainMiningTargets', op: 'set', value: 2 }], tree: { x: 2, y: 2, branch: 'mining' },
+  },
+  storm_subscription: {
+    id: 'storm_subscription', label: 'Gewitter-Abo', description: 'Vier Kettenziele und 15 % mehr Schaden. Monatlich kündbar.*', category: 'laser',
+    cost: { credits: 1100 }, prerequisites: ['chain_lightning'], effects: [{ stat: 'chainMiningTargets', op: 'set', value: 4 }, { stat: 'miningDamagePerSec', op: 'multiply', value: 1.15 }], tree: { x: 3, y: 3, branch: 'mining' },
+  },
+  cargo_tetris: {
+    id: 'cargo_tetris', label: 'Cargo-Tetris', description: '+1 Cargo-Slot. Reihen verschwinden leider nicht.', category: 'cargo',
+    cost: { credits: 100 }, prerequisites: ['prospector_core'], effects: [{ stat: 'cargoSlots', op: 'add', value: 1 }], tree: { x: -1, y: -1, branch: 'utility' },
+  },
+  pocket_wormhole: {
+    id: 'pocket_wormhole', label: 'Taschen-Wurmloch', description: '+3 Stackgröße und 140 Pixel Sammelradius.', category: 'cargo',
+    cost: { credits: 400 }, prerequisites: ['cargo_tetris'], effects: [{ stat: 'cargoStackLimit', op: 'add', value: 3 }, { stat: 'pickupRadius', op: 'set', value: 140 }], tree: { x: -2, y: -2, branch: 'utility' },
+  },
+  rubber_duck_protocol: {
+    id: 'rubber_duck_protocol', label: 'Goldene Gummiente', description: '+25 Leben, 220 Pixel Magnet und 15 % weniger Schwerkraft. Quak.', category: 'core',
+    cost: { credits: 1000 }, prerequisites: ['pocket_wormhole'], effects: [{ stat: 'maxHealth', op: 'add', value: 25 }, { stat: 'pickupRadius', op: 'set', value: 220 }, { stat: 'gravityMultiplier', op: 'multiply', value: 0.85 }], tree: { x: -3, y: -3, branch: 'utility' },
+  },
   laser_mk2: {
     id: 'laser_mk2',
     label: 'Laser MK2',

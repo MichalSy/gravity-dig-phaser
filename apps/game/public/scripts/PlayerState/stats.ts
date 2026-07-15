@@ -24,6 +24,11 @@ export function computeEffectiveStats(profile: PlayerProfile): EffectivePlayerSt
     cargoStackLimit: 3,
     sightRadius: 2,
     fuelEfficiency: 1,
+    airJumps: 0,
+    gravityMultiplier: 1,
+    oreScannerRadius: 0,
+    chainMiningTargets: 0,
+    pickupRadius: 58,
   };
 
   const modifiers = collectModifiers(profile);
