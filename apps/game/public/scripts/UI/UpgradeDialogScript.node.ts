@@ -1,6 +1,7 @@
 import * as Core from '@gravity-dig/game-core';
 import { UPGRADE_DEFINITIONS } from '../PlayerState/catalogs/upgrades';
 import type { EffectivePlayerStats, UpgradeId } from '../PlayerState/types';
+import { PLAYER_SPEED } from '../PlayerState/playerConfig';
 
 type PlayerStateLike = {
   stats: EffectivePlayerStats;
@@ -17,13 +18,28 @@ type UpgradeRow = {
   label: string;
   ids: UpgradeId[];
   stat: 'moveSpeed' | 'cargoSlots' | 'cargoStackLimit';
-  suffix: string;
+  format(value: number): string;
 };
 
 const ROWS: UpgradeRow[] = [
-  { label: 'BEWEGUNGSTEMPO', ids: ['speed_mk1', 'speed_mk2', 'speed_mk3'], stat: 'moveSpeed', suffix: ' px/s' },
-  { label: 'CARGO-SLOTS', ids: ['cargo_mk1', 'cargo_mk2', 'cargo_mk3'], stat: 'cargoSlots', suffix: '' },
-  { label: 'STACKGRÖSSE', ids: ['cargo_stack_mk1', 'cargo_stack_mk2', 'cargo_stack_mk3'], stat: 'cargoStackLimit', suffix: '' },
+  {
+    label: 'TEMPO-VERBESSERUNG',
+    ids: ['speed_mk1', 'speed_mk2', 'speed_mk3'],
+    stat: 'moveSpeed',
+    format: (value) => `+${Math.round((value / PLAYER_SPEED - 1) * 100)} %`,
+  },
+  {
+    label: 'ANZAHL CARGO-SLOTS',
+    ids: ['cargo_mk1', 'cargo_mk2', 'cargo_mk3'],
+    stat: 'cargoSlots',
+    format: (value) => `${Math.round(value)} Slots`,
+  },
+  {
+    label: 'CARGO-SLOT-GRÖSSE',
+    ids: ['cargo_stack_mk1', 'cargo_stack_mk2', 'cargo_stack_mk3'],
+    stat: 'cargoStackLimit',
+    format: (value) => `${Math.round(value)} Items`,
+  },
 ];
 
 export default class UpgradeDialogScript extends Core.ScriptNode {
@@ -115,8 +131,8 @@ export default class UpgradeDialogScript extends Core.ScriptNode {
       const next = nextId ? UPGRADE_DEFINITIONS[nextId] : undefined;
       const nextValue = next?.effects.find((effect) => effect.stat === row.stat)?.value;
       this.values[index]?.setText(next
-        ? `${row.label}\n${current}${row.suffix}  →  ${Math.round(nextValue ?? current)}${row.suffix}`
-        : `${row.label}\n${current}${row.suffix}  ·  MAX`);
+        ? `${row.label}\n${row.format(current)}  →  ${row.format(nextValue ?? current)}`
+        : `${row.label}\n${row.format(current)}  ·  MAX`);
       const cost = next?.cost.credits ?? 0;
       const affordable = Boolean(next && this.playerState.getProfileCredits() >= cost);
       if (this.buttons[index]) this.buttons[index].enabled = affordable;

@@ -5,6 +5,7 @@ import { createGameWorldData, type GameWorldData } from '../nodeData';
 import { CargoTransferEffects } from '../world/CargoTransferEffects';
 import { MiningEffects } from '../world/MiningEffects';
 import { WorldView } from '../world/WorldView';
+import { WORLD_RENDER_DEPTHS } from '../world/renderDepths';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
 
@@ -133,6 +134,7 @@ export class GameWorldNode extends GameNode {
     this.playerInstance = this.addChild(this.instantiatePrefab('08a9bfce-1773-5ca0-8adc-52dc8b2e378e'));
     const movement = findNode(this.playerInstance, 'PlayerMovementController') as unknown as ScriptMethodTarget;
     this.data.player = movement.callScriptMethod('spawnAt', spawn.x, spawn.y) as Phaser.GameObjects.Image;
+    this.data.player.setDepth(WORLD_RENDER_DEPTHS.player);
 
     const bounds = worldBoundsForLevel(this.level);
     this.phaserScene.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);

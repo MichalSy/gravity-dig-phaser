@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { WORLD_RENDER_DEPTHS } from './renderDepths';
 
 export interface MiningDropCollector {
   x: number;
@@ -98,10 +99,10 @@ export class MiningEffects {
     if (frame < 0) return;
     const marker = this.scene.add.circle(x, y, DROP_SIZE * 0.64, 0xfbbf24, 0.18)
       .setStrokeStyle(2, 0xfde68a, 0.92)
-      .setDepth(39);
+      .setDepth(WORLD_RENDER_DEPTHS.resourceDropMarker);
     const image = this.scene.add.image(x, y, `item-${itemId}`)
       .setDisplaySize(DROP_SIZE, DROP_SIZE)
-      .setDepth(40)
+      .setDepth(WORLD_RENDER_DEPTHS.resourceDrop)
       .setAngle(Phaser.Math.Between(-18, 18));
     this.drops.push({
       marker,

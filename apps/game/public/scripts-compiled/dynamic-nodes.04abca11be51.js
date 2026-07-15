@@ -1515,14 +1515,14 @@ var UPGRADE_DEFINITIONS = {
   },
   cargo_stack_mk1: {
     id: "cargo_stack_mk1",
-    label: "Stack-Kompression I",
+    label: "Cargo-Slot-Gr\xF6\xDFe I",
     category: "cargo",
     cost: { credits: 250 },
     effects: [{ stat: "cargoStackLimit", op: "set", value: 5 }]
   },
   cargo_stack_mk2: {
     id: "cargo_stack_mk2",
-    label: "Stack-Kompression II",
+    label: "Cargo-Slot-Gr\xF6\xDFe II",
     category: "cargo",
     cost: { credits: 700 },
     prerequisites: ["cargo_stack_mk1"],
@@ -1530,7 +1530,7 @@ var UPGRADE_DEFINITIONS = {
   },
   cargo_stack_mk3: {
     id: "cargo_stack_mk3",
-    label: "Stack-Kompression III",
+    label: "Cargo-Slot-Gr\xF6\xDFe III",
     category: "cargo",
     cost: { credits: 1600 },
     prerequisites: ["cargo_stack_mk2"],
@@ -2223,9 +2223,24 @@ function clamp5(value, min, max) {
 
 // public/scripts/UI/UpgradeDialogScript.node.ts
 var ROWS = [
-  { label: "BEWEGUNGSTEMPO", ids: ["speed_mk1", "speed_mk2", "speed_mk3"], stat: "moveSpeed", suffix: " px/s" },
-  { label: "CARGO-SLOTS", ids: ["cargo_mk1", "cargo_mk2", "cargo_mk3"], stat: "cargoSlots", suffix: "" },
-  { label: "STACKGR\xD6SSE", ids: ["cargo_stack_mk1", "cargo_stack_mk2", "cargo_stack_mk3"], stat: "cargoStackLimit", suffix: "" }
+  {
+    label: "TEMPO-VERBESSERUNG",
+    ids: ["speed_mk1", "speed_mk2", "speed_mk3"],
+    stat: "moveSpeed",
+    format: (value) => `+${Math.round((value / PLAYER_SPEED - 1) * 100)} %`
+  },
+  {
+    label: "ANZAHL CARGO-SLOTS",
+    ids: ["cargo_mk1", "cargo_mk2", "cargo_mk3"],
+    stat: "cargoSlots",
+    format: (value) => `${Math.round(value)} Slots`
+  },
+  {
+    label: "CARGO-SLOT-GR\xD6SSE",
+    ids: ["cargo_stack_mk1", "cargo_stack_mk2", "cargo_stack_mk3"],
+    stat: "cargoStackLimit",
+    format: (value) => `${Math.round(value)} Items`
+  }
 ];
 var UpgradeDialogScript = class extends ScriptNode {
   id = "dynamic.upgrade-dialog";
@@ -2307,8 +2322,8 @@ var UpgradeDialogScript = class extends ScriptNode {
       const next = nextId ? UPGRADE_DEFINITIONS[nextId] : void 0;
       const nextValue = next?.effects.find((effect) => effect.stat === row.stat)?.value;
       this.values[index]?.setText(next ? `${row.label}
-${current}${row.suffix}  \u2192  ${Math.round(nextValue ?? current)}${row.suffix}` : `${row.label}
-${current}${row.suffix}  \xB7  MAX`);
+${row.format(current)}  \u2192  ${row.format(nextValue ?? current)}` : `${row.label}
+${row.format(current)}  \xB7  MAX`);
       const cost = next?.cost.credits ?? 0;
       const affordable = Boolean(next && this.playerState.getProfileCredits() >= cost);
       if (this.buttons[index]) this.buttons[index].enabled = affordable;
@@ -2370,4 +2385,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.74f1e8e33cd9.js.map
+//# sourceMappingURL=dynamic-nodes.04abca11be51.js.map

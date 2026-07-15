@@ -10,12 +10,14 @@ vi.mock('phaser', () => ({
 }));
 
 import { MiningEffects } from '../apps/game/src/game/world/MiningEffects';
+import { WORLD_RENDER_DEPTHS } from '../apps/game/src/game/world/renderDepths';
 
 class FakeImage {
   x: number;
   y: number;
   angle = 0;
   alpha = 1;
+  depth = 0;
   destroyed = false;
 
   constructor(x: number, y: number) {
@@ -26,7 +28,7 @@ class FakeImage {
   setCrop() { return this; }
   setDisplaySize() { return this; }
   setStrokeStyle() { return this; }
-  setDepth() { return this; }
+  setDepth(value: number) { this.depth = value; return this; }
   setPosition(x: number, y: number) { this.x = x; this.y = y; return this; }
   setAngle(value: number) { this.angle = value; return this; }
   setAlpha(value: number) { this.alpha = value; return this; }
@@ -88,6 +90,8 @@ describe('mining drops and fragments', () => {
   it('leaves a resource on the ground while cargo is full and collects it later', () => {
     effects.spawnDrop('copper', 6, 0, 0);
     const drop = images[0];
+    expect(drop.depth).toBe(WORLD_RENDER_DEPTHS.resourceDrop);
+    expect(drop.depth).toBeLessThan(WORLD_RENDER_DEPTHS.player);
     for (let index = 0; index < 40; index += 1) effects.update(50);
     expect(drop.destroyed).toBe(false);
     expect(drop.y).toBeLessThan(100);

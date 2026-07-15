@@ -217,14 +217,14 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
   },
   cargo_stack_mk1: {
     id: 'cargo_stack_mk1',
-    label: 'Stack-Kompression I',
+    label: 'Cargo-Slot-Größe I',
     category: 'cargo',
     cost: { credits: 250 },
     effects: [{ stat: 'cargoStackLimit', op: 'set', value: 5 }],
   },
   cargo_stack_mk2: {
     id: 'cargo_stack_mk2',
-    label: 'Stack-Kompression II',
+    label: 'Cargo-Slot-Größe II',
     category: 'cargo',
     cost: { credits: 700 },
     prerequisites: ['cargo_stack_mk1'],
@@ -232,7 +232,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
   },
   cargo_stack_mk3: {
     id: 'cargo_stack_mk3',
-    label: 'Stack-Kompression III',
+    label: 'Cargo-Slot-Größe III',
     category: 'cargo',
     cost: { credits: 1600 },
     prerequisites: ['cargo_stack_mk2'],
