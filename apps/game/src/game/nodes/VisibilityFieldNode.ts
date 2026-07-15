@@ -16,6 +16,7 @@ interface GridTile {
 
 interface RevealAnimation extends GridTile {
   elapsedMs: number;
+  startAlpha: number;
 }
 
 const SHADOW_COLOR = 0x01030a;
@@ -112,29 +113,33 @@ export class VisibilityFieldNode extends GameNode {
       // once into the current permanent circular grid representation.
       const legacyCenter = parseTileKey(savedKey);
       if (!legacyCenter) continue;
-      this.revealCircle(legacyCenter.x, legacyCenter.y, Math.max(0, sightRadius - 1), migratedKeys, false);
+      this.revealCircle(legacyCenter.x, legacyCenter.y, sightRadius, migratedKeys, false);
     }
 
     this.trackedPlayer = player;
     this.lastPlayerTileKey = undefined;
     this.currentPlayerTile = undefined;
     this.lastViewSignature = '';
-    this.discoverAround(player, migratedKeys);
+    this.discoverAround(player, migratedKeys, false);
     if (migratedKeys.length > 0) this.playerState.discoverTiles(migratedKeys);
     this.redrawGrid();
     this.redrawAnimations();
   }
 
-  private discoverAround(player: Phaser.GameObjects.Image, pendingKeys?: string[]): boolean {
+  private discoverAround(
+    player: Phaser.GameObjects.Image,
+    pendingKeys?: string[],
+    animate = true,
+  ): boolean {
     const centerX = Math.floor(player.x / TILE_SIZE);
     const centerY = Math.floor(player.y / TILE_SIZE);
     const playerTileKey = tileKey(centerX, centerY);
     if (playerTileKey === this.lastPlayerTileKey) return false;
     this.lastPlayerTileKey = playerTileKey;
-    this.currentPlayerTile = { x: centerX, y: centerY };
 
     const keys = pendingKeys ?? [];
-    this.revealCircle(centerX, centerY, Math.max(0, this.getSightRadius() - 1), keys, true);
+    this.revealCircle(centerX, centerY, this.getSightRadius(), keys, animate);
+    this.currentPlayerTile = { x: centerX, y: centerY };
     if (!pendingKeys && keys.length > 0) this.playerState.discoverTiles(keys);
     return true;
   }
@@ -154,13 +159,15 @@ export class VisibilityFieldNode extends GameNode {
         if (distanceSquared > radiusSquared) continue;
         const key = tileKey(x, y);
         if (this.revealedTiles.has(key)) continue;
+        const startAlpha = this.getTargetShadowAlpha(x, y);
         this.revealedTiles.add(key);
         persistedKeys.push(gridKey(x, y));
-        if (animate) {
+        if (animate && startAlpha > 0) {
           this.revealAnimations.set(key, {
             x,
             y,
             elapsedMs: -Math.sqrt(distanceSquared) * REVEAL_WAVE_DELAY_MS,
+            startAlpha,
           });
         }
         added = true;
@@ -205,7 +212,7 @@ export class VisibilityFieldNode extends GameNode {
     this.animationOverlay.clear();
     for (const animation of this.revealAnimations.values()) {
       if (animation.elapsedMs < 0) {
-        this.animationOverlay.fillStyle(SHADOW_COLOR, this.getRevealOverlayAlpha(animation.x, animation.y));
+        this.animationOverlay.fillStyle(SHADOW_COLOR, animation.startAlpha);
         this.animationOverlay.fillRect(
           animation.x * TILE_SIZE,
           animation.y * TILE_SIZE,
@@ -217,7 +224,7 @@ export class VisibilityFieldNode extends GameNode {
       const progress = Phaser.Math.Clamp(animation.elapsedMs / REVEAL_DURATION_MS, 0, 1);
       const eased = 1 - (1 - progress) ** 3;
       const size = TILE_SIZE * (1 - eased);
-      const alpha = this.getRevealOverlayAlpha(animation.x, animation.y) * (1 - progress);
+      const alpha = animation.startAlpha * (1 - progress);
       this.animationOverlay.fillStyle(SHADOW_COLOR, alpha);
       this.animationOverlay.fillRect(
         (animation.x + 0.5) * TILE_SIZE - size / 2,
@@ -234,22 +241,14 @@ export class VisibilityFieldNode extends GameNode {
     const center = this.currentPlayerTile;
     if (center) {
       const distanceSquared = (x - center.x) ** 2 + (y - center.y) ** 2;
-      const innerRadius = this.getSightRadius() + CIRCLE_EDGE_TILES;
+      const innerRadius = this.getSightRadius() + 1 + CIRCLE_EDGE_TILES;
       if (distanceSquared <= innerRadius ** 2) return INNER_SHADOW_ALPHA;
-      const outerRadius = this.getSightRadius() + 1 + CIRCLE_EDGE_TILES;
+      const outerRadius = this.getSightRadius() + 2 + CIRCLE_EDGE_TILES;
       if (distanceSquared <= outerRadius ** 2) return OUTER_SHADOW_ALPHA;
     }
     return UNEXPLORED_SHADOW_ALPHA;
   }
 
-  private getRevealOverlayAlpha(x: number, y: number): number {
-    const targetAlpha = this.getTargetShadowAlpha(x, y);
-    return Phaser.Math.Clamp(
-      (UNEXPLORED_SHADOW_ALPHA - targetAlpha) / Math.max(0.001, 1 - targetAlpha),
-      0,
-      1,
-    );
-  }
 
   private getSightRadius(): number {
     return Math.max(1, Math.round(this.playerState.stats.sightRadius));

@@ -110,11 +110,11 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 
 ### Darstellung
 
-- vollständig erkundete Gridfelder: kein Shadow (`0 %`)
-- erster noch nicht erkundeter Übergangsring: `30 %` Shadow
-- zweiter Übergangsring: `60 %` Shadow
-- unerforschter Bereich außerhalb der Übergangsringe: nahezu vollständig dunkler Shadow (`98,5 %`, visuell 100 %)
-- Startsichtweite: vollständig heller kreisförmiger Kern innerhalb eines `3 × 3`-Bereichs; die 30-/60-%-Ringe reichen bei `sightRadius = 2` weiter nach außen
+- vollständig erkundete Gridfelder innerhalb der Sichtweite: kein Shadow (`0 %`)
+- Startsichtweite: `2` Tiles Radius; diese Felder werden vollständig und dauerhaft aufgedeckt
+- dritter Tile-Ring vom Player: `30 %` Shadow
+- vierter Tile-Ring vom Player: `60 %` Shadow
+- ab dem fünften Tile-Ring: nahezu vollständig dunkler Shadow (`98,5 %`, visuell 100 %)
 - die Fog-Grenzen folgen exakt dem Weltgrid und bewegen sich gemeinsam mit der Tilemap
 - keine viewportbezogene Maskenprojektion
 - Visier-Upgrades verwenden den bestehenden `sightRadius`-Stat und vergrößern den Radius auf 3–6 Tiles
@@ -128,7 +128,7 @@ Beim Betreten eines neuen Tiles wird das kreisförmige Grid-Sichtfeld als erkund
 - Saves aus Game `1.0.450–1.0.451` werden automatisch vom alten Mittelpunktformat ins Gridformat migriert
 - der Zustand wird mit dem aktiven Run gespeichert und nach erneutem Laden desselben Runs wiederhergestellt
 
-Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu erkundete Kernfelder wechseln in einer kurzen radial verzögerten Welle vom unerforschten Shadow auf vollständige Helligkeit: Der überschüssige Shadow wird über `360 ms` transparenter und zieht sich mit Ease-out zu seinem Mittelpunkt zusammen. Außerhalb des vollständig hellen Erkundungskerns bilden `30 %` und `60 %` Shadow weiterhin einen weichen Übergang zum unerforschten Bereich.
+Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu erkundete Felder übernehmen für die Reveal-Animation exakt ihre unmittelbar vorher sichtbare Shadowstufe. Ein Feld aus dem dritten Ring animiert also von `30 %` zu `0 %`, ein Feld aus dem vierten Ring von `60 %` zu `0 %`; es springt niemals zurück auf 100 % Shadow. Der vorhandene Shadow wird über `360 ms` transparenter und zieht sich mit Ease-out zum Mittelpunkt des Tiles zusammen. Vollständig aufgedeckte Felder bleiben anschließend dauerhaft ohne Shadow.
 
 ### Performance
 
