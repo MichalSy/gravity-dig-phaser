@@ -63,7 +63,7 @@ export class GameWorldNode extends GameNode {
   }
 
   afterResolved(): void {
-    if (!this.data.level) this.createLevel(undefined, false);
+    if (!this.data.level) this.createLevel(undefined, true);
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {

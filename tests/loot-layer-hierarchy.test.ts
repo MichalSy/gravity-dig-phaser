@@ -59,6 +59,7 @@ describe('loot rendering hierarchy', () => {
     const dropSource = miningSource.slice(miningSource.indexOf('spawnDrop('), miningSource.indexOf('update(deltaMs'));
 
     expect(worldSource).not.toContain('player.setDepth');
+    expect(worldSource).toContain('this.createLevel(undefined, true)');
     expect(dropSource).not.toContain('.setDepth(');
   });
 });
