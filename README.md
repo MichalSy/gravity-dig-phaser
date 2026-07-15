@@ -157,4 +157,4 @@ GitOps/ArgoCD apps:
 
 ## Player Management
 
-The current canonical player-state architecture is documented in `docs/godot/PLAYER_MANAGEMENT.md`. In short: permanent progression lives in `PlayerProfile`, active expedition state lives in `RunState`, and gameplay consumes `EffectivePlayerStats` computed from upgrades/perks. Savegames currently use versioned `localStorage` key `gravity-dig-save-v1`.
+The active player-state implementation lives in `apps/game/public/scripts/PlayerState/`. Permanent progression lives in `PlayerProfile`, active expedition state lives in `RunState`, and gameplay consumes `EffectivePlayerStats` computed from upgrades and perks. Current economy, upgrade, and visibility tuning is documented in `docs/GAMEPLAY_BALANCE.md`; `docs/godot/PLAYER_MANAGEMENT.md` remains legacy design background. Savegames use the versioned `localStorage` key `gravity-dig-save-v1`.

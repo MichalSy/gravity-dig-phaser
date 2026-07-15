@@ -23,6 +23,10 @@
             ]
           },
           {
+            "name": "EffectsLayer",
+            "nodeTypeId": "8cd87ac6-4669-57c7-8fbf-fa9ac582d9e8"
+          },
+          {
             "name": "VisibilityField",
             "nodeTypeId": "4ec43079-472d-575f-9d1b-51cc01712f15"
           }

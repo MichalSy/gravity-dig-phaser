@@ -8,6 +8,7 @@ import { WorldView } from '../world/WorldView';
 import { spawnToWorld, worldBoundsForLevel } from '../world/worldGeometry';
 import { LevelNode } from './LevelNode';
 import { LootLayerNode } from './LootLayerNode';
+import { EffectsLayerNode } from './EffectsLayerNode';
 
 interface PlayerStateLike {
   getActiveRunSeed(fallback: string): string;
@@ -25,6 +26,7 @@ export class GameWorldNode extends GameNode {
   private phaserScene!: Phaser.Scene;
   private levelNode!: LevelNode;
   private lootLayer!: LootLayerNode;
+  private effectsLayer!: EffectsLayerNode;
   private playerState!: PlayerStateLike;
   private shipInstance?: GameNode;
   private playerInstance?: GameNode;
@@ -32,7 +34,7 @@ export class GameWorldNode extends GameNode {
   private miningEffects!: MiningEffects;
   private cargoTransferEffects!: CargoTransferEffects;
   private readonly instantiatePrefab: (path: string) => GameNode;
-  override readonly dependencies = ['Level', 'LootLayer', 'PlayerState'] as const;
+  override readonly dependencies = ['Level', 'LootLayer', 'EffectsLayer', 'PlayerState'] as const;
   readonly data: GameWorldData = createGameWorldData();
 
   constructor(options: GameWorldNodeOptions) {
@@ -43,18 +45,20 @@ export class GameWorldNode extends GameNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.worldView = new WorldView(this.phaserScene);
-    this.cargoTransferEffects = new CargoTransferEffects(this.phaserScene);
+    this.cargoTransferEffects = new CargoTransferEffects(this.phaserScene, (objects) => this.effectsLayer.addEffectObjects(objects));
     this.miningEffects = new MiningEffects(this.phaserScene, {
       collidesBox: (x, y, width, height) => Boolean(this.levelNode) && this.levelNode.collidesBox(x, y, width, height),
       getCollector: () => this.data.player,
       collectItem: (itemId) => Boolean(this.playerState) && this.playerState.tryCollectMinedItem(itemId),
       addLootObjects: (objects) => this.lootLayer.addLootObjects(objects),
+      addEffectObjects: (objects) => this.effectsLayer.addEffectObjects(objects),
     });
   }
 
   resolve(): void {
     this.levelNode = this.requireNode<LevelNode>('Level');
     this.lootLayer = this.requireNode<LootLayerNode>('LootLayer');
+    this.effectsLayer = this.requireNode<EffectsLayerNode>('EffectsLayer');
     this.playerState = this.requireNode('PlayerState') as unknown as PlayerStateLike;
   }
 
@@ -65,7 +69,7 @@ export class GameWorldNode extends GameNode {
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
     const [sky, tunnel, coreOuter, coreInner] = this.data.sceneObjects;
     const [backwall, foreground] = this.levelNode?.getSceneObjects() ?? [];
-    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...this.miningEffects.getSceneObjects(), ...this.cargoTransferEffects.getSceneObjects(), ...super.getSceneObjectsInHierarchy()]
+    return [sky, backwall, tunnel, foreground, coreOuter, coreInner, ...super.getSceneObjectsInHierarchy()]
       .filter((object): object is Phaser.GameObjects.GameObject => object !== undefined);
   }
 

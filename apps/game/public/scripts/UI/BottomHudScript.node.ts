@@ -26,6 +26,7 @@ type HudImageNode = Core.ImageNode & {
     setVisible(visible: boolean): unknown;
   };
   visible: boolean;
+  setAssetId(assetId: string): void;
 };
 
 type HudTextNode = Core.TextNode & {
@@ -55,6 +56,7 @@ export default class BottomHudScript extends Core.ScriptNode {
   private playerState!: PlayerStateLike;
   private readonly slots: SlotNode[] = [];
   private readonly slotItems: HudImageNode[] = [];
+  private readonly slotItemIds: Array<ItemId | undefined> = [];
   private readonly slotLabels: HudTextNode[] = [];
 
   resolve() {
@@ -107,6 +109,7 @@ export default class BottomHudScript extends Core.ScriptNode {
 
     this.slots.push(slot);
     this.slotItems.push(item);
+    this.slotItemIds.push(undefined);
     this.slotLabels.push(label);
   }
 
@@ -125,6 +128,7 @@ export default class BottomHudScript extends Core.ScriptNode {
   private removeLastSlot() {
     const slot = this.slots.pop();
     this.slotItems.pop();
+    this.slotItemIds.pop();
     this.slotLabels.pop();
     if (slot) this.hudRoot.removeChild(slot);
   }
@@ -142,8 +146,15 @@ export default class BottomHudScript extends Core.ScriptNode {
       const hasItem = Boolean(cargo?.itemId && cargo.quantity > 0);
       item.visible = hasItem;
       item.image.setVisible(hasItem);
-      if (cargo?.itemId && cargo.quantity > 0) item.image.setTint(ITEM_TINTS[cargo.itemId]);
-      else item.image.clearTint();
+      if (cargo?.itemId && cargo.quantity > 0 && this.slotItemIds[index] !== cargo.itemId) {
+        item.setAssetId(ITEM_ASSETS[cargo.itemId] ?? 'hud-item-rock');
+        if (ITEM_ASSETS[cargo.itemId]) item.image.clearTint();
+        else item.image.setTint(ITEM_TINTS[cargo.itemId]);
+        this.slotItemIds[index] = cargo.itemId;
+      } else if (!hasItem) {
+        item.image.clearTint();
+        this.slotItemIds[index] = undefined;
+      }
       const text = cargo?.itemId && cargo.quantity > 0 ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : '';
       if (label.setText) label.setText(text);
       else label.text = text;
@@ -168,6 +179,11 @@ const ITEM_SHORT_LABELS = {
   copper: 'Cu', iron: 'Fe', gold: 'Au', diamond: 'Di',
   energy_cell: 'EZ', repair_kit: 'RK', teleport_bracelet: 'TP',
 } as const;
+
+const ITEM_ASSETS: Partial<Record<ItemId, string>> = {
+  sand: 'item-sand', clay: 'item-clay', gravel: 'item-gravel', stone: 'item-stone', basalt: 'item-basalt',
+  copper: 'item-copper', iron: 'item-iron', gold: 'item-gold', diamond: 'item-diamond',
+};
 
 const ITEM_TINTS: Record<ItemId, number> = {
   dirt: 0x9a6a45, sand: 0xd8bd78, clay: 0xb96855, gravel: 0x8f8b83, stone: 0x9ca3af,

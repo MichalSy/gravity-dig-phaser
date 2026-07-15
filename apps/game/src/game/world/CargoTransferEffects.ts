@@ -23,14 +23,13 @@ const ITEM_TINTS: Record<string, number> = {
 export class CargoTransferEffects {
   private readonly flights: CargoFlight[] = [];
   private readonly scene: Phaser.Scene;
+  private readonly addEffectObjects: (objects: readonly Phaser.GameObjects.GameObject[]) => void;
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, addEffectObjects: (objects: readonly Phaser.GameObjects.GameObject[]) => void) {
     this.scene = scene;
+    this.addEffectObjects = addEffectObjects;
   }
 
-  getSceneObjects(): Phaser.GameObjects.GameObject[] {
-    return this.flights.map((flight) => flight.image);
-  }
 
   launch(itemId: string, startScreenX: number, startScreenY: number, endX: number, endY: number): void {
     const start = this.scene.cameras.main.getWorldPoint(startScreenX, startScreenY);
@@ -49,8 +48,8 @@ export class CargoTransferEffects {
     const hasItemTexture = this.scene.textures.exists(itemTexture);
     const image = this.scene.add.image(start.x, start.y, hasItemTexture ? itemTexture : 'hud-item-rock')
       .setDisplaySize(ITEM_SIZE, ITEM_SIZE)
-      .setDepth(80)
       .setAngle(Phaser.Math.Between(0, 359));
+    this.addEffectObjects([image]);
     if (!hasItemTexture) image.setTint(ITEM_TINTS[itemId] ?? 0xffffff);
 
     this.flights.push({

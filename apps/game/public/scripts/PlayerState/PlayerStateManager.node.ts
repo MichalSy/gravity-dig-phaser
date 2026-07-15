@@ -47,6 +47,7 @@ export default class PlayerStateManager extends Core.ScriptNode {
   private saveGameState!: SaveGame;
   private activeRunState?: RunState;
   private effectivePlayerStats!: EffectivePlayerStats;
+  private discoveredTileKeys = new Set<string>();
   private saveTimerMs = 0;
 
   init() {
@@ -130,6 +131,7 @@ export default class PlayerStateManager extends Core.ScriptNode {
     return this.activeRunState;
   }
   getActiveRun() { return this.activeRunState; }
+  getDiscoveredTiles() { return this.activeRunState?.discoveredTiles ?? []; }
   get stats() { return this.effectivePlayerStats; }
   getActiveRunSeed(fallback: string) { return this.saveGameState.activeRun?.seed ?? fallback; }
 
@@ -140,6 +142,7 @@ export default class PlayerStateManager extends Core.ScriptNode {
     this.activeRunState = activeRun
       ? normalizeRunState(activeRun, this.effectivePlayerStats)
       : createRunState(planetId, seed, this.effectivePlayerStats);
+    this.discoveredTileKeys = new Set(this.activeRunState.discoveredTiles);
     this.saveTimerMs = 0;
 
     this.saveActiveRun();
@@ -165,6 +168,18 @@ export default class PlayerStateManager extends Core.ScriptNode {
     if (tileType in ITEM_DEFINITIONS) this.saveGameState.profile.stats.resourcesMined += 1;
     this.saveGameState.profile.stats.blocksMined += 1;
     this.saveActiveRun();
+  }
+
+  discoverTiles(tileKeys: readonly string[]): number {
+    if (!this.activeRunState || tileKeys.length === 0) return 0;
+    let added = 0;
+    for (const key of tileKeys) {
+      if (this.discoveredTileKeys.has(key)) continue;
+      this.discoveredTileKeys.add(key);
+      this.activeRunState.discoveredTiles.push(key);
+      added += 1;
+    }
+    return added;
   }
 
   tryCollectMinedItem(tileType: string): boolean {

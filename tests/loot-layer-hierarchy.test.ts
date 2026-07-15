@@ -30,17 +30,27 @@ describe('loot rendering hierarchy', () => {
     });
   });
 
-  it('places the visibility field after World without static depth ordering', () => {
+  it('places a dedicated effects layer after World and the visibility field after effects', () => {
+    const nodeTypeIdsSource = readFileSync('apps/game/src/nodes/NodeTypeIds.ts', 'utf8');
+    const effectsLayerNodeTypeId = nodeTypeIdsSource.match(/EffectsLayerNode:\s*'([^']+)'/)?.[1];
     const scene = JSON.parse(readFileSync('apps/game/public/scenes/gameplay.scene.json', 'utf8')) as { root: SceneNode };
     const gameRoot = findNode(scene.root, 'GameRoot');
     const children = gameRoot?.children ?? [];
     const worldIndex = children.findIndex((child) => child.name === 'World');
+    const effectsIndex = children.findIndex((child) => child.name === 'EffectsLayer');
     const visibilityIndex = children.findIndex((child) => child.name === 'VisibilityField');
     const visibilitySource = readFileSync('apps/game/src/game/nodes/VisibilityFieldNode.ts', 'utf8');
+    const miningSource = readFileSync('apps/game/src/game/world/MiningEffects.ts', 'utf8');
+    const cargoEffectsSource = readFileSync('apps/game/src/game/world/CargoTransferEffects.ts', 'utf8');
 
+    expect(effectsLayerNodeTypeId).toBeTruthy();
+    expect(children[effectsIndex]).toMatchObject({ name: 'EffectsLayer', nodeTypeId: effectsLayerNodeTypeId });
     expect(worldIndex).toBeGreaterThanOrEqual(0);
-    expect(visibilityIndex).toBeGreaterThan(worldIndex);
+    expect(effectsIndex).toBeGreaterThan(worldIndex);
+    expect(visibilityIndex).toBeGreaterThan(effectsIndex);
     expect(visibilitySource).not.toContain('.setDepth(');
+    expect(miningSource).not.toContain('.setDepth(');
+    expect(cargoEffectsSource).not.toContain('.setDepth(');
   });
 
   it('does not assign static depth values to player or ground drops', () => {

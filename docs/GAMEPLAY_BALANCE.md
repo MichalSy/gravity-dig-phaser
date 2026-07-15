@@ -19,15 +19,15 @@ Ausgangslage:
 - 2 Cargo-Slots
 - 3 Items pro Slot
 - 6 Items pro voller Starter-Fahrt
-- erwarteter Early-Game-Mix: ungefähr 24 Credits pro voller Fahrt
+- empirisch erwarteter Early-Game-Mix: ungefähr 18 Credits pro voller Fahrt
 
 Zielwerte für die erste Stufe:
 
-| Upgrade | Kosten | Fahrten bei 24 Cr/Fahrt |
+| Upgrade | Kosten | Fahrten bei 18 Cr/Fahrt |
 |---|---:|---:|
-| Tempo I | 60 Cr | 2,5 |
-| Cargo-Slots I | 75 Cr | 3,1 |
-| Cargo-Slot-Größe I | 90 Cr | 3,8 |
+| Tempo I | 60 Cr | 3,3 |
+| Cargo-Slots I | 75 Cr | 4,2 |
+| Cargo-Slot-Größe I | 90 Cr | 5,0 |
 
 Die Fahrtenwerte sind Orientierungswerte. Erzvorkommen, Weglänge und nicht vollständig gefüllte Cargo-Slots verändern die reale Dauer.
 
@@ -81,6 +81,10 @@ Die Stufen sind kumulative Zielwerte und keine jeweils erneut addierten 4 Prozen
 | Cargo-Slot-Größe II | 8 | 260 Cr |
 | Cargo-Slot-Größe III | 12 | 600 Cr |
 
+## Einheitliche Ressourcen-Icons
+
+Drops in der Welt, fliegende Cargo-Transferobjekte und belegte Cargo-Slots verwenden denselben kanonischen Asset-Key `item-<itemId>`. Die HUD-Slots tauschen ihr Bildasset beim Itemwechsel aus; Ressourcen werden nicht mehr als identisches Rock-Icon mit unterschiedlichen Tints dargestellt.
+
 ## Sichtfeld und Shadow
 
 Das aktive Sichtfeld wird durch den hierarchischen `VisibilityFieldNode` erzeugt:
@@ -91,11 +95,12 @@ Gameplay
 │   ├── Level
 │   ├── World
 │   │   └── LootLayer
+│   ├── EffectsLayer
 │   └── VisibilityField
 └── UIRoot
 ```
 
-Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet. Der Shadow liegt als eigenes Scene-Node-Overlay hinter dem `UIRoot`; HUD und Touchcontrols bleiben dadurch lesbar.
+Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet. Miningpartikel und Cargo-Flüge gehören explizit in den `EffectsLayer`; der Shadow folgt danach und liegt vor dem `UIRoot`. HUD und Touchcontrols bleiben dadurch lesbar.
 
 ### Darstellung
 
@@ -105,18 +110,18 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 - weicher radialer Übergang bis zum Außenradius
 - Visier-Upgrades verwenden den bestehenden `sightRadius`-Stat und vergrößern den Radius auf 4–7 Tiles
 
-### Bewegungstrail und Fade
+### Dauerhaft erkundete Bereiche
 
-Während der Bewegung werden Sichtpunkte entlang des gelaufenen Weges gesammelt:
+Beim Betreten eines neuen Tiles wird der vollständige aktuelle Sichtradius als erkundet markiert:
 
-- neuer Punkt nach ungefähr `0,3 Tiles` Bewegung
-- Trailradius: `82 %` des aktuellen Sichtfeldradius
-- Lebensdauer: `2,2 Sekunden`
-- nichtlinearer Alpha-Fade für ein weiches Ausblenden
+- erkundete Tile-Keys werden in `RunState.discoveredTiles` gespeichert
+- bereits erkundete Bereiche bleiben dauerhaft sichtbar und werden nicht erneut vom Shadow verdeckt
+- die Freilegung speichert besuchte Tile-Zentren und zeichnet den vollständigen, weich auslaufenden Sichtradius erneut
+- der Zustand wird mit dem aktiven Run gespeichert und nach erneutem Laden desselben Runs wiederhergestellt
 - Maskenrefresh alle `80 ms`
 - Canvas-Maske intern mit `50 %` Auflösung und bilinear auf die Spielfläche skaliert
 
-Der aktuelle Spielerradius bleibt vollständig sichtbar. Zurückliegende Bereiche werden schrittweise wieder vom Shadow verdeckt, statt hart an einer Tilekante zu verschwinden.
+Der aktuelle Spielerradius bleibt zusätzlich als großer, vollständig sichtbarer Kreis erhalten. Neue Bereiche gehen weich in die dauerhaft erkundete Fläche über.
 
 ### Performance
 

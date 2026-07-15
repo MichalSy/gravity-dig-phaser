@@ -102,4 +102,17 @@ describe('public player state domain', () => {
     expect(manager.getInspectorPropValue('credits')).toBe(125);
     vi.unstubAllGlobals();
   });
+
+  it('persists discovered tiles once per active run', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    manager.startRun('dev', 'exploration-seed', false);
+
+    expect(manager.discoverTiles(['1:2', '2:2'])).toBe(2);
+    expect(manager.discoverTiles(['1:2', '3:2'])).toBe(1);
+    expect(manager.getDiscoveredTiles()).toEqual(['1:2', '2:2', '3:2']);
+    expect(manager.save.activeRun?.discoveredTiles).toEqual(['1:2', '2:2', '3:2']);
+    vi.unstubAllGlobals();
+  });
 });

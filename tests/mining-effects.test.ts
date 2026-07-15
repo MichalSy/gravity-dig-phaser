@@ -41,6 +41,7 @@ describe('mining drops and fragments', () => {
   let collected: string[];
   let sounds: string[];
   let lootObjects: FakeImage[];
+  let effectObjects: FakeImage[];
   let effects: MiningEffects;
 
   beforeEach(() => {
@@ -50,6 +51,7 @@ describe('mining drops and fragments', () => {
     collected = [];
     sounds = [];
     lootObjects = [];
+    effectObjects = [];
     const scene = {
       add: {
         circle: (x: number, y: number) => new FakeImage(x, y),
@@ -81,12 +83,17 @@ describe('mining drops and fragments', () => {
       addLootObjects: (objects) => {
         for (const object of objects) lootObjects.push(object as unknown as FakeImage);
       },
+      addEffectObjects: (objects) => {
+        for (const object of objects) effectObjects.push(object as unknown as FakeImage);
+      },
     });
   });
 
   it('lets fragments fly away and cleans them up', () => {
     effects.emitFragments('dirt', 20, 20, 3);
     expect(images).toHaveLength(3);
+    expect(effectObjects).toEqual(images);
+    expect(effectObjects.every((object) => object.depthCalls === 0)).toBe(true);
     for (let index = 0; index < 50; index += 1) effects.update(50);
     expect(images.every((image) => image.destroyed)).toBe(true);
   });

@@ -10,6 +10,7 @@ export interface MiningEffectsOptions {
   getCollector(): MiningDropCollector | undefined;
   collectItem(itemId: string): boolean;
   addLootObjects(objects: readonly Phaser.GameObjects.GameObject[]): void;
+  addEffectObjects(objects: readonly Phaser.GameObjects.GameObject[]): void;
 }
 
 interface MiningParticle {
@@ -59,9 +60,6 @@ export class MiningEffects {
     this.options = options;
   }
 
-  getSceneObjects(): Phaser.GameObjects.GameObject[] {
-    return this.particles.map((particle) => particle.fragment);
-  }
 
   emitFragments(materialId: string, x: number, y: number, count = 3): void {
     const color = MATERIAL_COLORS[materialId] ?? 0x9a6334;
@@ -77,8 +75,8 @@ export class MiningEffects {
         1,
       )
         .setStrokeStyle(1, 0xffe5a3, 0.8)
-        .setDepth(40)
         .setAngle(Phaser.Math.Between(0, 359));
+      this.options.addEffectObjects([fragment]);
       const lifetimeMs = Phaser.Math.Between(1_600, 2_100);
       this.particles.push({
         fragment,

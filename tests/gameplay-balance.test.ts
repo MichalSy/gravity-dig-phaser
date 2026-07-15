@@ -29,13 +29,16 @@ describe('early-game economy balance', () => {
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {
-    const averageStarterRunCredits = 24;
+    const averageStarterRunCredits = 18;
     const firstUpgradeCosts = [
       UPGRADE_DEFINITIONS.speed_mk1.cost.credits ?? Infinity,
       UPGRADE_DEFINITIONS.cargo_mk1.cost.credits ?? Infinity,
       UPGRADE_DEFINITIONS.cargo_stack_mk1.cost.credits ?? Infinity,
     ];
 
-    expect(firstUpgradeCosts.map((cost) => cost / averageStarterRunCredits)).toEqual([2.5, 3.125, 3.75]);
+    const runs = firstUpgradeCosts.map((cost) => cost / averageStarterRunCredits);
+    expect(runs[0]).toBeCloseTo(3.33, 1);
+    expect(runs[1]).toBeCloseTo(4.17, 1);
+    expect(runs[2]).toBe(5);
   });
 });

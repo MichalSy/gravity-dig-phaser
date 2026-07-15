@@ -1828,6 +1828,7 @@ var PlayerStateManager = class extends ScriptNode {
   saveGameState;
   activeRunState;
   effectivePlayerStats;
+  discoveredTileKeys = /* @__PURE__ */ new Set();
   saveTimerMs = 0;
   init() {
     this.saveGameState = loadSaveGame();
@@ -1916,6 +1917,9 @@ var PlayerStateManager = class extends ScriptNode {
   getActiveRun() {
     return this.activeRunState;
   }
+  getDiscoveredTiles() {
+    return this.activeRunState?.discoveredTiles ?? [];
+  }
   get stats() {
     return this.effectivePlayerStats;
   }
@@ -1925,6 +1929,7 @@ var PlayerStateManager = class extends ScriptNode {
   startRun(planetId, seed, restoreActiveRun) {
     const activeRun = restoreActiveRun && this.saveGameState.activeRun?.planetId === planetId && this.saveGameState.activeRun.seed === seed ? this.saveGameState.activeRun : void 0;
     this.activeRunState = activeRun ? normalizeRunState(activeRun, this.effectivePlayerStats) : createRunState(planetId, seed, this.effectivePlayerStats);
+    this.discoveredTileKeys = new Set(this.activeRunState.discoveredTiles);
     this.saveTimerMs = 0;
     this.saveActiveRun();
     return this.activeRunState;
@@ -1949,6 +1954,17 @@ var PlayerStateManager = class extends ScriptNode {
     if (tileType in ITEM_DEFINITIONS) this.saveGameState.profile.stats.resourcesMined += 1;
     this.saveGameState.profile.stats.blocksMined += 1;
     this.saveActiveRun();
+  }
+  discoverTiles(tileKeys) {
+    if (!this.activeRunState || tileKeys.length === 0) return 0;
+    let added = 0;
+    for (const key of tileKeys) {
+      if (this.discoveredTileKeys.has(key)) continue;
+      this.discoveredTileKeys.add(key);
+      this.activeRunState.discoveredTiles.push(key);
+      added += 1;
+    }
+    return added;
   }
   tryCollectMinedItem(tileType) {
     if (!(tileType in ITEM_DEFINITIONS)) return false;
@@ -2048,6 +2064,7 @@ var BottomHudScript = class extends ScriptNode {
   playerState;
   slots = [];
   slotItems = [];
+  slotItemIds = [];
   slotLabels = [];
   resolve() {
     this.hudRoot = this.requireResolvedNode(this.hudRootNodeId, "UI.BottomHud");
@@ -2090,6 +2107,7 @@ var BottomHudScript = class extends ScriptNode {
     label.resolution = Math.max(2, window.devicePixelRatio || 1);
     this.slots.push(slot);
     this.slotItems.push(item);
+    this.slotItemIds.push(void 0);
     this.slotLabels.push(label);
   }
   layoutSlots() {
@@ -2106,6 +2124,7 @@ var BottomHudScript = class extends ScriptNode {
   removeLastSlot() {
     const slot = this.slots.pop();
     this.slotItems.pop();
+    this.slotItemIds.pop();
     this.slotLabels.pop();
     if (slot) this.hudRoot.removeChild(slot);
   }
@@ -2121,8 +2140,15 @@ var BottomHudScript = class extends ScriptNode {
       const hasItem = Boolean(cargo?.itemId && cargo.quantity > 0);
       item.visible = hasItem;
       item.image.setVisible(hasItem);
-      if (cargo?.itemId && cargo.quantity > 0) item.image.setTint(ITEM_TINTS[cargo.itemId]);
-      else item.image.clearTint();
+      if (cargo?.itemId && cargo.quantity > 0 && this.slotItemIds[index] !== cargo.itemId) {
+        item.setAssetId(ITEM_ASSETS[cargo.itemId] ?? "hud-item-rock");
+        if (ITEM_ASSETS[cargo.itemId]) item.image.clearTint();
+        else item.image.setTint(ITEM_TINTS[cargo.itemId]);
+        this.slotItemIds[index] = cargo.itemId;
+      } else if (!hasItem) {
+        item.image.clearTint();
+        this.slotItemIds[index] = void 0;
+      }
       const text = cargo?.itemId && cargo.quantity > 0 ? `${ITEM_SHORT_LABELS[cargo.itemId]} x${cargo.quantity}` : "";
       if (label.setText) label.setText(text);
       else label.text = text;
@@ -2153,6 +2179,17 @@ var ITEM_SHORT_LABELS = {
   energy_cell: "EZ",
   repair_kit: "RK",
   teleport_bracelet: "TP"
+};
+var ITEM_ASSETS = {
+  sand: "item-sand",
+  clay: "item-clay",
+  gravel: "item-gravel",
+  stone: "item-stone",
+  basalt: "item-basalt",
+  copper: "item-copper",
+  iron: "item-iron",
+  gold: "item-gold",
+  diamond: "item-diamond"
 };
 var ITEM_TINTS = {
   dirt: 10119749,
@@ -2385,4 +2422,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.377136ce7813.js.map
+//# sourceMappingURL=dynamic-nodes.a85c0d892789.js.map

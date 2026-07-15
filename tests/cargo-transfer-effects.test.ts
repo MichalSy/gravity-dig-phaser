@@ -35,10 +35,12 @@ describe('cargo transfer effects', () => {
   let images: FakeImage[];
   let sounds: string[];
   let effects: CargoTransferEffects;
+  let effectObjects: FakeImage[];
 
   beforeEach(() => {
     images = [];
     sounds = [];
+    effectObjects = [];
     const scene = {
       cameras: { main: { getWorldPoint: (x: number, y: number) => ({ x, y }) } },
       textures: { exists: () => true },
@@ -52,12 +54,15 @@ describe('cargo transfer effects', () => {
       cache: { audio: { exists: (key: string) => key === 'cargo-credit-chime' } },
       sound: { play: (key: string) => sounds.push(key) },
     };
-    effects = new CargoTransferEffects(scene as never);
+    effects = new CargoTransferEffects(scene as never, (objects) => {
+      for (const object of objects) effectObjects.push(object as unknown as FakeImage);
+    });
   });
 
   it('flies an item on a curved path and pings exactly when it reaches the ship', () => {
     effects.launch('copper', 640, 680, -288, 240);
     expect(images).toHaveLength(1);
+    expect(effectObjects).toEqual(images);
     expect(sounds).toEqual([]);
 
     effects.update(250);
