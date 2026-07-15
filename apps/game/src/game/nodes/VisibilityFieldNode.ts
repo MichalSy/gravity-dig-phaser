@@ -14,10 +14,17 @@ interface GridTile {
   y: number;
 }
 
+interface RevealAnimation extends GridTile {
+  elapsedMs: number;
+}
+
 const SHADOW_COLOR = 0x01030a;
 const SHADOW_ALPHA = 0.985;
 const VIEW_PADDING_TILES = 2;
 const GRID_KEY_PREFIX = 'g:';
+const REVEAL_DURATION_MS = 360;
+const REVEAL_WAVE_DELAY_MS = 34;
+const CIRCLE_EDGE_TILES = 0.35;
 
 export class VisibilityFieldNode extends GameNode {
   static override readonly nodeTypeId = NODE_TYPE_IDS.VisibilityFieldNode;
@@ -27,7 +34,9 @@ export class VisibilityFieldNode extends GameNode {
   private world!: GameWorldNode;
   private playerState!: VisibilityStatsProvider;
   private overlay?: Phaser.GameObjects.Graphics;
+  private animationOverlay?: Phaser.GameObjects.Graphics;
   private readonly revealedTiles = new Set<string>();
+  private readonly revealAnimations = new Map<string, RevealAnimation>();
   private trackedPlayer?: Phaser.GameObjects.Image;
   private lastPlayerTileKey?: string;
   private lastViewSignature = '';
@@ -47,28 +56,35 @@ export class VisibilityFieldNode extends GameNode {
 
   afterResolved(): void {
     this.overlay = this.scene.add.graphics().setScrollFactor(1);
+    this.animationOverlay = this.scene.add.graphics().setScrollFactor(1);
     this.redrawGrid();
   }
 
-  update(): void {
+  update(deltaMs: number): void {
     const player = this.world.data.player;
     if (!player) return;
     if (player !== this.trackedPlayer) this.resetExploration(player);
 
     const discovered = this.discoverAround(player);
+    const animating = this.updateRevealAnimations(deltaMs);
     const viewSignature = this.getViewSignature();
-    if (!discovered && viewSignature === this.lastViewSignature) return;
-    this.redrawGrid(viewSignature);
+    if (discovered || viewSignature !== this.lastViewSignature) this.redrawGrid(viewSignature);
+    if (animating) this.redrawAnimations();
   }
 
   override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
-    return this.overlay ? [this.overlay] : [];
+    return [this.overlay, this.animationOverlay].filter(
+      (object): object is Phaser.GameObjects.Graphics => object !== undefined,
+    );
   }
 
   destroy(): void {
     this.overlay?.destroy();
     this.overlay = undefined;
+    this.animationOverlay?.destroy();
+    this.animationOverlay = undefined;
     this.revealedTiles.clear();
+    this.revealAnimations.clear();
     this.lastPlayerTileKey = undefined;
     this.lastViewSignature = '';
     this.trackedPlayer = undefined;
@@ -76,6 +92,7 @@ export class VisibilityFieldNode extends GameNode {
 
   private resetExploration(player: Phaser.GameObjects.Image): void {
     this.revealedTiles.clear();
+    this.revealAnimations.clear();
     const migratedKeys: string[] = [];
     const sightRadius = this.getSightRadius();
 
@@ -87,10 +104,10 @@ export class VisibilityFieldNode extends GameNode {
       }
 
       // Versions 1.0.450–1.0.451 stored visited player centers. Expand them
-      // once into the new permanent square grid representation.
+      // once into the current permanent circular grid representation.
       const legacyCenter = parseTileKey(savedKey);
       if (!legacyCenter) continue;
-      this.revealSquare(legacyCenter.x, legacyCenter.y, sightRadius, migratedKeys);
+      this.revealCircle(legacyCenter.x, legacyCenter.y, sightRadius, migratedKeys, false);
     }
 
     this.trackedPlayer = player;
@@ -99,6 +116,7 @@ export class VisibilityFieldNode extends GameNode {
     this.discoverAround(player, migratedKeys);
     if (migratedKeys.length > 0) this.playerState.discoverTiles(migratedKeys);
     this.redrawGrid();
+    this.redrawAnimations();
   }
 
   private discoverAround(player: Phaser.GameObjects.Image, pendingKeys?: string[]): boolean {
@@ -109,23 +127,48 @@ export class VisibilityFieldNode extends GameNode {
     this.lastPlayerTileKey = playerTileKey;
 
     const keys = pendingKeys ?? [];
-    const added = this.revealSquare(centerX, centerY, this.getSightRadius(), keys);
+    const added = this.revealCircle(centerX, centerY, this.getSightRadius(), keys, true);
     if (!pendingKeys && keys.length > 0) this.playerState.discoverTiles(keys);
     return added;
   }
 
-  private revealSquare(centerX: number, centerY: number, radius: number, persistedKeys: string[]): boolean {
+  private revealCircle(
+    centerX: number,
+    centerY: number,
+    radius: number,
+    persistedKeys: string[],
+    animate: boolean,
+  ): boolean {
     let added = false;
+    const radiusSquared = (radius + CIRCLE_EDGE_TILES) ** 2;
     for (let y = centerY - radius; y <= centerY + radius; y += 1) {
       for (let x = centerX - radius; x <= centerX + radius; x += 1) {
+        const distanceSquared = (x - centerX) ** 2 + (y - centerY) ** 2;
+        if (distanceSquared > radiusSquared) continue;
         const key = tileKey(x, y);
         if (this.revealedTiles.has(key)) continue;
         this.revealedTiles.add(key);
         persistedKeys.push(gridKey(x, y));
+        if (animate) {
+          this.revealAnimations.set(key, {
+            x,
+            y,
+            elapsedMs: -Math.sqrt(distanceSquared) * REVEAL_WAVE_DELAY_MS,
+          });
+        }
         added = true;
       }
     }
     return added;
+  }
+
+  private updateRevealAnimations(deltaMs: number): boolean {
+    if (this.revealAnimations.size === 0) return false;
+    for (const [key, animation] of this.revealAnimations) {
+      animation.elapsedMs += deltaMs;
+      if (animation.elapsedMs >= REVEAL_DURATION_MS) this.revealAnimations.delete(key);
+    }
+    return true;
   }
 
   private redrawGrid(viewSignature = this.getViewSignature()): void {
@@ -145,7 +188,36 @@ export class VisibilityFieldNode extends GameNode {
         this.overlay.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE + 0.5, TILE_SIZE + 0.5);
       }
     }
+
     this.lastViewSignature = viewSignature;
+  }
+
+  private redrawAnimations(): void {
+    if (!this.animationOverlay) return;
+    this.animationOverlay.clear();
+    for (const animation of this.revealAnimations.values()) {
+      if (animation.elapsedMs < 0) {
+        this.animationOverlay.fillStyle(SHADOW_COLOR, SHADOW_ALPHA);
+        this.animationOverlay.fillRect(
+          animation.x * TILE_SIZE,
+          animation.y * TILE_SIZE,
+          TILE_SIZE + 0.5,
+          TILE_SIZE + 0.5,
+        );
+        continue;
+      }
+      const progress = Phaser.Math.Clamp(animation.elapsedMs / REVEAL_DURATION_MS, 0, 1);
+      const eased = 1 - (1 - progress) ** 3;
+      const size = TILE_SIZE * (1 - eased);
+      const alpha = SHADOW_ALPHA * (1 - progress);
+      this.animationOverlay.fillStyle(SHADOW_COLOR, alpha);
+      this.animationOverlay.fillRect(
+        (animation.x + 0.5) * TILE_SIZE - size / 2,
+        (animation.y + 0.5) * TILE_SIZE - size / 2,
+        size,
+        size,
+      );
+    }
   }
 
   private getSightRadius(): number {

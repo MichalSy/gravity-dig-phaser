@@ -105,25 +105,25 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 ### Darstellung
 
 - außerhalb des Sichtfelds: nahezu vollständig dunkler Shadow (`98,5 %`)
-- Startsichtweite: quadratisches `7 × 7`-Tilefeld bei `sightRadius = 3`
+- Startsichtweite: kreisförmig angeordnete Gridfelder innerhalb eines `7 × 7`-Bereichs bei `sightRadius = 3`
 - die Fog-Grenzen folgen exakt dem Weltgrid und bewegen sich gemeinsam mit der Tilemap
-- keine radialen Verläufe und keine viewportbezogene Maskenprojektion
+- keine viewportbezogene Maskenprojektion
 - Visier-Upgrades verwenden den bestehenden `sightRadius`-Stat und vergrößern den Radius auf 4–7 Tiles
 
 ### Dauerhaft erkundete Bereiche
 
-Beim Betreten eines neuen Tiles wird das vollständige quadratische Sichtfeld als erkundet markiert:
+Beim Betreten eines neuen Tiles wird das kreisförmige Grid-Sichtfeld als erkundet markiert:
 
 - erkundete Tile-Keys werden mit dem Präfix `g:` in `RunState.discoveredTiles` gespeichert
 - bereits erkundete Bereiche bleiben dauerhaft sichtbar und werden nicht erneut vom Shadow verdeckt
 - Saves aus Game `1.0.450–1.0.451` werden automatisch vom alten Mittelpunktformat ins Gridformat migriert
 - der Zustand wird mit dem aktiven Run gespeichert und nach erneutem Laden desselben Runs wiederhergestellt
 
-Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Dadurch bleibt die Fog-Grenze während kontinuierlicher Spieler- und Kamerabewegung stabil.
+Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu freigelegte Felder verschwinden in einer kurzen radial verzögerten Welle: Jedes Shadow-Tile wird über `360 ms` transparenter und zieht sich mit Ease-out zu seinem Mittelpunkt zusammen. Dadurch bleibt die Maske weltverankert, während die Freilegung weich wirkt.
 
 ### Performance
 
-Das Overlay verwendet ein einzelnes weltverankertes Phaser-`Graphics`-Objekt. Es zeichnet nur die aktuell sichtbaren, noch nicht erkundeten Gridfelder plus zwei Padding-Tiles und wird ausschließlich bei einem Tile- oder Viewportzellenwechsel neu aufgebaut. Es gibt keine CanvasTexture-Uploads, radialen Gradienten oder `80 ms`-Projektionssprünge mehr.
+Das Overlay verwendet zwei weltverankerte Phaser-`Graphics`-Objekte: eine statische Fogfläche und eine kleine Animationsfläche. Die statische Ebene zeichnet nur die aktuell sichtbaren, noch nicht erkundeten Gridfelder plus zwei Padding-Tiles und wird ausschließlich bei einem Tile- oder Viewportzellenwechsel neu aufgebaut. Während der kurzen Reveal-Animation wird nur die zweite Ebene mit den gerade verschwindenden Tiles aktualisiert. Es gibt keine CanvasTexture-Uploads, radialen Gradienten oder `80 ms`-Projektionssprünge mehr.
 
 ## Weiteres Tuning
 

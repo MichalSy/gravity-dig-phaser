@@ -54,6 +54,10 @@ describe('loot rendering hierarchy', () => {
     expect(visibilitySource).toContain('scene.add.graphics()');
     expect(visibilitySource).toContain('overlay.fillRect');
     expect(visibilitySource).toContain("GRID_KEY_PREFIX = 'g:'");
+    expect(visibilitySource).toContain('revealCircle(');
+    expect(visibilitySource).toContain('REVEAL_DURATION_MS = 360');
+    expect(visibilitySource).toContain('size / 2');
+    expect(visibilitySource).not.toContain('revealSquare(');
     expect(miningSource).not.toContain('.setDepth(');
     expect(cargoEffectsSource).not.toContain('.setDepth(');
   });
