@@ -20,7 +20,8 @@ interface RevealAnimation extends GridTile {
 
 const SHADOW_COLOR = 0x01030a;
 const INNER_SHADOW_ALPHA = 0.3;
-const EXPLORED_SHADOW_ALPHA = 0.6;
+const OUTER_SHADOW_ALPHA = 0.6;
+const EXPLORED_SHADOW_ALPHA = 0;
 const UNEXPLORED_SHADOW_ALPHA = 0.985;
 const VIEW_PADDING_TILES = 2;
 const GRID_KEY_PREFIX = 'g:';
@@ -111,7 +112,7 @@ export class VisibilityFieldNode extends GameNode {
       // once into the current permanent circular grid representation.
       const legacyCenter = parseTileKey(savedKey);
       if (!legacyCenter) continue;
-      this.revealCircle(legacyCenter.x, legacyCenter.y, sightRadius, migratedKeys, false);
+      this.revealCircle(legacyCenter.x, legacyCenter.y, Math.max(0, sightRadius - 1), migratedKeys, false);
     }
 
     this.trackedPlayer = player;
@@ -133,7 +134,7 @@ export class VisibilityFieldNode extends GameNode {
     this.currentPlayerTile = { x: centerX, y: centerY };
 
     const keys = pendingKeys ?? [];
-    this.revealCircle(centerX, centerY, this.getSightRadius(), keys, true);
+    this.revealCircle(centerX, centerY, Math.max(0, this.getSightRadius() - 1), keys, true);
     if (!pendingKeys && keys.length > 0) this.playerState.discoverTiles(keys);
     return true;
   }
@@ -189,7 +190,9 @@ export class VisibilityFieldNode extends GameNode {
     this.overlay.clear();
     for (let y = minY; y <= maxY; y += 1) {
       for (let x = minX; x <= maxX; x += 1) {
-        this.overlay.fillStyle(SHADOW_COLOR, this.getTargetShadowAlpha(x, y));
+        const alpha = this.getTargetShadowAlpha(x, y);
+        if (alpha <= 0) continue;
+        this.overlay.fillStyle(SHADOW_COLOR, alpha);
         this.overlay.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE + 0.5, TILE_SIZE + 0.5);
       }
     }
@@ -226,13 +229,17 @@ export class VisibilityFieldNode extends GameNode {
   }
 
   private getTargetShadowAlpha(x: number, y: number): number {
+    if (this.revealedTiles.has(tileKey(x, y))) return EXPLORED_SHADOW_ALPHA;
+
     const center = this.currentPlayerTile;
     if (center) {
-      const innerRadius = Math.max(0, this.getSightRadius() - 1) + CIRCLE_EDGE_TILES;
       const distanceSquared = (x - center.x) ** 2 + (y - center.y) ** 2;
+      const innerRadius = this.getSightRadius() + CIRCLE_EDGE_TILES;
       if (distanceSquared <= innerRadius ** 2) return INNER_SHADOW_ALPHA;
+      const outerRadius = this.getSightRadius() + 1 + CIRCLE_EDGE_TILES;
+      if (distanceSquared <= outerRadius ** 2) return OUTER_SHADOW_ALPHA;
     }
-    return this.revealedTiles.has(tileKey(x, y)) ? EXPLORED_SHADOW_ALPHA : UNEXPLORED_SHADOW_ALPHA;
+    return UNEXPLORED_SHADOW_ALPHA;
   }
 
   private getRevealOverlayAlpha(x: number, y: number): number {

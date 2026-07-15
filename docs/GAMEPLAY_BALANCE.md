@@ -110,10 +110,11 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 
 ### Darstellung
 
-- innerster aktueller Sichtbereich: `30 %` Shadow
-- erkundeter Bereich und äußerer aktueller Sichtring: `60 %` Shadow
-- unerforschter Bereich: nahezu vollständig dunkler Shadow (`98,5 %`, visuell 100 %)
-- Startsichtweite: kreisförmig angeordnete Gridfelder innerhalb eines `5 × 5`-Bereichs bei `sightRadius = 2`
+- vollständig erkundete Gridfelder: kein Shadow (`0 %`)
+- erster noch nicht erkundeter Übergangsring: `30 %` Shadow
+- zweiter Übergangsring: `60 %` Shadow
+- unerforschter Bereich außerhalb der Übergangsringe: nahezu vollständig dunkler Shadow (`98,5 %`, visuell 100 %)
+- Startsichtweite: vollständig heller kreisförmiger Kern innerhalb eines `3 × 3`-Bereichs; die 30-/60-%-Ringe reichen bei `sightRadius = 2` weiter nach außen
 - die Fog-Grenzen folgen exakt dem Weltgrid und bewegen sich gemeinsam mit der Tilemap
 - keine viewportbezogene Maskenprojektion
 - Visier-Upgrades verwenden den bestehenden `sightRadius`-Stat und vergrößern den Radius auf 3–6 Tiles
@@ -123,11 +124,11 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 Beim Betreten eines neuen Tiles wird das kreisförmige Grid-Sichtfeld als erkundet markiert:
 
 - erkundete Tile-Keys werden mit dem Präfix `g:` in `RunState.discoveredTiles` gespeichert
-- bereits erkundete Bereiche bleiben dauerhaft mit `60 %` Shadow sichtbar
+- bereits erkundete Bereiche bleiben dauerhaft vollständig hell (`0 %` Shadow)
 - Saves aus Game `1.0.450–1.0.451` werden automatisch vom alten Mittelpunktformat ins Gridformat migriert
 - der Zustand wird mit dem aktiven Run gespeichert und nach erneutem Laden desselben Runs wiederhergestellt
 
-Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu freigelegte Felder wechseln in einer kurzen radial verzögerten Welle vom unerforschten Shadow auf ihre Zieltransparenz: Der überschüssige Shadow wird über `360 ms` transparenter und zieht sich mit Ease-out zu seinem Mittelpunkt zusammen. Dadurch bleibt die Maske weltverankert, während zwischen `30 %`, `60 %` und dem unerforschten Shadow ein weicher Übergang entsteht.
+Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu erkundete Kernfelder wechseln in einer kurzen radial verzögerten Welle vom unerforschten Shadow auf vollständige Helligkeit: Der überschüssige Shadow wird über `360 ms` transparenter und zieht sich mit Ease-out zu seinem Mittelpunkt zusammen. Außerhalb des vollständig hellen Erkundungskerns bilden `30 %` und `60 %` Shadow weiterhin einen weichen Übergang zum unerforschten Bereich.
 
 ### Performance
 
