@@ -661,6 +661,7 @@ var ShipScript = class extends ScriptNode {
       this.playerState.recoverEnergyAtShip(deltaMs / 1e3);
       this.updateCargoTransfer(deltaMs);
     } else {
+      this.playerState.consumeLifeSupportEnergy(deltaMs / 1e3);
       this.transferTimerMs = 0;
     }
     const upgradePrompt = this.gameplayInput.getInputMode() === "touch" ? "UPGRADES VERF\xDCGBAR" : "[E] UPGRADES";
@@ -1297,6 +1298,7 @@ var MINING_RANGE = 330;
 var MINING_DAMAGE_PER_SEC = 120;
 var ENERGY_REGEN_PER_SEC = 18;
 var ENERGY_COST_PER_SEC = 12;
+var LIFE_SUPPORT_ENERGY_COST_PER_SEC = 1.5;
 
 // public/scripts/PlayerState/catalogs/upgrades.ts
 var UPGRADE_DEFINITIONS = {
@@ -1356,7 +1358,7 @@ var UPGRADE_DEFINITIONS = {
     label: "Visier MK1",
     category: "visor",
     cost: { credits: 150 },
-    effects: [{ stat: "sightRadius", op: "set", value: 4 }]
+    effects: [{ stat: "sightRadius", op: "set", value: 3 }]
   },
   visor_mk2: {
     id: "visor_mk2",
@@ -1364,7 +1366,7 @@ var UPGRADE_DEFINITIONS = {
     category: "visor",
     cost: { credits: 400 },
     prerequisites: ["visor_mk1"],
-    effects: [{ stat: "sightRadius", op: "set", value: 5 }]
+    effects: [{ stat: "sightRadius", op: "set", value: 4 }]
   },
   radar_visor: {
     id: "radar_visor",
@@ -1372,7 +1374,7 @@ var UPGRADE_DEFINITIONS = {
     category: "visor",
     cost: { credits: 900 },
     prerequisites: ["visor_mk2"],
-    effects: [{ stat: "sightRadius", op: "set", value: 6 }]
+    effects: [{ stat: "sightRadius", op: "set", value: 5 }]
   },
   quantum_visor: {
     id: "quantum_visor",
@@ -1380,7 +1382,7 @@ var UPGRADE_DEFINITIONS = {
     category: "visor",
     cost: { credits: 2e3 },
     prerequisites: ["radar_visor"],
-    effects: [{ stat: "sightRadius", op: "set", value: 7 }]
+    effects: [{ stat: "sightRadius", op: "set", value: 6 }]
   },
   battery_mk1: {
     id: "battery_mk1",
@@ -1778,7 +1780,7 @@ function computeEffectiveStats(profile) {
     jumpVelocity: JUMP_VELOCITY,
     cargoSlots: 2,
     cargoStackLimit: 3,
-    sightRadius: 3,
+    sightRadius: 2,
     fuelEfficiency: 1
   };
   const modifiers = collectModifiers(profile);
@@ -1819,7 +1821,7 @@ var PlayerStateManager = class extends ScriptNode {
   jumpVelocity = prop.number(-1040, { label: "Jump Velocity", step: 1, group: "Stats" });
   cargoSlots = prop.number(2, { label: "Cargo Slots", min: 1, step: 1, group: "Stats" });
   cargoStackLimit = prop.number(3, { label: "Cargo Stack Limit", min: 1, step: 1, group: "Stats" });
-  sightRadius = prop.number(3, { label: "Sight Radius", min: 0, step: 1, group: "Stats" });
+  sightRadius = prop.number(2, { label: "Sight Radius", min: 0, step: 1, group: "Stats" });
   fuelEfficiency = prop.number(1, { label: "Fuel Efficiency", min: 0, step: 0.1, group: "Stats" });
   credits = prop.number(0, { label: "Credits", min: 0, step: 1, group: "Profile" });
   blocksMined = prop.number(0, { label: "Blocks Mined", min: 0, step: 1, group: "Profile" });
@@ -1946,6 +1948,9 @@ var PlayerStateManager = class extends ScriptNode {
   }
   consumeMiningEnergy(deltaSeconds) {
     this.run.energy = Math.max(0, this.run.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
+  }
+  consumeLifeSupportEnergy(deltaSeconds) {
+    this.run.energy = Math.max(0, this.run.energy - LIFE_SUPPORT_ENERGY_COST_PER_SEC * deltaSeconds);
   }
   recoverEnergyAtShip(deltaSeconds) {
     this.run.energy = Math.min(this.effectivePlayerStats.maxEnergy, this.run.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds);
@@ -2422,4 +2427,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.a85c0d892789.js.map
+//# sourceMappingURL=dynamic-nodes.cf3c9aeb6d8e.js.map

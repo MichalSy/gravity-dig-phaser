@@ -16,7 +16,7 @@ describe('public player state domain', () => {
     const stats = computeEffectiveStats(save.profile);
     const run = createRunState('dev', 'seed', stats);
 
-    expect(stats).toMatchObject({ moveSpeed: 470, jumpVelocity: -1040, miningRange: 330, cargoSlots: 2, cargoStackLimit: 3 });
+    expect(stats).toMatchObject({ moveSpeed: 470, jumpVelocity: -1040, miningRange: 330, cargoSlots: 2, cargoStackLimit: 3, sightRadius: 2 });
     expect(run.cargo.slots).toHaveLength(2);
     expect(addItem(run.cargo, 'copper', 7)).toBe(6);
     expect(run.cargo.slots).toEqual([
@@ -51,8 +51,10 @@ describe('public player state domain', () => {
     run.energy = 20;
     manager.update(1_000);
     expect(run.energy).toBe(20);
+    manager.consumeLifeSupportEnergy(10);
+    expect(run.energy).toBe(5);
     manager.recoverEnergyAtShip(1);
-    expect(run.energy).toBe(38);
+    expect(run.energy).toBe(23);
 
     addItem(run.cargo, 'copper', 2);
     expect(manager.transferNextCargoItemToShip()).toEqual({ itemId: 'copper', slotIndex: 0, credits: 6 });

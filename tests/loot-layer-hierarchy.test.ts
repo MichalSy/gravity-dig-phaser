@@ -56,6 +56,9 @@ describe('loot rendering hierarchy', () => {
     expect(visibilitySource).toContain("GRID_KEY_PREFIX = 'g:'");
     expect(visibilitySource).toContain('revealCircle(');
     expect(visibilitySource).toContain('REVEAL_DURATION_MS = 360');
+    expect(visibilitySource).toContain('INNER_SHADOW_ALPHA = 0.3');
+    expect(visibilitySource).toContain('EXPLORED_SHADOW_ALPHA = 0.6');
+    expect(visibilitySource).toContain('UNEXPLORED_SHADOW_ALPHA = 0.985');
     expect(visibilitySource).toContain('size / 2');
     expect(visibilitySource).not.toContain('revealSquare(');
     expect(miningSource).not.toContain('.setDepth(');

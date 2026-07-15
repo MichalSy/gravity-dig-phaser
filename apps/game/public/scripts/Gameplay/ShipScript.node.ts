@@ -26,6 +26,7 @@ type PlayerStateLike = {
   stats: { maxEnergy: number };
   save: { profile: { credits: number } };
   recoverEnergyAtShip(deltaSeconds: number): void;
+  consumeLifeSupportEnergy(deltaSeconds: number): void;
   transferNextCargoItemToShip(): CargoTransferItem | undefined;
 };
 
@@ -109,6 +110,7 @@ export default class ShipScript extends Core.ScriptNode {
       this.playerState.recoverEnergyAtShip(deltaMs / 1_000);
       this.updateCargoTransfer(deltaMs);
     } else {
+      this.playerState.consumeLifeSupportEnergy(deltaMs / 1_000);
       this.transferTimerMs = 0;
     }
 

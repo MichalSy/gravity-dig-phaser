@@ -58,7 +58,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     label: 'Visier MK1',
     category: 'visor',
     cost: { credits: 150 },
-    effects: [{ stat: 'sightRadius', op: 'set', value: 4 }],
+    effects: [{ stat: 'sightRadius', op: 'set', value: 3 }],
   },
   visor_mk2: {
     id: 'visor_mk2',
@@ -66,7 +66,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     category: 'visor',
     cost: { credits: 400 },
     prerequisites: ['visor_mk1'],
-    effects: [{ stat: 'sightRadius', op: 'set', value: 5 }],
+    effects: [{ stat: 'sightRadius', op: 'set', value: 4 }],
   },
   radar_visor: {
     id: 'radar_visor',
@@ -74,7 +74,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     category: 'visor',
     cost: { credits: 900 },
     prerequisites: ['visor_mk2'],
-    effects: [{ stat: 'sightRadius', op: 'set', value: 6 }],
+    effects: [{ stat: 'sightRadius', op: 'set', value: 5 }],
   },
   quantum_visor: {
     id: 'quantum_visor',
@@ -82,7 +82,7 @@ export const UPGRADE_DEFINITIONS: Record<UpgradeId, UpgradeDefinition> = {
     category: 'visor',
     cost: { credits: 2000 },
     prerequisites: ['radar_visor'],
-    effects: [{ stat: 'sightRadius', op: 'set', value: 7 }],
+    effects: [{ stat: 'sightRadius', op: 'set', value: 6 }],
   },
   battery_mk1: {
     id: 'battery_mk1',

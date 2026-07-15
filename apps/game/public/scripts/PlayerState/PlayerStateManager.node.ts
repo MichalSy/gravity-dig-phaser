@@ -4,6 +4,7 @@ import { UPGRADE_DEFINITIONS } from './catalogs/upgrades';
 import { addItem, getInventoryCount, normalizeInventory, removeItem } from './inventory';
 import { createRunState, normalizeRunState } from './RunState';
 import { loadSaveGame, saveGame } from './saveGame';
+import { LIFE_SUPPORT_ENERGY_COST_PER_SEC } from './playerConfig';
 import { computeEffectiveStats } from './stats';
 import type { EffectivePlayerStats, ItemId, RunState, SaveGame, UpgradeId } from './types';
 
@@ -36,7 +37,7 @@ export default class PlayerStateManager extends Core.ScriptNode {
   jumpVelocity = Core.prop.number(-1040, { label: 'Jump Velocity', step: 1, group: 'Stats' });
   cargoSlots = Core.prop.number(2, { label: 'Cargo Slots', min: 1, step: 1, group: 'Stats' });
   cargoStackLimit = Core.prop.number(3, { label: 'Cargo Stack Limit', min: 1, step: 1, group: 'Stats' });
-  sightRadius = Core.prop.number(3, { label: 'Sight Radius', min: 0, step: 1, group: 'Stats' });
+  sightRadius = Core.prop.number(2, { label: 'Sight Radius', min: 0, step: 1, group: 'Stats' });
   fuelEfficiency = Core.prop.number(1, { label: 'Fuel Efficiency', min: 0, step: 0.1, group: 'Stats' });
 
   credits = Core.prop.number(0, { label: 'Credits', min: 0, step: 1, group: 'Profile' });
@@ -160,6 +161,9 @@ export default class PlayerStateManager extends Core.ScriptNode {
   hasMiningEnergy() { return this.run.energy > 0; }
   consumeMiningEnergy(deltaSeconds: number) {
     this.run.energy = Math.max(0, this.run.energy - this.effectivePlayerStats.energyCostPerSec * deltaSeconds);
+  }
+  consumeLifeSupportEnergy(deltaSeconds: number) {
+    this.run.energy = Math.max(0, this.run.energy - LIFE_SUPPORT_ENERGY_COST_PER_SEC * deltaSeconds);
   }
   recoverEnergyAtShip(deltaSeconds: number) {
     this.run.energy = Math.min(this.effectivePlayerStats.maxEnergy, this.run.energy + this.effectivePlayerStats.energyRegenPerSec * deltaSeconds);

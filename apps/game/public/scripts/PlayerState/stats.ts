@@ -22,7 +22,7 @@ export function computeEffectiveStats(profile: PlayerProfile): EffectivePlayerSt
     jumpVelocity: JUMP_VELOCITY,
     cargoSlots: 2,
     cargoStackLimit: 3,
-    sightRadius: 3,
+    sightRadius: 2,
     fuelEfficiency: 1,
   };
 

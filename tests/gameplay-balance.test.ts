@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/items';
 import { UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
-import { PLAYER_SPEED } from '../apps/game/public/scripts/PlayerState/playerConfig';
+import { LIFE_SUPPORT_ENERGY_COST_PER_SEC, PLAYER_SPEED } from '../apps/game/public/scripts/PlayerState/playerConfig';
 
 describe('early-game economy balance', () => {
   it('pays meaningful credits for every collected ground resource', () => {
@@ -26,6 +27,19 @@ describe('early-game economy balance', () => {
 
     expect(bonuses).toEqual([4, 8, 12]);
     expect(UPGRADE_DEFINITIONS.speed_mk1.cost.credits).toBe(60);
+  });
+
+  it('uses a tighter visor progression and a finite life-support window', () => {
+    expect(LIFE_SUPPORT_ENERGY_COST_PER_SEC).toBe(1.5);
+    expect(100 / LIFE_SUPPORT_ENERGY_COST_PER_SEC).toBeCloseTo(66.67, 1);
+    expect([
+      UPGRADE_DEFINITIONS.visor_mk1.effects[0].value,
+      UPGRADE_DEFINITIONS.visor_mk2.effects[0].value,
+      UPGRADE_DEFINITIONS.radar_visor.effects[0].value,
+      UPGRADE_DEFINITIONS.quantum_visor.effects[0].value,
+    ]).toEqual([3, 4, 5, 6]);
+    const shipSource = readFileSync('apps/game/public/scripts/Gameplay/ShipScript.node.ts', 'utf8');
+    expect(shipSource).toContain('this.playerState.consumeLifeSupportEnergy(deltaMs / 1_000)');
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

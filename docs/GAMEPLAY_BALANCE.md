@@ -81,6 +81,12 @@ Die Stufen sind kumulative Zielwerte und keine jeweils erneut addierten 4 Prozen
 | Cargo-Slot-Größe II | 8 | 260 Cr |
 | Cargo-Slot-Größe III | 12 | 600 Cr |
 
+## Energie und Lebenserhaltung
+
+Außerhalb des Schiffs verbraucht die Lebenserhaltung kontinuierlich `1,5 Energie/Sekunde`. Eine Standardbatterie mit 100 Energie reicht ohne Mining ungefähr `66,7 Sekunden`. Mining benötigt zusätzlich `12 Energie/Sekunde`; die Kosten werden gleichzeitig berechnet.
+
+Im Dock wird keine Lebenserhaltungsenergie abgezogen. Stattdessen lädt das Schiff mit `18 Energie/Sekunde`, sodass eine vollständig leere Standardbatterie nach ungefähr `5,6 Sekunden` wieder voll ist. Bei 0 Energie kann nicht weiter gemined werden; der Spieler muss zum Schiff zurückkehren.
+
 ## Einheitliche Ressourcen-Icons
 
 Drops in der Welt, fliegende Cargo-Transferobjekte und belegte Cargo-Slots verwenden denselben kanonischen Asset-Key `item-<itemId>`. Die HUD-Slots tauschen ihr Bildasset beim Itemwechsel aus; Ressourcen werden nicht mehr als identisches Rock-Icon mit unterschiedlichen Tints dargestellt.
@@ -104,22 +110,24 @@ Es werden keine statischen Depth-/Z-Index-Werte für diese Reihenfolge verwendet
 
 ### Darstellung
 
-- außerhalb des Sichtfelds: nahezu vollständig dunkler Shadow (`98,5 %`)
-- Startsichtweite: kreisförmig angeordnete Gridfelder innerhalb eines `7 × 7`-Bereichs bei `sightRadius = 3`
+- innerster aktueller Sichtbereich: `30 %` Shadow
+- erkundeter Bereich und äußerer aktueller Sichtring: `60 %` Shadow
+- unerforschter Bereich: nahezu vollständig dunkler Shadow (`98,5 %`, visuell 100 %)
+- Startsichtweite: kreisförmig angeordnete Gridfelder innerhalb eines `5 × 5`-Bereichs bei `sightRadius = 2`
 - die Fog-Grenzen folgen exakt dem Weltgrid und bewegen sich gemeinsam mit der Tilemap
 - keine viewportbezogene Maskenprojektion
-- Visier-Upgrades verwenden den bestehenden `sightRadius`-Stat und vergrößern den Radius auf 4–7 Tiles
+- Visier-Upgrades verwenden den bestehenden `sightRadius`-Stat und vergrößern den Radius auf 3–6 Tiles
 
 ### Dauerhaft erkundete Bereiche
 
 Beim Betreten eines neuen Tiles wird das kreisförmige Grid-Sichtfeld als erkundet markiert:
 
 - erkundete Tile-Keys werden mit dem Präfix `g:` in `RunState.discoveredTiles` gespeichert
-- bereits erkundete Bereiche bleiben dauerhaft sichtbar und werden nicht erneut vom Shadow verdeckt
+- bereits erkundete Bereiche bleiben dauerhaft mit `60 %` Shadow sichtbar
 - Saves aus Game `1.0.450–1.0.451` werden automatisch vom alten Mittelpunktformat ins Gridformat migriert
 - der Zustand wird mit dem aktiven Run gespeichert und nach erneutem Laden desselben Runs wiederhergestellt
 
-Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu freigelegte Felder verschwinden in einer kurzen radial verzögerten Welle: Jedes Shadow-Tile wird über `360 ms` transparenter und zieht sich mit Ease-out zu seinem Mittelpunkt zusammen. Dadurch bleibt die Maske weltverankert, während die Freilegung weich wirkt.
+Das Sichtfeld erweitert sich nur beim Wechsel in ein anderes Tile. Neu freigelegte Felder wechseln in einer kurzen radial verzögerten Welle vom unerforschten Shadow auf ihre Zieltransparenz: Der überschüssige Shadow wird über `360 ms` transparenter und zieht sich mit Ease-out zu seinem Mittelpunkt zusammen. Dadurch bleibt die Maske weltverankert, während zwischen `30 %`, `60 %` und dem unerforschten Shadow ein weicher Übergang entsteht.
 
 ### Performance
 

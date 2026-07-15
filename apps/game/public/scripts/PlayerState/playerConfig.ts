@@ -5,3 +5,4 @@ export const MINING_RANGE = 330;
 export const MINING_DAMAGE_PER_SEC = 120;
 export const ENERGY_REGEN_PER_SEC = 18;
 export const ENERGY_COST_PER_SEC = 12;
+export const LIFE_SUPPORT_ENERGY_COST_PER_SEC = 1.5;
