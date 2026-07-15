@@ -50,7 +50,7 @@ Jeder zerstörte, droppende Block erzeugt weiterhin genau ein sammelbares Item. 
 
 ## Forschungs-Orbit (Skillbaum)
 
-Die Schiffsoberfläche zeigt einen radialen Skillbaum mit dem `Prospektor-Kern` in der Mitte. Jeder äußere Knoten ist nur kaufbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert.
+Die Schiffsoberfläche zeigt einen radialen Skillbaum mit dem `Prospektor-Kern` in der Mitte. Insgesamt stehen **53 Skills** in vier Ästen mit je 13 Stufen zur Verfügung. Jeder äußere Knoten ist nur kaufbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert. Fünf navigierbare Forschungsringe zeigen jeweils drei aufeinanderfolgende Tiers pro Ast; der letzte Ring überlappt zur Orientierung die Tiers 11–13.
 
 | Ast | Stufe 1 | Stufe 2 | Stufe 3 |
 |---|---|---|---|
@@ -59,7 +59,24 @@ Die Schiffsoberfläche zeigt einen radialen Skillbaum mit dem `Prospektor-Kern` 
 | Mining | Laser-Fokus: +25 % Schaden | Kettenblitz: 2 Nachbarblöcke | Gewitter-Abo: 4 Nachbarblöcke, +15 % Schaden |
 | Utility | Cargo-Tetris: +1 Slot | Taschen-Wurmloch: +3 Stack, Magnet 140 px | Goldene Gummiente: +25 Leben, Magnet 220 px, -15 % Schwerkraft |
 
-Der Kern kostet `50 Cr` und gibt `+10 maximale Energie`. Die Äste kosten pro Stufe ungefähr `100–125 Cr`, `350–450 Cr` und `900–1100 Cr`. Farbcodierung: Grün Bewegung, Blau Sicht, Pink Mining, Lila Utility.
+### Ungewöhnliche Tiers 4–13
+
+| Tier | Bewegung | Sicht | Mining | Utility |
+|---:|---|---|---|---|
+| 4 | Mondlauf-Versicherung | Spektrum-Monokel | Lichtbogen-Lehrling | Notfall-Banane |
+| 5 | Decken-Verhandler | Kupfer-Klatschfunk | Erz-Mixer | Cargo-Origami |
+| 6 | Turbo-Schnecke | Nebel-Rabattcoupon | Laser-Spaghetti | Hosentaschen-Dimension |
+| 7 | Chrono-Schnürsenkel | Geologie-Karaoke | Donner-Frettchen | Gewerkschafts-Nanobots |
+| 8 | Hüpfsteuer-Rückzahlung | Schrödingers Karte | Steuerflucht-Bohrer | Loot-Bumerang |
+| 9 | Antigrav-Sandwich | Bürokratie-Röntgen | Plasma-Fondue | Meteoriten-Versicherungsbetrug |
+| 10 | Panik-Teleporter | Prophetische Brotkrumen | Rekursive Spitzhacke | Tragbare Schiffswerft |
+| 11 | Kometen-Kniescheiben | Seismischer Klatsch | Koffein-Strahl | Kosmischer Staubsauger |
+| 12 | Quantum-Himmel-und-Hölle | Allwissender Toaster | Lokale Apokalypse | Administrative Unsterblichkeit |
+| 13 | Schwerkraft deinstallieren | Planet ohne Privatsphäre | Planet deabonnieren | Realität Premium |
+
+Die ungewöhnlichen Skills kombinieren bewusst normalerweise getrennte Systeme. Beispiele: Der `Steuerflucht-Bohrer` koppelt Laserschaden mit Cargo-Stackgröße, `Geologie-Karaoke` verbindet Scanner und Energieregeneration, `Loot-Bumerang` koppelt Magnet und Laserreichweite, und `Realität Premium` ist ein teures Multi-System-Endgamepaket. Alle Boni verändern reale effektive Stats und sind keine reinen Flavor-Texte.
+
+Der Kern kostet `50 Cr`. Die ersten drei Tiers kosten ungefähr `100–1100 Cr`; die späteren Endgame-Tiers steigen bis `30.000 Cr`. Der Vollausbau aller 53 Skills kostet `415.325 Cr`. Farbcodierung: Grün Bewegung, Blau Sicht, Pink Mining, Lila Utility.
 
 Besondere Laufzeitwirkungen:
 

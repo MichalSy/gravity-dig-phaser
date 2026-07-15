@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/items';
-import { SKILL_TREE_IDS, UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
+import { SKILL_TREE_BRANCHES, SKILL_TREE_IDS, UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
 import { LIFE_SUPPORT_ENERGY_COST_PER_SEC, PLAYER_SPEED } from '../apps/game/public/scripts/PlayerState/playerConfig';
 
 describe('early-game economy balance', () => {
@@ -43,8 +43,17 @@ describe('early-game economy balance', () => {
   });
 
   it('defines a connected four-branch skill tree with real gameplay hooks', () => {
-    expect(SKILL_TREE_IDS).toHaveLength(13);
+    expect(SKILL_TREE_IDS).toHaveLength(53);
+    expect(new Set(SKILL_TREE_IDS).size).toBe(53);
     expect(UPGRADE_DEFINITIONS.prospector_core.prerequisites).toBeUndefined();
+    for (const branch of Object.values(SKILL_TREE_BRANCHES)) {
+      expect(branch).toHaveLength(13);
+      let previous: (typeof SKILL_TREE_IDS)[number] = 'prospector_core';
+      for (const id of branch) {
+        expect(UPGRADE_DEFINITIONS[id].prerequisites).toEqual([previous]);
+        previous = id;
+      }
+    }
     for (const id of SKILL_TREE_IDS.filter((id) => id !== 'prospector_core')) {
       expect(UPGRADE_DEFINITIONS[id].prerequisites?.length).toBeGreaterThan(0);
       expect(UPGRADE_DEFINITIONS[id].tree).toBeDefined();
@@ -60,6 +69,12 @@ describe('early-game economy balance', () => {
     const behavior = skillTreePrefab.root.children.find((node: { name: string }) => node.name === 'UpgradeDialogBehavior');
     expect(behavior.props.buyButtonNodeIds).toHaveLength(13);
     expect(new Set(behavior.props.buyButtonNodeIds).size).toBe(13);
+    expect(behavior.props.ringTextNodeId).toBe('tree-ring-text');
+    expect(behavior.props.previousRingButtonNodeId).toBe('tree-ring-prev');
+    expect(behavior.props.nextRingButtonNodeId).toBe('tree-ring-next');
+    const dialogSource = readFileSync('apps/game/public/scripts/UI/UpgradeDialogScript.node.ts', 'utf8');
+    expect(dialogSource).toContain('const PAGE_COUNT = 5');
+    expect(dialogSource).toContain("event.key === 'ArrowRight'");
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

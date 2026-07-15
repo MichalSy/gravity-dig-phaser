@@ -1342,20 +1342,74 @@ var ENERGY_COST_PER_SEC = 12;
 var LIFE_SUPPORT_ENERGY_COST_PER_SEC = 1.5;
 
 // public/scripts/PlayerState/catalogs/upgrades.ts
+var SKILL_TREE_BRANCHES = {
+  movement: [
+    "spring_boots",
+    "micro_jetpack",
+    "rocket_pants",
+    "moonwalk_insurance",
+    "ceiling_negotiator",
+    "turbo_snail",
+    "chrono_shoelaces",
+    "bounce_tax_refund",
+    "antigravity_sandwich",
+    "panic_teleporter",
+    "comet_kneecaps",
+    "quantum_hopscotch",
+    "uninstall_gravity"
+  ],
+  vision: [
+    "wide_visor",
+    "ore_scanner",
+    "xray_potato",
+    "spectrum_monocle",
+    "copper_gossip",
+    "fog_coupon",
+    "geology_karaoke",
+    "schrodinger_map",
+    "bureaucratic_xray",
+    "prophetic_breadcrumbs",
+    "seismic_gossip",
+    "omniscient_toaster",
+    "privacy_abolished"
+  ],
+  mining: [
+    "laser_focus",
+    "chain_lightning",
+    "storm_subscription",
+    "arc_apprentice",
+    "ore_blender",
+    "laser_spaghetti",
+    "thunder_ferret",
+    "tax_evasion_drill",
+    "plasma_fondue",
+    "recursive_pickaxe",
+    "caffeinated_beam",
+    "localized_apocalypse",
+    "planetary_unsubscribe"
+  ],
+  utility: [
+    "cargo_tetris",
+    "pocket_wormhole",
+    "rubber_duck_protocol",
+    "emergency_banana",
+    "cargo_origami",
+    "pocket_dimension",
+    "unionized_nanobots",
+    "loot_boomerang",
+    "insurance_fraud",
+    "portable_shipyard",
+    "cosmic_vacuum",
+    "administrative_immortality",
+    "reality_premium"
+  ]
+};
 var SKILL_TREE_IDS = [
   "prospector_core",
-  "spring_boots",
-  "micro_jetpack",
-  "rocket_pants",
-  "wide_visor",
-  "ore_scanner",
-  "xray_potato",
-  "laser_focus",
-  "chain_lightning",
-  "storm_subscription",
-  "cargo_tetris",
-  "pocket_wormhole",
-  "rubber_duck_protocol"
+  ...SKILL_TREE_BRANCHES.movement,
+  ...SKILL_TREE_BRANCHES.vision,
+  ...SKILL_TREE_BRANCHES.mining,
+  ...SKILL_TREE_BRANCHES.utility
 ];
 var UPGRADE_DEFINITIONS = {
   prospector_core: {
@@ -1486,6 +1540,406 @@ var UPGRADE_DEFINITIONS = {
     prerequisites: ["pocket_wormhole"],
     effects: [{ stat: "maxHealth", op: "add", value: 25 }, { stat: "pickupRadius", op: "set", value: 220 }, { stat: "gravityMultiplier", op: "multiply", value: 0.85 }],
     tree: { x: -3, y: -3, branch: "utility" }
+  },
+  moonwalk_insurance: {
+    id: "moonwalk_insurance",
+    label: "Mondlauf-Versicherung",
+    description: "8 % Tempo und 8 % weniger Schwerkraft. Deckt keine Mondkrater.",
+    category: "boots",
+    cost: { credits: 1500 },
+    prerequisites: ["rocket_pants"],
+    effects: [{ stat: "moveSpeed", op: "multiply", value: 1.08 }, { stat: "gravityMultiplier", op: "multiply", value: 0.92 }],
+    tree: { x: -4, y: 4, branch: "movement" }
+  },
+  ceiling_negotiator: {
+    id: "ceiling_negotiator",
+    label: "Decken-Verhandler",
+    description: "8 % mehr Sprung und 10 Leben. Einigt sich au\xDFergerichtlich mit Decken.",
+    category: "boots",
+    cost: { credits: 2200 },
+    prerequisites: ["moonwalk_insurance"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.08 }, { stat: "maxHealth", op: "add", value: 10 }],
+    tree: { x: -5, y: 5, branch: "movement" }
+  },
+  turbo_snail: {
+    id: "turbo_snail",
+    label: "Turbo-Schnecke",
+    description: "5 % Tempo und 20 Energie. Langsam war gestern, Schnecke bleibt.",
+    category: "boots",
+    cost: { credits: 3200 },
+    prerequisites: ["ceiling_negotiator"],
+    effects: [{ stat: "moveSpeed", op: "multiply", value: 1.05 }, { stat: "maxEnergy", op: "add", value: 20 }],
+    tree: { x: -6, y: 6, branch: "movement" }
+  },
+  chrono_shoelaces: {
+    id: "chrono_shoelaces",
+    label: "Chrono-Schn\xFCrsenkel",
+    description: "8 % Tempo und 10 % schnellere Regeneration. Zeit ist nur schlecht gebunden.",
+    category: "boots",
+    cost: { credits: 4500 },
+    prerequisites: ["turbo_snail"],
+    effects: [{ stat: "moveSpeed", op: "multiply", value: 1.08 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
+    tree: { x: -7, y: 7, branch: "movement" }
+  },
+  bounce_tax_refund: {
+    id: "bounce_tax_refund",
+    label: "H\xFCpfsteuer-R\xFCckzahlung",
+    description: "10 % mehr Sprung und 15 Energie. Formular B-OIN-G genehmigt.",
+    category: "boots",
+    cost: { credits: 6200 },
+    prerequisites: ["chrono_shoelaces"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.1 }, { stat: "maxEnergy", op: "add", value: 15 }],
+    tree: { x: -8, y: 8, branch: "movement" }
+  },
+  antigravity_sandwich: {
+    id: "antigravity_sandwich",
+    label: "Antigrav-Sandwich",
+    description: "Dritter Luftsprung und 18 % weniger Schwerkraft. Mit K\xE4se stabiler.",
+    category: "boots",
+    cost: { credits: 8500 },
+    prerequisites: ["bounce_tax_refund"],
+    effects: [{ stat: "airJumps", op: "set", value: 3 }, { stat: "gravityMultiplier", op: "multiply", value: 0.82 }],
+    tree: { x: -9, y: 9, branch: "movement" }
+  },
+  panic_teleporter: {
+    id: "panic_teleporter",
+    label: "Panik-Teleporter",
+    description: "12 % Tempo und 25 Energie. Teleportiert nur deine Motivation.",
+    category: "boots",
+    cost: { credits: 11e3 },
+    prerequisites: ["antigravity_sandwich"],
+    effects: [{ stat: "moveSpeed", op: "multiply", value: 1.12 }, { stat: "maxEnergy", op: "add", value: 25 }],
+    tree: { x: -10, y: 10, branch: "movement" }
+  },
+  comet_kneecaps: {
+    id: "comet_kneecaps",
+    label: "Kometen-Kniescheiben",
+    description: "12 % mehr Sprung und 10 % weniger Schwerkraft. Orthop\xE4den hassen sie.",
+    category: "boots",
+    cost: { credits: 14500 },
+    prerequisites: ["panic_teleporter"],
+    effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.12 }, { stat: "gravityMultiplier", op: "multiply", value: 0.9 }],
+    tree: { x: -11, y: 11, branch: "movement" }
+  },
+  quantum_hopscotch: {
+    id: "quantum_hopscotch",
+    label: "Quantum-Himmel-und-H\xF6lle",
+    description: "Vier Luftspr\xFCnge und 8 % Tempo. Jeder zweite Sprung existiert nur wahrscheinlich.",
+    category: "boots",
+    cost: { credits: 19e3 },
+    prerequisites: ["comet_kneecaps"],
+    effects: [{ stat: "airJumps", op: "set", value: 4 }, { stat: "moveSpeed", op: "multiply", value: 1.08 }],
+    tree: { x: -12, y: 12, branch: "movement" }
+  },
+  uninstall_gravity: {
+    id: "uninstall_gravity",
+    label: "Schwerkraft deinstallieren",
+    description: "35 % weniger Schwerkraft, 12 % mehr Sprung und 50 Energie. Neustart nicht n\xF6tig.",
+    category: "boots",
+    cost: { credits: 26e3 },
+    prerequisites: ["quantum_hopscotch"],
+    effects: [{ stat: "gravityMultiplier", op: "multiply", value: 0.65 }, { stat: "jumpVelocity", op: "multiply", value: 1.12 }, { stat: "maxEnergy", op: "add", value: 50 }],
+    tree: { x: -13, y: 13, branch: "movement" }
+  },
+  spectrum_monocle: {
+    id: "spectrum_monocle",
+    label: "Spektrum-Monokel",
+    description: "Ein Tile mehr Sicht. Sieht auch peinliche Mineralien.",
+    category: "visor",
+    cost: { credits: 1500 },
+    prerequisites: ["xray_potato"],
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }],
+    tree: { x: 4, y: -4, branch: "vision" }
+  },
+  copper_gossip: {
+    id: "copper_gossip",
+    label: "Kupfer-Klatschfunk",
+    description: "Scanner +2 Tiles und Magnet +20 Pixel. Kupfer erz\xE4hlt wirklich alles.",
+    category: "visor",
+    cost: { credits: 2200 },
+    prerequisites: ["spectrum_monocle"],
+    effects: [{ stat: "oreScannerRadius", op: "add", value: 2 }, { stat: "pickupRadius", op: "add", value: 20 }],
+    tree: { x: 5, y: -5, branch: "vision" }
+  },
+  fog_coupon: {
+    id: "fog_coupon",
+    label: "Nebel-Rabattcoupon",
+    description: "Ein Tile mehr Sicht und 15 Energie. Nur heute: 30 % weniger Unwissen.",
+    category: "visor",
+    cost: { credits: 3200 },
+    prerequisites: ["copper_gossip"],
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "maxEnergy", op: "add", value: 15 }],
+    tree: { x: 6, y: -6, branch: "vision" }
+  },
+  geology_karaoke: {
+    id: "geology_karaoke",
+    label: "Geologie-Karaoke",
+    description: "Scanner +2 und 10 % Regeneration. Erze leuchten, wenn du falsch singst.",
+    category: "visor",
+    cost: { credits: 4500 },
+    prerequisites: ["fog_coupon"],
+    effects: [{ stat: "oreScannerRadius", op: "add", value: 2 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
+    tree: { x: 7, y: -7, branch: "vision" }
+  },
+  schrodinger_map: {
+    id: "schrodinger_map",
+    label: "Schr\xF6dingers Karte",
+    description: "Sicht +1 und Scanner +1. Das Erz ist da und nicht da.",
+    category: "visor",
+    cost: { credits: 6200 },
+    prerequisites: ["geology_karaoke"],
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "oreScannerRadius", op: "add", value: 1 }],
+    tree: { x: 8, y: -8, branch: "vision" }
+  },
+  bureaucratic_xray: {
+    id: "bureaucratic_xray",
+    label: "B\xFCrokratie-R\xF6ntgen",
+    description: "Scanner +3 und 20 Leben. Genehmigt nur korrekt gestempelte Adern.",
+    category: "visor",
+    cost: { credits: 8500 },
+    prerequisites: ["schrodinger_map"],
+    effects: [{ stat: "oreScannerRadius", op: "add", value: 3 }, { stat: "maxHealth", op: "add", value: 20 }],
+    tree: { x: 9, y: -9, branch: "vision" }
+  },
+  prophetic_breadcrumbs: {
+    id: "prophetic_breadcrumbs",
+    label: "Prophetische Brotkrumen",
+    description: "Sicht +1 und Magnet +40 Pixel. Folgen auf eigene Gluten-Gefahr.",
+    category: "visor",
+    cost: { credits: 11e3 },
+    prerequisites: ["bureaucratic_xray"],
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "pickupRadius", op: "add", value: 40 }],
+    tree: { x: 10, y: -10, branch: "vision" }
+  },
+  seismic_gossip: {
+    id: "seismic_gossip",
+    label: "Seismischer Klatsch",
+    description: "Scanner +3 und 8 % Laserschaden. Der Planet redet im Schlaf.",
+    category: "visor",
+    cost: { credits: 14500 },
+    prerequisites: ["prophetic_breadcrumbs"],
+    effects: [{ stat: "oreScannerRadius", op: "add", value: 3 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.08 }],
+    tree: { x: 11, y: -11, branch: "vision" }
+  },
+  omniscient_toaster: {
+    id: "omniscient_toaster",
+    label: "Allwissender Toaster",
+    description: "Sicht +1, 40 Energie und 10 % Regeneration. Kennt dein Fr\xFChst\xFCck.",
+    category: "visor",
+    cost: { credits: 19e3 },
+    prerequisites: ["seismic_gossip"],
+    effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "maxEnergy", op: "add", value: 40 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
+    tree: { x: 12, y: -12, branch: "vision" }
+  },
+  privacy_abolished: {
+    id: "privacy_abolished",
+    label: "Planet ohne Privatsph\xE4re",
+    description: "Sicht +2, Scanner +4 und Magnet +80 Pixel. Datenschutz war optional.",
+    category: "visor",
+    cost: { credits: 26e3 },
+    prerequisites: ["omniscient_toaster"],
+    effects: [{ stat: "sightRadius", op: "add", value: 2 }, { stat: "oreScannerRadius", op: "add", value: 4 }, { stat: "pickupRadius", op: "add", value: 80 }],
+    tree: { x: 13, y: -13, branch: "vision" }
+  },
+  arc_apprentice: {
+    id: "arc_apprentice",
+    label: "Lichtbogen-Lehrling",
+    description: "F\xFCnf Kettenziele und 5 % Schaden. Sicherheitsunterweisung \xFCbersprungen.",
+    category: "laser",
+    cost: { credits: 1600 },
+    prerequisites: ["storm_subscription"],
+    effects: [{ stat: "chainMiningTargets", op: "set", value: 5 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.05 }],
+    tree: { x: 4, y: 4, branch: "mining" }
+  },
+  ore_blender: {
+    id: "ore_blender",
+    label: "Erz-Mixer",
+    description: "12 % Schaden bei 7 % weniger Energieverbrauch. Smoothies separat erh\xE4ltlich.",
+    category: "laser",
+    cost: { credits: 2400 },
+    prerequisites: ["arc_apprentice"],
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.12 }, { stat: "energyCostPerSec", op: "multiply", value: 0.93 }],
+    tree: { x: 5, y: 5, branch: "mining" }
+  },
+  laser_spaghetti: {
+    id: "laser_spaghetti",
+    label: "Laser-Spaghetti",
+    description: "Zwei Tiles mehr Reichweite. Al dente und hochenergetisch.",
+    category: "laser",
+    cost: { credits: 3500 },
+    prerequisites: ["ore_blender"],
+    effects: [{ stat: "miningRange", op: "add", value: TILE_SIZE * 2 }],
+    tree: { x: 6, y: 6, branch: "mining" }
+  },
+  thunder_ferret: {
+    id: "thunder_ferret",
+    label: "Donner-Frettchen",
+    description: "Sechs Kettenziele und Magnet +30 Pixel. Bitte nicht f\xFCttern.",
+    category: "laser",
+    cost: { credits: 5e3 },
+    prerequisites: ["laser_spaghetti"],
+    effects: [{ stat: "chainMiningTargets", op: "set", value: 6 }, { stat: "pickupRadius", op: "add", value: 30 }],
+    tree: { x: 7, y: 7, branch: "mining" }
+  },
+  tax_evasion_drill: {
+    id: "tax_evasion_drill",
+    label: "Steuerflucht-Bohrer",
+    description: "15 % Schaden und +2 Stackgr\xF6\xDFe. Finanzamt hasst diesen Trick.",
+    category: "laser",
+    cost: { credits: 7e3 },
+    prerequisites: ["thunder_ferret"],
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "cargoStackLimit", op: "add", value: 2 }],
+    tree: { x: 8, y: 8, branch: "mining" }
+  },
+  plasma_fondue: {
+    id: "plasma_fondue",
+    label: "Plasma-Fondue",
+    description: "15 % Schaden und ein Tile Reichweite. Erz bitte nicht doppelt dippen.",
+    category: "laser",
+    cost: { credits: 9500 },
+    prerequisites: ["tax_evasion_drill"],
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "miningRange", op: "add", value: TILE_SIZE }],
+    tree: { x: 9, y: 9, branch: "mining" }
+  },
+  recursive_pickaxe: {
+    id: "recursive_pickaxe",
+    label: "Rekursive Spitzhacke",
+    description: "Acht Kettenziele und 10 % Schaden. Baut sich gelegentlich selbst ab.",
+    category: "laser",
+    cost: { credits: 12500 },
+    prerequisites: ["plasma_fondue"],
+    effects: [{ stat: "chainMiningTargets", op: "set", value: 8 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.1 }],
+    tree: { x: 10, y: 10, branch: "mining" }
+  },
+  caffeinated_beam: {
+    id: "caffeinated_beam",
+    label: "Koffein-Strahl",
+    description: "20 % Schaden, 10 % weniger Verbrauch und 5 % Tempo. Zittert pr\xE4zise.",
+    category: "laser",
+    cost: { credits: 16500 },
+    prerequisites: ["recursive_pickaxe"],
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.2 }, { stat: "energyCostPerSec", op: "multiply", value: 0.9 }, { stat: "moveSpeed", op: "multiply", value: 1.05 }],
+    tree: { x: 11, y: 11, branch: "mining" }
+  },
+  localized_apocalypse: {
+    id: "localized_apocalypse",
+    label: "Lokale Apokalypse",
+    description: "Zehn Kettenziele, zwei Tiles Reichweite und 30 Energie. Nur lokal schlimm.",
+    category: "laser",
+    cost: { credits: 21500 },
+    prerequisites: ["caffeinated_beam"],
+    effects: [{ stat: "chainMiningTargets", op: "set", value: 10 }, { stat: "miningRange", op: "add", value: TILE_SIZE * 2 }, { stat: "maxEnergy", op: "add", value: 30 }],
+    tree: { x: 12, y: 12, branch: "mining" }
+  },
+  planetary_unsubscribe: {
+    id: "planetary_unsubscribe",
+    label: "Planet deabonnieren",
+    description: "35 % Schaden, zw\xF6lf Kettenziele und 20 % weniger Verbrauch. Newsletter beendet.",
+    category: "laser",
+    cost: { credits: 3e4 },
+    prerequisites: ["localized_apocalypse"],
+    effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.35 }, { stat: "chainMiningTargets", op: "set", value: 12 }, { stat: "energyCostPerSec", op: "multiply", value: 0.8 }],
+    tree: { x: 13, y: 13, branch: "mining" }
+  },
+  emergency_banana: {
+    id: "emergency_banana",
+    label: "Notfall-Banane",
+    description: "20 Leben und 5 % mehr Sprung. Kaliumbasierte Raumfahrt.",
+    category: "core",
+    cost: { credits: 1500 },
+    prerequisites: ["rubber_duck_protocol"],
+    effects: [{ stat: "maxHealth", op: "add", value: 20 }, { stat: "jumpVelocity", op: "multiply", value: 1.05 }],
+    tree: { x: -4, y: -4, branch: "utility" }
+  },
+  cargo_origami: {
+    id: "cargo_origami",
+    label: "Cargo-Origami",
+    description: "Vier mehr pro Stack und ein Cargo-Slot. Faltet auch massive Basaltbrocken.",
+    category: "cargo",
+    cost: { credits: 2300 },
+    prerequisites: ["emergency_banana"],
+    effects: [{ stat: "cargoStackLimit", op: "add", value: 4 }, { stat: "cargoSlots", op: "add", value: 1 }],
+    tree: { x: -5, y: -5, branch: "utility" }
+  },
+  pocket_dimension: {
+    id: "pocket_dimension",
+    label: "Hosentaschen-Dimension",
+    description: "Magnet +60 Pixel und +3 Stackgr\xF6\xDFe. Fussel nicht mitgerechnet.",
+    category: "cargo",
+    cost: { credits: 3400 },
+    prerequisites: ["cargo_origami"],
+    effects: [{ stat: "pickupRadius", op: "add", value: 60 }, { stat: "cargoStackLimit", op: "add", value: 3 }],
+    tree: { x: -6, y: -6, branch: "utility" }
+  },
+  unionized_nanobots: {
+    id: "unionized_nanobots",
+    label: "Gewerkschafts-Nanobots",
+    description: "25 % Regeneration und 20 Leben. Machen gesetzliche Ladepause.",
+    category: "core",
+    cost: { credits: 4800 },
+    prerequisites: ["pocket_dimension"],
+    effects: [{ stat: "energyRegenPerSec", op: "multiply", value: 1.25 }, { stat: "maxHealth", op: "add", value: 20 }],
+    tree: { x: -7, y: -7, branch: "utility" }
+  },
+  loot_boomerang: {
+    id: "loot_boomerang",
+    label: "Loot-Bumerang",
+    description: "Magnet +80 Pixel und ein Tile Laserreichweite. Kommt meistens zur\xFCck.",
+    category: "cargo",
+    cost: { credits: 6700 },
+    prerequisites: ["unionized_nanobots"],
+    effects: [{ stat: "pickupRadius", op: "add", value: 80 }, { stat: "miningRange", op: "add", value: TILE_SIZE }],
+    tree: { x: -8, y: -8, branch: "utility" }
+  },
+  insurance_fraud: {
+    id: "insurance_fraud",
+    label: "Meteoriten-Versicherungsbetrug",
+    description: "30 Leben und 30 Energie. Schaden bitte leserlich einreichen.",
+    category: "core",
+    cost: { credits: 9e3 },
+    prerequisites: ["loot_boomerang"],
+    effects: [{ stat: "maxHealth", op: "add", value: 30 }, { stat: "maxEnergy", op: "add", value: 30 }],
+    tree: { x: -9, y: -9, branch: "utility" }
+  },
+  portable_shipyard: {
+    id: "portable_shipyard",
+    label: "Tragbare Schiffswerft",
+    description: "+5 Energieregeneration und ein Cargo-Slot. Passt knapp in die Tasche.",
+    category: "ship",
+    cost: { credits: 12e3 },
+    prerequisites: ["insurance_fraud"],
+    effects: [{ stat: "energyRegenPerSec", op: "add", value: 5 }, { stat: "cargoSlots", op: "add", value: 1 }],
+    tree: { x: -10, y: -10, branch: "utility" }
+  },
+  cosmic_vacuum: {
+    id: "cosmic_vacuum",
+    label: "Kosmischer Staubsauger",
+    description: "400 Pixel Magnet und +5 Stackgr\xF6\xDFe. Verschluckt Kleingeld.",
+    category: "cargo",
+    cost: { credits: 16e3 },
+    prerequisites: ["portable_shipyard"],
+    effects: [{ stat: "pickupRadius", op: "set", value: 400 }, { stat: "cargoStackLimit", op: "add", value: 5 }],
+    tree: { x: -11, y: -11, branch: "utility" }
+  },
+  administrative_immortality: {
+    id: "administrative_immortality",
+    label: "Administrative Unsterblichkeit",
+    description: "50 Leben, 50 Energie und 8 % weniger Schwerkraft. Tod nicht genehmigt.",
+    category: "core",
+    cost: { credits: 21e3 },
+    prerequisites: ["cosmic_vacuum"],
+    effects: [{ stat: "maxHealth", op: "add", value: 50 }, { stat: "maxEnergy", op: "add", value: 50 }, { stat: "gravityMultiplier", op: "multiply", value: 0.92 }],
+    tree: { x: -12, y: -12, branch: "utility" }
+  },
+  reality_premium: {
+    id: "reality_premium",
+    label: "Realit\xE4t Premium",
+    description: "75 Leben/Energie, 15 % Schaden, 10 % Tempo, +1 Sicht und +100 Magnet. Ohne Werbung.",
+    category: "core",
+    cost: { credits: 3e4 },
+    prerequisites: ["administrative_immortality"],
+    effects: [{ stat: "maxHealth", op: "add", value: 75 }, { stat: "maxEnergy", op: "add", value: 75 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "moveSpeed", op: "multiply", value: 1.1 }, { stat: "sightRadius", op: "add", value: 1 }, { stat: "pickupRadius", op: "add", value: 100 }],
+    tree: { x: -13, y: -13, branch: "utility" }
   },
   laser_mk2: {
     id: "laser_mk2",
@@ -2454,6 +2908,9 @@ function clamp5(value, min, max) {
 }
 
 // public/scripts/UI/UpgradeDialogScript.node.ts
+var BRANCH_ORDER = ["movement", "vision", "mining", "utility"];
+var SKILLS_PER_BRANCH_PAGE = 3;
+var PAGE_COUNT = 5;
 var UpgradeDialogScript = class extends ScriptNode {
   id = "dynamic.upgrade-dialog";
   name = "Upgrade Dialog";
@@ -2462,6 +2919,9 @@ var UpgradeDialogScript = class extends ScriptNode {
   dialogRootNodeId = prop.nodeRef(null, { label: "Dialog Root" });
   creditsTextNodeId = prop.nodeRef(null, { label: "Credits Text" });
   statusTextNodeId = prop.nodeRef(null, { label: "Status Text" });
+  ringTextNodeId = prop.nodeRef(null, { label: "Ring Text" });
+  previousRingButtonNodeId = prop.nodeRef(null, { label: "Previous Ring Button" });
+  nextRingButtonNodeId = prop.nodeRef(null, { label: "Next Ring Button" });
   closeButtonNodeId = prop.nodeRef(null, { label: "Close Button" });
   buyButtonNodeIds = prop.nodeRefList([], { label: "Skill Buttons" });
   buyLabelNodeIds = prop.nodeRefList([], { label: "Skill Labels" });
@@ -2470,28 +2930,43 @@ var UpgradeDialogScript = class extends ScriptNode {
   gameplayInput;
   creditsText;
   statusText;
+  ringText;
+  previousRingButton;
+  nextRingButton;
   buttons = [];
   buttonLabels = [];
+  visibleUpgradeIds = [];
   keyHandler;
   opened = false;
+  page = 0;
   resolve() {
     this.playerState = this.resolveNode(this.playerStateNodeId, "PlayerState");
     this.gameplayInput = this.resolveNode(this.gameplayInputNodeId, "GameplayInput");
     this.dialogRoot = this.requireNodeRef(this.dialogRootNodeId, "Dialog root");
     this.creditsText = this.requireNodeRef(this.creditsTextNodeId, "Credits text");
     this.statusText = this.requireNodeRef(this.statusTextNodeId, "Status text");
+    this.ringText = this.requireNodeRef(this.ringTextNodeId, "Ring text");
+    this.previousRingButton = this.requireNodeRef(this.previousRingButtonNodeId, "Previous ring button");
+    this.nextRingButton = this.requireNodeRef(this.nextRingButtonNodeId, "Next ring button");
     this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef(id, `Skill button ${index}`));
     this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef(id, `Skill label ${index}`));
-    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(SKILL_TREE_IDS[index])));
+    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(this.visibleUpgradeIds[index])));
+    this.previousRingButton.setClickAction?.(() => this.changePage(-1));
+    this.nextRingButton.setClickAction?.(() => this.changePage(1));
     this.requireNodeRef(this.closeButtonNodeId, "Close button").setClickAction?.(() => this.close());
     this.keyHandler = (event) => {
-      if (event.key === "Escape" && this.isOpen()) this.close();
+      if (!this.isOpen()) return;
+      if (event.key === "Escape") this.close();
+      if (event.key === "ArrowLeft") this.changePage(-1);
+      if (event.key === "ArrowRight") this.changePage(1);
     };
     window.addEventListener("keydown", this.keyHandler);
     this.close();
   }
   destroy() {
     this.buttons.forEach((button) => button.setClickAction?.());
+    this.previousRingButton?.setClickAction?.();
+    this.nextRingButton?.setClickAction?.();
     if (this.keyHandler) window.removeEventListener("keydown", this.keyHandler);
     this.keyHandler = void 0;
     this.gameplayInput?.setMenuOpen(false);
@@ -2501,7 +2976,7 @@ var UpgradeDialogScript = class extends ScriptNode {
     this.dialogRoot.applySceneProps({ active: true });
     this.setDialogVisible(true);
     this.gameplayInput?.setMenuOpen(true);
-    this.statusText.setText("Vom Kern aus in vier Richtungen forschen. Jeder Knoten braucht seinen Vorg\xE4nger.");
+    this.statusText.setText("53 Skills in f\xFCnf Forschungsringen. Mit Pfeilen oder Ring-Buttons navigieren.");
     this.updateView();
   }
   close() {
@@ -2516,24 +2991,60 @@ var UpgradeDialogScript = class extends ScriptNode {
     return this.opened;
   }
   purchase(upgradeId) {
-    if (!upgradeId) return;
+    if (!upgradeId) {
+      this.statusText.setText("Dies ist nur der Mittelpunkt des aktuellen Forschungsrings.");
+      return;
+    }
     const definition = UPGRADE_DEFINITIONS[upgradeId];
     const result = this.playerState.purchaseUpgrade(upgradeId);
     this.statusText.setText(`${definition.description ?? definition.label}  \xB7  ${result.message}`);
     this.updateView();
   }
+  changePage(delta) {
+    const nextPage = Math.max(0, Math.min(PAGE_COUNT - 1, this.page + delta));
+    if (nextPage === this.page) return;
+    this.page = nextPage;
+    this.statusText.setText(`Forschungsring ${this.page + 1} von ${PAGE_COUNT}. Vorg\xE4nger aus fr\xFCheren Ringen bleiben erforderlich.`);
+    this.updateView();
+  }
   updateView() {
     this.creditsText.setText(`${this.playerState.getProfileCredits()} CREDITS`);
-    SKILL_TREE_IDS.forEach((upgradeId, index) => {
-      const definition = UPGRADE_DEFINITIONS[upgradeId];
-      const purchased = this.playerState.isUpgradePurchased(upgradeId);
-      const unlocked = (definition.prerequisites ?? []).every((id) => this.playerState.isUpgradePurchased(id));
-      const cost = definition.cost.credits ?? 0;
-      const state = purchased ? "INSTALLIERT" : unlocked ? `${cost} C` : "GESPERRT";
-      this.buttonLabels[index]?.setText(`${definition.label}
-${state}`);
-      if (this.buttons[index]) this.buttons[index].enabled = true;
-    });
+    const start = Math.min(this.page * SKILLS_PER_BRANCH_PAGE, SKILL_TREE_BRANCHES.movement.length - SKILLS_PER_BRANCH_PAGE);
+    this.visibleUpgradeIds = [this.page === 0 ? "prospector_core" : void 0];
+    for (const branch of BRANCH_ORDER) {
+      this.visibleUpgradeIds.push(...SKILL_TREE_BRANCHES[branch].slice(start, start + SKILLS_PER_BRANCH_PAGE));
+    }
+    const firstTier = start + 1;
+    this.ringText.setText(`RING ${this.page + 1}/${PAGE_COUNT} \xB7 TIER ${firstTier}-${firstTier + 2}`);
+    this.buttonLabels[0]?.setText(this.page === 0 ? this.formatUpgrade("prospector_core") : `ORBIT ${this.page + 1}
+TIER ${firstTier}-${firstTier + 2}`);
+    this.buttons[0].enabled = true;
+    for (let index = 1; index < this.buttons.length; index += 1) {
+      const upgradeId = this.visibleUpgradeIds[index];
+      this.buttonLabels[index]?.setText(upgradeId ? this.formatUpgrade(upgradeId) : "LEER");
+      this.buttons[index].enabled = true;
+    }
+    this.previousRingButton.enabled = this.page > 0;
+    this.nextRingButton.enabled = this.page < PAGE_COUNT - 1;
+  }
+  formatUpgrade(upgradeId) {
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
+    const purchased = this.playerState.isUpgradePurchased(upgradeId);
+    const unlocked = (definition.prerequisites ?? []).every((id) => this.playerState.isUpgradePurchased(id));
+    const cost = definition.cost.credits ?? 0;
+    const state = purchased ? "INSTALLIERT" : unlocked ? `${cost} C` : "GESPERRT";
+    return `${this.compactLabel(definition.label)}
+${state}`;
+  }
+  compactLabel(label) {
+    if (label.length <= 18) return label;
+    const middle = label.length / 2;
+    const breakpoints = [...label].flatMap((character, index) => character === " " || character === "-" ? [index + 1] : []);
+    const splitAt = breakpoints.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle))[0] ?? 17;
+    const first = label.slice(0, splitAt).trim();
+    const second = label.slice(splitAt).trim();
+    return `${first}
+${second}`;
   }
   setDialogVisible(visible) {
     const visit = (node) => {
@@ -2590,4 +3101,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.162728ba4260.js.map
+//# sourceMappingURL=dynamic-nodes.fb0d72661a52.js.map

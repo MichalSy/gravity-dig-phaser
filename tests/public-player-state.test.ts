@@ -4,6 +4,7 @@ vi.mock('@gravity-dig/game-core', () => ({
   ScriptNode: class {},
   prop: { number: (value: number) => value },
 }));
+import { SKILL_TREE_IDS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
 import { addItem } from '../apps/game/public/scripts/PlayerState/inventory';
 import { createRunState } from '../apps/game/public/scripts/PlayerState/RunState';
 import { createDefaultSaveGame } from '../apps/game/public/scripts/PlayerState/saveGame';
@@ -113,6 +114,24 @@ describe('public player state domain', () => {
     expect(manager.stats.cargoSlots).toBe(3);
     expect(manager.stats.cargoStackLimit).toBe(6);
     expect(manager.stats.pickupRadius).toBe(140);
+  });
+
+  it('can purchase all 53 research skills only in valid tree order', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    manager.startRun('test-planet', 'full-orbit-seed', false);
+    manager.onInspectorPropChanged('credits', 1_000_000);
+
+    expect(manager.purchaseUpgrade('reality_premium')).toEqual({ ok: false, message: 'Vorherige Stufe erforderlich' });
+    for (const upgradeId of SKILL_TREE_IDS) expect(manager.purchaseUpgrade(upgradeId).ok).toBe(true);
+
+    expect(manager.save.profile.upgrades.purchased).toEqual(SKILL_TREE_IDS);
+    expect(manager.getProfileCredits()).toBe(584_675);
+    expect(manager.stats.airJumps).toBe(4);
+    expect(manager.stats.chainMiningTargets).toBe(12);
+    expect(manager.stats.pickupRadius).toBeGreaterThan(400);
+    expect(manager.stats.sightRadius).toBeGreaterThanOrEqual(10);
   });
 
   it('routes inspector patches into live run, stats, and profile state', () => {
