@@ -34,7 +34,7 @@ export class AppScene extends Phaser.Scene {
   preload(): void {
     this.readLaunchParams();
     this.load.json(GAME_SETTINGS_KEY, 'game.settings.json');
-    this.load.json(DYNAMIC_NODE_MANIFEST_KEY, 'scripts-compiled/manifest.json');
+    this.load.json(DYNAMIC_NODE_MANIFEST_KEY, `scripts-compiled/manifest.json?v=${Date.now().toString(36)}`);
     if (this.debugConfig) {
       const previewUrl = new URL(`/api/editor/changes/${encodeURIComponent(this.debugConfig.sessionId)}/preview`, this.debugConfig.editorApiUrl);
       previewUrl.searchParams.set('cacheBust', Date.now().toString(36));
