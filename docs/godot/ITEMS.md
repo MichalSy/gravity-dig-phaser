@@ -2,7 +2,7 @@
 
 > Vollständige Liste aller Items im Spiel mit Eigenschaften, Kosten und Fundorten.
 
-**Implementierungsstand Phaser:** Basis-Ressourcen und erste Consumables sind als `ItemDefinition` in `src/player/catalogs/items.ts` modelliert. Inventar/Cargo nutzt `InventoryState`; Details siehe [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md).
+**Aktiver Phaser-Stand:** Die verbindlichen Verkaufswerte der implementierten Ressourcen stehen in [`../GAMEPLAY_BALANCE.md`](../GAMEPLAY_BALANCE.md). Die Tabellen darunter bleiben der größere Designkatalog aus der Godot-Phase und enthalten auch noch nicht implementierte Items.
 
 ---
 
@@ -115,14 +115,14 @@
 | Item | Wert | Verwendung | Häufigkeit | Icon (64x64) |
 |------|------|------------|------------|--------------|
 | Erde | — | — | Sehr häufig | ![Erde](../generated_assets/icons/icon_dirt.png) |
-| Sand | 1 Cr | — | Häufig | ![Sand](../generated_assets/icons/icon_sand.png) |
-| Kies | 1 Cr | 1% Metall-Chance | Häufig | ![Kies](../generated_assets/icons/icon_gravel.png) |
-| Lehm | 1 Cr | — | Mittel | ![Lehm](../generated_assets/icons/icon_clay.png) |
-| Stein | 1 Cr | Verkauf | Häufig | ![Stein](../generated_assets/icons/icon_stone.png) |
+| Sand | 2 Cr | — | Häufig | ![Sand](../generated_assets/icons/icon_sand.png) |
+| Kies | 2 Cr | 1% Metall-Chance | Häufig | ![Kies](../generated_assets/icons/icon_gravel.png) |
+| Lehm | 2 Cr | — | Mittel | ![Lehm](../generated_assets/icons/icon_clay.png) |
+| Stein | 2 Cr | Verkauf | Häufig | ![Stein](../generated_assets/icons/icon_stone.png) |
 | Granit | 2 Cr | Verkauf | Mittel | ⏳ |
 | Marmor | 2 Cr | Dekorativ | Mittel | ![Marmor](../generated_assets/icons/icon_marble.png) |
 | Schiefer | 2 Cr | Verkauf | Mittel | ⏳ |
-| Basalt | 3 Cr | Vulkanisch | Mittel | ![Basalt](../generated_assets/icons/icon_basalt.png) |
+| Basalt | 4 Cr | Vulkanisch | Mittel | ![Basalt](../generated_assets/icons/icon_basalt.png) |
 
 ---
 
@@ -130,10 +130,10 @@
 
 | Item | Wert | Häufigkeit | Icon (64x64) |
 |------|------|------------|--------------|
-| Eisen | 5 Cr | Mittel | ![Eisen](../generated_assets/icons/icon_iron.png) |
-| Kupfer | 3 Cr | Mittel | ![Kupfer](../generated_assets/icons/icon_copper.png) |
+| Eisen | 10 Cr | Mittel | ![Eisen](../generated_assets/icons/icon_iron.png) |
+| Kupfer | 6 Cr | Mittel | ![Kupfer](../generated_assets/icons/icon_copper.png) |
 | Silber | 15 Cr | Ungewöhnlich | ![Silber](../generated_assets/icons/icon_silver.png) |
-| Gold | 25 Cr | Selten | ![Gold](../generated_assets/icons/icon_gold.png) |
+| Gold | 30 Cr | Selten | ![Gold](../generated_assets/icons/icon_gold.png) |
 | Platin | 50 Cr | Selten | ![Platin](../generated_assets/icons/icon_platinum.png) |
 | Metall | 10 Cr | Ungewöhnlich | ![Metall](../generated_assets/icons/icon_metal.png) |
 

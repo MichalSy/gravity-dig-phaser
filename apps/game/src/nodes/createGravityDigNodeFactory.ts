@@ -19,7 +19,7 @@ import {
   type SceneNodeJson,
 } from '@gravity-dig/game-core';
 import { InputDeviceNode } from '../app/nodes';
-import { GameRootNode, GameWorldNode, LevelNode, LootLayerNode } from '../game/nodes';
+import { GameRootNode, GameWorldNode, LevelNode, LootLayerNode, VisibilityFieldNode } from '../game/nodes';
 import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 
@@ -42,6 +42,7 @@ export function createGravityDigNodeFactory(bindings: GravityDigNodeFactoryBindi
     .register(NODE_TYPE_IDS.InputDeviceNode, (definition) => new InputDeviceNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.LevelNode, (definition) => new LevelNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.LootLayerNode, (definition) => new LootLayerNode(optionsFrom(definition)))
+    .register(NODE_TYPE_IDS.VisibilityFieldNode, (definition) => new VisibilityFieldNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.GameWorldNode, (definition) => new GameWorldNode({
       ...optionsFrom(definition),
       instantiatePrefab: (prefabId) => factory.createPrefab(prefabId, {}, { origin: 'runtime-code', createdByInstanceId: definition.instanceId }),

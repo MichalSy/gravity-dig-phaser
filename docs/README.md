@@ -5,6 +5,7 @@
 These documents describe the active Phaser/TypeScript implementation:
 
 - [`NODE_RUNTIME_ARCHITECTURE.md`](./NODE_RUNTIME_ARCHITECTURE.md) — canonical runtime, layout, prefab, ScriptNode, Inspector, and live-reload architecture.
+- [`GAMEPLAY_BALANCE.md`](./GAMEPLAY_BALANCE.md) — active resource values, upgrade curves, progression targets, and visibility-field tuning.
 - [`../README.md`](../README.md) — repository overview, development, editor backend, and deployment.
 - [`ART_STYLE.md`](./ART_STYLE.md) — current visual direction.
 

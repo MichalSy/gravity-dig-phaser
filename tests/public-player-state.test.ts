@@ -55,9 +55,9 @@ describe('public player state domain', () => {
     expect(run.energy).toBe(38);
 
     addItem(run.cargo, 'copper', 2);
-    expect(manager.transferNextCargoItemToShip()).toEqual({ itemId: 'copper', slotIndex: 0, credits: 3 });
+    expect(manager.transferNextCargoItemToShip()).toEqual({ itemId: 'copper', slotIndex: 0, credits: 6 });
     expect(run.cargo.slots[0]).toEqual({ itemId: 'copper', quantity: 1 });
-    expect(manager.save.profile.credits).toBe(3);
+    expect(manager.save.profile.credits).toBe(6);
     vi.unstubAllGlobals();
   });
 
@@ -71,10 +71,10 @@ describe('public player state domain', () => {
 
     expect(manager.purchaseUpgrade('cargo_mk2')).toEqual({ ok: false, message: 'Vorherige Stufe erforderlich' });
     expect(manager.purchaseUpgrade('speed_mk1').ok).toBe(true);
-    expect(manager.stats.moveSpeed).toBe(520);
+    expect(manager.stats.moveSpeed).toBe(489);
     expect(manager.purchaseUpgrade('speed_mk1')).toEqual({ ok: false, message: 'Bereits installiert' });
     expect(manager.purchaseUpgrade('speed_mk2').ok).toBe(true);
-    expect(manager.stats.moveSpeed).toBe(575);
+    expect(manager.stats.moveSpeed).toBe(508);
 
     expect(manager.purchaseUpgrade('cargo_mk1').ok).toBe(true);
     expect(manager.stats.cargoSlots).toBe(3);
@@ -82,7 +82,7 @@ describe('public player state domain', () => {
     expect(manager.purchaseUpgrade('cargo_stack_mk1').ok).toBe(true);
     expect(manager.stats.cargoStackLimit).toBe(5);
     expect(manager.run.cargo.stackLimit).toBe(5);
-    expect(manager.getProfileCredits()).toBe(1_200);
+    expect(manager.getProfileCredits()).toBe(1_595);
   });
 
   it('routes inspector patches into live run, stats, and profile state', () => {

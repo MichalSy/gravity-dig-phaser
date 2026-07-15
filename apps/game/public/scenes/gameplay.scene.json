@@ -21,6 +21,10 @@
                 "nodeTypeId": "f60ec709-ef57-5eb1-866b-c82240481880"
               }
             ]
+          },
+          {
+            "name": "VisibilityField",
+            "nodeTypeId": "4ec43079-472d-575f-9d1b-51cc01712f15"
           }
         ]
       },

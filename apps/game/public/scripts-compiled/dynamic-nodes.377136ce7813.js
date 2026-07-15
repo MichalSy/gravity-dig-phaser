@@ -1275,14 +1275,14 @@ var LevelManager = class extends ScriptNode {
 // public/scripts/PlayerState/catalogs/items.ts
 var ITEM_DEFINITIONS = {
   dirt: { id: "dirt", label: "Erde", category: "resource", value: 0, stackSize: 999 },
-  sand: { id: "sand", label: "Sand", category: "resource", value: 1, stackSize: 999 },
-  clay: { id: "clay", label: "Lehm", category: "resource", value: 1, stackSize: 999 },
-  gravel: { id: "gravel", label: "Kies", category: "resource", value: 1, stackSize: 999 },
-  stone: { id: "stone", label: "Stein", category: "resource", value: 1, stackSize: 999 },
-  basalt: { id: "basalt", label: "Basalt", category: "resource", value: 3, stackSize: 999 },
-  copper: { id: "copper", label: "Kupfer", category: "resource", value: 3, stackSize: 999 },
-  iron: { id: "iron", label: "Eisen", category: "resource", value: 5, stackSize: 999 },
-  gold: { id: "gold", label: "Gold", category: "resource", value: 25, stackSize: 999 },
+  sand: { id: "sand", label: "Sand", category: "resource", value: 2, stackSize: 999 },
+  clay: { id: "clay", label: "Lehm", category: "resource", value: 2, stackSize: 999 },
+  gravel: { id: "gravel", label: "Kies", category: "resource", value: 2, stackSize: 999 },
+  stone: { id: "stone", label: "Stein", category: "resource", value: 2, stackSize: 999 },
+  basalt: { id: "basalt", label: "Basalt", category: "resource", value: 4, stackSize: 999 },
+  copper: { id: "copper", label: "Kupfer", category: "resource", value: 6, stackSize: 999 },
+  iron: { id: "iron", label: "Eisen", category: "resource", value: 10, stackSize: 999 },
+  gold: { id: "gold", label: "Gold", category: "resource", value: 30, stackSize: 999 },
   diamond: { id: "diamond", label: "Diamant", category: "resource", value: 100, stackSize: 999 },
   energy_cell: { id: "energy_cell", label: "Energie-Zelle", category: "consumable", value: 30, stackSize: 20 },
   repair_kit: { id: "repair_kit", label: "Repair-Kit", category: "consumable", value: 40, stackSize: 20 },
@@ -1448,24 +1448,24 @@ var UPGRADE_DEFINITIONS = {
     id: "speed_mk1",
     label: "Servo-Antrieb I",
     category: "boots",
-    cost: { credits: 100 },
-    effects: [{ stat: "moveSpeed", op: "set", value: 520 }]
+    cost: { credits: 60 },
+    effects: [{ stat: "moveSpeed", op: "set", value: 489 }]
   },
   speed_mk2: {
     id: "speed_mk2",
     label: "Servo-Antrieb II",
     category: "boots",
-    cost: { credits: 300 },
+    cost: { credits: 180 },
     prerequisites: ["speed_mk1"],
-    effects: [{ stat: "moveSpeed", op: "set", value: 575 }]
+    effects: [{ stat: "moveSpeed", op: "set", value: 508 }]
   },
   speed_mk3: {
     id: "speed_mk3",
     label: "Servo-Antrieb III",
     category: "boots",
-    cost: { credits: 750 },
+    cost: { credits: 420 },
     prerequisites: ["speed_mk2"],
-    effects: [{ stat: "moveSpeed", op: "set", value: 635 }]
+    effects: [{ stat: "moveSpeed", op: "set", value: 526 }]
   },
   core_compass: {
     id: "core_compass",
@@ -1494,14 +1494,14 @@ var UPGRADE_DEFINITIONS = {
     id: "cargo_mk1",
     label: "Erweiterter Laderaum I",
     category: "cargo",
-    cost: { credits: 150 },
+    cost: { credits: 75 },
     effects: [{ stat: "cargoSlots", op: "set", value: 3 }]
   },
   cargo_mk2: {
     id: "cargo_mk2",
     label: "Erweiterter Laderaum II",
     category: "cargo",
-    cost: { credits: 450 },
+    cost: { credits: 225 },
     prerequisites: ["cargo_mk1"],
     effects: [{ stat: "cargoSlots", op: "set", value: 4 }]
   },
@@ -1509,7 +1509,7 @@ var UPGRADE_DEFINITIONS = {
     id: "cargo_mk3",
     label: "Erweiterter Laderaum III",
     category: "cargo",
-    cost: { credits: 1e3 },
+    cost: { credits: 525 },
     prerequisites: ["cargo_mk2"],
     effects: [{ stat: "cargoSlots", op: "set", value: 5 }]
   },
@@ -1517,14 +1517,14 @@ var UPGRADE_DEFINITIONS = {
     id: "cargo_stack_mk1",
     label: "Cargo-Slot-Gr\xF6\xDFe I",
     category: "cargo",
-    cost: { credits: 250 },
+    cost: { credits: 90 },
     effects: [{ stat: "cargoStackLimit", op: "set", value: 5 }]
   },
   cargo_stack_mk2: {
     id: "cargo_stack_mk2",
     label: "Cargo-Slot-Gr\xF6\xDFe II",
     category: "cargo",
-    cost: { credits: 700 },
+    cost: { credits: 260 },
     prerequisites: ["cargo_stack_mk1"],
     effects: [{ stat: "cargoStackLimit", op: "set", value: 8 }]
   },
@@ -1532,7 +1532,7 @@ var UPGRADE_DEFINITIONS = {
     id: "cargo_stack_mk3",
     label: "Cargo-Slot-Gr\xF6\xDFe III",
     category: "cargo",
-    cost: { credits: 1600 },
+    cost: { credits: 600 },
     prerequisites: ["cargo_stack_mk2"],
     effects: [{ stat: "cargoStackLimit", op: "set", value: 12 }]
   },
@@ -2385,4 +2385,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.04abca11be51.js.map
+//# sourceMappingURL=dynamic-nodes.377136ce7813.js.map

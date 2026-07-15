@@ -30,6 +30,19 @@ describe('loot rendering hierarchy', () => {
     });
   });
 
+  it('places the visibility field after World without static depth ordering', () => {
+    const scene = JSON.parse(readFileSync('apps/game/public/scenes/gameplay.scene.json', 'utf8')) as { root: SceneNode };
+    const gameRoot = findNode(scene.root, 'GameRoot');
+    const children = gameRoot?.children ?? [];
+    const worldIndex = children.findIndex((child) => child.name === 'World');
+    const visibilityIndex = children.findIndex((child) => child.name === 'VisibilityField');
+    const visibilitySource = readFileSync('apps/game/src/game/nodes/VisibilityFieldNode.ts', 'utf8');
+
+    expect(worldIndex).toBeGreaterThanOrEqual(0);
+    expect(visibilityIndex).toBeGreaterThan(worldIndex);
+    expect(visibilitySource).not.toContain('.setDepth(');
+  });
+
   it('does not assign static depth values to player or ground drops', () => {
     const worldSource = readFileSync('apps/game/src/game/nodes/GameWorldNode.ts', 'utf8');
     const miningSource = readFileSync('apps/game/src/game/world/MiningEffects.ts', 'utf8');

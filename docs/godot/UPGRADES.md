@@ -2,7 +2,7 @@
 
 > Vollständige Liste aller Upgrades für Schiff, Anzug und Equipment.
 
-**Implementierungsstand Phaser:** Upgrades sind datengetrieben in `src/player/catalogs/upgrades.ts` angelegt und wirken über generische `StatModifier` auf `EffectivePlayerStats`. Details siehe [PLAYER_MANAGEMENT.md](PLAYER_MANAGEMENT.md).
+**Aktiver Phaser-Stand:** Die verbindlichen Werte für die aktuell kaufbaren Tempo- und Cargo-Upgrades stehen in [`../GAMEPLAY_BALANCE.md`](../GAMEPLAY_BALANCE.md). Die Tabellen darunter sind der umfassendere Designkatalog aus der Godot-Phase und können noch nicht implementierte beziehungsweise ältere Zielwerte enthalten.
 
 ---
 
@@ -21,11 +21,20 @@
 
 | Upgrade | Effekt | Visuell | Kosten | Grafik |
 |---------|--------|---------|--------|--------|
-| Erweiterter Laderaum I | 2 aktive Cargo-Slots | 1 Container | 300 Cr | ⏳ |
-| Erweiterter Laderaum II | 3 aktive Cargo-Slots | 2 Container | 800 Cr | ⏳ |
-| Erweiterter Laderaum III | 4 aktive Cargo-Slots | 4 Container | 2000 Cr | ⏳ |
-| Stack-Kompression I | Stacklimit 3 → 5 | Kompressor | 600 Cr | ⏳ |
-| Stack-Kompression II | Stacklimit 5 → 10 | High-Tech Kompressor | 1500 Cr | ⏳ |
+| Erweiterter Laderaum I | 3 aktive Cargo-Slots | 1 Container | 75 Cr | ⏳ |
+| Erweiterter Laderaum II | 4 aktive Cargo-Slots | 2 Container | 225 Cr | ⏳ |
+| Erweiterter Laderaum III | 5 aktive Cargo-Slots | 4 Container | 525 Cr | ⏳ |
+| Cargo-Slot-Größe I | 3 → 5 Items/Slot | Kompressor | 90 Cr | ⏳ |
+| Cargo-Slot-Größe II | 5 → 8 Items/Slot | High-Tech Kompressor | 260 Cr | ⏳ |
+| Cargo-Slot-Größe III | 8 → 12 Items/Slot | Quanten-Kompressor | 600 Cr | ⏳ |
+
+### Servo-Antrieb (Lauftempo)
+
+| Upgrade | Kumulativer Bonus | Kosten |
+|---------|------------------:|-------:|
+| Servo-Antrieb I | +4 % | 60 Cr |
+| Servo-Antrieb II | +8 % | 180 Cr |
+| Servo-Antrieb III | +12 % | 420 Cr |
 
 ### Navigation
 
