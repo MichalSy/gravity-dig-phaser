@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/items';
 import { SKILL_TREE_BRANCHES, SKILL_TREE_IDS, UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
 import { LIFE_SUPPORT_ENERGY_COST_PER_SEC, PLAYER_SPEED } from '../apps/game/public/scripts/PlayerState/playerConfig';
+import { getConstellationNodePosition, type SkillTreeBranchId } from '../apps/game/public/scripts/UI/skillTreeLayout';
 
 describe('early-game economy balance', () => {
   it('pays meaningful credits for every collected ground resource', () => {
@@ -67,29 +68,60 @@ describe('early-game economy balance', () => {
     expect(readFileSync('apps/game/src/game/world/MiningEffects.ts', 'utf8')).toContain('getPickupRadius');
     const skillTreePrefab = JSON.parse(readFileSync('apps/game/public/prefabs/upgrade-dialog.prefab.json', 'utf8'));
     const behavior = skillTreePrefab.root.children.find((node: { name: string }) => node.name === 'UpgradeDialogBehavior');
-    const mapNode = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'tree-space-map');
+    const mapNode = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'research-map');
+    const inspector = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'research-inspector');
+    expect(skillTreePrefab.root.name).toBe('ResearchScreen');
     expect(mapNode).toMatchObject({
       nodeTypeId: 'b74c5d40-d19e-5e1c-8c8a-f61424cc3116',
-      props: { size: { width: 1240, height: 450 } },
+      props: { size: { width: 1280, height: 720 } },
     });
-    expect(behavior.props.mapNodeId).toBe('tree-space-map');
-    expect(behavior.props.purchaseButtonNodeId).toBe('tree-purchase');
-    expect(behavior.props.detailTitleNodeId).toBe('tree-detail-title');
-    expect(behavior.props.detailDescriptionNodeId).toBe('tree-detail-description');
-    expect(behavior.props.zoomInButtonNodeId).toBe('tree-zoom-in');
-    expect(behavior.props.zoomOutButtonNodeId).toBe('tree-zoom-out');
-    expect(behavior.props.resetViewButtonNodeId).toBe('tree-reset-view');
-    expect(skillTreePrefab.root.props.size).toEqual({ width: 1240, height: 680 });
+    expect(inspector.children.some((node: { nodeId?: string }) => node.nodeId === 'research-purchase')).toBe(true);
+    expect(behavior.props.mapNodeId).toBe('research-map');
+    expect(behavior.props.inspectorRootNodeId).toBe('research-inspector');
+    expect(behavior.props.purchaseButtonNodeId).toBe('research-purchase');
+    expect(behavior.props.detailTitleNodeId).toBe('research-detail-title');
+    expect(behavior.props.detailDescriptionNodeId).toBe('research-detail-description');
+    expect(behavior.props.zoomInButtonNodeId).toBe('research-zoom-in');
+    expect(behavior.props.zoomOutButtonNodeId).toBe('research-zoom-out');
+    expect(behavior.props.resetViewButtonNodeId).toBe('research-reset-view');
+    expect(skillTreePrefab.root.props.size).toEqual({ width: 1280, height: 720 });
+    expect(skillTreePrefab.root.children.some((node: { nodeId?: string }) => node.nodeId === 'tree-frame')).toBe(false);
+    expect(skillTreePrefab.root.children.some((node: { nodeId?: string }) => node.nodeId === 'tree-detail-panel')).toBe(false);
     const dialogSource = readFileSync('apps/game/public/scripts/UI/UpgradeDialogScript.node.ts', 'utf8');
     const mapSource = readFileSync('apps/game/src/ui/nodes/SkillTreeMapNode.ts', 'utf8');
-    expect(dialogSource).toContain('const MAP_WIDTH = 2200');
+    expect(dialogSource).toContain('const MAP_WIDTH = CONSTELLATION_MAP_WIDTH');
+    expect(dialogSource).toContain('getConstellationNodePosition(');
     expect(dialogSource).toContain('this.map.setGraph(');
+    expect(dialogSource).toContain('this.map.setInputInsets(');
     expect(dialogSource).toContain('this.map.setSelectCallback(');
     expect(dialogSource).toContain('purchaseSelected()');
     expect(mapSource).toContain("input.on('pointermove'");
     expect(mapSource).toContain("input.on('wheel'");
     expect(mapSource).toContain('updatePinch()');
+    expect(mapSource).toContain('setInputInsets(');
     expect(mapSource).not.toContain('.setDepth(');
+  });
+
+  it('keeps every constellation node separated and gives the first tiers extra room', () => {
+    const branches: SkillTreeBranchId[] = ['movement', 'vision', 'mining', 'utility'];
+    const positions = branches.flatMap((branch) => Array.from({ length: 13 }, (_, index) => ({
+      branch,
+      tier: index + 1,
+      ...getConstellationNodePosition(branch, index + 1),
+    })));
+    let minimumDistance = Number.POSITIVE_INFINITY;
+    let minimumEarlyDistance = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < positions.length; index += 1) {
+      for (let otherIndex = index + 1; otherIndex < positions.length; otherIndex += 1) {
+        const left = positions[index];
+        const right = positions[otherIndex];
+        const distance = Math.hypot(left.x - right.x, left.y - right.y);
+        minimumDistance = Math.min(minimumDistance, distance);
+        if (left.tier <= 3 && right.tier <= 3) minimumEarlyDistance = Math.min(minimumEarlyDistance, distance);
+      }
+    }
+    expect(minimumDistance).toBeGreaterThan(60);
+    expect(minimumEarlyDistance).toBeGreaterThan(110);
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

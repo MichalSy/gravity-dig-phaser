@@ -22,12 +22,27 @@ export interface SkillTreeMapGraphEdge {
   active: boolean;
 }
 
+export interface SkillTreeMapGraphRegion {
+  label: string;
+  color: string;
+  x: number;
+  y: number;
+}
+
 export interface SkillTreeMapGraph {
   width: number;
   height: number;
   rootId: string;
   nodes: SkillTreeMapGraphNode[];
   edges: SkillTreeMapGraphEdge[];
+  regions?: SkillTreeMapGraphRegion[];
+}
+
+export interface SkillTreeMapInputInsets {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
 }
 
 type PointerState = {
@@ -38,7 +53,7 @@ type PointerState = {
   moved: boolean;
 };
 
-const MIN_ZOOM = 0.35;
+const MIN_ZOOM = 0.28;
 const MAX_ZOOM = 1.8;
 const DRAG_THRESHOLD = 8;
 
@@ -55,6 +70,7 @@ export class SkillTreeMapNode extends TransformNode {
   private graph?: SkillTreeMapGraph;
   private selectedNodeId?: string;
   private selectCallback?: (nodeId: string) => void;
+  private inputInsets: Required<SkillTreeMapInputInsets> = { top: 0, right: 0, bottom: 0, left: 0 };
   private zoom = 0.55;
   private pan = new Phaser.Math.Vector2();
   private readonly pointerStates = new Map<number, PointerState>();
@@ -112,6 +128,16 @@ export class SkillTreeMapNode extends TransformNode {
 
   setSelectCallback(callback?: (nodeId: string) => void): void {
     this.selectCallback = callback;
+  }
+
+  setInputInsets(insets: SkillTreeMapInputInsets = {}): void {
+    this.inputInsets = {
+      top: Math.max(0, insets.top ?? 0),
+      right: Math.max(0, insets.right ?? 0),
+      bottom: Math.max(0, insets.bottom ?? 0),
+      left: Math.max(0, insets.left ?? 0),
+    };
+    this.pointerStates.clear();
   }
 
   zoomBy(factor: number): void {
@@ -173,12 +199,11 @@ export class SkillTreeMapNode extends TransformNode {
     labels.removeAll(true);
 
     graphics.fillStyle(0x020617, 1).fillRect(0, 0, graph.width, graph.height);
-    const nebulae = [
-      { x: graph.width * 0.16, y: graph.height * 0.27, color: 0x22c55e },
-      { x: graph.width * 0.38, y: graph.height * 0.2, color: 0x0ea5e9 },
-      { x: graph.width * 0.62, y: graph.height * 0.2, color: 0xec4899 },
-      { x: graph.width * 0.84, y: graph.height * 0.27, color: 0xa855f7 },
-    ];
+    const nebulae = (graph.regions ?? []).map((region) => ({
+      x: region.x,
+      y: region.y,
+      color: Phaser.Display.Color.HexStringToColor(region.color).color,
+    }));
     for (const nebula of nebulae) {
       for (let radius = 250; radius > 40; radius -= 35) {
         graphics.fillStyle(nebula.color, 0.008 + (250 - radius) / 35000).fillCircle(nebula.x, nebula.y, radius);
@@ -192,17 +217,11 @@ export class SkillTreeMapNode extends TransformNode {
       graphics.fillStyle(index % 13 === 0 ? 0x93c5fd : 0xffffff, alpha).fillCircle(x, y, radius);
     }
 
-    const branchLabels = [
-      { text: 'MOBILITÄT', x: graph.width * 0.12, color: '#4ade80' },
-      { text: 'SCANNER', x: graph.width * 0.37, color: '#38bdf8' },
-      { text: 'MINING', x: graph.width * 0.63, color: '#f472b6' },
-      { text: 'UTILITY', x: graph.width * 0.88, color: '#c084fc' },
-    ];
-    for (const branch of branchLabels) {
-      labels.add(this.phaserScene!.add.text(branch.x, 36, branch.text, {
+    for (const region of graph.regions ?? []) {
+      labels.add(this.phaserScene!.add.text(region.x, region.y, region.label, {
         fontFamily: 'Silkscreen, monospace',
         fontSize: '26px',
-        color: branch.color,
+        color: region.color,
         stroke: '#020617',
         strokeThickness: 8,
       }).setOrigin(0.5).setAlpha(0.78).setResolution(2));
@@ -222,13 +241,25 @@ export class SkillTreeMapNode extends TransformNode {
       const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
       graphics.lineStyle(edge.active ? 5 : 3, edge.active ? color : 0x334155, edge.active ? 0.92 : 0.52);
       const midpointX = (from.x + to.x) * 0.5;
-      graphics.beginPath();
-      graphics.moveTo(from.x, from.y);
-      graphics.lineTo(midpointX, from.y);
-      graphics.lineTo(midpointX, to.y);
-      graphics.lineTo(to.x, to.y);
-      graphics.strokePath();
-      if (edge.active) graphics.fillStyle(color, 0.15).fillCircle(midpointX, (from.y + to.y) * 0.5, 8);
+      const midpointY = (from.y + to.y) * 0.5;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.max(1, Math.hypot(dx, dy));
+      const bend = ((edge.from.length + edge.to.length) % 2 === 0 ? 1 : -1) * Math.min(34, length * 0.18);
+      const controlX = midpointX - dy / length * bend;
+      const controlY = midpointY + dx / length * bend;
+      let previousX = from.x;
+      let previousY = from.y;
+      for (let step = 1; step <= 8; step += 1) {
+        const t = step / 8;
+        const inverse = 1 - t;
+        const x = inverse * inverse * from.x + 2 * inverse * t * controlX + t * t * to.x;
+        const y = inverse * inverse * from.y + 2 * inverse * t * controlY + t * t * to.y;
+        graphics.lineBetween(previousX, previousY, x, y);
+        previousX = x;
+        previousY = y;
+      }
+      if (edge.active) graphics.fillStyle(color, 0.15).fillCircle(midpointX, midpointY, 8);
     }
   }
 
@@ -392,7 +423,11 @@ export class SkillTreeMapNode extends TransformNode {
   }
 
   private containsLocal(point: Phaser.Math.Vector2): boolean {
-    return Math.abs(point.x) <= this.size.width * 0.5 && Math.abs(point.y) <= this.size.height * 0.5;
+    const left = -this.size.width * 0.5 + this.inputInsets.left;
+    const right = this.size.width * 0.5 - this.inputInsets.right;
+    const top = -this.size.height * 0.5 + this.inputInsets.top;
+    const bottom = this.size.height * 0.5 - this.inputInsets.bottom;
+    return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
   }
 
   private contentAt(local: Phaser.Math.Vector2): Phaser.Math.Vector2 {
@@ -404,7 +439,8 @@ export class SkillTreeMapNode extends TransformNode {
     let best: SkillTreeMapGraphNode | undefined;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const node of nodes) {
-      const radius = node.tier === 0 ? 42 : node.milestone ? 34 : 27;
+      const baseRadius = node.tier === 0 ? 42 : node.milestone ? 34 : 27;
+      const radius = Math.max(baseRadius, 40 / this.zoom);
       const distance = Phaser.Math.Distance.Between(point.x, point.y, node.x, node.y);
       if (distance <= radius && distance < bestDistance) {
         best = node;

@@ -2,18 +2,18 @@
   "version": 1,
   "prefabId": "a0000000-4f5c-4d31-9000-000000000001",
   "root": {
-    "name": "UpgradeDialog",
+    "name": "ResearchScreen",
     "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
-    "nodeId": "tree-root",
+    "nodeId": "research-root",
     "props": {
       "active": false,
       "position": {
-        "x": -620,
-        "y": -340
+        "x": -640,
+        "y": -360
       },
       "size": {
-        "width": 1240,
-        "height": 680
+        "width": 1280,
+        "height": 720
       },
       "sizeMode": "explicit",
       "parentAnchor": "center",
@@ -21,9 +21,9 @@
     },
     "children": [
       {
-        "name": "Backdrop",
+        "name": "VoidBackdrop",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-backdrop",
+        "nodeId": "research-backdrop",
         "props": {
           "size": {
             "width": 1280,
@@ -48,150 +48,15 @@
         }
       },
       {
-        "name": "SpaceSkillMap",
+        "name": "ResearchGalaxy",
         "nodeTypeId": "b74c5d40-d19e-5e1c-8c8a-f61424cc3116",
-        "nodeId": "tree-space-map",
+        "nodeId": "research-map",
         "props": {
           "size": {
-            "width": 1240,
-            "height": 450
+            "width": 1280,
+            "height": 720
           },
           "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 0,
-            "y": -3
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "MapGuardTop",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-map-guard-top",
-        "props": {
-          "size": {
-            "width": 1500,
-            "height": 200
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#020617",
-          "fillAlpha": 1,
-          "strokeColor": "#020617",
-          "strokeAlpha": 0,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 0,
-            "y": -440
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "MapGuardBottom",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-map-guard-bottom",
-        "props": {
-          "size": {
-            "width": 1500,
-            "height": 200
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#020617",
-          "fillAlpha": 1,
-          "strokeColor": "#020617",
-          "strokeAlpha": 0,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 0,
-            "y": 440
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "MapGuardLeft",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-map-guard-left",
-        "props": {
-          "size": {
-            "width": 220,
-            "height": 1080
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#020617",
-          "fillAlpha": 1,
-          "strokeColor": "#020617",
-          "strokeAlpha": 0,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -730,
-            "y": 0
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "MapGuardRight",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-map-guard-right",
-        "props": {
-          "size": {
-            "width": 220,
-            "height": 1080
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#020617",
-          "fillAlpha": 1,
-          "strokeColor": "#020617",
-          "strokeAlpha": 0,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 730,
-            "y": 0
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "Frame",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-frame",
-        "props": {
-          "size": {
-            "width": 1240,
-            "height": 680
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#020617",
-          "fillAlpha": 0,
-          "strokeColor": "#38bdf8",
-          "strokeAlpha": 1,
-          "strokeWidth": 4,
           "parentAnchor": "center",
           "position": {
             "x": 0,
@@ -205,24 +70,24 @@
         }
       },
       {
-        "name": "Header",
+        "name": "TopShade",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-header-bg",
+        "nodeId": "research-top-shade",
         "props": {
           "size": {
-            "width": 1240,
-            "height": 86
+            "width": 1280,
+            "height": 92
           },
           "sizeMode": "explicit",
-          "fillColor": "#07111f",
-          "fillAlpha": 0.98,
-          "strokeColor": "#164e63",
-          "strokeAlpha": 0.9,
-          "strokeWidth": 2,
+          "fillColor": "#020617",
+          "fillAlpha": 1,
+          "strokeColor": "#0f2940",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
           "parentAnchor": "center",
           "position": {
             "x": 0,
-            "y": -297
+            "y": -314
           },
           "origin": {
             "x": 0.5,
@@ -232,24 +97,24 @@
         }
       },
       {
-        "name": "HeaderLine",
+        "name": "TopRule",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-header-line",
+        "nodeId": "research-top-rule",
         "props": {
           "size": {
-            "width": 1190,
-            "height": 3
+            "width": 1280,
+            "height": 2
           },
           "sizeMode": "explicit",
           "fillColor": "#38bdf8",
-          "fillAlpha": 0.65,
+          "fillAlpha": 0.5,
           "strokeColor": "#ffffff",
           "strokeAlpha": 1,
           "strokeWidth": 0,
           "parentAnchor": "center",
           "position": {
             "x": 0,
-            "y": -250
+            "y": -267
           },
           "origin": {
             "x": 0.5,
@@ -259,38 +124,49 @@
         }
       },
       {
-        "name": "DetailPanel",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-detail-panel",
+        "name": "BackToGame",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "research-back",
         "props": {
+          "enabled": true,
           "size": {
-            "width": 1180,
-            "height": 116
+            "width": 72,
+            "height": 60
           },
           "sizeMode": "explicit",
-          "fillColor": "#07111f",
-          "fillAlpha": 0.98,
-          "strokeColor": "#334155",
-          "strokeAlpha": 0.95,
-          "strokeWidth": 2,
           "parentAnchor": "center",
           "position": {
-            "x": 0,
-            "y": 282
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
+            "x": -590,
+            "y": -315
           },
           "scrollFactor": 0
-        }
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "research-back-label",
+            "props": {
+              "text": "<",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 20,
+              "align": "center",
+              "color": "#e0f2fe",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
       },
       {
-        "name": "Title",
+        "name": "ScreenTitle",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-title",
+        "nodeId": "research-title",
         "props": {
-          "text": "STERNENKARTE",
+          "text": "FORSCHUNGSRAUM",
           "fontId": "silkscreen-latin-700",
           "fontSize": 23,
           "align": "left",
@@ -301,20 +177,20 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": -585,
-            "y": -312
+            "x": -530,
+            "y": -327
           },
           "scrollFactor": 0
         }
       },
       {
-        "name": "Subtitle",
+        "name": "ScreenSubtitle",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-subtitle",
+        "nodeId": "research-subtitle",
         "props": {
-          "text": "ZIEHEN · ZOOMEN · ENTDECKEN",
+          "text": "53 STERNE · 4 KONSTELLATIONEN",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 11,
+          "fontSize": 10,
           "align": "left",
           "color": "#64748b",
           "origin": {
@@ -323,8 +199,8 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": -585,
-            "y": -278
+            "x": -530,
+            "y": -294
           },
           "scrollFactor": 0
         }
@@ -332,9 +208,9 @@
       {
         "name": "Progress",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-progress",
+        "nodeId": "research-progress",
         "props": {
-          "text": "0 / 53 STERNE AKTIV",
+          "text": "0 / 53 AKTIV",
           "fontId": "silkscreen-latin-700",
           "fontSize": 13,
           "align": "left",
@@ -345,8 +221,8 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": 180,
-            "y": -312
+            "x": 80,
+            "y": -327
           },
           "scrollFactor": 0
         }
@@ -354,9 +230,9 @@
       {
         "name": "Credits",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-credits",
+        "nodeId": "research-credits",
         "props": {
-          "text": "0 CREDITS",
+          "text": "0 C",
           "fontId": "silkscreen-latin-700",
           "fontSize": 18,
           "align": "left",
@@ -367,8 +243,8 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": 180,
-            "y": -278
+            "x": 80,
+            "y": -294
           },
           "scrollFactor": 0
         }
@@ -376,7 +252,7 @@
       {
         "name": "ZoomOut",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-zoom-out",
+        "nodeId": "research-zoom-out",
         "props": {
           "enabled": true,
           "size": {
@@ -386,8 +262,8 @@
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": -80,
-            "y": -295
+            "x": 350,
+            "y": -315
           },
           "scrollFactor": 0
         },
@@ -395,7 +271,7 @@
           {
             "name": "Label",
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-zoom-out-label",
+            "nodeId": "research-zoom-out-label",
             "props": {
               "text": "-",
               "fontId": "silkscreen-latin-700",
@@ -414,7 +290,7 @@
       {
         "name": "ResetView",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-reset-view",
+        "nodeId": "research-reset-view",
         "props": {
           "enabled": true,
           "size": {
@@ -424,8 +300,8 @@
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": 0,
-            "y": -295
+            "x": 430,
+            "y": -315
           },
           "scrollFactor": 0
         },
@@ -433,7 +309,7 @@
           {
             "name": "Label",
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-reset-view-label",
+            "nodeId": "research-reset-view-label",
             "props": {
               "text": "◎",
               "fontId": "silkscreen-latin-700",
@@ -452,7 +328,7 @@
       {
         "name": "ZoomIn",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-zoom-in",
+        "nodeId": "research-zoom-in",
         "props": {
           "enabled": true,
           "size": {
@@ -462,8 +338,8 @@
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": 80,
-            "y": -295
+            "x": 510,
+            "y": -315
           },
           "scrollFactor": 0
         },
@@ -471,7 +347,7 @@
           {
             "name": "Label",
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-zoom-in-label",
+            "nodeId": "research-zoom-in-label",
             "props": {
               "text": "+",
               "fontId": "silkscreen-latin-700",
@@ -488,167 +364,387 @@
         ]
       },
       {
-        "name": "Close",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-close",
+        "name": "BottomShade",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "research-bottom-shade",
         "props": {
-          "enabled": true,
           "size": {
-            "width": 70,
-            "height": 60
+            "width": 1280,
+            "height": 62
           },
           "sizeMode": "explicit",
+          "fillColor": "#020617",
+          "fillAlpha": 0.96,
+          "strokeColor": "#020617",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
           "parentAnchor": "center",
           "position": {
-            "x": 580,
-            "y": -295
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-close-label",
-            "props": {
-              "text": "X",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 18,
-              "align": "center",
-              "color": "#fca5a5",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SelectedTitle",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-detail-title",
-        "props": {
-          "text": "STERN AUSWÄHLEN",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 19,
-          "align": "left",
-          "color": "#f8fafc",
-          "origin": {
             "x": 0,
-            "y": 0.5
+            "y": 329
           },
-          "parentAnchor": "center",
-          "position": {
-            "x": -565,
-            "y": 252
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
           },
           "scrollFactor": 0
         }
       },
       {
-        "name": "SelectedDescription",
+        "name": "BranchProgress",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-detail-description",
+        "nodeId": "research-branch-progress",
         "props": {
-          "text": "Ziehen zum Navigieren · Mausrad oder Pinch zum Zoomen",
+          "text": "MOBILITÄT 0/13   ·   SCANNER 0/13   ·   MINING 0/13   ·   UTILITY 0/13",
           "fontId": "silkscreen-latin-700",
           "fontSize": 13,
           "align": "left",
-          "color": "#cbd5e1",
+          "color": "#94a3b8",
           "origin": {
             "x": 0,
             "y": 0.5
           },
           "parentAnchor": "center",
           "position": {
-            "x": -565,
-            "y": 283
+            "x": -610,
+            "y": 322
           },
           "scrollFactor": 0
         }
       },
       {
-        "name": "Status",
+        "name": "NavigationHint",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-status",
+        "nodeId": "research-navigation-hint",
         "props": {
-          "text": "LEUCHTENDE LINIEN ZEIGEN DEINEN AKTIVEN FORSCHUNGSWEG",
+          "text": "ZIEHEN: KARTE BEWEGEN    PINCH / MAUSRAD: ZOOM    STERN ANTIPPEN: DETAILS",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 11,
+          "fontSize": 10,
           "align": "left",
-          "color": "#64748b",
+          "color": "#475569",
           "origin": {
             "x": 0,
             "y": 0.5
           },
           "parentAnchor": "center",
           "position": {
-            "x": -565,
-            "y": 314
+            "x": -610,
+            "y": 347
           },
           "scrollFactor": 0
         }
       },
       {
-        "name": "PurchaseSelected",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-purchase",
+        "name": "SkillInspector",
+        "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+        "nodeId": "research-inspector",
         "props": {
-          "enabled": true,
+          "position": {
+            "x": 210,
+            "y": -271
+          },
           "size": {
-            "width": 210,
-            "height": 74
+            "width": 400,
+            "height": 590
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
-          "position": {
-            "x": 500,
-            "y": 282
-          },
           "scrollFactor": 0
         },
         "children": [
           {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-purchase-label",
+            "name": "InspectorSurface",
+            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+            "nodeId": "research-inspector-bg",
             "props": {
-              "text": "STERN WÄHLEN",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "align": "center",
-              "color": "#f8fafc",
+              "size": {
+                "width": 400,
+                "height": 590
+              },
+              "sizeMode": "explicit",
+              "fillColor": "#07111f",
+              "fillAlpha": 0.97,
+              "strokeColor": "#334155",
+              "strokeAlpha": 0.95,
+              "strokeWidth": 2,
+              "parentAnchor": "center",
+              "position": {
+                "x": 0,
+                "y": 0
+              },
               "origin": {
                 "x": 0.5,
                 "y": 0.5
               },
               "scrollFactor": 0
             }
+          },
+          {
+            "name": "InspectorAccent",
+            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+            "nodeId": "research-inspector-accent",
+            "props": {
+              "size": {
+                "width": 8,
+                "height": 590
+              },
+              "sizeMode": "explicit",
+              "fillColor": "#38bdf8",
+              "fillAlpha": 0.85,
+              "strokeColor": "#38bdf8",
+              "strokeAlpha": 1,
+              "strokeWidth": 0,
+              "parentAnchor": "center",
+              "position": {
+                "x": -196,
+                "y": 0
+              },
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "InspectorEyebrow",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "research-detail-branch",
+            "props": {
+              "text": "ZENTRALER KERNSTERN",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 11,
+              "align": "left",
+              "color": "#38bdf8",
+              "origin": {
+                "x": 0,
+                "y": 0.5
+              },
+              "parentAnchor": "center",
+              "position": {
+                "x": -168,
+                "y": -250
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "InspectorClose",
+            "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+            "nodeId": "research-inspector-close",
+            "props": {
+              "enabled": true,
+              "size": {
+                "width": 58,
+                "height": 54
+              },
+              "sizeMode": "explicit",
+              "parentAnchor": "center",
+              "position": {
+                "x": 160,
+                "y": -250
+              },
+              "scrollFactor": 0
+            },
+            "children": [
+              {
+                "name": "Label",
+                "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+                "nodeId": "research-inspector-close-label",
+                "props": {
+                  "text": "X",
+                  "fontId": "silkscreen-latin-700",
+                  "fontSize": 15,
+                  "align": "center",
+                  "color": "#94a3b8",
+                  "origin": {
+                    "x": 0.5,
+                    "y": 0.5
+                  },
+                  "scrollFactor": 0
+                }
+              }
+            ]
+          },
+          {
+            "name": "InspectorTitle",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "research-detail-title",
+            "props": {
+              "text": "STERN",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 20,
+              "align": "left",
+              "color": "#f8fafc",
+              "origin": {
+                "x": 0,
+                "y": 0.5
+              },
+              "parentAnchor": "center",
+              "position": {
+                "x": -168,
+                "y": -200
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "InspectorRule",
+            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+            "nodeId": "research-inspector-rule",
+            "props": {
+              "size": {
+                "width": 336,
+                "height": 2
+              },
+              "sizeMode": "explicit",
+              "fillColor": "#334155",
+              "fillAlpha": 0.9,
+              "strokeColor": "#ffffff",
+              "strokeAlpha": 1,
+              "strokeWidth": 0,
+              "parentAnchor": "center",
+              "position": {
+                "x": 0,
+                "y": -165
+              },
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "InspectorDescription",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "research-detail-description",
+            "props": {
+              "text": "BESCHREIBUNG",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 13,
+              "align": "left",
+              "color": "#cbd5e1",
+              "origin": {
+                "x": 0,
+                "y": 0
+              },
+              "parentAnchor": "center",
+              "position": {
+                "x": -168,
+                "y": -135
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "InspectorStatusLabel",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "research-status-label",
+            "props": {
+              "text": "STATUS",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 10,
+              "align": "left",
+              "color": "#64748b",
+              "origin": {
+                "x": 0,
+                "y": 0.5
+              },
+              "parentAnchor": "center",
+              "position": {
+                "x": -168,
+                "y": 85
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "InspectorStatus",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "research-status",
+            "props": {
+              "text": "NOCH NICHT VERBUNDEN",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 12,
+              "align": "left",
+              "color": "#94a3b8",
+              "origin": {
+                "x": 0,
+                "y": 0
+              },
+              "parentAnchor": "center",
+              "position": {
+                "x": -168,
+                "y": 120
+              },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "ActivateStar",
+            "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+            "nodeId": "research-purchase",
+            "props": {
+              "enabled": true,
+              "size": {
+                "width": 336,
+                "height": 76
+              },
+              "sizeMode": "explicit",
+              "parentAnchor": "center",
+              "position": {
+                "x": 0,
+                "y": 238
+              },
+              "scrollFactor": 0
+            },
+            "children": [
+              {
+                "name": "Label",
+                "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+                "nodeId": "research-purchase-label",
+                "props": {
+                  "text": "AKTIVIEREN",
+                  "fontId": "silkscreen-latin-700",
+                  "fontSize": 14,
+                  "align": "center",
+                  "color": "#f8fafc",
+                  "origin": {
+                    "x": 0.5,
+                    "y": 0.5
+                  },
+                  "scrollFactor": 0
+                }
+              }
+            ]
           }
         ]
       },
       {
         "name": "UpgradeDialogBehavior",
         "nodeTypeId": "dynamic.upgrade-dialog",
-        "nodeId": "tree-behavior",
+        "nodeId": "research-behavior",
         "props": {
           "playerStateNodeId": null,
           "gameplayInputNodeId": null,
-          "dialogRootNodeId": "tree-root",
-          "mapNodeId": "tree-space-map",
-          "creditsTextNodeId": "tree-credits",
-          "progressTextNodeId": "tree-progress",
-          "statusTextNodeId": "tree-status",
-          "detailTitleNodeId": "tree-detail-title",
-          "detailDescriptionNodeId": "tree-detail-description",
-          "purchaseButtonNodeId": "tree-purchase",
-          "purchaseLabelNodeId": "tree-purchase-label",
-          "zoomInButtonNodeId": "tree-zoom-in",
-          "zoomOutButtonNodeId": "tree-zoom-out",
-          "resetViewButtonNodeId": "tree-reset-view",
-          "closeButtonNodeId": "tree-close"
+          "screenRootNodeId": "research-root",
+          "mapNodeId": "research-map",
+          "creditsTextNodeId": "research-credits",
+          "progressTextNodeId": "research-progress",
+          "branchProgressTextNodeId": "research-branch-progress",
+          "inspectorRootNodeId": "research-inspector",
+          "detailBranchNodeId": "research-detail-branch",
+          "statusTextNodeId": "research-status",
+          "detailTitleNodeId": "research-detail-title",
+          "detailDescriptionNodeId": "research-detail-description",
+          "purchaseButtonNodeId": "research-purchase",
+          "purchaseLabelNodeId": "research-purchase-label",
+          "zoomInButtonNodeId": "research-zoom-in",
+          "zoomOutButtonNodeId": "research-zoom-out",
+          "resetViewButtonNodeId": "research-reset-view",
+          "inspectorCloseButtonNodeId": "research-inspector-close",
+          "closeButtonNodeId": "research-back"
         }
       }
     ]
