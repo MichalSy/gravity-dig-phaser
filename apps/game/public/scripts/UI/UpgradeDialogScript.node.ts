@@ -38,7 +38,7 @@ type GraphNode = {
   milestone?: boolean;
   rank?: number;
 };
-type GraphEdge = { from: string; to: string; color: string; active: boolean };
+type GraphEdge = { from: string; to: string; color: string; active: boolean; secondary?: boolean };
 type SkillTreeMapLike = {
   setGraph(graph: { width: number; height: number; rootId: string; nodes: GraphNode[]; edges: GraphEdge[] }): void;
   setSelectedNode(nodeId?: string): void;
@@ -52,10 +52,10 @@ type SkillTreeMapLike = {
 const BRANCH_ORDER: SkillTreeBranchId[] = ['movement', 'vision', 'mining', 'utility'];
 type BranchId = SkillTreeBranchId;
 const BRANCH_META: Record<BranchId, { color: string }> = {
-  movement: { color: '#65e6a3' },
+  movement: { color: '#ffd369' },
   vision: { color: '#59d8ff' },
   mining: { color: '#ff8bc8' },
-  utility: { color: '#bd8cff' },
+  utility: { color: '#9ee879' },
 };
 const MAP_INPUT_INSETS = { top: 84, right: 0, bottom: 0, left: 0 };
 const POPOVER_WIDTH = 350;
@@ -232,8 +232,8 @@ export default class ResearchScreenScript extends Core.ScriptNode {
 
   private updateGraph() {
     const purchasedCount = SKILL_TREE_IDS.filter((id) => this.playerState.isUpgradePurchased(id)).length;
-    this.creditsText.setText(`${this.playerState.getProfileCredits().toLocaleString('de-DE')} C`);
-    this.progressText.setText(`${purchasedCount} / ${SKILL_TREE_IDS.length}`);
+    this.creditsText.setText(`C  ${this.playerState.getProfileCredits().toLocaleString('de-DE')}`);
+    this.progressText.setText(`✦  ${purchasedCount} / ${SKILL_TREE_IDS.length}`);
 
     const nodes: GraphNode[] = [{
       id: 'prospector_core',
@@ -275,6 +275,8 @@ export default class ResearchScreenScript extends Core.ScriptNode {
             to: id,
             color: meta.color,
             active: this.playerState.isUpgradePurchased(prerequisite),
+            secondary: UPGRADE_DEFINITIONS[prerequisite].tree?.branch !== 'core'
+              && UPGRADE_DEFINITIONS[prerequisite].tree?.branch !== branch,
           });
         }
       });

@@ -53,10 +53,10 @@
           },
           "sizeMode": "explicit",
           "fillColor": "#183d61",
-          "fillAlpha": 0.82,
+          "fillAlpha": 0,
           "strokeColor": "#ffe69a",
-          "strokeAlpha": 0.42,
-          "strokeWidth": 2,
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
           "parentAnchor": "center",
           "position": {
             "x": 0,
@@ -80,7 +80,7 @@
           },
           "sizeMode": "explicit",
           "fillColor": "#76e6ff",
-          "fillAlpha": 0.72,
+          "fillAlpha": 0,
           "strokeColor": "#ffffff",
           "strokeAlpha": 0,
           "strokeWidth": 0,
@@ -102,19 +102,19 @@
         "nodeId": "research-back-surface",
         "props": {
           "size": {
-            "width": 52,
-            "height": 52
+            "width": 58,
+            "height": 54
           },
           "sizeMode": "explicit",
-          "fillColor": "#274d70",
-          "fillAlpha": 0.92,
-          "strokeColor": "#ffe69a",
-          "strokeAlpha": 0.9,
+          "fillColor": "#162b44",
+          "fillAlpha": 0.95,
+          "strokeColor": "#ffe08a",
+          "strokeAlpha": 0.86,
           "strokeWidth": 3,
           "parentAnchor": "center",
           "position": {
-            "x": -595,
-            "y": -321
+            "x": -598,
+            "y": -322
           },
           "origin": {
             "x": 0.5,
@@ -130,14 +130,14 @@
         "props": {
           "enabled": true,
           "size": {
-            "width": 56,
-            "height": 56
+            "width": 62,
+            "height": 58
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": -595,
-            "y": -321
+            "x": -598,
+            "y": -322
           },
           "scrollFactor": 0
         },
@@ -147,11 +147,11 @@
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
             "nodeId": "research-back-label",
             "props": {
-              "text": "‹",
+              "text": "<",
               "fontId": "silkscreen-latin-700",
-              "fontSize": 26,
+              "fontSize": 25,
               "align": "center",
-              "color": "#fff7d6",
+              "color": "#fff3c0",
               "origin": {
                 "x": 0.5,
                 "y": 0.5
@@ -173,9 +173,9 @@
         "props": {
           "text": "FORSCHUNGSREISE",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 21,
+          "fontSize": 34,
           "align": "left",
-          "color": "#fff1bd",
+          "color": "#fff4cf",
           "origin": {
             "x": 0,
             "y": 0.5
@@ -183,7 +183,7 @@
           "parentAnchor": "center",
           "position": {
             "x": -548,
-            "y": -331
+            "y": -322
           },
           "scrollFactor": 0
         }
@@ -193,7 +193,7 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "research-subtitle",
         "props": {
-          "text": "THE BUCKET · PANDAS FORSCHUNGSNETZ",
+          "text": "",
           "fontId": "silkscreen-latin-700",
           "fontSize": 9,
           "align": "left",
@@ -207,6 +207,61 @@
             "x": -548,
             "y": -302
           },
+          "scrollFactor": 0,
+          "visible": false
+        }
+      },
+      {
+        "name": "CreditsCapsule",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "research-credits-capsule",
+        "props": {
+          "size": {
+            "width": 220,
+            "height": 54
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#102844",
+          "fillAlpha": 0.9,
+          "strokeColor": "#ffd36f",
+          "strokeAlpha": 0.78,
+          "strokeWidth": 3,
+          "parentAnchor": "center",
+          "position": {
+            "x": 20,
+            "y": -322
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "ProgressCapsule",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "research-progress-capsule",
+        "props": {
+          "size": {
+            "width": 160,
+            "height": 54
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#102844",
+          "fillAlpha": 0.9,
+          "strokeColor": "#9be8ff",
+          "strokeAlpha": 0.78,
+          "strokeWidth": 3,
+          "parentAnchor": "center",
+          "position": {
+            "x": 235,
+            "y": -322
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
           "scrollFactor": 0
         }
       },
@@ -215,7 +270,7 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "research-progress-caption",
         "props": {
-          "text": "FORTSCHRITT",
+          "text": "",
           "fontId": "silkscreen-latin-700",
           "fontSize": 8,
           "align": "left",
@@ -229,7 +284,8 @@
             "x": 110,
             "y": -333
           },
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "visible": false
         }
       },
       {
@@ -239,17 +295,17 @@
         "props": {
           "text": "0 / 53",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 15,
-          "align": "left",
-          "color": "#fff1bd",
+          "fontSize": 21,
+          "align": "center",
+          "color": "#fff4cf",
           "origin": {
-            "x": 0,
+            "x": 0.5,
             "y": 0.5
           },
           "parentAnchor": "center",
           "position": {
-            "x": 110,
-            "y": -310
+            "x": 235,
+            "y": -322
           },
           "scrollFactor": 0
         }
@@ -259,7 +315,7 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "research-credits-caption",
         "props": {
-          "text": "CREDITS",
+          "text": "",
           "fontId": "silkscreen-latin-700",
           "fontSize": 8,
           "align": "left",
@@ -273,7 +329,8 @@
             "x": 270,
             "y": -333
           },
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "visible": false
         }
       },
       {
@@ -283,17 +340,17 @@
         "props": {
           "text": "0 C",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 15,
-          "align": "left",
-          "color": "#ffe06e",
+          "fontSize": 21,
+          "align": "center",
+          "color": "#ffe49a",
           "origin": {
-            "x": 0,
+            "x": 0.5,
             "y": 0.5
           },
           "parentAnchor": "center",
           "position": {
-            "x": 270,
-            "y": -310
+            "x": 20,
+            "y": -322
           },
           "scrollFactor": 0
         }
@@ -304,19 +361,19 @@
         "nodeId": "research-zoom-out-surface",
         "props": {
           "size": {
-            "width": 48,
-            "height": 48
+            "width": 54,
+            "height": 54
           },
           "sizeMode": "explicit",
-          "fillColor": "#274d70",
-          "fillAlpha": 0.9,
-          "strokeColor": "#83e5ff",
-          "strokeAlpha": 0.8,
-          "strokeWidth": 2,
+          "fillColor": "#162b44",
+          "fillAlpha": 0.95,
+          "strokeColor": "#ffe08a",
+          "strokeAlpha": 0.86,
+          "strokeWidth": 3,
           "parentAnchor": "center",
           "position": {
-            "x": 460,
-            "y": -321
+            "x": 475,
+            "y": -322
           },
           "origin": {
             "x": 0.5,
@@ -332,14 +389,14 @@
         "props": {
           "enabled": true,
           "size": {
-            "width": 52,
-            "height": 52
+            "width": 58,
+            "height": 58
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": 460,
-            "y": -321
+            "x": 475,
+            "y": -322
           },
           "scrollFactor": 0
         },
@@ -374,19 +431,19 @@
         "nodeId": "research-reset-surface",
         "props": {
           "size": {
-            "width": 48,
-            "height": 48
+            "width": 54,
+            "height": 54
           },
           "sizeMode": "explicit",
-          "fillColor": "#274d70",
-          "fillAlpha": 0.9,
-          "strokeColor": "#83e5ff",
-          "strokeAlpha": 0.8,
-          "strokeWidth": 2,
+          "fillColor": "#162b44",
+          "fillAlpha": 0.95,
+          "strokeColor": "#ffe08a",
+          "strokeAlpha": 0.86,
+          "strokeWidth": 3,
           "parentAnchor": "center",
           "position": {
-            "x": 525,
-            "y": -321
+            "x": 542,
+            "y": -322
           },
           "origin": {
             "x": 0.5,
@@ -402,14 +459,14 @@
         "props": {
           "enabled": true,
           "size": {
-            "width": 52,
-            "height": 52
+            "width": 58,
+            "height": 58
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": 525,
-            "y": -321
+            "x": 542,
+            "y": -322
           },
           "scrollFactor": 0
         },
@@ -444,19 +501,19 @@
         "nodeId": "research-zoom-in-surface",
         "props": {
           "size": {
-            "width": 48,
-            "height": 48
+            "width": 54,
+            "height": 54
           },
           "sizeMode": "explicit",
-          "fillColor": "#274d70",
-          "fillAlpha": 0.9,
-          "strokeColor": "#83e5ff",
-          "strokeAlpha": 0.8,
-          "strokeWidth": 2,
+          "fillColor": "#162b44",
+          "fillAlpha": 0.95,
+          "strokeColor": "#ffe08a",
+          "strokeAlpha": 0.86,
+          "strokeWidth": 3,
           "parentAnchor": "center",
           "position": {
-            "x": 590,
-            "y": -321
+            "x": 609,
+            "y": -322
           },
           "origin": {
             "x": 0.5,
@@ -472,14 +529,14 @@
         "props": {
           "enabled": true,
           "size": {
-            "width": 52,
-            "height": 52
+            "width": 58,
+            "height": 58
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": 590,
-            "y": -321
+            "x": 609,
+            "y": -322
           },
           "scrollFactor": 0
         },

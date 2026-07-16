@@ -87,6 +87,10 @@ describe('early-game economy balance', () => {
     expect(popover.children.some((node: { nodeId?: string }) => node.nodeId === 'research-purchase')).toBe(true);
     expect(popover.children.some((node: { nodeId?: string }) => node.nodeId === 'research-cost')).toBe(true);
     expect(popover.children.some((node: { nodeId?: string }) => node.nodeId === 'research-status')).toBe(false);
+    const hudGlass = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'research-hud-glass');
+    expect(hudGlass.props.fillAlpha).toBe(0);
+    expect(skillTreePrefab.root.children.some((node: { nodeId?: string }) => node.nodeId === 'research-credits-capsule')).toBe(true);
+    expect(skillTreePrefab.root.children.some((node: { nodeId?: string }) => node.nodeId === 'research-progress-capsule')).toBe(true);
     expect(behavior.props.mapNodeId).toBe('research-map');
     expect(behavior.props.popoverRootNodeId).toBe('research-popover');
     expect(behavior.props.purchaseButtonNodeId).toBe('research-purchase');
@@ -113,6 +117,7 @@ describe('early-game economy balance', () => {
     expect(mapSource).toContain('setInputInsets(');
     expect(mapSource).toContain("'research-anime-background'");
     expect(mapSource).toContain('node.iconKey');
+    expect(mapSource).toContain('if (edge.secondary && !highlightedBridge) continue;');
     expect(mapSource).not.toContain('.setDepth(');
     const assetManifest = JSON.parse(readFileSync('apps/game/public/assets/assets.manifest.json', 'utf8'));
     const researchImages = assetManifest.groups.gameplay.images.filter((asset: { key: string }) => asset.key.startsWith('research-'));
@@ -143,6 +148,28 @@ describe('early-game economy balance', () => {
     }
     expect(minimumDistance).toBeGreaterThan(60);
     expect(minimumEarlyDistance).toBeGreaterThan(110);
+  });
+
+  it('keeps the four primary research lanes geometrically separate', () => {
+    const branches: SkillTreeBranchId[] = ['movement', 'vision', 'mining', 'utility'];
+    const root = { x: 1250, y: 750 };
+    const segments = branches.flatMap((branch) => {
+      const points = [root, ...Array.from({ length: 13 }, (_, index) => getConstellationNodePosition(branch, index + 1))];
+      return points.slice(1).map((point, index) => ({ branch, from: points[index], to: point }));
+    });
+    const orientation = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }) =>
+      Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
+    const crosses = (left: typeof segments[number], right: typeof segments[number]) =>
+      orientation(left.from, left.to, right.from) !== orientation(left.from, left.to, right.to)
+      && orientation(right.from, right.to, left.from) !== orientation(right.from, right.to, left.to);
+    const samePoint = (left: { x: number; y: number }, right: { x: number; y: number }) =>
+      left.x === right.x && left.y === right.y;
+    const crossings = segments.flatMap((left, index) => segments.slice(index + 1).filter((right) => {
+      const sharesEndpoint = samePoint(left.from, right.from) || samePoint(left.from, right.to)
+        || samePoint(left.to, right.from) || samePoint(left.to, right.to);
+      return !sharesEndpoint && crosses(left, right);
+    }));
+    expect(crossings).toHaveLength(0);
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

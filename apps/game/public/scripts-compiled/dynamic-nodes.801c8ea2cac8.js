@@ -2936,64 +2936,64 @@ var CONSTELLATION_MAP_HEIGHT = 1500;
 var CONSTELLATION_ROOT = { x: 1250, y: 750 };
 var POSITIONS = {
   movement: [
-    { x: 1080, y: 720 },
-    { x: 840, y: 650 },
-    { x: 650, y: 760 },
-    { x: 900, y: 470 },
-    { x: 620, y: 460 },
-    { x: 390, y: 550 },
-    { x: 330, y: 330 },
-    { x: 580, y: 250 },
-    { x: 830, y: 260 },
-    { x: 1030, y: 360 },
-    { x: 1130, y: 180 },
-    { x: 1380, y: 250 },
-    { x: 1580, y: 170 }
+    { x: 1080, y: 660 },
+    { x: 850, y: 580 },
+    { x: 600, y: 520 },
+    { x: 360, y: 450 },
+    { x: 180, y: 340 },
+    { x: 360, y: 230 },
+    { x: 600, y: 220 },
+    { x: 820, y: 250 },
+    { x: 1010, y: 310 },
+    { x: 1080, y: 160 },
+    { x: 850, y: 100 },
+    { x: 600, y: 100 },
+    { x: 350, y: 110 }
   ],
   vision: [
-    { x: 1260, y: 560 },
-    { x: 1380, y: 420 },
-    { x: 1650, y: 400 },
-    { x: 1750, y: 530 },
-    { x: 1940, y: 410 },
-    { x: 2110, y: 560 },
-    { x: 2200, y: 350 },
-    { x: 2350, y: 480 },
-    { x: 2310, y: 720 },
-    { x: 2100, y: 720 },
-    { x: 1980, y: 850 },
-    { x: 2210, y: 940 },
-    { x: 2350, y: 1090 }
+    { x: 1420, y: 660 },
+    { x: 1650, y: 580 },
+    { x: 1950, y: 510 },
+    { x: 2230, y: 430 },
+    { x: 2360, y: 320 },
+    { x: 2190, y: 220 },
+    { x: 1950, y: 200 },
+    { x: 1720, y: 230 },
+    { x: 1510, y: 300 },
+    { x: 1450, y: 150 },
+    { x: 1680, y: 90 },
+    { x: 1930, y: 90 },
+    { x: 2180, y: 100 }
   ],
   mining: [
-    { x: 1400, y: 760 },
-    { x: 1480, y: 900 },
-    { x: 1710, y: 790 },
-    { x: 1900, y: 990 },
-    { x: 1620, y: 1010 },
-    { x: 1790, y: 1140 },
-    { x: 2050, y: 1140 },
-    { x: 2260, y: 1240 },
-    { x: 1960, y: 1350 },
-    { x: 1710, y: 1330 },
-    { x: 1450, y: 1200 },
-    { x: 1230, y: 1330 },
-    { x: 980, y: 1310 }
+    { x: 1420, y: 840 },
+    { x: 1640, y: 900 },
+    { x: 1940, y: 980 },
+    { x: 2240, y: 1050 },
+    { x: 2360, y: 1170 },
+    { x: 2190, y: 1280 },
+    { x: 1950, y: 1300 },
+    { x: 1720, y: 1270 },
+    { x: 1510, y: 1200 },
+    { x: 1440, y: 1350 },
+    { x: 1680, y: 1430 },
+    { x: 1930, y: 1430 },
+    { x: 2180, y: 1400 }
   ],
   utility: [
-    { x: 1130, y: 900 },
-    { x: 900, y: 980 },
-    { x: 600, y: 880 },
-    { x: 530, y: 1030 },
-    { x: 730, y: 1160 },
-    { x: 500, y: 1280 },
-    { x: 260, y: 1200 },
-    { x: 260, y: 970 },
-    { x: 390, y: 820 },
-    { x: 520, y: 680 },
-    { x: 300, y: 650 },
-    { x: 260, y: 440 },
-    { x: 730, y: 1370 }
+    { x: 1080, y: 840 },
+    { x: 820, y: 920 },
+    { x: 560, y: 1e3 },
+    { x: 300, y: 1080 },
+    { x: 160, y: 1200 },
+    { x: 340, y: 1320 },
+    { x: 580, y: 1350 },
+    { x: 820, y: 1320 },
+    { x: 1020, y: 1250 },
+    { x: 1080, y: 1390 },
+    { x: 850, y: 1450 },
+    { x: 600, y: 1450 },
+    { x: 350, y: 1380 }
   ]
 };
 var MILESTONES = /* @__PURE__ */ new Set([
@@ -3035,10 +3035,10 @@ function getSkillIconKey(upgradeId) {
 // public/scripts/UI/UpgradeDialogScript.node.ts
 var BRANCH_ORDER = ["movement", "vision", "mining", "utility"];
 var BRANCH_META = {
-  movement: { color: "#65e6a3" },
+  movement: { color: "#ffd369" },
   vision: { color: "#59d8ff" },
   mining: { color: "#ff8bc8" },
-  utility: { color: "#bd8cff" }
+  utility: { color: "#9ee879" }
 };
 var MAP_INPUT_INSETS = { top: 84, right: 0, bottom: 0, left: 0 };
 var POPOVER_WIDTH = 350;
@@ -3202,8 +3202,8 @@ var ResearchScreenScript = class extends ScriptNode {
   }
   updateGraph() {
     const purchasedCount = SKILL_TREE_IDS.filter((id) => this.playerState.isUpgradePurchased(id)).length;
-    this.creditsText.setText(`${this.playerState.getProfileCredits().toLocaleString("de-DE")} C`);
-    this.progressText.setText(`${purchasedCount} / ${SKILL_TREE_IDS.length}`);
+    this.creditsText.setText(`C  ${this.playerState.getProfileCredits().toLocaleString("de-DE")}`);
+    this.progressText.setText(`\u2726  ${purchasedCount} / ${SKILL_TREE_IDS.length}`);
     const nodes = [{
       id: "prospector_core",
       label: UPGRADE_DEFINITIONS.prospector_core.label,
@@ -3242,7 +3242,8 @@ var ResearchScreenScript = class extends ScriptNode {
             from: prerequisite,
             to: id,
             color: meta.color,
-            active: this.playerState.isUpgradePurchased(prerequisite)
+            active: this.playerState.isUpgradePurchased(prerequisite),
+            secondary: UPGRADE_DEFINITIONS[prerequisite].tree?.branch !== "core" && UPGRADE_DEFINITIONS[prerequisite].tree?.branch !== branch
           });
         }
       });
@@ -3357,4 +3358,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.454fda8f2a30.js.map
+//# sourceMappingURL=dynamic-nodes.801c8ea2cac8.js.map

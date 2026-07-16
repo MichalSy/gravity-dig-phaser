@@ -22,6 +22,7 @@ export interface SkillTreeMapGraphEdge {
   to: string;
   color: string;
   active: boolean;
+  secondary?: boolean;
 }
 
 export interface SkillTreeMapGraphRegion {
@@ -148,7 +149,7 @@ export class SkillTreeMapNode extends TransformNode {
 
   setSelectedNode(nodeId?: string): void {
     this.selectedNodeId = nodeId;
-    this.redrawNodes();
+    this.redraw();
   }
 
   setSelectCallback(callback?: (nodeId: string, viewportPosition: { x: number; y: number }) => void): void {
@@ -264,6 +265,9 @@ export class SkillTreeMapNode extends TransformNode {
       const from = byId.get(edge.from);
       const to = byId.get(edge.to);
       if (!from || !to) continue;
+      const highlightedBridge = edge.secondary
+        && (edge.from === this.selectedNodeId || edge.to === this.selectedNodeId);
+      if (edge.secondary && !highlightedBridge) continue;
       const start = this.edgeAnchor(from, to);
       const end = this.edgeAnchor(to, from);
       const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
@@ -273,7 +277,9 @@ export class SkillTreeMapNode extends TransformNode {
       const dx = end.x - start.x;
       const dy = end.y - start.y;
       const length = Math.max(1, Math.hypot(dx, dy));
-      const bend = ((edge.from.length + edge.to.length) % 2 === 0 ? 1 : -1) * Math.min(40, length * 0.14);
+      const bendLimit = edge.secondary ? 150 : 24;
+      const bendRatio = edge.secondary ? 0.22 : 0.08;
+      const bend = ((edge.from.length + edge.to.length) % 2 === 0 ? 1 : -1) * Math.min(bendLimit, length * bendRatio);
       const controlX = midpointX - dy / length * bend;
       const controlY = midpointY + dx / length * bend;
       const drawCurve = () => {
@@ -289,11 +295,11 @@ export class SkillTreeMapNode extends TransformNode {
           previousY = y;
         }
       };
-      graphics.lineStyle(edge.active ? 13 : 9, 0x07172c, edge.active ? 0.62 : 0.46);
+      graphics.lineStyle(edge.secondary ? 7 : edge.active ? 13 : 9, 0x07172c, edge.secondary ? 0.7 : edge.active ? 0.62 : 0.46);
       drawCurve();
-      graphics.lineStyle(edge.active ? 8 : 5, lineColor, edge.active ? 0.88 : 0.45);
+      graphics.lineStyle(edge.secondary ? 3 : edge.active ? 8 : 5, lineColor, edge.secondary ? 0.82 : edge.active ? 0.88 : 0.45);
       drawCurve();
-      if (edge.active) {
+      if (edge.active && !edge.secondary) {
         graphics.fillStyle(0xfff2a8, 0.75).fillCircle(midpointX, midpointY, 5);
       }
     }
