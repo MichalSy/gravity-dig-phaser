@@ -67,22 +67,29 @@ describe('early-game economy balance', () => {
     expect(readFileSync('apps/game/src/game/world/MiningEffects.ts', 'utf8')).toContain('getPickupRadius');
     const skillTreePrefab = JSON.parse(readFileSync('apps/game/public/prefabs/upgrade-dialog.prefab.json', 'utf8'));
     const behavior = skillTreePrefab.root.children.find((node: { name: string }) => node.name === 'UpgradeDialogBehavior');
-    expect(behavior.props.buyButtonNodeIds).toHaveLength(13);
-    expect(new Set(behavior.props.buyButtonNodeIds).size).toBe(13);
-    expect(behavior.props.ringTextNodeId).toBe('tree-ring-text');
-    expect(behavior.props.previousRingButtonNodeId).toBe('tree-ring-prev');
-    expect(behavior.props.nextRingButtonNodeId).toBe('tree-ring-next');
+    const mapNode = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'tree-space-map');
+    expect(mapNode).toMatchObject({
+      nodeTypeId: 'b74c5d40-d19e-5e1c-8c8a-f61424cc3116',
+      props: { size: { width: 1240, height: 450 } },
+    });
+    expect(behavior.props.mapNodeId).toBe('tree-space-map');
     expect(behavior.props.purchaseButtonNodeId).toBe('tree-purchase');
     expect(behavior.props.detailTitleNodeId).toBe('tree-detail-title');
     expect(behavior.props.detailDescriptionNodeId).toBe('tree-detail-description');
-    expect(behavior.props.connectorNodeIds).toHaveLength(12);
+    expect(behavior.props.zoomInButtonNodeId).toBe('tree-zoom-in');
+    expect(behavior.props.zoomOutButtonNodeId).toBe('tree-zoom-out');
+    expect(behavior.props.resetViewButtonNodeId).toBe('tree-reset-view');
     expect(skillTreePrefab.root.props.size).toEqual({ width: 1240, height: 680 });
     const dialogSource = readFileSync('apps/game/public/scripts/UI/UpgradeDialogScript.node.ts', 'utf8');
-    expect(dialogSource).toContain('const PAGE_COUNT = 5');
-    expect(dialogSource).toContain("event.key === 'ArrowRight'");
+    const mapSource = readFileSync('apps/game/src/ui/nodes/SkillTreeMapNode.ts', 'utf8');
+    expect(dialogSource).toContain('const MAP_WIDTH = 2200');
+    expect(dialogSource).toContain('this.map.setGraph(');
+    expect(dialogSource).toContain('this.map.setSelectCallback(');
     expect(dialogSource).toContain('purchaseSelected()');
-    expect(dialogSource).toContain('setCallbacks({');
-    expect(dialogSource).toContain("available: '#facc15'");
+    expect(mapSource).toContain("input.on('pointermove'");
+    expect(mapSource).toContain("input.on('wheel'");
+    expect(mapSource).toContain('updatePinch()');
+    expect(mapSource).not.toContain('.setDepth(');
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

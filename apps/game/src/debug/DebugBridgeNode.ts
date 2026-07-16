@@ -37,6 +37,7 @@ const UI_ONLY_TYPE_IDS = new Set<string>([
   NODE_TYPE_IDS.ButtonNode,
   NODE_TYPE_IDS.InputModeDetectorNode,
   NODE_TYPE_IDS.TouchControlsNode,
+  NODE_TYPE_IDS.SkillTreeMapNode,
 ]);
 
 export class DebugBridgeNode extends GameNode {

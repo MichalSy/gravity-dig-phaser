@@ -48,11 +48,11 @@ Jeder zerstörte, droppende Block erzeugt weiterhin genau ein sammelbares Item. 
 | Gold | 30 Cr |
 | Diamant | 100 Cr |
 
-## Forschungsnetz (Skillbaum)
+## Sternenkarte (Skillbaum)
 
-Die Schiffsoberfläche zeigt ein bildschirmfüllendes Forschungsnetz mit vier klaren, horizontalen Entwicklungspfaden. Insgesamt stehen **53 Skills** zur Verfügung: der `Prospektor-Kern` sowie vier Äste mit je 13 Stufen. Jeder Knoten ist nur kaufbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert.
+Die Schiffsoberfläche zeigt eine bildschirmfüllende, frei navigierbare Weltraumkarte mit **53 Skills**: dem `Prospektor-Kern` sowie vier farbigen Konstellationen mit je 13 Stufen. Jeder Stern ist nur aktivierbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert.
 
-Fünf Tierseiten zeigen pro Pfad jeweils drei aufeinanderfolgende Stufen; die letzte Seite überlappt zur Orientierung die Tiers 11–13. Knoten werden zunächst ausgewählt. Name, Beschreibung, Voraussetzung und Kaufstatus erscheinen anschließend in einem separaten Detailpanel. Erst der dortige Kaufbutton installiert den Skill. Die Zustände sind farblich eindeutig: Grün = installiert, Gelb = kaufbar, Rot = zu teuer, Grau = gesperrt.
+Alle 53 Sterne liegen gleichzeitig in einem großen zusammenhängenden Forschungsraum. Die Karte lässt sich mit Maus oder Touch ziehen, per Mausrad beziehungsweise Zwei-Finger-Geste zoomen und jederzeit auf die Gesamtansicht zurücksetzen. Größere Knoten markieren Meilensteine. Aktive Verbindungen leuchten in der Farbe ihres Forschungszweigs. Ein Stern wird zuerst ausgewählt; Name, Beschreibung, Voraussetzung und Kosten erscheinen anschließend im Detailpanel. Erst der separate Aktivieren-Button kauft den Skill. Die Zustände sind zusätzlich zur Farbe geometrisch erkennbar: aktivierte Sterne besitzen einen hellen Kern, kaufbare Sterne einen zusätzlichen Außenring, gesperrte Sterne bleiben dunkel.
 
 | Ast | Stufe 1 | Stufe 2 | Stufe 3 |
 |---|---|---|---|

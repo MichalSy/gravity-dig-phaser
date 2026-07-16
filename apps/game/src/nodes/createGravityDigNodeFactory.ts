@@ -20,7 +20,7 @@ import {
 } from '@gravity-dig/game-core';
 import { InputDeviceNode } from '../app/nodes';
 import { EffectsLayerNode, GameRootNode, GameWorldNode, LevelNode, LootLayerNode, VisibilityFieldNode } from '../game/nodes';
-import { InputModeDetectorNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
+import { InputModeDetectorNode, SkillTreeMapNode, TouchControlsNode, UIRootNode } from '../ui/nodes';
 import { NODE_TYPE_IDS } from './NodeTypeIds';
 
 export interface GravityDigNodeFactoryBindings {
@@ -52,6 +52,7 @@ export function createGravityDigNodeFactory(bindings: GravityDigNodeFactoryBindi
     .register(NODE_TYPE_IDS.GameRootNode, (definition) => new GameRootNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.UIRootNode, (definition) => new UIRootNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.TouchControlsNode, (definition) => new TouchControlsNode(optionsFrom(definition)))
+    .register(NODE_TYPE_IDS.SkillTreeMapNode, (definition) => new SkillTreeMapNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.ImageNode, (definition) => new ImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof ImageNode>[0]))
     .register(NODE_TYPE_IDS.TextNode, (definition) => new TextNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.AnimatedImageNode, (definition) => new AnimatedImageNode(optionsFrom(definition) as unknown as ConstructorParameters<typeof AnimatedImageNode>[0]))

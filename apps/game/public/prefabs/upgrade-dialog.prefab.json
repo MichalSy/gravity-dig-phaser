@@ -32,7 +32,7 @@
           "sizeMode": "explicit",
           "fillColor": "#020617",
           "fillAlpha": 1,
-          "strokeColor": "#38bdf8",
+          "strokeColor": "#020617",
           "strokeAlpha": 1,
           "strokeWidth": 0,
           "parentAnchor": "center",
@@ -40,15 +40,145 @@
             "x": 0,
             "y": 0
           },
-          "scrollFactor": 0,
           "origin": {
             "x": 0.5,
             "y": 0.5
-          }
+          },
+          "scrollFactor": 0
         }
       },
       {
-        "name": "ScreenFrame",
+        "name": "SpaceSkillMap",
+        "nodeTypeId": "b74c5d40-d19e-5e1c-8c8a-f61424cc3116",
+        "nodeId": "tree-space-map",
+        "props": {
+          "size": {
+            "width": 1240,
+            "height": 450
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": -3
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "MapGuardTop",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "tree-map-guard-top",
+        "props": {
+          "size": {
+            "width": 1500,
+            "height": 200
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#020617",
+          "fillAlpha": 1,
+          "strokeColor": "#020617",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": -440
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "MapGuardBottom",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "tree-map-guard-bottom",
+        "props": {
+          "size": {
+            "width": 1500,
+            "height": 200
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#020617",
+          "fillAlpha": 1,
+          "strokeColor": "#020617",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": 440
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "MapGuardLeft",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "tree-map-guard-left",
+        "props": {
+          "size": {
+            "width": 220,
+            "height": 1080
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#020617",
+          "fillAlpha": 1,
+          "strokeColor": "#020617",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "position": {
+            "x": -730,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "MapGuardRight",
+        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
+        "nodeId": "tree-map-guard-right",
+        "props": {
+          "size": {
+            "width": 220,
+            "height": 1080
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#020617",
+          "fillAlpha": 1,
+          "strokeColor": "#020617",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "position": {
+            "x": 730,
+            "y": 0
+          },
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "Frame",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
         "nodeId": "tree-frame",
         "props": {
@@ -75,16 +205,16 @@
         }
       },
       {
-        "name": "HeaderGlow",
+        "name": "Header",
         "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
         "nodeId": "tree-header-bg",
         "props": {
           "size": {
-            "width": 1210,
-            "height": 76
+            "width": 1240,
+            "height": 86
           },
           "sizeMode": "explicit",
-          "fillColor": "#071a2d",
+          "fillColor": "#07111f",
           "fillAlpha": 0.98,
           "strokeColor": "#164e63",
           "strokeAlpha": 0.9,
@@ -92,13 +222,13 @@
           "parentAnchor": "center",
           "position": {
             "x": 0,
-            "y": -294
+            "y": -297
           },
-          "scrollFactor": 0,
           "origin": {
             "x": 0.5,
             "y": 0.5
-          }
+          },
+          "scrollFactor": 0
         }
       },
       {
@@ -107,25 +237,25 @@
         "nodeId": "tree-header-line",
         "props": {
           "size": {
-            "width": 1180,
+            "width": 1190,
             "height": 3
           },
           "sizeMode": "explicit",
           "fillColor": "#38bdf8",
           "fillAlpha": 0.65,
-          "strokeColor": "#38bdf8",
+          "strokeColor": "#ffffff",
           "strokeAlpha": 1,
           "strokeWidth": 0,
           "parentAnchor": "center",
           "position": {
             "x": 0,
-            "y": -252
+            "y": -250
           },
-          "scrollFactor": 0,
           "origin": {
             "x": 0.5,
             "y": 0.5
-          }
+          },
+          "scrollFactor": 0
         }
       },
       {
@@ -135,7 +265,7 @@
         "props": {
           "size": {
             "width": 1180,
-            "height": 104
+            "height": 116
           },
           "sizeMode": "explicit",
           "fillColor": "#07111f",
@@ -148,1451 +278,19 @@
             "x": 0,
             "y": 282
           },
-          "scrollFactor": 0,
           "origin": {
             "x": 0.5,
             "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MOBILITÄT Lane",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-lane-movement",
-        "props": {
-          "size": {
-            "width": 1090,
-            "height": 92
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#4ade80",
-          "fillAlpha": 0.045,
-          "strokeColor": "#4ade80",
-          "strokeAlpha": 0.24,
-          "strokeWidth": 2,
-          "parentAnchor": "center",
-          "position": {
-            "x": 20,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MOBILITÄT Label",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-branch-movement",
-        "props": {
-          "text": "MOBILITÄT  0/13",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 15,
-          "align": "left",
-          "color": "#4ade80",
-          "origin": {
-            "x": -0.0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": -560,
-            "y": -160
           },
           "scrollFactor": 0
         }
-      },
-      {
-        "name": "SCANNER Lane",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-lane-vision",
-        "props": {
-          "size": {
-            "width": 1090,
-            "height": 92
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#38bdf8",
-          "fillAlpha": 0.045,
-          "strokeColor": "#38bdf8",
-          "strokeAlpha": 0.24,
-          "strokeWidth": 2,
-          "parentAnchor": "center",
-          "position": {
-            "x": 20,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SCANNER Label",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-branch-vision",
-        "props": {
-          "text": "SCANNER  0/13",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 15,
-          "align": "left",
-          "color": "#38bdf8",
-          "origin": {
-            "x": -0.0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": -560,
-            "y": -53
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "MINING Lane",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-lane-mining",
-        "props": {
-          "size": {
-            "width": 1090,
-            "height": 92
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#f472b6",
-          "fillAlpha": 0.045,
-          "strokeColor": "#f472b6",
-          "strokeAlpha": 0.24,
-          "strokeWidth": 2,
-          "parentAnchor": "center",
-          "position": {
-            "x": 20,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MINING Label",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-branch-mining",
-        "props": {
-          "text": "MINING  0/13",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 15,
-          "align": "left",
-          "color": "#f472b6",
-          "origin": {
-            "x": -0.0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": -560,
-            "y": 54
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "UTILITY Lane",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-lane-utility",
-        "props": {
-          "size": {
-            "width": 1090,
-            "height": 92
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#c084fc",
-          "fillAlpha": 0.045,
-          "strokeColor": "#c084fc",
-          "strokeAlpha": 0.24,
-          "strokeWidth": 2,
-          "parentAnchor": "center",
-          "position": {
-            "x": 20,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "UTILITY Label",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-branch-utility",
-        "props": {
-          "text": "UTILITY  0/13",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 15,
-          "align": "left",
-          "color": "#c084fc",
-          "origin": {
-            "x": -0.0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": -560,
-            "y": 161
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "RootTrunk",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-root-trunk",
-        "props": {
-          "size": {
-            "width": 5,
-            "height": 308
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.9,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -425,
-            "y": -115
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "RootFeed",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-root-feed",
-        "props": {
-          "size": {
-            "width": 78,
-            "height": 5
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.9,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -463,
-            "y": -209
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MOBILITÄT Connector 1",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-0-0",
-        "props": {
-          "size": {
-            "width": 28,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -408,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MOBILITÄT Connector 2",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-0-1",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -122,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MOBILITÄT Connector 3",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-0-2",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 173,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SCANNER Connector 1",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-1-0",
-        "props": {
-          "size": {
-            "width": 28,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -408,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SCANNER Connector 2",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-1-1",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -122,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SCANNER Connector 3",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-1-2",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 173,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MINING Connector 1",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-2-0",
-        "props": {
-          "size": {
-            "width": 28,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -408,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MINING Connector 2",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-2-1",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -122,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "MINING Connector 3",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-2-2",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 173,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "UTILITY Connector 1",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-3-0",
-        "props": {
-          "size": {
-            "width": 28,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -408,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "UTILITY Connector 2",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-3-1",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": -122,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "UTILITY Connector 3",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-connector-3-2",
-        "props": {
-          "size": {
-            "width": 49,
-            "height": 7
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#334155",
-          "fillAlpha": 0.95,
-          "strokeColor": "#334155",
-          "strokeAlpha": 1,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 173,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "CoreCard",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-00",
-        "props": {
-          "size": {
-            "width": 178,
-            "height": 76
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#facc15",
-          "fillAlpha": 0.11,
-          "strokeColor": "#facc15",
-          "strokeAlpha": 0.95,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": -520,
-            "y": -209
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "CoreSkill",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-00",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 166,
-            "height": 64
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": -520,
-            "y": -209
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-00",
-            "props": {
-              "text": "PROSPEKTOR-KERN\n50 C",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#fde68a",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard01",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-01",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#4ade80",
-          "fillAlpha": 0.075,
-          "strokeColor": "#4ade80",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton01",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-01",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": -160
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-01",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard02",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-02",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#4ade80",
-          "fillAlpha": 0.075,
-          "strokeColor": "#4ade80",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton02",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-02",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": -160
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-02",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard03",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-03",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#4ade80",
-          "fillAlpha": 0.075,
-          "strokeColor": "#4ade80",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": -160
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton03",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-03",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": -160
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-03",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard04",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-04",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#38bdf8",
-          "fillAlpha": 0.075,
-          "strokeColor": "#38bdf8",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton04",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-04",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": -53
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-04",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard05",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-05",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#38bdf8",
-          "fillAlpha": 0.075,
-          "strokeColor": "#38bdf8",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton05",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-05",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": -53
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-05",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard06",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-06",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#38bdf8",
-          "fillAlpha": 0.075,
-          "strokeColor": "#38bdf8",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": -53
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton06",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-06",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": -53
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-06",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard07",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-07",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#f472b6",
-          "fillAlpha": 0.075,
-          "strokeColor": "#f472b6",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton07",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-07",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": 54
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-07",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard08",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-08",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#f472b6",
-          "fillAlpha": 0.075,
-          "strokeColor": "#f472b6",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton08",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-08",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": 54
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-08",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard09",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-09",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#f472b6",
-          "fillAlpha": 0.075,
-          "strokeColor": "#f472b6",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": 54
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton09",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-09",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": 54
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-09",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard10",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-10",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#c084fc",
-          "fillAlpha": 0.075,
-          "strokeColor": "#c084fc",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton10",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-10",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": -270,
-            "y": 161
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-10",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard11",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-11",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#c084fc",
-          "fillAlpha": 0.075,
-          "strokeColor": "#c084fc",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton11",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-11",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 25,
-            "y": 161
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-11",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "SkillCard12",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "tree-card-12",
-        "props": {
-          "size": {
-            "width": 252,
-            "height": 88
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#c084fc",
-          "fillAlpha": 0.075,
-          "strokeColor": "#c084fc",
-          "strokeAlpha": 0.82,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": 161
-          },
-          "scrollFactor": 0,
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          }
-        }
-      },
-      {
-        "name": "SkillButton12",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "skill-btn-12",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 238,
-            "height": 74
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 320,
-            "y": 161
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "skill-label-12",
-            "props": {
-              "text": "TIER\nGESPERRT",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 14,
-              "lineSpacing": 2,
-              "align": "center",
-              "color": "#94a3b8",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
       },
       {
         "name": "Title",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "tree-title",
         "props": {
-          "text": "FORSCHUNGSNETZ",
+          "text": "STERNENKARTE",
           "fontId": "silkscreen-latin-700",
           "fontSize": 23,
           "align": "left",
@@ -1614,9 +312,9 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "tree-subtitle",
         "props": {
-          "text": "53 KNOTEN · 4 FORSCHUNGSPFADE · 13 STUFEN",
+          "text": "ZIEHEN · ZOOMEN · ENTDECKEN",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 13,
+          "fontSize": 11,
           "align": "left",
           "color": "#64748b",
           "origin": {
@@ -1636,7 +334,7 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "tree-progress",
         "props": {
-          "text": "0 / 53 INSTALLIERT",
+          "text": "0 / 53 STERNE AKTIV",
           "fontId": "silkscreen-latin-700",
           "fontSize": 13,
           "align": "left",
@@ -1647,7 +345,7 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": 210,
+            "x": 180,
             "y": -312
           },
           "scrollFactor": 0
@@ -1669,27 +367,27 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": 210,
+            "x": 180,
             "y": -278
           },
           "scrollFactor": 0
         }
       },
       {
-        "name": "PreviousTierPage",
+        "name": "ZoomOut",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-ring-prev",
+        "nodeId": "tree-zoom-out",
         "props": {
           "enabled": true,
           "size": {
-            "width": 80,
-            "height": 60
+            "width": 60,
+            "height": 58
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": -140,
-            "y": -294
+            "x": -80,
+            "y": -295
           },
           "scrollFactor": 0
         },
@@ -1697,12 +395,11 @@
           {
             "name": "Label",
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-ring-prev-label",
+            "nodeId": "tree-zoom-out-label",
             "props": {
-              "text": "<",
+              "text": "-",
               "fontId": "silkscreen-latin-700",
               "fontSize": 20,
-              "lineSpacing": 2,
               "align": "center",
               "color": "#e2e8f0",
               "origin": {
@@ -1715,42 +412,20 @@
         ]
       },
       {
-        "name": "TierPage",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "tree-ring-text",
-        "props": {
-          "text": "TIER 1–3",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 13,
-          "align": "center",
-          "color": "#e2e8f0",
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": 0,
-            "y": -294
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "NextTierPage",
+        "name": "ResetView",
         "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "tree-ring-next",
+        "nodeId": "tree-reset-view",
         "props": {
           "enabled": true,
           "size": {
-            "width": 80,
-            "height": 60
+            "width": 72,
+            "height": 58
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": 140,
-            "y": -294
+            "x": 0,
+            "y": -295
           },
           "scrollFactor": 0
         },
@@ -1758,12 +433,49 @@
           {
             "name": "Label",
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "tree-ring-next-label",
+            "nodeId": "tree-reset-view-label",
             "props": {
-              "text": ">",
+              "text": "◎",
               "fontId": "silkscreen-latin-700",
               "fontSize": 20,
-              "lineSpacing": 2,
+              "align": "center",
+              "color": "#e2e8f0",
+              "origin": {
+                "x": 0.5,
+                "y": 0.5
+              },
+              "scrollFactor": 0
+            }
+          }
+        ]
+      },
+      {
+        "name": "ZoomIn",
+        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
+        "nodeId": "tree-zoom-in",
+        "props": {
+          "enabled": true,
+          "size": {
+            "width": 60,
+            "height": 58
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "position": {
+            "x": 80,
+            "y": -295
+          },
+          "scrollFactor": 0
+        },
+        "children": [
+          {
+            "name": "Label",
+            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+            "nodeId": "tree-zoom-in-label",
+            "props": {
+              "text": "+",
+              "fontId": "silkscreen-latin-700",
+              "fontSize": 20,
               "align": "center",
               "color": "#e2e8f0",
               "origin": {
@@ -1789,7 +501,7 @@
           "parentAnchor": "center",
           "position": {
             "x": 580,
-            "y": -294
+            "y": -295
           },
           "scrollFactor": 0
         },
@@ -1802,7 +514,6 @@
               "text": "X",
               "fontId": "silkscreen-latin-700",
               "fontSize": 18,
-              "lineSpacing": 2,
               "align": "center",
               "color": "#fca5a5",
               "origin": {
@@ -1819,7 +530,7 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "tree-detail-title",
         "props": {
-          "text": "KNOTEN AUSWÄHLEN",
+          "text": "STERN AUSWÄHLEN",
           "fontId": "silkscreen-latin-700",
           "fontSize": 19,
           "align": "left",
@@ -1841,9 +552,9 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "tree-detail-description",
         "props": {
-          "text": "Wähle einen Knoten, um Details und Voraussetzungen zu sehen.",
+          "text": "Ziehen zum Navigieren · Mausrad oder Pinch zum Zoomen",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 14,
+          "fontSize": 13,
           "align": "left",
           "color": "#cbd5e1",
           "origin": {
@@ -1863,9 +574,9 @@
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "tree-status",
         "props": {
-          "text": "Gesperrte Knoten zeigen dir trotzdem, was später möglich wird.",
+          "text": "LEUCHTENDE LINIEN ZEIGEN DEINEN AKTIVEN FORSCHUNGSWEG",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 12,
+          "fontSize": 11,
           "align": "left",
           "color": "#64748b",
           "origin": {
@@ -1887,7 +598,7 @@
         "props": {
           "enabled": true,
           "size": {
-            "width": 190,
+            "width": 210,
             "height": 74
           },
           "sizeMode": "explicit",
@@ -1904,10 +615,9 @@
             "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
             "nodeId": "tree-purchase-label",
             "props": {
-              "text": "KNOTEN WÄHLEN",
+              "text": "STERN WÄHLEN",
               "fontId": "silkscreen-latin-700",
               "fontSize": 14,
-              "lineSpacing": 2,
               "align": "center",
               "color": "#f8fafc",
               "origin": {
@@ -1927,67 +637,18 @@
           "playerStateNodeId": null,
           "gameplayInputNodeId": null,
           "dialogRootNodeId": "tree-root",
+          "mapNodeId": "tree-space-map",
           "creditsTextNodeId": "tree-credits",
           "progressTextNodeId": "tree-progress",
           "statusTextNodeId": "tree-status",
           "detailTitleNodeId": "tree-detail-title",
           "detailDescriptionNodeId": "tree-detail-description",
-          "ringTextNodeId": "tree-ring-text",
-          "previousRingButtonNodeId": "tree-ring-prev",
-          "nextRingButtonNodeId": "tree-ring-next",
           "purchaseButtonNodeId": "tree-purchase",
           "purchaseLabelNodeId": "tree-purchase-label",
-          "closeButtonNodeId": "tree-close",
-          "buyButtonNodeIds": [
-            "skill-btn-00",
-            "skill-btn-01",
-            "skill-btn-02",
-            "skill-btn-03",
-            "skill-btn-04",
-            "skill-btn-05",
-            "skill-btn-06",
-            "skill-btn-07",
-            "skill-btn-08",
-            "skill-btn-09",
-            "skill-btn-10",
-            "skill-btn-11",
-            "skill-btn-12"
-          ],
-          "buyLabelNodeIds": [
-            "skill-label-00",
-            "skill-label-01",
-            "skill-label-02",
-            "skill-label-03",
-            "skill-label-04",
-            "skill-label-05",
-            "skill-label-06",
-            "skill-label-07",
-            "skill-label-08",
-            "skill-label-09",
-            "skill-label-10",
-            "skill-label-11",
-            "skill-label-12"
-          ],
-          "connectorNodeIds": [
-            "tree-connector-0-0",
-            "tree-connector-0-1",
-            "tree-connector-0-2",
-            "tree-connector-1-0",
-            "tree-connector-1-1",
-            "tree-connector-1-2",
-            "tree-connector-2-0",
-            "tree-connector-2-1",
-            "tree-connector-2-2",
-            "tree-connector-3-0",
-            "tree-connector-3-1",
-            "tree-connector-3-2"
-          ],
-          "branchLabelNodeIds": [
-            "tree-branch-movement",
-            "tree-branch-vision",
-            "tree-branch-mining",
-            "tree-branch-utility"
-          ]
+          "zoomInButtonNodeId": "tree-zoom-in",
+          "zoomOutButtonNodeId": "tree-zoom-out",
+          "resetViewButtonNodeId": "tree-reset-view",
+          "closeButtonNodeId": "tree-close"
         }
       }
     ]

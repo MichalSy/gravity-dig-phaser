@@ -13,6 +13,7 @@ export const NODE_TYPE_IDS = {
   GameRootNode: '297cb39e-5ac2-51ea-a2c4-6f16fa58de77',
   UIRootNode: 'd4b58fdf-c38b-535a-8d9b-f57d36634db0',
   TouchControlsNode: 'a690aad8-ce49-5365-9c2d-0d636d5dcb77',
+  SkillTreeMapNode: 'b74c5d40-d19e-5e1c-8c8a-f61424cc3116',
 } as const;
 
 export type NodeTypeName = keyof typeof NODE_TYPE_IDS;
