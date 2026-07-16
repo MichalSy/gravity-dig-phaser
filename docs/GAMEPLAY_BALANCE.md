@@ -48,18 +48,22 @@ Jeder zerstörte, droppende Block erzeugt weiterhin genau ein sammelbares Item. 
 | Gold | 30 Cr |
 | Diamant | 100 Cr |
 
-## Sternenkarte (Skillbaum)
+## Anime-Forschungsreise (Skillbaum)
 
-Die Schiffsoberfläche wechselt in einen eigenständigen, bildschirmfüllenden **Forschungsraum** mit 53 Skills: dem `Prospektor-Kern` sowie vier farbigen Konstellationen mit je 13 Stufen. Die Ansicht besitzt keinen Dialograhmen und kein dauerhaftes Detailpanel. Jeder Stern ist nur aktivierbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert.
+Die Schiffsoberfläche wechselt in eine eigenständige, bildschirmfüllende **Anime-Forschungsreise** mit 53 echten Skills: dem `Prospektor-Kern` sowie vier farbigen Forschungsfamilien mit je 13 Upgrades. Der Hintergrund zeigt den Panda-Prospektor, **The Bucket**, Kristallminen, Asteroiden und Bergbaustationen. Die Ansicht besitzt keinen Dialograhmen und kein dauerhaftes Detailpanel.
 
-Alle 53 Sterne liegen gleichzeitig in einem großen zusammenhängenden Kartenraum. Die vier Konstellationen verlassen den Kern in deutlich getrennten Richtungen und bilden eigenständige Cluster, sodass sich die frühen Skills nicht überlagern. Die Karte lässt sich mit Maus oder Touch ziehen, per Mausrad beziehungsweise Zwei-Finger-Geste zoomen und jederzeit auf die Gesamtansicht zurücksetzen. Größere Knoten markieren Meilensteine. Aktive Verbindungen leuchten in der Farbe ihres Forschungszweigs. Erst nach Auswahl eines Sterns öffnet sich seitlich ein einklappbarer Inspector mit Name, Beschreibung, Voraussetzung, Kosten und Aktivieren-Button. Die Zustände sind zusätzlich zur Farbe geometrisch erkennbar: aktivierte Sterne besitzen einen hellen Kern, kaufbare Sterne einen zusätzlichen Außenring, gesperrte Sterne bleiben dunkel.
+Jeder kleine Skill erscheint ausschließlich als individueller Icon-Slot. Fünf große Meilensteine verwenden ein gemeinsames Kartenformat mit Text: `Mikro-Jetpack`, `Kristallradar`, `Quantenbohrer`, `Sternenfrachter` und `Gravitationskern`. Das Mikro-Jetpack zeigt ausdrücklich den Panda. Ein Antippen öffnet nur ein kleines, am Skill verankertes Popover mit Name, Kurzbeschreibung, Kosten und Lernaktion. Voraussetzungen oder technische Abhängigkeitslisten werden dort nicht eingeblendet.
+
+Der Forschungsgraph ist kein Satz aus vier linearen Ketten mehr. Mehrere Knoten besitzen zwei eingehende Routen, Querverbindungen zwischen Forschungsfamilien und entweder alternative (`any`) oder gemeinsam erforderliche (`all`) Voraussetzungen. Dadurch können Wege zusammenlaufen und wichtige Skills über unterschiedliche Richtungen erreichbar werden. Alte Upgrade-IDs, gespeicherte Käufe, Kosten und Gameplayeffekte bleiben kompatibel. Käufe werden weiterhin zentral im `PlayerStateManager` validiert.
+
+Alle 53 Slots liegen in einem großen zusammenhängenden Kartenraum. Die Karte lässt sich mit Maus oder Touch ziehen, per Mausrad beziehungsweise Zwei-Finger-Geste zoomen und jederzeit auf die Gesamtansicht zurücksetzen. Aktive Verbindungen leuchten in der Farbe ihrer Forschungsfamilie. Installierte, kaufbare, zu teure, gesperrte und ausgewählte Skills besitzen klar getrennte Rahmenzustände.
 
 | Ast | Stufe 1 | Stufe 2 | Stufe 3 |
 |---|---|---|---|
 | Bewegung | Federstiefel: +12 % Sprunghöhe | Mikro-Jetpack: 1 Luftsprung | Raketenhose: 2 Luftsprünge, 28 % weniger Schwerkraft |
-| Sicht | Weitwinkel-Visier: Sicht 3 | Erz-Scanner: Erzmarkierungen Radius 4 | Röntgen-Kartoffel: Scanner 7, +1 Sicht |
-| Mining | Laser-Fokus: +25 % Schaden | Kettenblitz: 2 Nachbarblöcke | Gewitter-Abo: 4 Nachbarblöcke, +15 % Schaden |
-| Utility | Cargo-Tetris: +1 Slot | Taschen-Wurmloch: +3 Stack, Magnet 140 px | Goldene Gummiente: +25 Leben, Magnet 220 px, -15 % Schwerkraft |
+| Sicht | Weitwinkel-Visier: Sicht 3 | Erz-Scanner: Erzmarkierungen Radius 4 | Kristallradar: Scanner 7, +1 Sicht |
+| Mining | Laser-Fokus: +25 % Schaden | Kettenblitz: 2 Nachbarblöcke | Quantenbohrer: 4 Nachbarblöcke, +15 % Schaden |
+| Utility | Cargo-Tetris: +1 Slot | Sternenfrachter: +3 Stack, Magnet 140 px | Goldene Gummiente: +25 Leben, Magnet 220 px, -15 % Schwerkraft |
 
 ### Ungewöhnliche Tiers 4–13
 
@@ -74,9 +78,9 @@ Alle 53 Sterne liegen gleichzeitig in einem großen zusammenhängenden Kartenrau
 | 10 | Panik-Teleporter | Prophetische Brotkrumen | Rekursive Spitzhacke | Tragbare Schiffswerft |
 | 11 | Kometen-Kniescheiben | Seismischer Klatsch | Koffein-Strahl | Kosmischer Staubsauger |
 | 12 | Quantum-Himmel-und-Hölle | Allwissender Toaster | Lokale Apokalypse | Administrative Unsterblichkeit |
-| 13 | Schwerkraft deinstallieren | Planet ohne Privatsphäre | Planet deabonnieren | Realität Premium |
+| 13 | Schwerkraft deinstallieren | Planet ohne Privatsphäre | Planet deabonnieren | Gravitationskern |
 
-Die ungewöhnlichen Skills kombinieren bewusst normalerweise getrennte Systeme. Beispiele: Der `Steuerflucht-Bohrer` koppelt Laserschaden mit Cargo-Stackgröße, `Geologie-Karaoke` verbindet Scanner und Energieregeneration, `Loot-Bumerang` koppelt Magnet und Laserreichweite, und `Realität Premium` ist ein teures Multi-System-Endgamepaket. Alle Boni verändern reale effektive Stats und sind keine reinen Flavor-Texte.
+Die ungewöhnlichen Skills kombinieren bewusst normalerweise getrennte Systeme. Beispiele: Der `Steuerflucht-Bohrer` koppelt Laserschaden mit Cargo-Stackgröße, `Geologie-Karaoke` verbindet Scanner und Energieregeneration, `Loot-Bumerang` koppelt Magnet und Laserreichweite, und der `Gravitationskern` ist ein teures Multi-System-Endgamepaket. Alle Boni verändern reale effektive Stats und sind keine reinen Flavor-Texte.
 
 Der Kern kostet `50 Cr`. Die ersten drei Tiers kosten ungefähr `100–1100 Cr`; die späteren Endgame-Tiers steigen bis `30.000 Cr`. Der Vollausbau aller 53 Skills kostet `415.325 Cr`. Farbcodierung: Grün Bewegung, Blau Sicht, Pink Mining, Lila Utility.
 

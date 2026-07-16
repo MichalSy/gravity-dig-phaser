@@ -47,14 +47,23 @@ describe('early-game economy balance', () => {
     expect(SKILL_TREE_IDS).toHaveLength(53);
     expect(new Set(SKILL_TREE_IDS).size).toBe(53);
     expect(UPGRADE_DEFINITIONS.prospector_core.prerequisites).toBeUndefined();
+    const skillIds = new Set(SKILL_TREE_IDS);
     for (const branch of Object.values(SKILL_TREE_BRANCHES)) {
       expect(branch).toHaveLength(13);
-      let previous: (typeof SKILL_TREE_IDS)[number] = 'prospector_core';
       for (const id of branch) {
-        expect(UPGRADE_DEFINITIONS[id].prerequisites).toEqual([previous]);
-        previous = id;
+        const prerequisites = UPGRADE_DEFINITIONS[id].prerequisites ?? [];
+        expect(prerequisites.length).toBeGreaterThan(0);
+        expect(prerequisites.every((prerequisite) => skillIds.has(prerequisite))).toBe(true);
+        expect(prerequisites).not.toContain(id);
       }
     }
+    const multiRouteSkills = SKILL_TREE_IDS.filter((id) => (UPGRADE_DEFINITIONS[id].prerequisites?.length ?? 0) > 1);
+    const alternativeRouteSkills = multiRouteSkills.filter((id) => UPGRADE_DEFINITIONS[id].prerequisiteMode === 'any');
+    expect(multiRouteSkills.length).toBeGreaterThanOrEqual(10);
+    expect(alternativeRouteSkills.length).toBeGreaterThanOrEqual(8);
+    expect(UPGRADE_DEFINITIONS.micro_jetpack.prerequisites).toEqual(['spring_boots', 'cargo_tetris']);
+    expect(UPGRADE_DEFINITIONS.micro_jetpack.prerequisiteMode).toBe('any');
+    expect(UPGRADE_DEFINITIONS.rocket_pants.prerequisites).toEqual(['micro_jetpack', 'wide_visor']);
     for (const id of SKILL_TREE_IDS.filter((id) => id !== 'prospector_core')) {
       expect(UPGRADE_DEFINITIONS[id].prerequisites?.length).toBeGreaterThan(0);
       expect(UPGRADE_DEFINITIONS[id].tree).toBeDefined();
@@ -69,15 +78,17 @@ describe('early-game economy balance', () => {
     const skillTreePrefab = JSON.parse(readFileSync('apps/game/public/prefabs/upgrade-dialog.prefab.json', 'utf8'));
     const behavior = skillTreePrefab.root.children.find((node: { name: string }) => node.name === 'UpgradeDialogBehavior');
     const mapNode = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'research-map');
-    const inspector = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'research-inspector');
+    const popover = skillTreePrefab.root.children.find((node: { nodeId?: string }) => node.nodeId === 'research-popover');
     expect(skillTreePrefab.root.name).toBe('ResearchScreen');
     expect(mapNode).toMatchObject({
       nodeTypeId: 'b74c5d40-d19e-5e1c-8c8a-f61424cc3116',
       props: { size: { width: 1280, height: 720 } },
     });
-    expect(inspector.children.some((node: { nodeId?: string }) => node.nodeId === 'research-purchase')).toBe(true);
+    expect(popover.children.some((node: { nodeId?: string }) => node.nodeId === 'research-purchase')).toBe(true);
+    expect(popover.children.some((node: { nodeId?: string }) => node.nodeId === 'research-cost')).toBe(true);
+    expect(popover.children.some((node: { nodeId?: string }) => node.nodeId === 'research-status')).toBe(false);
     expect(behavior.props.mapNodeId).toBe('research-map');
-    expect(behavior.props.inspectorRootNodeId).toBe('research-inspector');
+    expect(behavior.props.popoverRootNodeId).toBe('research-popover');
     expect(behavior.props.purchaseButtonNodeId).toBe('research-purchase');
     expect(behavior.props.detailTitleNodeId).toBe('research-detail-title');
     expect(behavior.props.detailDescriptionNodeId).toBe('research-detail-description');
@@ -89,17 +100,27 @@ describe('early-game economy balance', () => {
     expect(skillTreePrefab.root.children.some((node: { nodeId?: string }) => node.nodeId === 'tree-detail-panel')).toBe(false);
     const dialogSource = readFileSync('apps/game/public/scripts/UI/UpgradeDialogScript.node.ts', 'utf8');
     const mapSource = readFileSync('apps/game/src/ui/nodes/SkillTreeMapNode.ts', 'utf8');
-    expect(dialogSource).toContain('const MAP_WIDTH = CONSTELLATION_MAP_WIDTH');
+    expect(dialogSource).toContain('width: CONSTELLATION_MAP_WIDTH');
     expect(dialogSource).toContain('getConstellationNodePosition(');
     expect(dialogSource).toContain('this.map.setGraph(');
     expect(dialogSource).toContain('this.map.setInputInsets(');
+    expect(dialogSource).toContain('this.map.setInputExclusion(');
     expect(dialogSource).toContain('this.map.setSelectCallback(');
     expect(dialogSource).toContain('purchaseSelected()');
     expect(mapSource).toContain("input.on('pointermove'");
     expect(mapSource).toContain("input.on('wheel'");
     expect(mapSource).toContain('updatePinch()');
     expect(mapSource).toContain('setInputInsets(');
+    expect(mapSource).toContain("'research-anime-background'");
+    expect(mapSource).toContain('node.iconKey');
     expect(mapSource).not.toContain('.setDepth(');
+    const assetManifest = JSON.parse(readFileSync('apps/game/public/assets/assets.manifest.json', 'utf8'));
+    const researchImages = assetManifest.groups.gameplay.images.filter((asset: { key: string }) => asset.key.startsWith('research-'));
+    expect(researchImages).toHaveLength(54);
+    expect(researchImages.some((asset: { key: string }) => asset.key === 'research-anime-background')).toBe(true);
+    for (const id of SKILL_TREE_IDS) {
+      expect(researchImages.some((asset: { key: string }) => asset.key === `research-skill-${id}`)).toBe(true);
+    }
   });
 
   it('keeps every constellation node separated and gives the first tiers extra room', () => {

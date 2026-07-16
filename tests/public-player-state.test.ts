@@ -116,6 +116,23 @@ describe('public player state domain', () => {
     expect(manager.stats.pickupRadius).toBe(140);
   });
 
+  it('supports alternative and converging research routes without changing upgrade ids', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+    const manager = new PlayerStateManager();
+    manager.init();
+    manager.startRun('test-planet', 'route-seed', false);
+    manager.onInspectorPropChanged('credits', 20_000);
+
+    expect(manager.purchaseUpgrade('prospector_core').ok).toBe(true);
+    expect(manager.purchaseUpgrade('cargo_tetris').ok).toBe(true);
+    expect(manager.purchaseUpgrade('micro_jetpack').ok).toBe(true);
+    expect(manager.isUpgradePurchased('spring_boots')).toBe(false);
+    expect(manager.purchaseUpgrade('rocket_pants')).toEqual({ ok: false, message: 'Vorherige Stufe erforderlich' });
+    expect(manager.purchaseUpgrade('wide_visor').ok).toBe(true);
+    expect(manager.purchaseUpgrade('rocket_pants').ok).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
   it('can purchase all 53 research skills only in valid tree order', () => {
     vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
     const manager = new PlayerStateManager();
@@ -124,9 +141,19 @@ describe('public player state domain', () => {
     manager.onInspectorPropChanged('credits', 1_000_000);
 
     expect(manager.purchaseUpgrade('reality_premium')).toEqual({ ok: false, message: 'Vorherige Stufe erforderlich' });
-    for (const upgradeId of SKILL_TREE_IDS) expect(manager.purchaseUpgrade(upgradeId).ok).toBe(true);
+    const remaining = new Set(SKILL_TREE_IDS);
+    let progressed = true;
+    while (remaining.size > 0 && progressed) {
+      progressed = false;
+      for (const upgradeId of [...remaining]) {
+        if (!manager.purchaseUpgrade(upgradeId).ok) continue;
+        remaining.delete(upgradeId);
+        progressed = true;
+      }
+    }
+    expect([...remaining]).toEqual([]);
 
-    expect(manager.save.profile.upgrades.purchased).toEqual(SKILL_TREE_IDS);
+    expect(new Set(manager.save.profile.upgrades.purchased)).toEqual(new Set(SKILL_TREE_IDS));
     expect(manager.getProfileCredits()).toBe(584_675);
     expect(manager.stats.airJumps).toBe(4);
     expect(manager.stats.chainMiningTargets).toBe(12);

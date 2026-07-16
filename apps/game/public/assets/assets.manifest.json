@@ -4,66 +4,428 @@
   "groups": {
     "startup": {
       "images": [
-        { "key": "title-screen", "path": "/assets/ui/menu/title_screen.webp" },
-        { "key": "loading-screen", "path": "/assets/ui/menu/loading_screen.webp" },
-        { "key": "menu-button-active", "path": "/assets/ui/menu/menu_button_active.webp" },
-        { "key": "menu-button-inactive", "path": "/assets/ui/menu/menu_button_inactive.webp" }
+        {
+          "key": "title-screen",
+          "path": "/assets/ui/menu/title_screen.webp"
+        },
+        {
+          "key": "loading-screen",
+          "path": "/assets/ui/menu/loading_screen.webp"
+        },
+        {
+          "key": "menu-button-active",
+          "path": "/assets/ui/menu/menu_button_active.webp"
+        },
+        {
+          "key": "menu-button-inactive",
+          "path": "/assets/ui/menu/menu_button_inactive.webp"
+        }
       ],
-      "fontManifests": ["/fonts/manifest.json"]
+      "fontManifests": [
+        "/fonts/manifest.json"
+      ]
     },
     "gameplay": {
       "images": [
-        { "key": "tiles", "path": "/assets/tilesets/atlas/tiles.atlas.webp" },
-        { "key": "backwall-tiles", "path": "/assets/tilesets/atlas/backwall.atlas.webp" },
-        { "key": "ship", "path": "/assets/ships/the_bucket.webp" },
-        { "key": "drill-tunnel-bg", "path": "/assets/ships/drill_tunnel_bg.webp" },
-        { "key": "laser-dot", "path": "/assets/effects/laser_beam.webp" },
-        { "key": "hud-hp-fuel-atlas", "path": "/assets/ui/hud/hud_hp_fuel_atlas.webp", "meta": true },
-        { "key": "hud-item-rock", "path": "/assets/ui/hud/hud_item_rock.webp" },
-        { "key": "item-sand", "path": "/assets/tilesets/icons/icon_sand.png" },
-        { "key": "item-clay", "path": "/assets/tilesets/icons/icon_clay.png" },
-        { "key": "item-gravel", "path": "/assets/tilesets/icons/icon_gravel.png" },
-        { "key": "item-stone", "path": "/assets/tilesets/icons/icon_stone.png" },
-        { "key": "item-basalt", "path": "/assets/tilesets/icons/icon_basalt.png" },
-        { "key": "item-copper", "path": "/assets/tilesets/icons/icon_copper.png" },
-        { "key": "item-iron", "path": "/assets/tilesets/icons/icon_iron.png" },
-        { "key": "item-gold", "path": "/assets/tilesets/icons/icon_gold.png" },
-        { "key": "item-diamond", "path": "/assets/tilesets/icons/icon_diamond.png" },
-        { "key": "crack-1", "path": "/assets/effects/cracks/crack-1.webp" },
-        { "key": "crack-2", "path": "/assets/effects/cracks/crack-2.webp" },
-        { "key": "crack-3", "path": "/assets/effects/cracks/crack-3.webp" },
-        { "key": "crack-4", "path": "/assets/effects/cracks/crack-4.webp" },
-        { "key": "player-walk-0", "path": "/assets/character/generated/walk/east/frame_000.webp" },
-        { "key": "player-walk-1", "path": "/assets/character/generated/walk/east/frame_001.webp" },
-        { "key": "player-walk-2", "path": "/assets/character/generated/walk/east/frame_002.webp" },
-        { "key": "player-walk-3", "path": "/assets/character/generated/walk/east/frame_003.webp" },
-        { "key": "player-walk-4", "path": "/assets/character/generated/walk/east/frame_004.webp" },
-        { "key": "player-walk-5", "path": "/assets/character/generated/walk/east/frame_005.webp" },
-        { "key": "player-jump-0", "path": "/assets/character/generated/jump/east/frame_000.webp" },
-        { "key": "player-jump-1", "path": "/assets/character/generated/jump/east/frame_001.webp" },
-        { "key": "player-idle-0", "path": "/assets/character/generated/idle/east/frame_000.webp" },
-        { "key": "player-idle-1", "path": "/assets/character/generated/idle/east/frame_001.webp" },
-        { "key": "player-idle-2", "path": "/assets/character/generated/idle/east/frame_002.webp" },
-        { "key": "player-idle-3", "path": "/assets/character/generated/idle/east/frame_003.webp" }
+        {
+          "key": "tiles",
+          "path": "/assets/tilesets/atlas/tiles.atlas.webp"
+        },
+        {
+          "key": "backwall-tiles",
+          "path": "/assets/tilesets/atlas/backwall.atlas.webp"
+        },
+        {
+          "key": "ship",
+          "path": "/assets/ships/the_bucket.webp"
+        },
+        {
+          "key": "drill-tunnel-bg",
+          "path": "/assets/ships/drill_tunnel_bg.webp"
+        },
+        {
+          "key": "laser-dot",
+          "path": "/assets/effects/laser_beam.webp"
+        },
+        {
+          "key": "hud-hp-fuel-atlas",
+          "path": "/assets/ui/hud/hud_hp_fuel_atlas.webp",
+          "meta": true
+        },
+        {
+          "key": "hud-item-rock",
+          "path": "/assets/ui/hud/hud_item_rock.webp"
+        },
+        {
+          "key": "item-sand",
+          "path": "/assets/tilesets/icons/icon_sand.png"
+        },
+        {
+          "key": "item-clay",
+          "path": "/assets/tilesets/icons/icon_clay.png"
+        },
+        {
+          "key": "item-gravel",
+          "path": "/assets/tilesets/icons/icon_gravel.png"
+        },
+        {
+          "key": "item-stone",
+          "path": "/assets/tilesets/icons/icon_stone.png"
+        },
+        {
+          "key": "item-basalt",
+          "path": "/assets/tilesets/icons/icon_basalt.png"
+        },
+        {
+          "key": "item-copper",
+          "path": "/assets/tilesets/icons/icon_copper.png"
+        },
+        {
+          "key": "item-iron",
+          "path": "/assets/tilesets/icons/icon_iron.png"
+        },
+        {
+          "key": "item-gold",
+          "path": "/assets/tilesets/icons/icon_gold.png"
+        },
+        {
+          "key": "item-diamond",
+          "path": "/assets/tilesets/icons/icon_diamond.png"
+        },
+        {
+          "key": "crack-1",
+          "path": "/assets/effects/cracks/crack-1.webp"
+        },
+        {
+          "key": "crack-2",
+          "path": "/assets/effects/cracks/crack-2.webp"
+        },
+        {
+          "key": "crack-3",
+          "path": "/assets/effects/cracks/crack-3.webp"
+        },
+        {
+          "key": "crack-4",
+          "path": "/assets/effects/cracks/crack-4.webp"
+        },
+        {
+          "key": "player-walk-0",
+          "path": "/assets/character/generated/walk/east/frame_000.webp"
+        },
+        {
+          "key": "player-walk-1",
+          "path": "/assets/character/generated/walk/east/frame_001.webp"
+        },
+        {
+          "key": "player-walk-2",
+          "path": "/assets/character/generated/walk/east/frame_002.webp"
+        },
+        {
+          "key": "player-walk-3",
+          "path": "/assets/character/generated/walk/east/frame_003.webp"
+        },
+        {
+          "key": "player-walk-4",
+          "path": "/assets/character/generated/walk/east/frame_004.webp"
+        },
+        {
+          "key": "player-walk-5",
+          "path": "/assets/character/generated/walk/east/frame_005.webp"
+        },
+        {
+          "key": "player-jump-0",
+          "path": "/assets/character/generated/jump/east/frame_000.webp"
+        },
+        {
+          "key": "player-jump-1",
+          "path": "/assets/character/generated/jump/east/frame_001.webp"
+        },
+        {
+          "key": "player-idle-0",
+          "path": "/assets/character/generated/idle/east/frame_000.webp"
+        },
+        {
+          "key": "player-idle-1",
+          "path": "/assets/character/generated/idle/east/frame_001.webp"
+        },
+        {
+          "key": "player-idle-2",
+          "path": "/assets/character/generated/idle/east/frame_002.webp"
+        },
+        {
+          "key": "player-idle-3",
+          "path": "/assets/character/generated/idle/east/frame_003.webp"
+        },
+        {
+          "key": "research-anime-background",
+          "path": "/assets/ui/research/anime/research-background.webp"
+        },
+        {
+          "key": "research-skill-administrative_immortality",
+          "path": "/assets/ui/research/anime/skill-administrative_immortality.webp"
+        },
+        {
+          "key": "research-skill-antigravity_sandwich",
+          "path": "/assets/ui/research/anime/skill-antigravity_sandwich.webp"
+        },
+        {
+          "key": "research-skill-arc_apprentice",
+          "path": "/assets/ui/research/anime/skill-arc_apprentice.webp"
+        },
+        {
+          "key": "research-skill-bounce_tax_refund",
+          "path": "/assets/ui/research/anime/skill-bounce_tax_refund.webp"
+        },
+        {
+          "key": "research-skill-bureaucratic_xray",
+          "path": "/assets/ui/research/anime/skill-bureaucratic_xray.webp"
+        },
+        {
+          "key": "research-skill-caffeinated_beam",
+          "path": "/assets/ui/research/anime/skill-caffeinated_beam.webp"
+        },
+        {
+          "key": "research-skill-cargo_origami",
+          "path": "/assets/ui/research/anime/skill-cargo_origami.webp"
+        },
+        {
+          "key": "research-skill-cargo_tetris",
+          "path": "/assets/ui/research/anime/skill-cargo_tetris.webp"
+        },
+        {
+          "key": "research-skill-ceiling_negotiator",
+          "path": "/assets/ui/research/anime/skill-ceiling_negotiator.webp"
+        },
+        {
+          "key": "research-skill-chain_lightning",
+          "path": "/assets/ui/research/anime/skill-chain_lightning.webp"
+        },
+        {
+          "key": "research-skill-chrono_shoelaces",
+          "path": "/assets/ui/research/anime/skill-chrono_shoelaces.webp"
+        },
+        {
+          "key": "research-skill-comet_kneecaps",
+          "path": "/assets/ui/research/anime/skill-comet_kneecaps.webp"
+        },
+        {
+          "key": "research-skill-copper_gossip",
+          "path": "/assets/ui/research/anime/skill-copper_gossip.webp"
+        },
+        {
+          "key": "research-skill-cosmic_vacuum",
+          "path": "/assets/ui/research/anime/skill-cosmic_vacuum.webp"
+        },
+        {
+          "key": "research-skill-emergency_banana",
+          "path": "/assets/ui/research/anime/skill-emergency_banana.webp"
+        },
+        {
+          "key": "research-skill-fog_coupon",
+          "path": "/assets/ui/research/anime/skill-fog_coupon.webp"
+        },
+        {
+          "key": "research-skill-geology_karaoke",
+          "path": "/assets/ui/research/anime/skill-geology_karaoke.webp"
+        },
+        {
+          "key": "research-skill-insurance_fraud",
+          "path": "/assets/ui/research/anime/skill-insurance_fraud.webp"
+        },
+        {
+          "key": "research-skill-laser_focus",
+          "path": "/assets/ui/research/anime/skill-laser_focus.webp"
+        },
+        {
+          "key": "research-skill-laser_spaghetti",
+          "path": "/assets/ui/research/anime/skill-laser_spaghetti.webp"
+        },
+        {
+          "key": "research-skill-localized_apocalypse",
+          "path": "/assets/ui/research/anime/skill-localized_apocalypse.webp"
+        },
+        {
+          "key": "research-skill-loot_boomerang",
+          "path": "/assets/ui/research/anime/skill-loot_boomerang.webp"
+        },
+        {
+          "key": "research-skill-micro_jetpack",
+          "path": "/assets/ui/research/anime/skill-micro_jetpack.webp"
+        },
+        {
+          "key": "research-skill-moonwalk_insurance",
+          "path": "/assets/ui/research/anime/skill-moonwalk_insurance.webp"
+        },
+        {
+          "key": "research-skill-omniscient_toaster",
+          "path": "/assets/ui/research/anime/skill-omniscient_toaster.webp"
+        },
+        {
+          "key": "research-skill-ore_blender",
+          "path": "/assets/ui/research/anime/skill-ore_blender.webp"
+        },
+        {
+          "key": "research-skill-ore_scanner",
+          "path": "/assets/ui/research/anime/skill-ore_scanner.webp"
+        },
+        {
+          "key": "research-skill-panic_teleporter",
+          "path": "/assets/ui/research/anime/skill-panic_teleporter.webp"
+        },
+        {
+          "key": "research-skill-planetary_unsubscribe",
+          "path": "/assets/ui/research/anime/skill-planetary_unsubscribe.webp"
+        },
+        {
+          "key": "research-skill-plasma_fondue",
+          "path": "/assets/ui/research/anime/skill-plasma_fondue.webp"
+        },
+        {
+          "key": "research-skill-pocket_dimension",
+          "path": "/assets/ui/research/anime/skill-pocket_dimension.webp"
+        },
+        {
+          "key": "research-skill-pocket_wormhole",
+          "path": "/assets/ui/research/anime/skill-pocket_wormhole.webp"
+        },
+        {
+          "key": "research-skill-portable_shipyard",
+          "path": "/assets/ui/research/anime/skill-portable_shipyard.webp"
+        },
+        {
+          "key": "research-skill-privacy_abolished",
+          "path": "/assets/ui/research/anime/skill-privacy_abolished.webp"
+        },
+        {
+          "key": "research-skill-prophetic_breadcrumbs",
+          "path": "/assets/ui/research/anime/skill-prophetic_breadcrumbs.webp"
+        },
+        {
+          "key": "research-skill-prospector_core",
+          "path": "/assets/ui/research/anime/skill-prospector_core.webp"
+        },
+        {
+          "key": "research-skill-quantum_hopscotch",
+          "path": "/assets/ui/research/anime/skill-quantum_hopscotch.webp"
+        },
+        {
+          "key": "research-skill-reality_premium",
+          "path": "/assets/ui/research/anime/skill-reality_premium.webp"
+        },
+        {
+          "key": "research-skill-recursive_pickaxe",
+          "path": "/assets/ui/research/anime/skill-recursive_pickaxe.webp"
+        },
+        {
+          "key": "research-skill-rocket_pants",
+          "path": "/assets/ui/research/anime/skill-rocket_pants.webp"
+        },
+        {
+          "key": "research-skill-rubber_duck_protocol",
+          "path": "/assets/ui/research/anime/skill-rubber_duck_protocol.webp"
+        },
+        {
+          "key": "research-skill-schrodinger_map",
+          "path": "/assets/ui/research/anime/skill-schrodinger_map.webp"
+        },
+        {
+          "key": "research-skill-seismic_gossip",
+          "path": "/assets/ui/research/anime/skill-seismic_gossip.webp"
+        },
+        {
+          "key": "research-skill-spectrum_monocle",
+          "path": "/assets/ui/research/anime/skill-spectrum_monocle.webp"
+        },
+        {
+          "key": "research-skill-spring_boots",
+          "path": "/assets/ui/research/anime/skill-spring_boots.webp"
+        },
+        {
+          "key": "research-skill-storm_subscription",
+          "path": "/assets/ui/research/anime/skill-storm_subscription.webp"
+        },
+        {
+          "key": "research-skill-tax_evasion_drill",
+          "path": "/assets/ui/research/anime/skill-tax_evasion_drill.webp"
+        },
+        {
+          "key": "research-skill-thunder_ferret",
+          "path": "/assets/ui/research/anime/skill-thunder_ferret.webp"
+        },
+        {
+          "key": "research-skill-turbo_snail",
+          "path": "/assets/ui/research/anime/skill-turbo_snail.webp"
+        },
+        {
+          "key": "research-skill-uninstall_gravity",
+          "path": "/assets/ui/research/anime/skill-uninstall_gravity.webp"
+        },
+        {
+          "key": "research-skill-unionized_nanobots",
+          "path": "/assets/ui/research/anime/skill-unionized_nanobots.webp"
+        },
+        {
+          "key": "research-skill-wide_visor",
+          "path": "/assets/ui/research/anime/skill-wide_visor.webp"
+        },
+        {
+          "key": "research-skill-xray_potato",
+          "path": "/assets/ui/research/anime/skill-xray_potato.webp"
+        }
       ],
       "audio": [
-        { "key": "laser-loop", "path": "/assets/sfx/laser-loop.wav" },
-        { "key": "block-break-dirt", "path": "/assets/sfx/block-break-dirt.wav" },
-        { "key": "block-break-gem", "path": "/assets/sfx/block-break-gem.wav" },
-        { "key": "cargo-credit-chime", "path": "/assets/sfx/cargo-credit-chime.wav" },
-        { "key": "resource-pickup", "path": "/assets/sfx/resource-pickup.wav" },
-        { "key": "jump", "path": "/assets/sfx/jump.wav" },
-        { "key": "walk-1", "path": "/assets/sfx/walk-1.wav" },
-        { "key": "walk-2", "path": "/assets/sfx/walk-2.wav" },
-        { "key": "walk-3", "path": "/assets/sfx/walk-3.wav" }
+        {
+          "key": "laser-loop",
+          "path": "/assets/sfx/laser-loop.wav"
+        },
+        {
+          "key": "block-break-dirt",
+          "path": "/assets/sfx/block-break-dirt.wav"
+        },
+        {
+          "key": "block-break-gem",
+          "path": "/assets/sfx/block-break-gem.wav"
+        },
+        {
+          "key": "cargo-credit-chime",
+          "path": "/assets/sfx/cargo-credit-chime.wav"
+        },
+        {
+          "key": "resource-pickup",
+          "path": "/assets/sfx/resource-pickup.wav"
+        },
+        {
+          "key": "jump",
+          "path": "/assets/sfx/jump.wav"
+        },
+        {
+          "key": "walk-1",
+          "path": "/assets/sfx/walk-1.wav"
+        },
+        {
+          "key": "walk-2",
+          "path": "/assets/sfx/walk-2.wav"
+        },
+        {
+          "key": "walk-3",
+          "path": "/assets/sfx/walk-3.wav"
+        }
       ],
       "json": [
-        { "key": "dev-planet", "path": "/config/planets/dev_planet.json" }
+        {
+          "key": "dev-planet",
+          "path": "/config/planets/dev_planet.json"
+        }
       ],
       "animationSets": [
-        { "key": "character", "path": "/assets/character/character.animation.json" }
+        {
+          "key": "character",
+          "path": "/assets/character/character.animation.json"
+        }
       ],
-      "fontManifests": ["/fonts/manifest.json"]
+      "fontManifests": [
+        "/fonts/manifest.json"
+      ]
     }
   }
 }

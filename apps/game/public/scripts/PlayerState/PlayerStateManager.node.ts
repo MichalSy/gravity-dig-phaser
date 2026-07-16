@@ -1,6 +1,6 @@
 import * as Core from '@gravity-dig/game-core';
 import { ITEM_DEFINITIONS } from './catalogs/items';
-import { UPGRADE_DEFINITIONS } from './catalogs/upgrades';
+import { areUpgradePrerequisitesMet, UPGRADE_DEFINITIONS } from './catalogs/upgrades';
 import { addItem, getInventoryCount, normalizeInventory, removeItem } from './inventory';
 import { createRunState, normalizeRunState } from './RunState';
 import { loadSaveGame, saveGame } from './saveGame';
@@ -213,8 +213,9 @@ export default class PlayerStateManager extends Core.ScriptNode {
     const definition = UPGRADE_DEFINITIONS[upgradeId];
     if (!definition) return { ok: false, message: 'Upgrade nicht gefunden' };
     if (this.isUpgradePurchased(upgradeId)) return { ok: false, message: 'Bereits installiert' };
-    const missingPrerequisite = definition.prerequisites?.find((id) => !this.isUpgradePurchased(id));
-    if (missingPrerequisite) return { ok: false, message: 'Vorherige Stufe erforderlich' };
+    if (!areUpgradePrerequisitesMet(definition, (id) => this.isUpgradePurchased(id))) {
+      return { ok: false, message: 'Vorherige Stufe erforderlich' };
+    }
     const credits = definition.cost.credits ?? 0;
     if (this.saveGameState.profile.credits < credits) return { ok: false, message: 'Nicht genug Credits' };
     for (const [itemId, quantity] of Object.entries(definition.cost.items ?? {}) as [ItemId, number][]) {

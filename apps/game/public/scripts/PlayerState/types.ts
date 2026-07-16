@@ -177,6 +177,7 @@ export interface UpgradeDefinition {
   cost: Cost;
   effects: StatModifier[];
   prerequisites?: UpgradeId[];
+  prerequisiteMode?: 'all' | 'any';
   tree?: { x: number; y: number; branch: 'core' | 'movement' | 'vision' | 'mining' | 'utility' };
 }
 

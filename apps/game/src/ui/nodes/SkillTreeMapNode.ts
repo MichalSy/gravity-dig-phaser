@@ -12,7 +12,9 @@ export interface SkillTreeMapGraphNode {
   x: number;
   y: number;
   state: SkillTreeMapState;
+  iconKey: string;
   milestone?: boolean;
+  rank?: number;
 }
 
 export interface SkillTreeMapGraphEdge {
@@ -45,6 +47,13 @@ export interface SkillTreeMapInputInsets {
   left?: number;
 }
 
+export interface SkillTreeMapExclusionRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 type PointerState = {
   local: Phaser.Math.Vector2;
   previous: Phaser.Math.Vector2;
@@ -53,9 +62,15 @@ type PointerState = {
   moved: boolean;
 };
 
-const MIN_ZOOM = 0.28;
+const MIN_ZOOM = 0.32;
 const MAX_ZOOM = 1.8;
 const DRAG_THRESHOLD = 8;
+const SMALL_WIDTH = 88;
+const SMALL_HEIGHT = 76;
+const ROOT_WIDTH = 108;
+const ROOT_HEIGHT = 84;
+const MILESTONE_WIDTH = 340;
+const MILESTONE_HEIGHT = 108;
 
 export class SkillTreeMapNode extends TransformNode {
   static override readonly nodeTypeId = NODE_TYPE_IDS.SkillTreeMapNode;
@@ -63,14 +78,16 @@ export class SkillTreeMapNode extends TransformNode {
   private phaserScene?: Phaser.Scene;
   private viewportContainer?: Phaser.GameObjects.Container;
   private worldContainer?: Phaser.GameObjects.Container;
-  private backgroundGraphics?: Phaser.GameObjects.Graphics;
+  private backgroundImage?: Phaser.GameObjects.Image;
   private edgeGraphics?: Phaser.GameObjects.Graphics;
   private nodeGraphics?: Phaser.GameObjects.Graphics;
+  private iconsContainer?: Phaser.GameObjects.Container;
   private labelsContainer?: Phaser.GameObjects.Container;
   private graph?: SkillTreeMapGraph;
   private selectedNodeId?: string;
-  private selectCallback?: (nodeId: string) => void;
+  private selectCallback?: (nodeId: string, viewportPosition: { x: number; y: number }) => void;
   private inputInsets: Required<SkillTreeMapInputInsets> = { top: 0, right: 0, bottom: 0, left: 0 };
+  private inputExclusion?: SkillTreeMapExclusionRect;
   private zoom = 0.55;
   private pan = new Phaser.Math.Vector2();
   private readonly pointerStates = new Map<number, PointerState>();
@@ -85,18 +102,25 @@ export class SkillTreeMapNode extends TransformNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.phaserScene.input.addPointer(3);
-    this.backgroundGraphics = this.phaserScene.add.graphics();
+    this.backgroundImage = this.phaserScene.add
+      .image(0, 0, 'research-anime-background')
+      .setScrollFactor(0)
+      .setAlpha(0.98);
     this.edgeGraphics = this.phaserScene.add.graphics();
     this.nodeGraphics = this.phaserScene.add.graphics();
+    this.iconsContainer = this.phaserScene.add.container(0, 0);
     this.labelsContainer = this.phaserScene.add.container(0, 0);
     this.worldContainer = this.phaserScene.add.container(0, 0, [
-      this.backgroundGraphics,
       this.edgeGraphics,
       this.nodeGraphics,
+      this.iconsContainer,
       this.labelsContainer,
     ]);
-    this.viewportContainer = this.phaserScene.add.container(0, 0, [this.worldContainer]).setScrollFactor(0);
+    this.viewportContainer = this.phaserScene.add
+      .container(0, 0, [this.backgroundImage, this.worldContainer])
+      .setScrollFactor(0);
     this.applyViewportTransform();
+    this.layoutBackground();
     this.phaserScene.input.on('pointerdown', this.handlePointerDown, this);
     this.phaserScene.input.on('pointermove', this.handlePointerMove, this);
     this.phaserScene.input.on('pointerup', this.handlePointerUp, this);
@@ -107,6 +131,7 @@ export class SkillTreeMapNode extends TransformNode {
   override coreUpdate(): void {
     if (!this.viewportContainer) return;
     this.applyViewportTransform();
+    this.layoutBackground();
     this.applyViewTransform();
   }
 
@@ -126,7 +151,7 @@ export class SkillTreeMapNode extends TransformNode {
     this.redrawNodes();
   }
 
-  setSelectCallback(callback?: (nodeId: string) => void): void {
+  setSelectCallback(callback?: (nodeId: string, viewportPosition: { x: number; y: number }) => void): void {
     this.selectCallback = callback;
   }
 
@@ -140,6 +165,20 @@ export class SkillTreeMapNode extends TransformNode {
     this.pointerStates.clear();
   }
 
+  setInputExclusion(rect?: SkillTreeMapExclusionRect): void {
+    this.inputExclusion = rect;
+    this.pointerStates.clear();
+  }
+
+  getNodeViewportPosition(nodeId: string): { x: number; y: number } | undefined {
+    const node = this.graph?.nodes.find((candidate) => candidate.id === nodeId);
+    if (!node) return undefined;
+    return {
+      x: node.x * this.zoom + this.pan.x,
+      y: node.y * this.zoom + this.pan.y,
+    };
+  }
+
   zoomBy(factor: number): void {
     this.setZoomAt(this.zoom * factor, new Phaser.Math.Vector2(0, 0));
   }
@@ -147,10 +186,10 @@ export class SkillTreeMapNode extends TransformNode {
   resetView(): void {
     const graph = this.graph;
     if (!graph) return;
-    const fitX = Math.max(0.01, (this.size.width - 80) / graph.width);
-    const fitY = Math.max(0.01, (this.size.height - 60) / graph.height);
+    const fitX = Math.max(0.01, (this.size.width - 90) / graph.width);
+    const fitY = Math.max(0.01, (this.size.height - 105) / graph.height);
     this.zoom = Phaser.Math.Clamp(Math.min(fitX, fitY), MIN_ZOOM, 0.72);
-    this.pan.set(-graph.width * this.zoom * 0.5, -graph.height * this.zoom * 0.5);
+    this.pan.set(-graph.width * this.zoom * 0.5, -graph.height * this.zoom * 0.5 + 26);
     this.applyViewTransform();
   }
 
@@ -172,9 +211,10 @@ export class SkillTreeMapNode extends TransformNode {
     this.viewportContainer?.destroy(true);
     this.viewportContainer = undefined;
     this.worldContainer = undefined;
-    this.backgroundGraphics = undefined;
+    this.backgroundImage = undefined;
     this.edgeGraphics = undefined;
     this.nodeGraphics = undefined;
+    this.iconsContainer = undefined;
     this.labelsContainer = undefined;
     this.phaserScene = undefined;
   }
@@ -184,48 +224,34 @@ export class SkillTreeMapNode extends TransformNode {
     if (!active) this.pointerStates.clear();
   }
 
+  private layoutBackground(): void {
+    this.backgroundImage?.setDisplaySize(this.size.width, this.size.height);
+  }
+
   private redraw(): void {
-    this.redrawBackground();
     this.redrawEdges();
     this.redrawNodes();
   }
 
-  private redrawBackground(): void {
-    const graphics = this.backgroundGraphics;
-    const labels = this.labelsContainer;
-    const graph = this.graph;
-    if (!graphics || !labels || !graph) return;
-    graphics.clear();
-    labels.removeAll(true);
+  private getNodeDimensions(node: SkillTreeMapGraphNode): { width: number; height: number } {
+    if (node.milestone) return { width: MILESTONE_WIDTH, height: MILESTONE_HEIGHT };
+    if (node.tier === 0) return { width: ROOT_WIDTH, height: ROOT_HEIGHT };
+    return { width: SMALL_WIDTH, height: SMALL_HEIGHT };
+  }
 
-    graphics.fillStyle(0x020617, 1).fillRect(0, 0, graph.width, graph.height);
-    const nebulae = (graph.regions ?? []).map((region) => ({
-      x: region.x,
-      y: region.y,
-      color: Phaser.Display.Color.HexStringToColor(region.color).color,
-    }));
-    for (const nebula of nebulae) {
-      for (let radius = 250; radius > 40; radius -= 35) {
-        graphics.fillStyle(nebula.color, 0.008 + (250 - radius) / 35000).fillCircle(nebula.x, nebula.y, radius);
-      }
-    }
-    for (let index = 0; index < 260; index += 1) {
-      const x = (index * 811 + 97) % graph.width;
-      const y = (index * 467 + 43) % graph.height;
-      const radius = index % 17 === 0 ? 2.2 : index % 5 === 0 ? 1.4 : 0.8;
-      const alpha = index % 9 === 0 ? 0.8 : 0.34;
-      graphics.fillStyle(index % 13 === 0 ? 0x93c5fd : 0xffffff, alpha).fillCircle(x, y, radius);
-    }
-
-    for (const region of graph.regions ?? []) {
-      labels.add(this.phaserScene!.add.text(region.x, region.y, region.label, {
-        fontFamily: 'Silkscreen, monospace',
-        fontSize: '26px',
-        color: region.color,
-        stroke: '#020617',
-        strokeThickness: 8,
-      }).setOrigin(0.5).setAlpha(0.78).setResolution(2));
-    }
+  private edgeAnchor(
+    from: SkillTreeMapGraphNode,
+    toward: SkillTreeMapGraphNode,
+  ): { x: number; y: number } {
+    const dimensions = this.getNodeDimensions(from);
+    const dx = toward.x - from.x;
+    const dy = toward.y - from.y;
+    const divisor = Math.max(
+      Math.abs(dx) / Math.max(1, dimensions.width * 0.5),
+      Math.abs(dy) / Math.max(1, dimensions.height * 0.5),
+      1,
+    );
+    return { x: from.x + dx / divisor, y: from.y + dy / divisor };
   }
 
   private redrawEdges(): void {
@@ -238,67 +264,117 @@ export class SkillTreeMapNode extends TransformNode {
       const from = byId.get(edge.from);
       const to = byId.get(edge.to);
       if (!from || !to) continue;
+      const start = this.edgeAnchor(from, to);
+      const end = this.edgeAnchor(to, from);
       const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
-      graphics.lineStyle(edge.active ? 5 : 3, edge.active ? color : 0x334155, edge.active ? 0.92 : 0.52);
-      const midpointX = (from.x + to.x) * 0.5;
-      const midpointY = (from.y + to.y) * 0.5;
-      const dx = to.x - from.x;
-      const dy = to.y - from.y;
+      const lineColor = color;
+      const midpointX = (start.x + end.x) * 0.5;
+      const midpointY = (start.y + end.y) * 0.5;
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
       const length = Math.max(1, Math.hypot(dx, dy));
-      const bend = ((edge.from.length + edge.to.length) % 2 === 0 ? 1 : -1) * Math.min(34, length * 0.18);
+      const bend = ((edge.from.length + edge.to.length) % 2 === 0 ? 1 : -1) * Math.min(40, length * 0.14);
       const controlX = midpointX - dy / length * bend;
       const controlY = midpointY + dx / length * bend;
-      let previousX = from.x;
-      let previousY = from.y;
-      for (let step = 1; step <= 8; step += 1) {
-        const t = step / 8;
-        const inverse = 1 - t;
-        const x = inverse * inverse * from.x + 2 * inverse * t * controlX + t * t * to.x;
-        const y = inverse * inverse * from.y + 2 * inverse * t * controlY + t * t * to.y;
-        graphics.lineBetween(previousX, previousY, x, y);
-        previousX = x;
-        previousY = y;
+      const drawCurve = () => {
+        let previousX = start.x;
+        let previousY = start.y;
+        for (let step = 1; step <= 10; step += 1) {
+          const t = step / 10;
+          const inverse = 1 - t;
+          const x = inverse * inverse * start.x + 2 * inverse * t * controlX + t * t * end.x;
+          const y = inverse * inverse * start.y + 2 * inverse * t * controlY + t * t * end.y;
+          graphics.lineBetween(previousX, previousY, x, y);
+          previousX = x;
+          previousY = y;
+        }
+      };
+      graphics.lineStyle(edge.active ? 13 : 9, 0x07172c, edge.active ? 0.62 : 0.46);
+      drawCurve();
+      graphics.lineStyle(edge.active ? 8 : 5, lineColor, edge.active ? 0.88 : 0.45);
+      drawCurve();
+      if (edge.active) {
+        graphics.fillStyle(0xfff2a8, 0.75).fillCircle(midpointX, midpointY, 5);
       }
-      if (edge.active) graphics.fillStyle(color, 0.15).fillCircle(midpointX, midpointY, 8);
     }
   }
 
   private redrawNodes(): void {
     const graphics = this.nodeGraphics;
     const graph = this.graph;
-    if (!graphics || !graph) return;
+    const icons = this.iconsContainer;
+    const labels = this.labelsContainer;
+    const scene = this.phaserScene;
+    if (!graphics || !graph || !icons || !labels || !scene) return;
     graphics.clear();
+    icons.removeAll(true);
+    labels.removeAll(true);
+
     for (const node of graph.nodes) {
       const selected = node.id === this.selectedNodeId;
-      const color = Phaser.Display.Color.HexStringToColor(node.color).color;
-      const radius = node.tier === 0 ? 34 : node.milestone ? 25 : 17;
+      const categoryColor = Phaser.Display.Color.HexStringToColor(node.color).color;
       const stateColor = node.state === 'purchased'
-        ? color
+        ? 0x8cf5c8
         : node.state === 'available'
-          ? 0xfacc15
+          ? 0xffdf6b
           : node.state === 'unaffordable'
-            ? 0xfb7185
-            : 0x475569;
-      const fillAlpha = node.state === 'locked' ? 0.34 : node.state === 'purchased' ? 0.88 : 0.56;
-      graphics.fillStyle(0x020617, 0.9).fillCircle(node.x, node.y, radius + 9);
-      graphics.lineStyle(selected ? 6 : 3, selected ? 0xffffff : stateColor, selected ? 1 : 0.9).strokeCircle(node.x, node.y, radius + (selected ? 7 : 4));
-      graphics.fillStyle(stateColor, fillAlpha).fillCircle(node.x, node.y, radius);
-      graphics.lineStyle(2, node.state === 'locked' ? 0x64748b : 0xe0f2fe, 0.9).strokeCircle(node.x, node.y, Math.max(5, radius - 7));
-      if (node.state === 'purchased') {
-        graphics.fillStyle(0xffffff, 0.9).fillCircle(node.x, node.y, 4);
+            ? 0xff8e9f
+            : categoryColor;
+      const { width, height } = this.getNodeDimensions(node);
+      const x = node.x - width * 0.5;
+      const y = node.y - height * 0.5;
+      const radius = node.milestone ? 20 : 15;
+      const fillColor = node.milestone ? 0x28486c : node.tier === 0 ? 0x345171 : 0x183555;
+      const fillAlpha = node.state === 'locked' ? 0.84 : 0.96;
+
+      if (selected) {
+        graphics.fillStyle(0xffffff, 0.15).fillRoundedRect(x - 10, y - 10, width + 20, height + 20, radius + 8);
+        graphics.lineStyle(6, 0xffffff, 0.96).strokeRoundedRect(x - 7, y - 7, width + 14, height + 14, radius + 6);
       } else if (node.state === 'available') {
-        graphics.lineStyle(3, 0xfde047, 0.95).strokeCircle(node.x, node.y, radius + 12);
+        graphics.lineStyle(5, 0xffef9c, 0.8).strokeRoundedRect(x - 6, y - 6, width + 12, height + 12, radius + 5);
       }
+
+      graphics.fillStyle(0x07172c, 0.92).fillRoundedRect(x - 4, y - 4, width + 8, height + 8, radius + 4);
+      graphics.fillStyle(fillColor, fillAlpha).fillRoundedRect(x, y, width, height, radius);
+      graphics.lineStyle(node.milestone ? 6 : 4, stateColor, 0.96).strokeRoundedRect(x, y, width, height, radius);
+      graphics.lineStyle(2, categoryColor, node.state === 'locked' ? 0.34 : 0.88)
+        .strokeRoundedRect(x + 6, y + 6, width - 12, height - 12, Math.max(6, radius - 5));
+
+      const iconX = node.milestone ? node.x - width * 0.31 : node.x;
+      const iconSize = node.milestone ? 86 : node.tier === 0 ? 72 : 62;
+      const icon = scene.add.image(iconX, node.y, node.iconKey).setDisplaySize(iconSize, iconSize);
+      if (node.state === 'locked') icon.setTint(0xb5cad8).setAlpha(0.76);
+      else if (node.state === 'purchased') icon.setAlpha(1);
+      else icon.setAlpha(0.92);
+      icons.add(icon);
+
       if (node.milestone) {
-        for (let ray = 0; ray < 8; ray += 1) {
-          const angle = ray * Math.PI / 4;
-          graphics.lineStyle(2, stateColor, 0.52).lineBetween(
-            node.x + Math.cos(angle) * (radius + 10),
-            node.y + Math.sin(angle) * (radius + 10),
-            node.x + Math.cos(angle) * (radius + 18),
-            node.y + Math.sin(angle) * (radius + 18),
+        const label = scene.add.text(node.x - width * 0.02, node.y, node.label.toUpperCase(), {
+          fontFamily: 'Silkscreen, monospace',
+          fontSize: '18px',
+          fontStyle: '700',
+          color: node.state === 'locked' ? '#9baac0' : '#fff4c9',
+          stroke: '#10233f',
+          strokeThickness: 5,
+          align: 'left',
+          wordWrap: { width: 205, useAdvancedWrap: true },
+        }).setOrigin(0, 0.5).setResolution(2);
+        labels.add(label);
+      }
+
+      if (node.rank) {
+        const pipCount = Math.min(3, node.rank);
+        for (let pip = 0; pip < pipCount; pip += 1) {
+          graphics.fillStyle(0xffe47c, 0.98).fillCircle(
+            node.x + width * 0.5 - 13 - pip * 12,
+            node.y - height * 0.5 + 12,
+            4,
           );
         }
+      }
+
+      if (node.state === 'purchased') {
+        graphics.fillStyle(0xffffff, 0.96).fillCircle(node.x - width * 0.5 + 13, node.y - height * 0.5 + 13, 5);
       }
     }
   }
@@ -344,8 +420,18 @@ export class SkillTreeMapNode extends TransformNode {
     const local = this.pointerLocal(pointer);
     const selected = !state.moved ? this.hitNode(this.contentAt(local)) : undefined;
     this.pointerStates.delete(pointer.id);
-    if (this.pointerStates.size < 2) this.pinchStartDistance = 0;
-    if (selected && selected.id === state.startNodeId) this.selectCallback?.(selected.id);
+    if (this.pointerStates.size < 2) {
+      this.pinchStartDistance = 0;
+      for (const remaining of this.pointerStates.values()) {
+        remaining.previous.copy(remaining.local);
+        remaining.start.copy(remaining.local);
+        remaining.moved = true;
+      }
+    }
+    if (selected && selected.id === state.startNodeId) {
+      const position = this.getNodeViewportPosition(selected.id);
+      if (position) this.selectCallback?.(selected.id, position);
+    }
     pointer.event?.preventDefault();
   }
 
@@ -358,7 +444,9 @@ export class SkillTreeMapNode extends TransformNode {
   }
 
   private beginPinch(): void {
-    const points = [...this.pointerStates.values()].slice(0, 2).map((state) => state.local);
+    const states = [...this.pointerStates.values()].slice(0, 2);
+    states.forEach((state) => { state.moved = true; });
+    const points = states.map((state) => state.local);
     this.pinchStartDistance = Phaser.Math.Distance.Between(points[0].x, points[0].y, points[1].x, points[1].y);
     this.pinchStartZoom = this.zoom;
     const midpoint = new Phaser.Math.Vector2((points[0].x + points[1].x) * 0.5, (points[0].y + points[1].y) * 0.5);
@@ -405,7 +493,7 @@ export class SkillTreeMapNode extends TransformNode {
     if (!graph) return;
     const halfWidth = this.size.width * 0.5;
     const halfHeight = this.size.height * 0.5;
-    const margin = 100;
+    const margin = 130;
     const scaledWidth = graph.width * this.zoom;
     const scaledHeight = graph.height * this.zoom;
     const minX = halfWidth - scaledWidth - margin;
@@ -427,7 +515,13 @@ export class SkillTreeMapNode extends TransformNode {
     const right = this.size.width * 0.5 - this.inputInsets.right;
     const top = -this.size.height * 0.5 + this.inputInsets.top;
     const bottom = this.size.height * 0.5 - this.inputInsets.bottom;
-    return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+    if (point.x < left || point.x > right || point.y < top || point.y > bottom) return false;
+    const exclusion = this.inputExclusion;
+    if (!exclusion) return true;
+    return point.x < exclusion.x - exclusion.width * 0.5
+      || point.x > exclusion.x + exclusion.width * 0.5
+      || point.y < exclusion.y - exclusion.height * 0.5
+      || point.y > exclusion.y + exclusion.height * 0.5;
   }
 
   private contentAt(local: Phaser.Math.Vector2): Phaser.Math.Vector2 {
@@ -439,10 +533,13 @@ export class SkillTreeMapNode extends TransformNode {
     let best: SkillTreeMapGraphNode | undefined;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const node of nodes) {
-      const baseRadius = node.tier === 0 ? 42 : node.milestone ? 34 : 27;
-      const radius = Math.max(baseRadius, 40 / this.zoom);
-      const distance = Phaser.Math.Distance.Between(point.x, point.y, node.x, node.y);
-      if (distance <= radius && distance < bestDistance) {
+      const dimensions = this.getNodeDimensions(node);
+      const halfWidth = Math.max(dimensions.width * 0.5, 39 / this.zoom);
+      const halfHeight = Math.max(dimensions.height * 0.5, 36 / this.zoom);
+      const dx = Math.abs(point.x - node.x);
+      const dy = Math.abs(point.y - node.y);
+      const distance = Math.hypot(dx, dy);
+      if (dx <= halfWidth && dy <= halfHeight && distance < bestDistance) {
         best = node;
         bestDistance = distance;
       }

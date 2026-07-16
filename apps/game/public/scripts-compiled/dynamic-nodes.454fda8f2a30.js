@@ -1411,6 +1411,11 @@ var SKILL_TREE_IDS = [
   ...SKILL_TREE_BRANCHES.mining,
   ...SKILL_TREE_BRANCHES.utility
 ];
+function areUpgradePrerequisitesMet(definition, isPurchased) {
+  const prerequisites = definition.prerequisites ?? [];
+  if (prerequisites.length === 0) return true;
+  return definition.prerequisiteMode === "any" ? prerequisites.some(isPurchased) : prerequisites.every(isPurchased);
+}
 var UPGRADE_DEFINITIONS = {
   prospector_core: {
     id: "prospector_core",
@@ -1437,7 +1442,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Ein zus\xE4tzlicher Sprung in der Luft.",
     category: "boots",
     cost: { credits: 350 },
-    prerequisites: ["spring_boots"],
+    prerequisites: ["spring_boots", "cargo_tetris"],
+    prerequisiteMode: "any",
     effects: [{ stat: "airJumps", op: "set", value: 1 }],
     tree: { x: -2, y: 2, branch: "movement" }
   },
@@ -1447,7 +1453,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Zwei Luftspr\xFCnge und 28 % weniger Schwerkraft. Garantie erloschen.",
     category: "boots",
     cost: { credits: 900 },
-    prerequisites: ["micro_jetpack"],
+    prerequisites: ["micro_jetpack", "wide_visor"],
     effects: [{ stat: "airJumps", op: "set", value: 2 }, { stat: "gravityMultiplier", op: "multiply", value: 0.72 }],
     tree: { x: -3, y: 3, branch: "movement" }
   },
@@ -1473,11 +1479,12 @@ var UPGRADE_DEFINITIONS = {
   },
   xray_potato: {
     id: "xray_potato",
-    label: "R\xF6ntgen-Kartoffel",
-    description: "Scanner-Radius 7 und +1 Sicht. Fragt nicht, warum sie summt.",
+    label: "Kristallradar",
+    description: "Scanner-Radius 7 und +1 Sicht. Kristalle fl\xFCstern ihre Position.",
     category: "visor",
     cost: { credits: 900 },
-    prerequisites: ["ore_scanner"],
+    prerequisites: ["ore_scanner", "laser_focus"],
+    prerequisiteMode: "any",
     effects: [{ stat: "oreScannerRadius", op: "set", value: 7 }, { stat: "sightRadius", op: "add", value: 1 }],
     tree: { x: 3, y: -3, branch: "vision" }
   },
@@ -1503,11 +1510,12 @@ var UPGRADE_DEFINITIONS = {
   },
   storm_subscription: {
     id: "storm_subscription",
-    label: "Gewitter-Abo",
-    description: "Vier Kettenziele und 15 % mehr Schaden. Monatlich k\xFCndbar.*",
+    label: "Quantenbohrer",
+    description: "Vier Kettenziele und 15 % mehr Schaden durch einen instabilen Bohrkern.",
     category: "laser",
     cost: { credits: 1100 },
-    prerequisites: ["chain_lightning"],
+    prerequisites: ["chain_lightning", "ore_scanner"],
+    prerequisiteMode: "any",
     effects: [{ stat: "chainMiningTargets", op: "set", value: 4 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.15 }],
     tree: { x: 3, y: 3, branch: "mining" }
   },
@@ -1523,11 +1531,12 @@ var UPGRADE_DEFINITIONS = {
   },
   pocket_wormhole: {
     id: "pocket_wormhole",
-    label: "Taschen-Wurmloch",
-    description: "+3 Stackgr\xF6\xDFe und 140 Pixel Sammelradius.",
+    label: "Sternenfrachter",
+    description: "+3 Stackgr\xF6\xDFe und 140 Pixel Sammelradius durch gefalteten Frachtraum.",
     category: "cargo",
     cost: { credits: 400 },
-    prerequisites: ["cargo_tetris"],
+    prerequisites: ["cargo_tetris", "spring_boots"],
+    prerequisiteMode: "any",
     effects: [{ stat: "cargoStackLimit", op: "add", value: 3 }, { stat: "pickupRadius", op: "set", value: 140 }],
     tree: { x: -2, y: -2, branch: "utility" }
   },
@@ -1537,7 +1546,7 @@ var UPGRADE_DEFINITIONS = {
     description: "+25 Leben, 220 Pixel Magnet und 15 % weniger Schwerkraft. Quak.",
     category: "core",
     cost: { credits: 1e3 },
-    prerequisites: ["pocket_wormhole"],
+    prerequisites: ["pocket_wormhole", "micro_jetpack"],
     effects: [{ stat: "maxHealth", op: "add", value: 25 }, { stat: "pickupRadius", op: "set", value: 220 }, { stat: "gravityMultiplier", op: "multiply", value: 0.85 }],
     tree: { x: -3, y: -3, branch: "utility" }
   },
@@ -1597,7 +1606,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Dritter Luftsprung und 18 % weniger Schwerkraft. Mit K\xE4se stabiler.",
     category: "boots",
     cost: { credits: 8500 },
-    prerequisites: ["bounce_tax_refund"],
+    prerequisites: ["bounce_tax_refund", "schrodinger_map"],
+    prerequisiteMode: "any",
     effects: [{ stat: "airJumps", op: "set", value: 3 }, { stat: "gravityMultiplier", op: "multiply", value: 0.82 }],
     tree: { x: -9, y: 9, branch: "movement" }
   },
@@ -1607,7 +1617,8 @@ var UPGRADE_DEFINITIONS = {
     description: "12 % Tempo und 25 Energie. Teleportiert nur deine Motivation.",
     category: "boots",
     cost: { credits: 11e3 },
-    prerequisites: ["antigravity_sandwich"],
+    prerequisites: ["antigravity_sandwich", "bureaucratic_xray"],
+    prerequisiteMode: "any",
     effects: [{ stat: "moveSpeed", op: "multiply", value: 1.12 }, { stat: "maxEnergy", op: "add", value: 25 }],
     tree: { x: -10, y: 10, branch: "movement" }
   },
@@ -1637,7 +1648,8 @@ var UPGRADE_DEFINITIONS = {
     description: "35 % weniger Schwerkraft, 12 % mehr Sprung und 50 Energie. Neustart nicht n\xF6tig.",
     category: "boots",
     cost: { credits: 26e3 },
-    prerequisites: ["quantum_hopscotch"],
+    prerequisites: ["quantum_hopscotch", "privacy_abolished"],
+    prerequisiteMode: "any",
     effects: [{ stat: "gravityMultiplier", op: "multiply", value: 0.65 }, { stat: "jumpVelocity", op: "multiply", value: 1.12 }, { stat: "maxEnergy", op: "add", value: 50 }],
     tree: { x: -13, y: 13, branch: "movement" }
   },
@@ -1677,7 +1689,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Scanner +2 und 10 % Regeneration. Erze leuchten, wenn du falsch singst.",
     category: "visor",
     cost: { credits: 4500 },
-    prerequisites: ["fog_coupon"],
+    prerequisites: ["fog_coupon", "ore_blender"],
+    prerequisiteMode: "any",
     effects: [{ stat: "oreScannerRadius", op: "add", value: 2 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
     tree: { x: 7, y: -7, branch: "vision" }
   },
@@ -1687,7 +1700,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Sicht +1 und Scanner +1. Das Erz ist da und nicht da.",
     category: "visor",
     cost: { credits: 6200 },
-    prerequisites: ["geology_karaoke"],
+    prerequisites: ["geology_karaoke", "chrono_shoelaces"],
+    prerequisiteMode: "any",
     effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "oreScannerRadius", op: "add", value: 1 }],
     tree: { x: 8, y: -8, branch: "vision" }
   },
@@ -1737,7 +1751,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Sicht +2, Scanner +4 und Magnet +80 Pixel. Datenschutz war optional.",
     category: "visor",
     cost: { credits: 26e3 },
-    prerequisites: ["omniscient_toaster"],
+    prerequisites: ["omniscient_toaster", "localized_apocalypse"],
+    prerequisiteMode: "any",
     effects: [{ stat: "sightRadius", op: "add", value: 2 }, { stat: "oreScannerRadius", op: "add", value: 4 }, { stat: "pickupRadius", op: "add", value: 80 }],
     tree: { x: 13, y: -13, branch: "vision" }
   },
@@ -1777,7 +1792,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Sechs Kettenziele und Magnet +30 Pixel. Bitte nicht f\xFCttern.",
     category: "laser",
     cost: { credits: 5e3 },
-    prerequisites: ["laser_spaghetti"],
+    prerequisites: ["laser_spaghetti", "pocket_dimension"],
+    prerequisiteMode: "any",
     effects: [{ stat: "chainMiningTargets", op: "set", value: 6 }, { stat: "pickupRadius", op: "add", value: 30 }],
     tree: { x: 7, y: 7, branch: "mining" }
   },
@@ -1817,7 +1833,8 @@ var UPGRADE_DEFINITIONS = {
     description: "20 % Schaden, 10 % weniger Verbrauch und 5 % Tempo. Zittert pr\xE4zise.",
     category: "laser",
     cost: { credits: 16500 },
-    prerequisites: ["recursive_pickaxe"],
+    prerequisites: ["recursive_pickaxe", "turbo_snail"],
+    prerequisiteMode: "any",
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.2 }, { stat: "energyCostPerSec", op: "multiply", value: 0.9 }, { stat: "moveSpeed", op: "multiply", value: 1.05 }],
     tree: { x: 11, y: 11, branch: "mining" }
   },
@@ -1837,7 +1854,8 @@ var UPGRADE_DEFINITIONS = {
     description: "35 % Schaden, zw\xF6lf Kettenziele und 20 % weniger Verbrauch. Newsletter beendet.",
     category: "laser",
     cost: { credits: 3e4 },
-    prerequisites: ["localized_apocalypse"],
+    prerequisites: ["localized_apocalypse", "administrative_immortality"],
+    prerequisiteMode: "any",
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.35 }, { stat: "chainMiningTargets", op: "set", value: 12 }, { stat: "energyCostPerSec", op: "multiply", value: 0.8 }],
     tree: { x: 13, y: 13, branch: "mining" }
   },
@@ -1887,7 +1905,8 @@ var UPGRADE_DEFINITIONS = {
     description: "Magnet +80 Pixel und ein Tile Laserreichweite. Kommt meistens zur\xFCck.",
     category: "cargo",
     cost: { credits: 6700 },
-    prerequisites: ["unionized_nanobots"],
+    prerequisites: ["unionized_nanobots", "thunder_ferret"],
+    prerequisiteMode: "any",
     effects: [{ stat: "pickupRadius", op: "add", value: 80 }, { stat: "miningRange", op: "add", value: TILE_SIZE }],
     tree: { x: -8, y: -8, branch: "utility" }
   },
@@ -1907,7 +1926,8 @@ var UPGRADE_DEFINITIONS = {
     description: "+5 Energieregeneration und ein Cargo-Slot. Passt knapp in die Tasche.",
     category: "ship",
     cost: { credits: 12e3 },
-    prerequisites: ["insurance_fraud"],
+    prerequisites: ["insurance_fraud", "moonwalk_insurance"],
+    prerequisiteMode: "any",
     effects: [{ stat: "energyRegenPerSec", op: "add", value: 5 }, { stat: "cargoSlots", op: "add", value: 1 }],
     tree: { x: -10, y: -10, branch: "utility" }
   },
@@ -1927,17 +1947,19 @@ var UPGRADE_DEFINITIONS = {
     description: "50 Leben, 50 Energie und 8 % weniger Schwerkraft. Tod nicht genehmigt.",
     category: "core",
     cost: { credits: 21e3 },
-    prerequisites: ["cosmic_vacuum"],
+    prerequisites: ["cosmic_vacuum", "comet_kneecaps"],
+    prerequisiteMode: "any",
     effects: [{ stat: "maxHealth", op: "add", value: 50 }, { stat: "maxEnergy", op: "add", value: 50 }, { stat: "gravityMultiplier", op: "multiply", value: 0.92 }],
     tree: { x: -12, y: -12, branch: "utility" }
   },
   reality_premium: {
     id: "reality_premium",
-    label: "Realit\xE4t Premium",
-    description: "75 Leben/Energie, 15 % Schaden, 10 % Tempo, +1 Sicht und +100 Magnet. Ohne Werbung.",
+    label: "Gravitationskern",
+    description: "75 Leben/Energie, 15 % Schaden, 10 % Tempo, +1 Sicht und +100 Magnet.",
     category: "core",
     cost: { credits: 3e4 },
-    prerequisites: ["administrative_immortality"],
+    prerequisites: ["administrative_immortality", "uninstall_gravity", "privacy_abolished", "planetary_unsubscribe"],
+    prerequisiteMode: "any",
     effects: [{ stat: "maxHealth", op: "add", value: 75 }, { stat: "maxEnergy", op: "add", value: 75 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "moveSpeed", op: "multiply", value: 1.1 }, { stat: "sightRadius", op: "add", value: 1 }, { stat: "pickupRadius", op: "add", value: 100 }],
     tree: { x: -13, y: -13, branch: "utility" }
   },
@@ -2640,8 +2662,9 @@ var PlayerStateManager = class extends ScriptNode {
     const definition = UPGRADE_DEFINITIONS[upgradeId];
     if (!definition) return { ok: false, message: "Upgrade nicht gefunden" };
     if (this.isUpgradePurchased(upgradeId)) return { ok: false, message: "Bereits installiert" };
-    const missingPrerequisite = definition.prerequisites?.find((id) => !this.isUpgradePurchased(id));
-    if (missingPrerequisite) return { ok: false, message: "Vorherige Stufe erforderlich" };
+    if (!areUpgradePrerequisitesMet(definition, (id) => this.isUpgradePurchased(id))) {
+      return { ok: false, message: "Vorherige Stufe erforderlich" };
+    }
     const credits = definition.cost.credits ?? 0;
     if (this.saveGameState.profile.credits < credits) return { ok: false, message: "Nicht genug Credits" };
     for (const [itemId, quantity] of Object.entries(definition.cost.items ?? {})) {
@@ -2908,56 +2931,118 @@ function clamp5(value, min, max) {
 }
 
 // public/scripts/UI/skillTreeLayout.ts
-var CONSTELLATION_MAP_WIDTH = 2600;
-var CONSTELLATION_MAP_HEIGHT = 1800;
-var CONSTELLATION_ROOT = {
-  x: CONSTELLATION_MAP_WIDTH / 2,
-  y: CONSTELLATION_MAP_HEIGHT / 2
+var CONSTELLATION_MAP_WIDTH = 2500;
+var CONSTELLATION_MAP_HEIGHT = 1500;
+var CONSTELLATION_ROOT = { x: 1250, y: 750 };
+var POSITIONS = {
+  movement: [
+    { x: 1080, y: 720 },
+    { x: 840, y: 650 },
+    { x: 650, y: 760 },
+    { x: 900, y: 470 },
+    { x: 620, y: 460 },
+    { x: 390, y: 550 },
+    { x: 330, y: 330 },
+    { x: 580, y: 250 },
+    { x: 830, y: 260 },
+    { x: 1030, y: 360 },
+    { x: 1130, y: 180 },
+    { x: 1380, y: 250 },
+    { x: 1580, y: 170 }
+  ],
+  vision: [
+    { x: 1260, y: 560 },
+    { x: 1380, y: 420 },
+    { x: 1650, y: 400 },
+    { x: 1750, y: 530 },
+    { x: 1940, y: 410 },
+    { x: 2110, y: 560 },
+    { x: 2200, y: 350 },
+    { x: 2350, y: 480 },
+    { x: 2310, y: 720 },
+    { x: 2100, y: 720 },
+    { x: 1980, y: 850 },
+    { x: 2210, y: 940 },
+    { x: 2350, y: 1090 }
+  ],
+  mining: [
+    { x: 1400, y: 760 },
+    { x: 1480, y: 900 },
+    { x: 1710, y: 790 },
+    { x: 1900, y: 990 },
+    { x: 1620, y: 1010 },
+    { x: 1790, y: 1140 },
+    { x: 2050, y: 1140 },
+    { x: 2260, y: 1240 },
+    { x: 1960, y: 1350 },
+    { x: 1710, y: 1330 },
+    { x: 1450, y: 1200 },
+    { x: 1230, y: 1330 },
+    { x: 980, y: 1310 }
+  ],
+  utility: [
+    { x: 1130, y: 900 },
+    { x: 900, y: 980 },
+    { x: 600, y: 880 },
+    { x: 530, y: 1030 },
+    { x: 730, y: 1160 },
+    { x: 500, y: 1280 },
+    { x: 260, y: 1200 },
+    { x: 260, y: 970 },
+    { x: 390, y: 820 },
+    { x: 520, y: 680 },
+    { x: 300, y: 650 },
+    { x: 260, y: 440 },
+    { x: 730, y: 1370 }
+  ]
 };
-var CONSTELLATION_BRANCH_ANGLES = {
-  movement: -2.55,
-  vision: -0.95,
-  mining: 0.52,
-  utility: 2.15
+var MILESTONES = /* @__PURE__ */ new Set([
+  "micro_jetpack",
+  "xray_potato",
+  "storm_subscription",
+  "pocket_wormhole",
+  "reality_premium"
+]);
+var REPEATABLE_RANKS = {
+  moonwalk_insurance: 1,
+  turbo_snail: 2,
+  chrono_shoelaces: 3,
+  wide_visor: 1,
+  spectrum_monocle: 2,
+  fog_coupon: 3,
+  laser_focus: 1,
+  arc_apprentice: 2,
+  ore_blender: 3,
+  cargo_tetris: 1,
+  cargo_origami: 2,
+  portable_shipyard: 3
 };
-var TIER_SIDE_OFFSETS = [0, -68, 72, -108, 24, 116, -62, 128, -118, 58, 4, -84, 88];
 function getConstellationNodePosition(branch, tier) {
-  if (tier < 1 || tier > TIER_SIDE_OFFSETS.length) throw new Error(`Invalid constellation tier: ${tier}`);
-  const angle = CONSTELLATION_BRANCH_ANGLES[branch];
-  const directionX = Math.cos(angle);
-  const directionY = Math.sin(angle);
-  const perpendicularX = -directionY;
-  const perpendicularY = directionX;
-  const radius = 180 + tier * 56;
-  const sideOffset = TIER_SIDE_OFFSETS[tier - 1];
-  const clusterOffset = tier % 3 === 0 ? 0 : Math.sin(tier * 1.7) * 24;
-  return {
-    x: CONSTELLATION_ROOT.x + directionX * radius + perpendicularX * (sideOffset + clusterOffset),
-    y: CONSTELLATION_ROOT.y + directionY * radius + perpendicularY * (sideOffset + clusterOffset)
-  };
+  const position = POSITIONS[branch][tier - 1];
+  if (!position) throw new Error(`Invalid research-map tier: ${branch} ${tier}`);
+  return { x: position.x, y: position.y };
 }
-function getConstellationRegionPosition(branch) {
-  const angle = CONSTELLATION_BRANCH_ANGLES[branch];
-  const radius = 780;
-  return {
-    x: CONSTELLATION_ROOT.x + Math.cos(angle) * radius,
-    y: CONSTELLATION_ROOT.y + Math.sin(angle) * radius
-  };
+function isSkillTreeMilestone(upgradeId) {
+  return MILESTONES.has(upgradeId);
+}
+function getSkillTreeRank(upgradeId) {
+  return REPEATABLE_RANKS[upgradeId];
+}
+function getSkillIconKey(upgradeId) {
+  return `research-skill-${upgradeId}`;
 }
 
 // public/scripts/UI/UpgradeDialogScript.node.ts
 var BRANCH_ORDER = ["movement", "vision", "mining", "utility"];
 var BRANCH_META = {
-  movement: { label: "MOBILIT\xC4T", color: "#4ade80" },
-  vision: { label: "SCANNER", color: "#38bdf8" },
-  mining: { label: "MINING", color: "#f472b6" },
-  utility: { label: "UTILITY", color: "#c084fc" }
+  movement: { color: "#65e6a3" },
+  vision: { color: "#59d8ff" },
+  mining: { color: "#ff8bc8" },
+  utility: { color: "#bd8cff" }
 };
-var MAP_WIDTH = CONSTELLATION_MAP_WIDTH;
-var MAP_HEIGHT = CONSTELLATION_MAP_HEIGHT;
-var ROOT_POSITION = CONSTELLATION_ROOT;
-var CLOSED_INPUT_INSETS = { top: 96, right: 0, bottom: 52, left: 0 };
-var INSPECTOR_INPUT_INSETS = { top: 96, right: 430, bottom: 52, left: 0 };
+var MAP_INPUT_INSETS = { top: 84, right: 0, bottom: 0, left: 0 };
+var POPOVER_WIDTH = 350;
+var POPOVER_HEIGHT = 214;
 var ResearchScreenScript = class extends ScriptNode {
   id = "dynamic.upgrade-dialog";
   name = "Research Screen";
@@ -2967,18 +3052,16 @@ var ResearchScreenScript = class extends ScriptNode {
   mapNodeId = prop.nodeRef(null, { label: "Skill Map" });
   creditsTextNodeId = prop.nodeRef(null, { label: "Credits Text" });
   progressTextNodeId = prop.nodeRef(null, { label: "Progress Text" });
-  branchProgressTextNodeId = prop.nodeRef(null, { label: "Branch Progress" });
-  inspectorRootNodeId = prop.nodeRef(null, { label: "Inspector Root" });
-  detailBranchNodeId = prop.nodeRef(null, { label: "Detail Branch" });
-  statusTextNodeId = prop.nodeRef(null, { label: "Status Text" });
-  detailTitleNodeId = prop.nodeRef(null, { label: "Detail Title" });
-  detailDescriptionNodeId = prop.nodeRef(null, { label: "Detail Description" });
-  purchaseButtonNodeId = prop.nodeRef(null, { label: "Purchase Button" });
-  purchaseLabelNodeId = prop.nodeRef(null, { label: "Purchase Label" });
+  popoverRootNodeId = prop.nodeRef(null, { label: "Skill Popover" });
+  detailTitleNodeId = prop.nodeRef(null, { label: "Skill Title" });
+  detailDescriptionNodeId = prop.nodeRef(null, { label: "Skill Description" });
+  costTextNodeId = prop.nodeRef(null, { label: "Skill Cost" });
+  purchaseButtonNodeId = prop.nodeRef(null, { label: "Learn Button" });
+  purchaseLabelNodeId = prop.nodeRef(null, { label: "Learn Label" });
   zoomInButtonNodeId = prop.nodeRef(null, { label: "Zoom In" });
   zoomOutButtonNodeId = prop.nodeRef(null, { label: "Zoom Out" });
   resetViewButtonNodeId = prop.nodeRef(null, { label: "Reset View" });
-  inspectorCloseButtonNodeId = prop.nodeRef(null, { label: "Inspector Close" });
+  popoverCloseButtonNodeId = prop.nodeRef(null, { label: "Popover Close" });
   closeButtonNodeId = prop.nodeRef(null, { label: "Close Screen" });
   playerState;
   gameplayInput;
@@ -2986,12 +3069,10 @@ var ResearchScreenScript = class extends ScriptNode {
   map;
   creditsText;
   progressText;
-  branchProgressText;
-  inspectorRoot;
-  detailBranch;
-  statusText;
+  popoverRoot;
   detailTitle;
   detailDescription;
+  costText;
   purchaseButton;
   purchaseLabel;
   selectedUpgradeId;
@@ -3004,20 +3085,27 @@ var ResearchScreenScript = class extends ScriptNode {
     this.map = this.requireNodeRef(this.mapNodeId, "Skill map");
     this.creditsText = this.requireNodeRef(this.creditsTextNodeId, "Credits text");
     this.progressText = this.requireNodeRef(this.progressTextNodeId, "Progress text");
-    this.branchProgressText = this.requireNodeRef(this.branchProgressTextNodeId, "Branch progress");
-    this.inspectorRoot = this.requireNodeRef(this.inspectorRootNodeId, "Skill inspector");
-    this.detailBranch = this.requireNodeRef(this.detailBranchNodeId, "Detail branch");
-    this.statusText = this.requireNodeRef(this.statusTextNodeId, "Status text");
-    this.detailTitle = this.requireNodeRef(this.detailTitleNodeId, "Detail title");
-    this.detailDescription = this.requireNodeRef(this.detailDescriptionNodeId, "Detail description");
-    this.purchaseButton = this.requireNodeRef(this.purchaseButtonNodeId, "Purchase button");
-    this.purchaseLabel = this.requireNodeRef(this.purchaseLabelNodeId, "Purchase label");
-    this.map.setSelectCallback((nodeId) => this.selectUpgrade(nodeId));
+    this.popoverRoot = this.requireNodeRef(this.popoverRootNodeId, "Skill popover");
+    this.detailTitle = this.requireNodeRef(this.detailTitleNodeId, "Skill title");
+    this.detailDescription = this.requireNodeRef(this.detailDescriptionNodeId, "Skill description");
+    this.costText = this.requireNodeRef(this.costTextNodeId, "Skill cost");
+    this.purchaseButton = this.requireNodeRef(this.purchaseButtonNodeId, "Learn button");
+    this.purchaseLabel = this.requireNodeRef(this.purchaseLabelNodeId, "Learn label");
+    this.map.setSelectCallback((nodeId, position) => this.selectUpgrade(nodeId, position));
     this.purchaseButton.setClickAction?.(() => this.purchaseSelected());
-    this.requireNodeRef(this.zoomInButtonNodeId, "Zoom in").setClickAction?.(() => this.map.zoomBy(1.2));
-    this.requireNodeRef(this.zoomOutButtonNodeId, "Zoom out").setClickAction?.(() => this.map.zoomBy(0.82));
-    this.requireNodeRef(this.resetViewButtonNodeId, "Reset view").setClickAction?.(() => this.map.resetView());
-    this.requireNodeRef(this.inspectorCloseButtonNodeId, "Inspector close").setClickAction?.(() => this.clearSelection());
+    this.requireNodeRef(this.zoomInButtonNodeId, "Zoom in").setClickAction?.(() => {
+      this.clearSelection();
+      this.map.zoomBy(1.2);
+    });
+    this.requireNodeRef(this.zoomOutButtonNodeId, "Zoom out").setClickAction?.(() => {
+      this.clearSelection();
+      this.map.zoomBy(0.82);
+    });
+    this.requireNodeRef(this.resetViewButtonNodeId, "Reset view").setClickAction?.(() => {
+      this.clearSelection();
+      this.map.resetView();
+    });
+    this.requireNodeRef(this.popoverCloseButtonNodeId, "Popover close").setClickAction?.(() => this.clearSelection());
     this.requireNodeRef(this.closeButtonNodeId, "Close screen").setClickAction?.(() => this.close());
     this.keyHandler = (event) => {
       if (!this.isOpen()) return;
@@ -3028,7 +3116,10 @@ var ResearchScreenScript = class extends ScriptNode {
       if (event.key === "Enter") this.purchaseSelected();
       if (event.key === "+" || event.key === "=") this.map.zoomBy(1.2);
       if (event.key === "-" || event.key === "_") this.map.zoomBy(0.82);
-      if (event.key === "0") this.map.resetView();
+      if (event.key === "0") {
+        this.clearSelection();
+        this.map.resetView();
+      }
     };
     window.addEventListener("keydown", this.keyHandler);
     this.close();
@@ -3044,12 +3135,12 @@ var ResearchScreenScript = class extends ScriptNode {
     this.opened = true;
     this.screenRoot.applySceneProps({ active: true });
     this.setSubtreeVisible(this.screenRoot, true);
-    this.setSubtreeVisible(this.inspectorRoot, false);
-    this.inspectorRoot.applySceneProps({ active: false });
+    this.hidePopover();
     this.gameplayInput?.setMenuOpen(true);
     this.selectedUpgradeId = void 0;
     this.map.setSelectedNode();
-    this.map.setInputInsets(CLOSED_INPUT_INSETS);
+    this.map.setInputInsets(MAP_INPUT_INSETS);
+    this.map.setInputExclusion();
     this.updateGraph();
     this.map.resetView();
   }
@@ -3064,135 +3155,139 @@ var ResearchScreenScript = class extends ScriptNode {
   isOpen() {
     return this.opened;
   }
-  selectUpgrade(upgradeId) {
+  selectUpgrade(upgradeId, nodePosition) {
     if (!upgradeId || !UPGRADE_DEFINITIONS[upgradeId]) return;
     this.selectedUpgradeId = upgradeId;
     this.map.setSelectedNode(upgradeId);
-    this.map.setInputInsets(INSPECTOR_INPUT_INSETS);
-    this.inspectorRoot.applySceneProps({ active: true });
-    this.setSubtreeVisible(this.inspectorRoot, true);
+    const popoverCenter = this.getPopoverCenter(nodePosition);
+    const popoverPosition = {
+      x: popoverCenter.x - POPOVER_WIDTH * 0.5,
+      y: popoverCenter.y - POPOVER_HEIGHT * 0.5
+    };
+    this.popoverRoot.applySceneProps({ active: true, position: popoverPosition });
+    this.setSubtreeVisible(this.popoverRoot, true);
+    this.map.setInputExclusion({
+      x: popoverCenter.x,
+      y: popoverCenter.y,
+      width: POPOVER_WIDTH + 16,
+      height: POPOVER_HEIGHT + 16
+    });
     this.updateSelection();
+  }
+  getPopoverCenter(nodePosition) {
+    const placeRight = nodePosition.x < 120;
+    const x = nodePosition.x + (placeRight ? 205 : -205);
+    return {
+      x: Math.max(-455, Math.min(455, x)),
+      y: Math.max(-155, Math.min(238, nodePosition.y))
+    };
   }
   clearSelection() {
     this.selectedUpgradeId = void 0;
     this.map.setSelectedNode();
-    this.map.setInputInsets(CLOSED_INPUT_INSETS);
-    this.setSubtreeVisible(this.inspectorRoot, false);
-    this.inspectorRoot.applySceneProps({ active: false });
+    this.map.setInputExclusion();
+    this.hidePopover();
+  }
+  hidePopover() {
+    if (!this.popoverRoot) return;
+    this.setSubtreeVisible(this.popoverRoot, false);
+    this.popoverRoot.applySceneProps({ active: false });
   }
   purchaseSelected() {
     const upgradeId = this.selectedUpgradeId;
     if (!upgradeId || this.getSkillState(upgradeId) !== "available") return;
-    const result = this.playerState.purchaseUpgrade(upgradeId);
-    this.statusText.setText(result.message.toUpperCase());
+    this.playerState.purchaseUpgrade(upgradeId);
     this.updateGraph();
     this.updateSelection();
   }
   updateGraph() {
     const purchasedCount = SKILL_TREE_IDS.filter((id) => this.playerState.isUpgradePurchased(id)).length;
     this.creditsText.setText(`${this.playerState.getProfileCredits().toLocaleString("de-DE")} C`);
-    this.progressText.setText(`${purchasedCount} / ${SKILL_TREE_IDS.length} AKTIV`);
-    this.branchProgressText.setText(BRANCH_ORDER.map((branch) => {
-      const purchased = SKILL_TREE_BRANCHES[branch].filter((id) => this.playerState.isUpgradePurchased(id)).length;
-      return `${BRANCH_META[branch].label} ${purchased}/13`;
-    }).join("   \xB7   "));
+    this.progressText.setText(`${purchasedCount} / ${SKILL_TREE_IDS.length}`);
     const nodes = [{
       id: "prospector_core",
       label: UPGRADE_DEFINITIONS.prospector_core.label,
       branch: "core",
-      color: "#facc15",
+      color: "#ffd76a",
       tier: 0,
-      x: ROOT_POSITION.x,
-      y: ROOT_POSITION.y,
+      x: CONSTELLATION_ROOT.x,
+      y: CONSTELLATION_ROOT.y,
       state: this.getSkillState("prospector_core"),
-      milestone: true
+      iconKey: getSkillIconKey("prospector_core")
     }];
     const edges = [];
-    const regions = [];
     for (const branch of BRANCH_ORDER) {
       const meta = BRANCH_META[branch];
       const ids = SKILL_TREE_BRANCHES[branch];
       ids.forEach((id, index) => {
         const tier = index + 1;
+        const definition = UPGRADE_DEFINITIONS[id];
         const position = getConstellationNodePosition(branch, tier);
         nodes.push({
           id,
-          label: UPGRADE_DEFINITIONS[id].label,
+          label: this.getMapLabel(id, definition.label),
           branch,
           color: meta.color,
           tier,
           x: position.x,
           y: position.y,
           state: this.getSkillState(id),
-          milestone: tier % 3 === 0 || tier === 13
+          iconKey: getSkillIconKey(id),
+          milestone: isSkillTreeMilestone(id),
+          rank: getSkillTreeRank(id)
         });
-        const previous = index === 0 ? "prospector_core" : ids[index - 1];
-        edges.push({
-          from: previous,
-          to: id,
-          color: meta.color,
-          active: this.playerState.isUpgradePurchased(previous)
-        });
-      });
-      const regionPosition = getConstellationRegionPosition(branch);
-      regions.push({
-        label: meta.label,
-        color: meta.color,
-        x: regionPosition.x,
-        y: regionPosition.y
+        for (const prerequisite of definition.prerequisites ?? []) {
+          if (!SKILL_TREE_IDS.includes(prerequisite)) continue;
+          edges.push({
+            from: prerequisite,
+            to: id,
+            color: meta.color,
+            active: this.playerState.isUpgradePurchased(prerequisite)
+          });
+        }
       });
     }
-    this.map.setGraph({ width: MAP_WIDTH, height: MAP_HEIGHT, rootId: "prospector_core", nodes, edges, regions });
+    this.map.setGraph({
+      width: CONSTELLATION_MAP_WIDTH,
+      height: CONSTELLATION_MAP_HEIGHT,
+      rootId: "prospector_core",
+      nodes,
+      edges
+    });
     this.map.setSelectedNode(this.selectedUpgradeId);
+  }
+  getMapLabel(upgradeId, fallback) {
+    const labels = {
+      micro_jetpack: "MIKRO-\nJETPACK",
+      xray_potato: "KRISTALL-\nRADAR",
+      storm_subscription: "QUANTEN-\nBOHRER",
+      pocket_wormhole: "STERNEN-\nFRACHTER",
+      reality_premium: "GRAVITATIONS-\nKERN"
+    };
+    return labels[upgradeId] ?? fallback;
   }
   updateSelection() {
     const upgradeId = this.selectedUpgradeId;
     if (!upgradeId) return;
     const definition = UPGRADE_DEFINITIONS[upgradeId];
     const state = this.getSkillState(upgradeId);
-    const branch = upgradeId === "prospector_core" ? void 0 : this.getBranch(upgradeId);
-    const tier = this.getTier(upgradeId);
-    this.detailBranch.setText(branch ? `${BRANCH_META[branch].label}  \xB7  TIER ${tier}` : "ZENTRALER KERNSTERN");
-    this.detailTitle.setText(this.wrapText(definition.label.toUpperCase(), 22).split("\n").slice(0, 2).join("\n"));
-    this.detailDescription.setText(this.wrapText(definition.description ?? definition.label, 34));
-    this.statusText.setText(this.getStatusText(definition, state));
+    this.detailTitle.setText(this.wrapText(definition.label.toUpperCase(), 25).split("\n").slice(0, 2).join("\n"));
+    this.detailDescription.setText(this.wrapText(definition.description ?? definition.label, 38));
+    this.costText.setText(`${(definition.cost.credits ?? 0).toLocaleString("de-DE")} C`);
     this.purchaseLabel.setText(this.getPurchaseLabel(definition, state));
     this.purchaseButton.enabled = state === "available";
   }
   getSkillState(upgradeId) {
     if (this.playerState.isUpgradePurchased(upgradeId)) return "purchased";
     const definition = UPGRADE_DEFINITIONS[upgradeId];
-    if (!(definition.prerequisites ?? []).every((id) => this.playerState.isUpgradePurchased(id))) return "locked";
+    if (!areUpgradePrerequisitesMet(definition, (id) => this.playerState.isUpgradePurchased(id))) return "locked";
     return this.playerState.getProfileCredits() >= (definition.cost.credits ?? 0) ? "available" : "unaffordable";
   }
-  getStatusText(definition, state) {
-    if (state === "purchased") return "AKTIVIERT\nEFFEKT IST INSTALLIERT";
-    if (state === "available") return "VERBINDUNG STEHT\nBEREIT ZUR AKTIVIERUNG";
-    if (state === "unaffordable") {
-      const missing = Math.max(0, (definition.cost.credits ?? 0) - this.playerState.getProfileCredits());
-      return `NOCH ${missing.toLocaleString("de-DE")} CREDITS
-BEN\xD6TIGT`;
-    }
-    const prerequisite = definition.prerequisites?.[0];
-    return prerequisite ? `BEN\xD6TIGT
-${UPGRADE_DEFINITIONS[prerequisite].label.toUpperCase()}` : "NOCH NICHT VERBUNDEN";
-  }
   getPurchaseLabel(definition, state) {
-    if (state === "purchased") return "AKTIVIERT";
-    if (state === "locked") return "NICHT VERBUNDEN";
-    if (state === "unaffordable") return `${definition.cost.credits ?? 0} C \xB7 ZU TEUER`;
-    return `AKTIVIEREN \xB7 ${definition.cost.credits ?? 0} C`;
-  }
-  getBranch(upgradeId) {
-    return BRANCH_ORDER.find((branch) => SKILL_TREE_BRANCHES[branch].includes(upgradeId));
-  }
-  getTier(upgradeId) {
-    if (upgradeId === "prospector_core") return 0;
-    for (const branch of BRANCH_ORDER) {
-      const index = SKILL_TREE_BRANCHES[branch].indexOf(upgradeId);
-      if (index >= 0) return index + 1;
-    }
-    return 0;
+    if (state === "purchased") return "GELERNT";
+    if (state === "locked") return "GESPERRT";
+    if (state === "unaffordable") return "ZU TEUER";
+    return `LERNEN \xB7 ${(definition.cost.credits ?? 0).toLocaleString("de-DE")} C`;
   }
   wrapText(text, maxLineLength) {
     const words = text.split(/\s+/);
@@ -3205,7 +3300,7 @@ ${UPGRADE_DEFINITIONS[prerequisite].label.toUpperCase()}` : "NOCH NICHT VERBUNDE
       } else line = line ? `${line} ${word}` : word;
     }
     if (line) lines.push(line);
-    return lines.slice(0, 6).join("\n");
+    return lines.slice(0, 5).join("\n");
   }
   setSubtreeVisible(root, visible) {
     const visit = (node) => {
@@ -3262,4 +3357,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.276d7141e676.js.map
+//# sourceMappingURL=dynamic-nodes.454fda8f2a30.js.map
