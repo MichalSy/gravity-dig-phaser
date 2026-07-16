@@ -2909,6 +2909,14 @@ function clamp5(value, min, max) {
 
 // public/scripts/UI/UpgradeDialogScript.node.ts
 var BRANCH_ORDER = ["movement", "vision", "mining", "utility"];
+var BRANCH_LABELS = { movement: "MOBILIT\xC4T", vision: "SCANNER", mining: "MINING", utility: "UTILITY" };
+var BRANCH_COLORS = { movement: "#4ade80", vision: "#38bdf8", mining: "#f472b6", utility: "#c084fc" };
+var STATE_COLORS = {
+  purchased: "#4ade80",
+  available: "#facc15",
+  unaffordable: "#fb7185",
+  locked: "#94a3b8"
+};
 var SKILLS_PER_BRANCH_PAGE = 3;
 var PAGE_COUNT = 5;
 var UpgradeDialogScript = class extends ScriptNode {
@@ -2918,24 +2926,39 @@ var UpgradeDialogScript = class extends ScriptNode {
   gameplayInputNodeId = prop.nodeRef(null, { label: "Gameplay Input" });
   dialogRootNodeId = prop.nodeRef(null, { label: "Dialog Root" });
   creditsTextNodeId = prop.nodeRef(null, { label: "Credits Text" });
+  progressTextNodeId = prop.nodeRef(null, { label: "Progress Text" });
   statusTextNodeId = prop.nodeRef(null, { label: "Status Text" });
-  ringTextNodeId = prop.nodeRef(null, { label: "Ring Text" });
-  previousRingButtonNodeId = prop.nodeRef(null, { label: "Previous Ring Button" });
-  nextRingButtonNodeId = prop.nodeRef(null, { label: "Next Ring Button" });
+  detailTitleNodeId = prop.nodeRef(null, { label: "Detail Title" });
+  detailDescriptionNodeId = prop.nodeRef(null, { label: "Detail Description" });
+  ringTextNodeId = prop.nodeRef(null, { label: "Tier Page Text" });
+  previousRingButtonNodeId = prop.nodeRef(null, { label: "Previous Tier Page" });
+  nextRingButtonNodeId = prop.nodeRef(null, { label: "Next Tier Page" });
+  purchaseButtonNodeId = prop.nodeRef(null, { label: "Purchase Button" });
+  purchaseLabelNodeId = prop.nodeRef(null, { label: "Purchase Label" });
   closeButtonNodeId = prop.nodeRef(null, { label: "Close Button" });
   buyButtonNodeIds = prop.nodeRefList([], { label: "Skill Buttons" });
   buyLabelNodeIds = prop.nodeRefList([], { label: "Skill Labels" });
+  connectorNodeIds = prop.nodeRefList([], { label: "Connectors" });
+  branchLabelNodeIds = prop.nodeRefList([], { label: "Branch Labels" });
   playerState;
   dialogRoot;
   gameplayInput;
   creditsText;
+  progressText;
   statusText;
+  detailTitle;
+  detailDescription;
   ringText;
   previousRingButton;
   nextRingButton;
+  purchaseButton;
+  purchaseLabel;
   buttons = [];
   buttonLabels = [];
+  connectors = [];
+  branchLabels = [];
   visibleUpgradeIds = [];
+  selectedUpgradeId;
   keyHandler;
   opened = false;
   page = 0;
@@ -2944,29 +2967,42 @@ var UpgradeDialogScript = class extends ScriptNode {
     this.gameplayInput = this.resolveNode(this.gameplayInputNodeId, "GameplayInput");
     this.dialogRoot = this.requireNodeRef(this.dialogRootNodeId, "Dialog root");
     this.creditsText = this.requireNodeRef(this.creditsTextNodeId, "Credits text");
+    this.progressText = this.requireNodeRef(this.progressTextNodeId, "Progress text");
     this.statusText = this.requireNodeRef(this.statusTextNodeId, "Status text");
-    this.ringText = this.requireNodeRef(this.ringTextNodeId, "Ring text");
-    this.previousRingButton = this.requireNodeRef(this.previousRingButtonNodeId, "Previous ring button");
-    this.nextRingButton = this.requireNodeRef(this.nextRingButtonNodeId, "Next ring button");
+    this.detailTitle = this.requireNodeRef(this.detailTitleNodeId, "Detail title");
+    this.detailDescription = this.requireNodeRef(this.detailDescriptionNodeId, "Detail description");
+    this.ringText = this.requireNodeRef(this.ringTextNodeId, "Tier page text");
+    this.previousRingButton = this.requireNodeRef(this.previousRingButtonNodeId, "Previous tier button");
+    this.nextRingButton = this.requireNodeRef(this.nextRingButtonNodeId, "Next tier button");
+    this.purchaseButton = this.requireNodeRef(this.purchaseButtonNodeId, "Purchase button");
+    this.purchaseLabel = this.requireNodeRef(this.purchaseLabelNodeId, "Purchase label");
     this.buttons = this.buyButtonNodeIds.map((id, index) => this.requireNodeRef(id, `Skill button ${index}`));
     this.buttonLabels = this.buyLabelNodeIds.map((id, index) => this.requireNodeRef(id, `Skill label ${index}`));
-    this.buttons.forEach((button, index) => button.setClickAction?.(() => this.purchase(this.visibleUpgradeIds[index])));
+    this.connectors = this.connectorNodeIds.map((id, index) => this.requireNodeRef(id, `Connector ${index}`));
+    this.branchLabels = this.branchLabelNodeIds.map((id, index) => this.requireNodeRef(id, `Branch label ${index}`));
+    this.buttons.forEach((button, index) => button.setCallbacks({
+      onHover: () => this.selectUpgrade(this.visibleUpgradeIds[index]),
+      onActivate: () => this.selectUpgrade(this.visibleUpgradeIds[index])
+    }));
     this.previousRingButton.setClickAction?.(() => this.changePage(-1));
     this.nextRingButton.setClickAction?.(() => this.changePage(1));
+    this.purchaseButton.setClickAction?.(() => this.purchaseSelected());
     this.requireNodeRef(this.closeButtonNodeId, "Close button").setClickAction?.(() => this.close());
     this.keyHandler = (event) => {
       if (!this.isOpen()) return;
       if (event.key === "Escape") this.close();
       if (event.key === "ArrowLeft") this.changePage(-1);
       if (event.key === "ArrowRight") this.changePage(1);
+      if (event.key === "Enter") this.purchaseSelected();
     };
     window.addEventListener("keydown", this.keyHandler);
     this.close();
   }
   destroy() {
-    this.buttons.forEach((button) => button.setClickAction?.());
+    this.buttons.forEach((button) => button.setCallbacks({}));
     this.previousRingButton?.setClickAction?.();
     this.nextRingButton?.setClickAction?.();
+    this.purchaseButton?.setClickAction?.();
     if (this.keyHandler) window.removeEventListener("keydown", this.keyHandler);
     this.keyHandler = void 0;
     this.gameplayInput?.setMenuOpen(false);
@@ -2976,8 +3012,7 @@ var UpgradeDialogScript = class extends ScriptNode {
     this.dialogRoot.applySceneProps({ active: true });
     this.setDialogVisible(true);
     this.gameplayInput?.setMenuOpen(true);
-    this.statusText.setText("53 Skills in f\xFCnf Forschungsringen. Mit Pfeilen oder Ring-Buttons navigieren.");
-    this.updateView();
+    this.updateView(true);
   }
   close() {
     this.opened = false;
@@ -2990,61 +3025,158 @@ var UpgradeDialogScript = class extends ScriptNode {
   isOpen() {
     return this.opened;
   }
-  purchase(upgradeId) {
-    if (!upgradeId) {
-      this.statusText.setText("Dies ist nur der Mittelpunkt des aktuellen Forschungsrings.");
-      return;
-    }
-    const definition = UPGRADE_DEFINITIONS[upgradeId];
+  selectUpgrade(upgradeId) {
+    if (!upgradeId) return;
+    this.selectedUpgradeId = upgradeId;
+    this.updateSelection();
+  }
+  purchaseSelected() {
+    const upgradeId = this.selectedUpgradeId;
+    if (!upgradeId || this.getSkillState(upgradeId) !== "available") return;
     const result = this.playerState.purchaseUpgrade(upgradeId);
-    this.statusText.setText(`${definition.description ?? definition.label}  \xB7  ${result.message}`);
-    this.updateView();
+    this.statusText.setText(result.message.toUpperCase());
+    this.buttons[this.visibleUpgradeIds.indexOf(upgradeId)]?.flash(260);
+    this.updateView(false);
   }
   changePage(delta) {
     const nextPage = Math.max(0, Math.min(PAGE_COUNT - 1, this.page + delta));
     if (nextPage === this.page) return;
     this.page = nextPage;
-    this.statusText.setText(`Forschungsring ${this.page + 1} von ${PAGE_COUNT}. Vorg\xE4nger aus fr\xFCheren Ringen bleiben erforderlich.`);
-    this.updateView();
+    this.selectedUpgradeId = void 0;
+    this.updateView(true);
   }
-  updateView() {
-    this.creditsText.setText(`${this.playerState.getProfileCredits()} CREDITS`);
+  updateView(selectRecommended) {
+    const credits = this.playerState.getProfileCredits();
+    const purchasedCount = SKILL_TREE_IDS.filter((id) => this.playerState.isUpgradePurchased(id)).length;
+    this.creditsText.setText(`${credits.toLocaleString("de-DE")} CREDITS`);
+    this.progressText.setText(`${purchasedCount} / ${SKILL_TREE_IDS.length} INSTALLIERT`);
     const start = Math.min(this.page * SKILLS_PER_BRANCH_PAGE, SKILL_TREE_BRANCHES.movement.length - SKILLS_PER_BRANCH_PAGE);
     this.visibleUpgradeIds = [this.page === 0 ? "prospector_core" : void 0];
-    for (const branch of BRANCH_ORDER) {
-      this.visibleUpgradeIds.push(...SKILL_TREE_BRANCHES[branch].slice(start, start + SKILLS_PER_BRANCH_PAGE));
-    }
+    for (const branch of BRANCH_ORDER) this.visibleUpgradeIds.push(...SKILL_TREE_BRANCHES[branch].slice(start, start + SKILLS_PER_BRANCH_PAGE));
     const firstTier = start + 1;
-    this.ringText.setText(`RING ${this.page + 1}/${PAGE_COUNT} \xB7 TIER ${firstTier}-${firstTier + 2}`);
-    this.buttonLabels[0]?.setText(this.page === 0 ? this.formatUpgrade("prospector_core") : `ORBIT ${this.page + 1}
-TIER ${firstTier}-${firstTier + 2}`);
-    this.buttons[0].enabled = true;
+    this.ringText.setText(`TIER ${firstTier}\u2013${firstTier + 2}  \xB7  ${this.page + 1}/${PAGE_COUNT}`);
+    this.buttonLabels[0]?.setText(this.page === 0 ? this.formatNodeLabel("prospector_core", 0) : `SEKTOR ${this.page + 1}
+TIER ${firstTier}\u2013${firstTier + 2}`);
+    this.buttonLabels[0]?.applySceneProps({ color: this.page === 0 ? STATE_COLORS[this.getSkillState("prospector_core")] : "#facc15" });
     for (let index = 1; index < this.buttons.length; index += 1) {
       const upgradeId = this.visibleUpgradeIds[index];
-      this.buttonLabels[index]?.setText(upgradeId ? this.formatUpgrade(upgradeId) : "LEER");
+      if (!upgradeId) continue;
+      const tier = start + (index - 1) % SKILLS_PER_BRANCH_PAGE + 1;
+      const state = this.getSkillState(upgradeId);
+      this.buttonLabels[index]?.setText(this.formatNodeLabel(upgradeId, tier));
+      this.buttonLabels[index]?.applySceneProps({ color: STATE_COLORS[state] });
       this.buttons[index].enabled = true;
     }
+    BRANCH_ORDER.forEach((branch, branchIndex) => {
+      const purchased = SKILL_TREE_BRANCHES[branch].filter((id) => this.playerState.isUpgradePurchased(id)).length;
+      this.branchLabels[branchIndex]?.setText(`${BRANCH_LABELS[branch]}  ${purchased}/13`);
+      this.updateBranchConnectors(branch, branchIndex, start);
+    });
     this.previousRingButton.enabled = this.page > 0;
     this.nextRingButton.enabled = this.page < PAGE_COUNT - 1;
+    if (selectRecommended || !this.selectedUpgradeId || !this.visibleUpgradeIds.includes(this.selectedUpgradeId)) {
+      this.selectedUpgradeId = this.recommendedVisibleUpgrade();
+    }
+    this.updateSelection();
   }
-  formatUpgrade(upgradeId) {
+  updateSelection() {
+    this.buttons.forEach((button, index) => button.setSelected(Boolean(this.visibleUpgradeIds[index] && this.visibleUpgradeIds[index] === this.selectedUpgradeId)));
+    const upgradeId = this.selectedUpgradeId;
+    if (!upgradeId) {
+      this.detailTitle.setText("FORSCHUNGSKNOTEN AUSW\xC4HLEN");
+      this.detailDescription.setText("Jeder Pfad l\xE4uft von links nach rechts. Gr\xFCn ist installiert, Gelb kann gekauft werden.");
+      this.statusText.setText("GRAU = GESPERRT  \xB7  ROT = ZU TEUER");
+      this.purchaseLabel.setText("KNOTEN W\xC4HLEN");
+      this.purchaseButton.enabled = false;
+      return;
+    }
     const definition = UPGRADE_DEFINITIONS[upgradeId];
-    const purchased = this.playerState.isUpgradePurchased(upgradeId);
+    const tier = this.getTier(upgradeId);
+    const state = this.getSkillState(upgradeId);
+    this.detailTitle.setText(`${definition.label.toUpperCase()}  \xB7  ${tier === 0 ? "KERN" : `TIER ${tier}`}`);
+    this.detailTitle.applySceneProps({ color: STATE_COLORS[state] });
+    this.detailDescription.setText(this.wrapText(definition.description ?? definition.label, 88));
+    this.statusText.setText(this.getStatusText(definition, state));
+    this.statusText.applySceneProps({ color: STATE_COLORS[state] });
+    this.purchaseLabel.setText(this.getPurchaseLabel(definition, state));
+    this.purchaseButton.enabled = state === "available";
+  }
+  updateBranchConnectors(branch, branchIndex, start) {
+    const branchIds = SKILL_TREE_BRANCHES[branch];
+    const visible = branchIds.slice(start, start + SKILLS_PER_BRANCH_PAGE);
+    const predecessor = start === 0 ? "prospector_core" : branchIds[start - 1];
+    const sources = [predecessor, visible[0], visible[1]];
+    sources.forEach((sourceId, connectorIndex) => {
+      const active = Boolean(sourceId && this.playerState.isUpgradePurchased(sourceId));
+      this.connectors[branchIndex * 3 + connectorIndex]?.applySceneProps({
+        fillColor: active ? BRANCH_COLORS[branch] : "#334155",
+        fillAlpha: active ? 0.95 : 0.6
+      });
+    });
+  }
+  formatNodeLabel(upgradeId, tier) {
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
+    const state = this.getSkillState(upgradeId);
+    const stateLabel = state === "purchased" ? "OK" : state === "locked" ? "LOCK" : `${definition.cost.credits ?? 0} C`;
+    return `${tier === 0 ? "KERN" : `T${tier}`} \xB7 ${stateLabel}
+${this.compactLabel(definition.label)}`;
+  }
+  getSkillState(upgradeId) {
+    if (this.playerState.isUpgradePurchased(upgradeId)) return "purchased";
+    const definition = UPGRADE_DEFINITIONS[upgradeId];
     const unlocked = (definition.prerequisites ?? []).every((id) => this.playerState.isUpgradePurchased(id));
-    const cost = definition.cost.credits ?? 0;
-    const state = purchased ? "INSTALLIERT" : unlocked ? `${cost} C` : "GESPERRT";
-    return `${this.compactLabel(definition.label)}
-${state}`;
+    if (!unlocked) return "locked";
+    return this.playerState.getProfileCredits() >= (definition.cost.credits ?? 0) ? "available" : "unaffordable";
+  }
+  getStatusText(definition, state) {
+    if (state === "purchased") return "INSTALLIERT \xB7 EFFEKT IST AKTIV";
+    if (state === "available") return "VORAUSSETZUNG ERF\xDCLLT \xB7 BEREIT ZUM KAUF";
+    if (state === "unaffordable") {
+      const missing = Math.max(0, (definition.cost.credits ?? 0) - this.playerState.getProfileCredits());
+      return `NOCH ${missing.toLocaleString("de-DE")} CREDITS BEN\xD6TIGT`;
+    }
+    const prerequisite = definition.prerequisites?.[0];
+    return prerequisite ? `BEN\xD6TIGT: ${UPGRADE_DEFINITIONS[prerequisite].label.toUpperCase()}` : "NOCH NICHT VERF\xDCGBAR";
+  }
+  getPurchaseLabel(definition, state) {
+    if (state === "purchased") return "INSTALLIERT";
+    if (state === "locked") return "GESPERRT";
+    if (state === "unaffordable") return `${definition.cost.credits ?? 0} C \xB7 ZU TEUER`;
+    return `KAUFEN \xB7 ${definition.cost.credits ?? 0} C`;
+  }
+  getTier(upgradeId) {
+    if (upgradeId === "prospector_core") return 0;
+    for (const branch of BRANCH_ORDER) {
+      const index = SKILL_TREE_BRANCHES[branch].indexOf(upgradeId);
+      if (index >= 0) return index + 1;
+    }
+    return 0;
+  }
+  recommendedVisibleUpgrade() {
+    return this.visibleUpgradeIds.find((id) => id && this.getSkillState(id) === "available") ?? this.visibleUpgradeIds.find((id) => id && !this.playerState.isUpgradePurchased(id)) ?? this.visibleUpgradeIds.find((id) => Boolean(id));
   }
   compactLabel(label) {
-    if (label.length <= 18) return label;
+    if (label.length <= 20) return label.toUpperCase();
     const middle = label.length / 2;
     const breakpoints = [...label].flatMap((character, index) => character === " " || character === "-" ? [index + 1] : []);
-    const splitAt = breakpoints.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle))[0] ?? 17;
-    const first = label.slice(0, splitAt).trim();
-    const second = label.slice(splitAt).trim();
-    return `${first}
-${second}`;
+    const splitAt = breakpoints.sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle))[0] ?? 18;
+    return `${label.slice(0, splitAt).trim()}
+${label.slice(splitAt).trim()}`.toUpperCase();
+  }
+  wrapText(text, maxLineLength) {
+    const words = text.split(/\s+/);
+    const lines = [];
+    let line = "";
+    for (const word of words) {
+      if (line && `${line} ${word}`.length > maxLineLength) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = line ? `${line} ${word}` : word;
+      }
+    }
+    if (line) lines.push(line);
+    return lines.slice(0, 2).join("\n");
   }
   setDialogVisible(visible) {
     const visit = (node) => {
@@ -3101,4 +3233,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.fb0d72661a52.js.map
+//# sourceMappingURL=dynamic-nodes.8738cc85358f.js.map

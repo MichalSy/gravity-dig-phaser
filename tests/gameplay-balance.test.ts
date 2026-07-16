@@ -72,9 +72,17 @@ describe('early-game economy balance', () => {
     expect(behavior.props.ringTextNodeId).toBe('tree-ring-text');
     expect(behavior.props.previousRingButtonNodeId).toBe('tree-ring-prev');
     expect(behavior.props.nextRingButtonNodeId).toBe('tree-ring-next');
+    expect(behavior.props.purchaseButtonNodeId).toBe('tree-purchase');
+    expect(behavior.props.detailTitleNodeId).toBe('tree-detail-title');
+    expect(behavior.props.detailDescriptionNodeId).toBe('tree-detail-description');
+    expect(behavior.props.connectorNodeIds).toHaveLength(12);
+    expect(skillTreePrefab.root.props.size).toEqual({ width: 1240, height: 680 });
     const dialogSource = readFileSync('apps/game/public/scripts/UI/UpgradeDialogScript.node.ts', 'utf8');
     expect(dialogSource).toContain('const PAGE_COUNT = 5');
     expect(dialogSource).toContain("event.key === 'ArrowRight'");
+    expect(dialogSource).toContain('purchaseSelected()');
+    expect(dialogSource).toContain('setCallbacks({');
+    expect(dialogSource).toContain("available: '#facc15'");
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

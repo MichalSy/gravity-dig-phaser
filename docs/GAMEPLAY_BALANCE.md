@@ -48,9 +48,11 @@ Jeder zerstörte, droppende Block erzeugt weiterhin genau ein sammelbares Item. 
 | Gold | 30 Cr |
 | Diamant | 100 Cr |
 
-## Forschungs-Orbit (Skillbaum)
+## Forschungsnetz (Skillbaum)
 
-Die Schiffsoberfläche zeigt einen radialen Skillbaum mit dem `Prospektor-Kern` in der Mitte. Insgesamt stehen **53 Skills** in vier Ästen mit je 13 Stufen zur Verfügung. Jeder äußere Knoten ist nur kaufbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert. Fünf navigierbare Forschungsringe zeigen jeweils drei aufeinanderfolgende Tiers pro Ast; der letzte Ring überlappt zur Orientierung die Tiers 11–13.
+Die Schiffsoberfläche zeigt ein bildschirmfüllendes Forschungsnetz mit vier klaren, horizontalen Entwicklungspfaden. Insgesamt stehen **53 Skills** zur Verfügung: der `Prospektor-Kern` sowie vier Äste mit je 13 Stufen. Jeder Knoten ist nur kaufbar, wenn sein direkter Vorgänger installiert wurde. Käufe und Voraussetzungen werden dauerhaft im Profil gespeichert.
+
+Fünf Tierseiten zeigen pro Pfad jeweils drei aufeinanderfolgende Stufen; die letzte Seite überlappt zur Orientierung die Tiers 11–13. Knoten werden zunächst ausgewählt. Name, Beschreibung, Voraussetzung und Kaufstatus erscheinen anschließend in einem separaten Detailpanel. Erst der dortige Kaufbutton installiert den Skill. Die Zustände sind farblich eindeutig: Grün = installiert, Gelb = kaufbar, Rot = zu teuer, Grau = gesperrt.
 
 | Ast | Stufe 1 | Stufe 2 | Stufe 3 |
 |---|---|---|---|
