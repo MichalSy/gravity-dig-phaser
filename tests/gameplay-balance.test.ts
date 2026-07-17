@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ITEM_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/items';
 import { SKILL_TREE_BRANCHES, SKILL_TREE_IDS, UPGRADE_DEFINITIONS } from '../apps/game/public/scripts/PlayerState/catalogs/upgrades';
 import { LIFE_SUPPORT_ENERGY_COST_PER_SEC, PLAYER_SPEED } from '../apps/game/public/scripts/PlayerState/playerConfig';
-import { getConstellationNodePosition, type SkillTreeBranchId } from '../apps/game/public/scripts/UI/skillTreeLayout';
+import { CONSTELLATION_ROOT, getConstellationNodePosition, type SkillTreeBranchId } from '../apps/game/public/scripts/UI/skillTreeLayout';
 
 describe('early-game economy balance', () => {
   it('pays meaningful credits for every collected ground resource', () => {
@@ -63,7 +63,8 @@ describe('early-game economy balance', () => {
     expect(alternativeRouteSkills.length).toBeGreaterThanOrEqual(8);
     expect(UPGRADE_DEFINITIONS.micro_jetpack.prerequisites).toEqual(['spring_boots', 'cargo_tetris']);
     expect(UPGRADE_DEFINITIONS.micro_jetpack.prerequisiteMode).toBe('any');
-    expect(UPGRADE_DEFINITIONS.rocket_pants.prerequisites).toEqual(['micro_jetpack', 'wide_visor']);
+    expect(UPGRADE_DEFINITIONS.rocket_pants.prerequisites).toEqual(['spring_boots', 'wide_visor']);
+    expect(UPGRADE_DEFINITIONS.rocket_pants.prerequisiteMode).toBe('any');
     for (const id of SKILL_TREE_IDS.filter((id) => id !== 'prospector_core')) {
       expect(UPGRADE_DEFINITIONS[id].prerequisites?.length).toBeGreaterThan(0);
       expect(UPGRADE_DEFINITIONS[id].tree).toBeDefined();
@@ -150,30 +151,47 @@ describe('early-game economy balance', () => {
     expect(minimumEarlyDistance).toBeGreaterThan(110);
   });
 
-  it('keeps the four primary research lanes on one uniform orthogonal grid', () => {
+  it('places every skill on one uniform orthogonal grid', () => {
     const branches: SkillTreeBranchId[] = ['movement', 'vision', 'mining', 'utility'];
-    const root = { x: 1250, y: 750 };
-    const segments = branches.flatMap((branch) => {
-      const points = [root, ...Array.from({ length: 13 }, (_, index) => getConstellationNodePosition(branch, index + 1))];
-      return points.slice(1).map((point, index) => ({ branch, from: points[index], to: point }));
-    });
-    for (const segment of segments) {
-      expect(Math.hypot(segment.to.x - segment.from.x, segment.to.y - segment.from.y)).toBe(180);
-      expect(segment.from.x === segment.to.x || segment.from.y === segment.to.y).toBe(true);
+    const positions = branches.flatMap((branch) => Array.from({ length: 13 }, (_, index) =>
+      getConstellationNodePosition(branch, index + 1)));
+    expect(new Set(positions.map(({ x, y }) => `${x}:${y}`))).toHaveLength(52);
+    for (const position of positions) {
+      expect(Math.abs((position.x - CONSTELLATION_ROOT.x) % 180)).toBe(0);
+      expect(Math.abs((position.y - CONSTELLATION_ROOT.y) % 180)).toBe(0);
     }
-    const orientation = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }) =>
-      Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
-    const crosses = (left: typeof segments[number], right: typeof segments[number]) =>
-      orientation(left.from, left.to, right.from) !== orientation(left.from, left.to, right.to)
-      && orientation(right.from, right.to, left.from) !== orientation(right.from, right.to, left.to);
-    const samePoint = (left: { x: number; y: number }, right: { x: number; y: number }) =>
-      left.x === right.x && left.y === right.y;
-    const crossings = segments.flatMap((left, index) => segments.slice(index + 1).filter((right) => {
-      const sharesEndpoint = samePoint(left.from, right.from) || samePoint(left.from, right.to)
-        || samePoint(left.to, right.from) || samePoint(left.to, right.to);
-      return !sharesEndpoint && crosses(left, right);
-    }));
-    expect(crossings).toHaveLength(0);
+  });
+
+  it('uses forks, alternative routes, convergences, and acyclic capstones in every family', () => {
+    const visited = new Set<string>();
+    const active = new Set<string>();
+    const visit = (id: string) => {
+      expect(active.has(id)).toBe(false);
+      if (visited.has(id)) return;
+      active.add(id);
+      for (const prerequisite of UPGRADE_DEFINITIONS[id as keyof typeof UPGRADE_DEFINITIONS].prerequisites ?? []) {
+        if (SKILL_TREE_IDS.includes(prerequisite)) visit(prerequisite);
+      }
+      active.delete(id);
+      visited.add(id);
+    };
+    for (const id of SKILL_TREE_IDS) visit(id);
+    expect(visited).toHaveLength(53);
+
+    for (const ids of Object.values(SKILL_TREE_BRANCHES)) {
+      expect(UPGRADE_DEFINITIONS[ids[0]].prerequisites).toEqual(['prospector_core']);
+      for (const id of ids.slice(1, 4)) {
+        expect(UPGRADE_DEFINITIONS[id].prerequisites).toContain(ids[0]);
+      }
+      const alternativeNodes = ids.filter((id) => UPGRADE_DEFINITIONS[id].prerequisiteMode === 'any');
+      const convergingNodes = ids.filter((id) =>
+        UPGRADE_DEFINITIONS[id].prerequisiteMode !== 'any'
+        && (UPGRADE_DEFINITIONS[id].prerequisites?.length ?? 0) >= 2);
+      expect(alternativeNodes.length).toBeGreaterThanOrEqual(8);
+      expect(convergingNodes.length).toBeGreaterThanOrEqual(2);
+      expect(UPGRADE_DEFINITIONS[ids[12]].prerequisiteMode).toBe('any');
+      expect(UPGRADE_DEFINITIONS[ids[12]].prerequisites).toEqual(expect.arrayContaining([ids[10], ids[11]]));
+    }
   });
 
   it('keeps first upgrades within a few average starter cargo runs', () => {

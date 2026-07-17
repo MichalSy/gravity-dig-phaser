@@ -133,6 +133,45 @@ describe('public player state domain', () => {
     vi.unstubAllGlobals();
   });
 
+  it('opens real choices, reaches one skill from different directions, and keeps mastery gates', () => {
+    const createManager = (seed: string) => {
+      vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
+      const manager = new PlayerStateManager();
+      manager.init();
+      manager.startRun('test-planet', seed, false);
+      manager.onInspectorPropChanged('credits', 100_000);
+      expect(manager.purchaseUpgrade('prospector_core').ok).toBe(true);
+      expect(manager.purchaseUpgrade('spring_boots').ok).toBe(true);
+      return manager;
+    };
+
+    const jetpackRoute = createManager('jetpack-route');
+    expect(jetpackRoute.purchaseUpgrade('micro_jetpack').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('ceiling_negotiator').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('turbo_snail').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('bounce_tax_refund').ok).toBe(true);
+
+    const rocketRoute = createManager('rocket-route');
+    expect(rocketRoute.purchaseUpgrade('rocket_pants').ok).toBe(true);
+    expect(rocketRoute.isUpgradePurchased('micro_jetpack')).toBe(false);
+    expect(rocketRoute.purchaseUpgrade('ceiling_negotiator').ok).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps already purchased skill ids from older linear saves', () => {
+    const oldSave = createDefaultSaveGame();
+    oldSave.profile.upgrades.purchased = ['prospector_core', 'spring_boots', 'micro_jetpack', 'rocket_pants'];
+    vi.stubGlobal('localStorage', {
+      getItem: () => JSON.stringify(oldSave),
+      setItem: () => undefined,
+    });
+    const manager = new PlayerStateManager();
+    manager.init();
+    for (const id of oldSave.profile.upgrades.purchased) expect(manager.isUpgradePurchased(id)).toBe(true);
+    expect(manager.stats.airJumps).toBe(2);
+    vi.unstubAllGlobals();
+  });
+
   it('can purchase all 53 research skills only in valid tree order', () => {
     vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => undefined });
     const manager = new PlayerStateManager();

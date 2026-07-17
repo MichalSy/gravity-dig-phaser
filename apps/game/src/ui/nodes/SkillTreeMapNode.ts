@@ -187,7 +187,7 @@ export class SkillTreeMapNode extends TransformNode {
     if (!graph) return;
     const fitX = Math.max(0.01, (this.size.width - 90) / graph.width);
     const fitY = Math.max(0.01, (this.size.height - 105) / graph.height);
-    this.zoom = Phaser.Math.Clamp(Math.max(Math.min(fitX, fitY), 0.72), MIN_ZOOM, MAX_ZOOM);
+    this.zoom = Phaser.Math.Clamp(Math.max(Math.min(fitX, fitY), 0.58), MIN_ZOOM, MAX_ZOOM);
     const root = graph.nodes.find((node) => node.id === graph.rootId);
     this.pan.set(-(root?.x ?? graph.width * 0.5) * this.zoom, -(root?.y ?? graph.height * 0.5) * this.zoom + 26);
     this.applyViewTransform();
@@ -270,7 +270,7 @@ export class SkillTreeMapNode extends TransformNode {
       const end = this.edgeAnchor(to, from);
       const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
       const drawConnector = () => {
-        if (!edge.secondary || start.x === end.x || start.y === end.y) {
+        if (start.x === end.x || start.y === end.y) {
           graphics.lineBetween(start.x, start.y, end.x, end.y);
           return;
         }

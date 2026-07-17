@@ -2,37 +2,41 @@ import type { UpgradeId } from '../PlayerState/types';
 
 export type SkillTreeBranchId = 'movement' | 'vision' | 'mining' | 'utility';
 
-export const CONSTELLATION_MAP_WIDTH = 2500;
-export const CONSTELLATION_MAP_HEIGHT = 1500;
-export const CONSTELLATION_ROOT = { x: 1250, y: 750 } as const;
+export const CONSTELLATION_MAP_WIDTH = 2680;
+export const CONSTELLATION_MAP_HEIGHT = 1980;
+export const CONSTELLATION_ROOT = { x: 1340, y: 990 } as const;
 
-// Uniform 180 px grid inspired by classic orthogonal talent trees. Consecutive
-// nodes share either x or y, so every primary connector is perfectly straight.
+const GRID_STEP = 180;
+const TOP_ROWS = [450, 630, 810] as const;
+const BOTTOM_ROWS = [1170, 1350, 1530] as const;
+
+function branchGrid(side: 'left' | 'right', rows: readonly [number, number, number]): ReadonlyArray<Readonly<{ x: number; y: number }>> {
+  const direction = side === 'left' ? -1 : 1;
+  const column = (depth: number) => CONSTELLATION_ROOT.x + direction * GRID_STEP * depth;
+  const middle = rows[1];
+  const entryY = middle < CONSTELLATION_ROOT.y ? rows[2] : rows[0];
+  return [
+    { x: column(1), y: entryY },
+    { x: column(2), y: rows[0] },
+    { x: column(2), y: rows[1] },
+    { x: column(2), y: rows[2] },
+    { x: column(3), y: rows[0] },
+    { x: column(3), y: rows[1] },
+    { x: column(3), y: rows[2] },
+    { x: column(4), y: rows[0] },
+    { x: column(4), y: rows[1] },
+    { x: column(4), y: rows[2] },
+    { x: column(5), y: rows[0] },
+    { x: column(5), y: rows[2] },
+    { x: column(6), y: middle },
+  ];
+}
+
 const POSITIONS: Record<SkillTreeBranchId, ReadonlyArray<Readonly<{ x: number; y: number }>>> = {
-  movement: [
-    { x: 1070, y: 750 }, { x: 890, y: 750 }, { x: 710, y: 750 }, { x: 530, y: 750 },
-    { x: 350, y: 750 }, { x: 170, y: 750 }, { x: 170, y: 570 }, { x: 350, y: 570 },
-    { x: 530, y: 570 }, { x: 710, y: 570 }, { x: 890, y: 570 }, { x: 1070, y: 570 },
-    { x: 1070, y: 390 },
-  ],
-  vision: [
-    { x: 1250, y: 570 }, { x: 1430, y: 570 }, { x: 1610, y: 570 }, { x: 1790, y: 570 },
-    { x: 1970, y: 570 }, { x: 2150, y: 570 }, { x: 2330, y: 570 }, { x: 2330, y: 390 },
-    { x: 2150, y: 390 }, { x: 1970, y: 390 }, { x: 1790, y: 390 }, { x: 1610, y: 390 },
-    { x: 1430, y: 390 },
-  ],
-  mining: [
-    { x: 1430, y: 750 }, { x: 1610, y: 750 }, { x: 1790, y: 750 }, { x: 1970, y: 750 },
-    { x: 2150, y: 750 }, { x: 2330, y: 750 }, { x: 2330, y: 930 }, { x: 2150, y: 930 },
-    { x: 1970, y: 930 }, { x: 1790, y: 930 }, { x: 1610, y: 930 }, { x: 1430, y: 930 },
-    { x: 1430, y: 1110 },
-  ],
-  utility: [
-    { x: 1250, y: 930 }, { x: 1070, y: 930 }, { x: 890, y: 930 }, { x: 710, y: 930 },
-    { x: 530, y: 930 }, { x: 350, y: 930 }, { x: 170, y: 930 }, { x: 170, y: 1110 },
-    { x: 350, y: 1110 }, { x: 530, y: 1110 }, { x: 710, y: 1110 }, { x: 890, y: 1110 },
-    { x: 1070, y: 1110 },
-  ],
+  movement: branchGrid('left', TOP_ROWS),
+  vision: branchGrid('right', TOP_ROWS),
+  mining: branchGrid('right', BOTTOM_ROWS),
+  utility: branchGrid('left', BOTTOM_ROWS),
 };
 
 const MILESTONES = new Set<UpgradeId>([
