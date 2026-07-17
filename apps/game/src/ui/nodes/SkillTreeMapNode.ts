@@ -270,14 +270,7 @@ export class SkillTreeMapNode extends TransformNode {
       const end = this.edgeAnchor(to, from);
       const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
       const drawConnector = () => {
-        if (start.x === end.x || start.y === end.y) {
-          graphics.lineBetween(start.x, start.y, end.x, end.y);
-          return;
-        }
-        const middleX = (start.x + end.x) * 0.5;
-        graphics.lineBetween(start.x, start.y, middleX, start.y);
-        graphics.lineBetween(middleX, start.y, middleX, end.y);
-        graphics.lineBetween(middleX, end.y, end.x, end.y);
+        graphics.lineBetween(start.x, start.y, end.x, end.y);
       };
       graphics.lineStyle(edge.secondary ? 8 : 12, 0x050b16, edge.secondary ? 0.82 : 0.72);
       drawConnector();

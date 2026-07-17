@@ -119,6 +119,8 @@ describe('early-game economy balance', () => {
     expect(mapSource).toContain("'research-anime-background'");
     expect(mapSource).toContain('node.iconKey');
     expect(mapSource).toContain('if (edge.secondary && !highlightedBridge) continue;');
+    expect(mapSource).toContain('graphics.lineBetween(start.x, start.y, end.x, end.y);');
+    expect(mapSource).not.toContain('const middleX =');
     expect(mapSource).not.toContain('.setDepth(');
     const assetManifest = JSON.parse(readFileSync('apps/game/public/assets/assets.manifest.json', 'utf8'));
     const researchImages = assetManifest.groups.gameplay.images.filter((asset: { key: string }) => asset.key.startsWith('research-'));
