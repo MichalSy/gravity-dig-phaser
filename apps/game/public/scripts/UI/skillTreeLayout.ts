@@ -6,33 +6,32 @@ export const CONSTELLATION_MAP_WIDTH = 2500;
 export const CONSTELLATION_MAP_HEIGHT = 1500;
 export const CONSTELLATION_ROOT = { x: 1250, y: 750 } as const;
 
-// Four readable research lanes wrap around The Bucket. Each lane follows one
-// continuous ribbon from the core to its outer capstone instead of scattering
-// tiers across the whole map.
+// Uniform 180 px grid inspired by classic orthogonal talent trees. Consecutive
+// nodes share either x or y, so every primary connector is perfectly straight.
 const POSITIONS: Record<SkillTreeBranchId, ReadonlyArray<Readonly<{ x: number; y: number }>>> = {
   movement: [
-    { x: 1080, y: 660 }, { x: 850, y: 580 }, { x: 600, y: 520 }, { x: 360, y: 450 },
-    { x: 180, y: 340 }, { x: 360, y: 230 }, { x: 600, y: 220 }, { x: 820, y: 250 },
-    { x: 1010, y: 310 }, { x: 1080, y: 160 }, { x: 850, y: 100 }, { x: 600, y: 100 },
-    { x: 350, y: 110 },
+    { x: 1070, y: 750 }, { x: 890, y: 750 }, { x: 710, y: 750 }, { x: 530, y: 750 },
+    { x: 350, y: 750 }, { x: 170, y: 750 }, { x: 170, y: 570 }, { x: 350, y: 570 },
+    { x: 530, y: 570 }, { x: 710, y: 570 }, { x: 890, y: 570 }, { x: 1070, y: 570 },
+    { x: 1070, y: 390 },
   ],
   vision: [
-    { x: 1420, y: 660 }, { x: 1650, y: 580 }, { x: 1950, y: 510 }, { x: 2230, y: 430 },
-    { x: 2360, y: 320 }, { x: 2190, y: 220 }, { x: 1950, y: 200 }, { x: 1720, y: 230 },
-    { x: 1510, y: 300 }, { x: 1450, y: 150 }, { x: 1680, y: 90 }, { x: 1930, y: 90 },
-    { x: 2180, y: 100 },
+    { x: 1250, y: 570 }, { x: 1430, y: 570 }, { x: 1610, y: 570 }, { x: 1790, y: 570 },
+    { x: 1970, y: 570 }, { x: 2150, y: 570 }, { x: 2330, y: 570 }, { x: 2330, y: 390 },
+    { x: 2150, y: 390 }, { x: 1970, y: 390 }, { x: 1790, y: 390 }, { x: 1610, y: 390 },
+    { x: 1430, y: 390 },
   ],
   mining: [
-    { x: 1420, y: 840 }, { x: 1640, y: 900 }, { x: 1940, y: 980 }, { x: 2240, y: 1050 },
-    { x: 2360, y: 1170 }, { x: 2190, y: 1280 }, { x: 1950, y: 1300 }, { x: 1720, y: 1270 },
-    { x: 1510, y: 1200 }, { x: 1440, y: 1350 }, { x: 1680, y: 1430 }, { x: 1930, y: 1430 },
-    { x: 2180, y: 1400 },
+    { x: 1430, y: 750 }, { x: 1610, y: 750 }, { x: 1790, y: 750 }, { x: 1970, y: 750 },
+    { x: 2150, y: 750 }, { x: 2330, y: 750 }, { x: 2330, y: 930 }, { x: 2150, y: 930 },
+    { x: 1970, y: 930 }, { x: 1790, y: 930 }, { x: 1610, y: 930 }, { x: 1430, y: 930 },
+    { x: 1430, y: 1110 },
   ],
   utility: [
-    { x: 1080, y: 840 }, { x: 820, y: 920 }, { x: 560, y: 1000 }, { x: 300, y: 1080 },
-    { x: 160, y: 1200 }, { x: 340, y: 1320 }, { x: 580, y: 1350 }, { x: 820, y: 1320 },
-    { x: 1020, y: 1250 }, { x: 1080, y: 1390 }, { x: 850, y: 1450 }, { x: 600, y: 1450 },
-    { x: 350, y: 1380 },
+    { x: 1250, y: 930 }, { x: 1070, y: 930 }, { x: 890, y: 930 }, { x: 710, y: 930 },
+    { x: 530, y: 930 }, { x: 350, y: 930 }, { x: 170, y: 930 }, { x: 170, y: 1110 },
+    { x: 350, y: 1110 }, { x: 530, y: 1110 }, { x: 710, y: 1110 }, { x: 890, y: 1110 },
+    { x: 1070, y: 1110 },
   ],
 };
 

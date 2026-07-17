@@ -150,13 +150,17 @@ describe('early-game economy balance', () => {
     expect(minimumEarlyDistance).toBeGreaterThan(110);
   });
 
-  it('keeps the four primary research lanes geometrically separate', () => {
+  it('keeps the four primary research lanes on one uniform orthogonal grid', () => {
     const branches: SkillTreeBranchId[] = ['movement', 'vision', 'mining', 'utility'];
     const root = { x: 1250, y: 750 };
     const segments = branches.flatMap((branch) => {
       const points = [root, ...Array.from({ length: 13 }, (_, index) => getConstellationNodePosition(branch, index + 1))];
       return points.slice(1).map((point, index) => ({ branch, from: points[index], to: point }));
     });
+    for (const segment of segments) {
+      expect(Math.hypot(segment.to.x - segment.from.x, segment.to.y - segment.from.y)).toBe(180);
+      expect(segment.from.x === segment.to.x || segment.from.y === segment.to.y).toBe(true);
+    }
     const orientation = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }) =>
       Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
     const crosses = (left: typeof segments[number], right: typeof segments[number]) =>

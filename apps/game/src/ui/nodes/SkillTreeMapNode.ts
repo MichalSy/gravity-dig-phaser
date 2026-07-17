@@ -67,11 +67,9 @@ const MIN_ZOOM = 0.32;
 const MAX_ZOOM = 1.8;
 const DRAG_THRESHOLD = 8;
 const SMALL_WIDTH = 88;
-const SMALL_HEIGHT = 76;
-const ROOT_WIDTH = 108;
-const ROOT_HEIGHT = 84;
-const MILESTONE_WIDTH = 340;
-const MILESTONE_HEIGHT = 108;
+const SMALL_HEIGHT = 88;
+const ROOT_WIDTH = 88;
+const ROOT_HEIGHT = 88;
 
 export class SkillTreeMapNode extends TransformNode {
   static override readonly nodeTypeId = NODE_TYPE_IDS.SkillTreeMapNode;
@@ -106,7 +104,7 @@ export class SkillTreeMapNode extends TransformNode {
     this.backgroundImage = this.phaserScene.add
       .image(0, 0, 'research-anime-background')
       .setScrollFactor(0)
-      .setAlpha(0.98);
+      .setAlpha(1);
     this.edgeGraphics = this.phaserScene.add.graphics();
     this.nodeGraphics = this.phaserScene.add.graphics();
     this.iconsContainer = this.phaserScene.add.container(0, 0);
@@ -189,8 +187,9 @@ export class SkillTreeMapNode extends TransformNode {
     if (!graph) return;
     const fitX = Math.max(0.01, (this.size.width - 90) / graph.width);
     const fitY = Math.max(0.01, (this.size.height - 105) / graph.height);
-    this.zoom = Phaser.Math.Clamp(Math.min(fitX, fitY), MIN_ZOOM, 0.72);
-    this.pan.set(-graph.width * this.zoom * 0.5, -graph.height * this.zoom * 0.5 + 26);
+    this.zoom = Phaser.Math.Clamp(Math.max(Math.min(fitX, fitY), 0.72), MIN_ZOOM, MAX_ZOOM);
+    const root = graph.nodes.find((node) => node.id === graph.rootId);
+    this.pan.set(-(root?.x ?? graph.width * 0.5) * this.zoom, -(root?.y ?? graph.height * 0.5) * this.zoom + 26);
     this.applyViewTransform();
   }
 
@@ -235,7 +234,6 @@ export class SkillTreeMapNode extends TransformNode {
   }
 
   private getNodeDimensions(node: SkillTreeMapGraphNode): { width: number; height: number } {
-    if (node.milestone) return { width: MILESTONE_WIDTH, height: MILESTONE_HEIGHT };
     if (node.tier === 0) return { width: ROOT_WIDTH, height: ROOT_HEIGHT };
     return { width: SMALL_WIDTH, height: SMALL_HEIGHT };
   }
@@ -271,37 +269,24 @@ export class SkillTreeMapNode extends TransformNode {
       const start = this.edgeAnchor(from, to);
       const end = this.edgeAnchor(to, from);
       const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
-      const lineColor = color;
-      const midpointX = (start.x + end.x) * 0.5;
-      const midpointY = (start.y + end.y) * 0.5;
-      const dx = end.x - start.x;
-      const dy = end.y - start.y;
-      const length = Math.max(1, Math.hypot(dx, dy));
-      const bendLimit = edge.secondary ? 150 : 24;
-      const bendRatio = edge.secondary ? 0.22 : 0.08;
-      const bend = ((edge.from.length + edge.to.length) % 2 === 0 ? 1 : -1) * Math.min(bendLimit, length * bendRatio);
-      const controlX = midpointX - dy / length * bend;
-      const controlY = midpointY + dx / length * bend;
-      const drawCurve = () => {
-        let previousX = start.x;
-        let previousY = start.y;
-        for (let step = 1; step <= 10; step += 1) {
-          const t = step / 10;
-          const inverse = 1 - t;
-          const x = inverse * inverse * start.x + 2 * inverse * t * controlX + t * t * end.x;
-          const y = inverse * inverse * start.y + 2 * inverse * t * controlY + t * t * end.y;
-          graphics.lineBetween(previousX, previousY, x, y);
-          previousX = x;
-          previousY = y;
+      const drawConnector = () => {
+        if (!edge.secondary || start.x === end.x || start.y === end.y) {
+          graphics.lineBetween(start.x, start.y, end.x, end.y);
+          return;
         }
+        const middleX = (start.x + end.x) * 0.5;
+        graphics.lineBetween(start.x, start.y, middleX, start.y);
+        graphics.lineBetween(middleX, start.y, middleX, end.y);
+        graphics.lineBetween(middleX, end.y, end.x, end.y);
       };
-      graphics.lineStyle(edge.secondary ? 7 : edge.active ? 13 : 9, 0x07172c, edge.secondary ? 0.7 : edge.active ? 0.62 : 0.46);
-      drawCurve();
-      graphics.lineStyle(edge.secondary ? 3 : edge.active ? 8 : 5, lineColor, edge.secondary ? 0.82 : edge.active ? 0.88 : 0.45);
-      drawCurve();
-      if (edge.active && !edge.secondary) {
-        graphics.fillStyle(0xfff2a8, 0.75).fillCircle(midpointX, midpointY, 5);
-      }
+      graphics.lineStyle(edge.secondary ? 8 : 12, 0x050b16, edge.secondary ? 0.82 : 0.72);
+      drawConnector();
+      graphics.lineStyle(
+        edge.secondary ? 3 : 6,
+        edge.active ? color : 0xd7ded8,
+        edge.secondary ? 0.9 : edge.active ? 0.9 : 0.48,
+      );
+      drawConnector();
     }
   }
 
@@ -329,7 +314,7 @@ export class SkillTreeMapNode extends TransformNode {
       const { width, height } = this.getNodeDimensions(node);
       const x = node.x - width * 0.5;
       const y = node.y - height * 0.5;
-      const radius = node.milestone ? 20 : 15;
+      const radius = 12;
       const fillColor = node.milestone ? 0x28486c : node.tier === 0 ? 0x345171 : 0x183555;
       const fillAlpha = node.state === 'locked' ? 0.84 : 0.96;
 
@@ -342,31 +327,16 @@ export class SkillTreeMapNode extends TransformNode {
 
       graphics.fillStyle(0x07172c, 0.92).fillRoundedRect(x - 4, y - 4, width + 8, height + 8, radius + 4);
       graphics.fillStyle(fillColor, fillAlpha).fillRoundedRect(x, y, width, height, radius);
-      graphics.lineStyle(node.milestone ? 6 : 4, stateColor, 0.96).strokeRoundedRect(x, y, width, height, radius);
+      graphics.lineStyle(node.milestone ? 7 : 4, stateColor, 0.96).strokeRoundedRect(x, y, width, height, radius);
       graphics.lineStyle(2, categoryColor, node.state === 'locked' ? 0.34 : 0.88)
         .strokeRoundedRect(x + 6, y + 6, width - 12, height - 12, Math.max(6, radius - 5));
 
-      const iconX = node.milestone ? node.x - width * 0.31 : node.x;
-      const iconSize = node.milestone ? 86 : node.tier === 0 ? 72 : 62;
-      const icon = scene.add.image(iconX, node.y, node.iconKey).setDisplaySize(iconSize, iconSize);
+      const iconSize = node.tier === 0 ? 76 : node.milestone ? 66 : 62;
+      const icon = scene.add.image(node.x, node.y, node.iconKey).setDisplaySize(iconSize, iconSize);
       if (node.state === 'locked') icon.setTint(0xb5cad8).setAlpha(0.76);
       else if (node.state === 'purchased') icon.setAlpha(1);
       else icon.setAlpha(0.92);
       icons.add(icon);
-
-      if (node.milestone) {
-        const label = scene.add.text(node.x - width * 0.02, node.y, node.label.toUpperCase(), {
-          fontFamily: 'Silkscreen, monospace',
-          fontSize: '18px',
-          fontStyle: '700',
-          color: node.state === 'locked' ? '#9baac0' : '#fff4c9',
-          stroke: '#10233f',
-          strokeThickness: 5,
-          align: 'left',
-          wordWrap: { width: 205, useAdvancedWrap: true },
-        }).setOrigin(0, 0.5).setResolution(2);
-        labels.add(label);
-      }
 
       if (node.rank) {
         const pipCount = Math.min(3, node.rank);
