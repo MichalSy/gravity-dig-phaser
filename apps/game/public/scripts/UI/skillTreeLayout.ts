@@ -14,9 +14,8 @@ function branchGrid(side: 'left' | 'right', rows: readonly [number, number, numb
   const direction = side === 'left' ? -1 : 1;
   const column = (depth: number) => CONSTELLATION_ROOT.x + direction * GRID_STEP * depth;
   const middle = rows[1];
-  const entryY = middle < CONSTELLATION_ROOT.y ? rows[2] : rows[0];
   return [
-    { x: column(1), y: entryY },
+    { x: column(1), y: middle },
     { x: column(2), y: rows[0] },
     { x: column(2), y: rows[1] },
     { x: column(2), y: rows[2] },
@@ -27,8 +26,8 @@ function branchGrid(side: 'left' | 'right', rows: readonly [number, number, numb
     { x: column(4), y: rows[1] },
     { x: column(4), y: rows[2] },
     { x: column(5), y: rows[0] },
+    { x: column(5), y: rows[1] },
     { x: column(5), y: rows[2] },
-    { x: column(6), y: middle },
   ];
 }
 

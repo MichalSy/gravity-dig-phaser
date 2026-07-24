@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "prefabId": "26d43ec9-f0a9-5f80-ad9d-7c29c73a2ceb",
+  "root": {
+    "name": "SkillEdge",
+    "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+    "nodeId": "skill-edge-root",
+    "props": {
+      "sizeMode": "content",
+      "scrollFactor": 0
+    },
+    "children": [
+      {
+        "name": "Backing",
+        "nodeTypeId": "b1bc7a02-4eab-54c0-9180-0c9e336f28a7",
+        "nodeId": "skill-edge-backing",
+        "props": {
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 1, "y": 1 },
+          "color": "#050b16",
+          "lineWidth": 12,
+          "alpha": 0.72,
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "Foreground",
+        "nodeTypeId": "b1bc7a02-4eab-54c0-9180-0c9e336f28a7",
+        "nodeId": "skill-edge-foreground",
+        "props": {
+          "start": { "x": 0, "y": 0 },
+          "end": { "x": 1, "y": 1 },
+          "color": "#d7ded8",
+          "lineWidth": 6,
+          "alpha": 0.48,
+          "scrollFactor": 0
+        }
+      }
+    ]
+  }
+}

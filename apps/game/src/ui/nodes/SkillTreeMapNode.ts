@@ -1,33 +1,9 @@
 import Phaser from 'phaser';
 import { NODE_TYPE_IDS, TransformNode, type NodeContext, type TransformNodeOptions } from '../../nodes';
 
-export type SkillTreeMapState = 'purchased' | 'available' | 'unaffordable' | 'locked';
-
-export interface SkillTreeMapGraphNode {
+export interface SkillTreeMapHitNode {
   id: string;
-  label: string;
-  branch: string;
-  color: string;
   tier: number;
-  x: number;
-  y: number;
-  state: SkillTreeMapState;
-  iconKey: string;
-  milestone?: boolean;
-  rank?: number;
-}
-
-export interface SkillTreeMapGraphEdge {
-  from: string;
-  to: string;
-  color: string;
-  active: boolean;
-  secondary?: boolean;
-}
-
-export interface SkillTreeMapGraphRegion {
-  label: string;
-  color: string;
   x: number;
   y: number;
 }
@@ -36,9 +12,7 @@ export interface SkillTreeMapGraph {
   width: number;
   height: number;
   rootId: string;
-  nodes: SkillTreeMapGraphNode[];
-  edges: SkillTreeMapGraphEdge[];
-  regions?: SkillTreeMapGraphRegion[];
+  nodes: SkillTreeMapHitNode[];
 }
 
 export interface SkillTreeMapInputInsets {
@@ -66,25 +40,22 @@ type PointerState = {
 const MIN_ZOOM = 0.32;
 const MAX_ZOOM = 1.8;
 const DRAG_THRESHOLD = 8;
-const SMALL_WIDTH = 88;
-const SMALL_HEIGHT = 88;
-const ROOT_WIDTH = 88;
-const ROOT_HEIGHT = 88;
+const NODE_WIDTH = 88;
+const NODE_HEIGHT = 88;
 
+/**
+ * Engine-facing interaction bridge for the public skill-tree node hierarchy.
+ * All visible presentation is owned by ImageNode/RectangleNode/LineNode prefab
+ * instances. This node only owns gestures, hit testing, and view conversion.
+ */
 export class SkillTreeMapNode extends TransformNode {
   static override readonly nodeTypeId = NODE_TYPE_IDS.SkillTreeMapNode;
 
   private phaserScene?: Phaser.Scene;
-  private viewportContainer?: Phaser.GameObjects.Container;
-  private worldContainer?: Phaser.GameObjects.Container;
-  private backgroundImage?: Phaser.GameObjects.Image;
-  private edgeGraphics?: Phaser.GameObjects.Graphics;
-  private nodeGraphics?: Phaser.GameObjects.Graphics;
-  private iconsContainer?: Phaser.GameObjects.Container;
-  private labelsContainer?: Phaser.GameObjects.Container;
+  private worldRoot?: TransformNode;
   private graph?: SkillTreeMapGraph;
-  private selectedNodeId?: string;
-  private selectCallback?: (nodeId: string, viewportPosition: { x: number; y: number }) => void;
+  private selectCallback?: (nodeId: string | undefined, viewportPosition: { x: number; y: number }) => void;
+  private viewChangeCallback?: () => void;
   private inputInsets: Required<SkillTreeMapInputInsets> = { top: 0, right: 0, bottom: 0, left: 0 };
   private inputExclusion?: SkillTreeMapExclusionRect;
   private zoom = 0.55;
@@ -101,25 +72,6 @@ export class SkillTreeMapNode extends TransformNode {
   init(ctx: NodeContext): void {
     this.phaserScene = ctx.phaserScene;
     this.phaserScene.input.addPointer(3);
-    this.backgroundImage = this.phaserScene.add
-      .image(0, 0, 'research-anime-background')
-      .setScrollFactor(0)
-      .setAlpha(1);
-    this.edgeGraphics = this.phaserScene.add.graphics();
-    this.nodeGraphics = this.phaserScene.add.graphics();
-    this.iconsContainer = this.phaserScene.add.container(0, 0);
-    this.labelsContainer = this.phaserScene.add.container(0, 0);
-    this.worldContainer = this.phaserScene.add.container(0, 0, [
-      this.edgeGraphics,
-      this.nodeGraphics,
-      this.iconsContainer,
-      this.labelsContainer,
-    ]);
-    this.viewportContainer = this.phaserScene.add
-      .container(0, 0, [this.backgroundImage, this.worldContainer])
-      .setScrollFactor(0);
-    this.applyViewportTransform();
-    this.layoutBackground();
     this.phaserScene.input.on('pointerdown', this.handlePointerDown, this);
     this.phaserScene.input.on('pointermove', this.handlePointerMove, this);
     this.phaserScene.input.on('pointerup', this.handlePointerUp, this);
@@ -127,31 +79,23 @@ export class SkillTreeMapNode extends TransformNode {
     this.phaserScene.input.on('wheel', this.handleWheel, this);
   }
 
-  override coreUpdate(): void {
-    if (!this.viewportContainer) return;
-    this.applyViewportTransform();
-    this.layoutBackground();
-    this.applyViewTransform();
-  }
-
-  override getSceneObjectsInHierarchy(): Phaser.GameObjects.GameObject[] {
-    return this.viewportContainer ? [this.viewportContainer] : [];
+  setWorldRoot(worldRoot?: TransformNode): void {
+    this.worldRoot = worldRoot;
+    this.applyViewTransform(false);
   }
 
   setGraph(graph: SkillTreeMapGraph): void {
     const firstGraph = !this.graph;
     this.graph = graph;
     if (firstGraph) this.resetView();
-    this.redraw();
   }
 
-  setSelectedNode(nodeId?: string): void {
-    this.selectedNodeId = nodeId;
-    this.redraw();
-  }
-
-  setSelectCallback(callback?: (nodeId: string, viewportPosition: { x: number; y: number }) => void): void {
+  setSelectCallback(callback?: (nodeId: string | undefined, viewportPosition: { x: number; y: number }) => void): void {
     this.selectCallback = callback;
+  }
+
+  setViewChangeCallback(callback?: () => void): void {
+    this.viewChangeCallback = callback;
   }
 
   setInputInsets(insets: SkillTreeMapInputInsets = {}): void {
@@ -166,7 +110,6 @@ export class SkillTreeMapNode extends TransformNode {
 
   setInputExclusion(rect?: SkillTreeMapExclusionRect): void {
     this.inputExclusion = rect;
-    this.pointerStates.clear();
   }
 
   getNodeViewportPosition(nodeId: string): { x: number; y: number } | undefined {
@@ -189,7 +132,7 @@ export class SkillTreeMapNode extends TransformNode {
     const fitY = Math.max(0.01, (this.size.height - 105) / graph.height);
     this.zoom = Phaser.Math.Clamp(Math.max(Math.min(fitX, fitY), 0.58), MIN_ZOOM, MAX_ZOOM);
     const root = graph.nodes.find((node) => node.id === graph.rootId);
-    this.pan.set(-(root?.x ?? graph.width * 0.5) * this.zoom, -(root?.y ?? graph.height * 0.5) * this.zoom + 26);
+    this.pan.set(-(root?.x ?? graph.width * 0.5) * this.zoom, -(root?.y ?? graph.height * 0.5) * this.zoom + 95);
     this.applyViewTransform();
   }
 
@@ -208,144 +151,14 @@ export class SkillTreeMapNode extends TransformNode {
     this.phaserScene?.input.off('pointerupoutside', this.handlePointerUp, this);
     this.phaserScene?.input.off('wheel', this.handleWheel, this);
     this.pointerStates.clear();
-    this.viewportContainer?.destroy(true);
-    this.viewportContainer = undefined;
-    this.worldContainer = undefined;
-    this.backgroundImage = undefined;
-    this.edgeGraphics = undefined;
-    this.nodeGraphics = undefined;
-    this.iconsContainer = undefined;
-    this.labelsContainer = undefined;
+    this.selectCallback = undefined;
+    this.viewChangeCallback = undefined;
+    this.worldRoot = undefined;
     this.phaserScene = undefined;
   }
 
   protected override onEffectiveActiveChanged(active: boolean): void {
-    this.viewportContainer?.setVisible(active && this.visible);
     if (!active) this.pointerStates.clear();
-  }
-
-  private layoutBackground(): void {
-    this.backgroundImage?.setDisplaySize(this.size.width, this.size.height);
-  }
-
-  private redraw(): void {
-    this.redrawEdges();
-    this.redrawNodes();
-  }
-
-  private getNodeDimensions(node: SkillTreeMapGraphNode): { width: number; height: number } {
-    if (node.tier === 0) return { width: ROOT_WIDTH, height: ROOT_HEIGHT };
-    return { width: SMALL_WIDTH, height: SMALL_HEIGHT };
-  }
-
-  private edgeAnchor(
-    from: SkillTreeMapGraphNode,
-    toward: SkillTreeMapGraphNode,
-  ): { x: number; y: number } {
-    const dimensions = this.getNodeDimensions(from);
-    const dx = toward.x - from.x;
-    const dy = toward.y - from.y;
-    const divisor = Math.max(
-      Math.abs(dx) / Math.max(1, dimensions.width * 0.5),
-      Math.abs(dy) / Math.max(1, dimensions.height * 0.5),
-      1,
-    );
-    return { x: from.x + dx / divisor, y: from.y + dy / divisor };
-  }
-
-  private redrawEdges(): void {
-    const graphics = this.edgeGraphics;
-    const graph = this.graph;
-    if (!graphics || !graph) return;
-    graphics.clear();
-    const byId = new Map(graph.nodes.map((node) => [node.id, node]));
-    for (const edge of graph.edges) {
-      const from = byId.get(edge.from);
-      const to = byId.get(edge.to);
-      if (!from || !to) continue;
-      const highlightedBridge = edge.secondary
-        && (edge.from === this.selectedNodeId || edge.to === this.selectedNodeId);
-      if (edge.secondary && !highlightedBridge) continue;
-      const start = this.edgeAnchor(from, to);
-      const end = this.edgeAnchor(to, from);
-      const color = Phaser.Display.Color.HexStringToColor(edge.color).color;
-      const drawConnector = () => {
-        graphics.lineBetween(start.x, start.y, end.x, end.y);
-      };
-      graphics.lineStyle(edge.secondary ? 8 : 12, 0x050b16, edge.secondary ? 0.82 : 0.72);
-      drawConnector();
-      graphics.lineStyle(
-        edge.secondary ? 3 : 6,
-        edge.active ? color : 0xd7ded8,
-        edge.secondary ? 0.9 : edge.active ? 0.9 : 0.48,
-      );
-      drawConnector();
-    }
-  }
-
-  private redrawNodes(): void {
-    const graphics = this.nodeGraphics;
-    const graph = this.graph;
-    const icons = this.iconsContainer;
-    const labels = this.labelsContainer;
-    const scene = this.phaserScene;
-    if (!graphics || !graph || !icons || !labels || !scene) return;
-    graphics.clear();
-    icons.removeAll(true);
-    labels.removeAll(true);
-
-    for (const node of graph.nodes) {
-      const selected = node.id === this.selectedNodeId;
-      const categoryColor = Phaser.Display.Color.HexStringToColor(node.color).color;
-      const stateColor = node.state === 'purchased'
-        ? 0x8cf5c8
-        : node.state === 'available'
-          ? 0xffdf6b
-          : node.state === 'unaffordable'
-            ? 0xff8e9f
-            : categoryColor;
-      const { width, height } = this.getNodeDimensions(node);
-      const x = node.x - width * 0.5;
-      const y = node.y - height * 0.5;
-      const radius = 12;
-      const fillColor = node.milestone ? 0x28486c : node.tier === 0 ? 0x345171 : 0x183555;
-      const fillAlpha = node.state === 'locked' ? 0.84 : 0.96;
-
-      if (selected) {
-        graphics.fillStyle(0xffffff, 0.15).fillRoundedRect(x - 10, y - 10, width + 20, height + 20, radius + 8);
-        graphics.lineStyle(6, 0xffffff, 0.96).strokeRoundedRect(x - 7, y - 7, width + 14, height + 14, radius + 6);
-      } else if (node.state === 'available') {
-        graphics.lineStyle(5, 0xffef9c, 0.8).strokeRoundedRect(x - 6, y - 6, width + 12, height + 12, radius + 5);
-      }
-
-      graphics.fillStyle(0x07172c, 0.92).fillRoundedRect(x - 4, y - 4, width + 8, height + 8, radius + 4);
-      graphics.fillStyle(fillColor, fillAlpha).fillRoundedRect(x, y, width, height, radius);
-      graphics.lineStyle(node.milestone ? 7 : 4, stateColor, 0.96).strokeRoundedRect(x, y, width, height, radius);
-      graphics.lineStyle(2, categoryColor, node.state === 'locked' ? 0.34 : 0.88)
-        .strokeRoundedRect(x + 6, y + 6, width - 12, height - 12, Math.max(6, radius - 5));
-
-      const iconSize = node.tier === 0 ? 76 : node.milestone ? 66 : 62;
-      const icon = scene.add.image(node.x, node.y, node.iconKey).setDisplaySize(iconSize, iconSize);
-      if (node.state === 'locked') icon.setTint(0xb5cad8).setAlpha(0.76);
-      else if (node.state === 'purchased') icon.setAlpha(1);
-      else icon.setAlpha(0.92);
-      icons.add(icon);
-
-      if (node.rank) {
-        const pipCount = Math.min(3, node.rank);
-        for (let pip = 0; pip < pipCount; pip += 1) {
-          graphics.fillStyle(0xffe47c, 0.98).fillCircle(
-            node.x + width * 0.5 - 13 - pip * 12,
-            node.y - height * 0.5 + 12,
-            4,
-          );
-        }
-      }
-
-      if (node.state === 'purchased') {
-        graphics.fillStyle(0xffffff, 0.96).fillCircle(node.x - width * 0.5 + 13, node.y - height * 0.5 + 13, 5);
-      }
-    }
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -400,6 +213,8 @@ export class SkillTreeMapNode extends TransformNode {
     if (selected && selected.id === state.startNodeId) {
       const position = this.getNodeViewportPosition(selected.id);
       if (position) this.selectCallback?.(selected.id, position);
+    } else if (!state.moved && !selected && !state.startNodeId) {
+      this.selectCallback?.(undefined, { x: local.x, y: local.y });
     }
     pointer.event?.preventDefault();
   }
@@ -441,20 +256,12 @@ export class SkillTreeMapNode extends TransformNode {
     this.applyViewTransform();
   }
 
-  private applyViewportTransform(): void {
-    const container = this.viewportContainer;
-    if (!container) return;
-    const transform = this.getPhaserTransform();
-    container
-      .setPosition(transform.x, transform.y)
-      .setRotation(transform.rotation)
-      .setScale(transform.scaleX, transform.scaleY)
-      .setVisible(transform.visible)
-      .setScrollFactor(transform.scrollFactor);
-  }
-
-  private applyViewTransform(): void {
-    this.worldContainer?.setPosition(this.pan.x, this.pan.y).setScale(this.zoom);
+  private applyViewTransform(notify = true): void {
+    this.worldRoot?.applySceneProps({
+      position: { x: this.pan.x, y: this.pan.y },
+      scale: { x: this.zoom, y: this.zoom },
+    });
+    if (notify) this.viewChangeCallback?.();
   }
 
   private constrainPan(): void {
@@ -474,8 +281,11 @@ export class SkillTreeMapNode extends TransformNode {
   }
 
   private pointerLocal(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
-    const output = new Phaser.Math.Vector2();
-    this.viewportContainer?.getWorldTransformMatrix().applyInverse(pointer.x, pointer.y, output);
+    const transform = this.getPhaserTransform();
+    const output = new Phaser.Math.Vector2(pointer.x - transform.x, pointer.y - transform.y);
+    output.rotate(-transform.rotation);
+    output.x /= transform.scaleX || 1;
+    output.y /= transform.scaleY || 1;
     return output;
   }
 
@@ -497,14 +307,13 @@ export class SkillTreeMapNode extends TransformNode {
     return new Phaser.Math.Vector2((local.x - this.pan.x) / this.zoom, (local.y - this.pan.y) / this.zoom);
   }
 
-  private hitNode(point: Phaser.Math.Vector2): SkillTreeMapGraphNode | undefined {
+  private hitNode(point: Phaser.Math.Vector2): SkillTreeMapHitNode | undefined {
     const nodes = this.graph?.nodes ?? [];
-    let best: SkillTreeMapGraphNode | undefined;
+    let best: SkillTreeMapHitNode | undefined;
     let bestDistance = Number.POSITIVE_INFINITY;
     for (const node of nodes) {
-      const dimensions = this.getNodeDimensions(node);
-      const halfWidth = Math.max(dimensions.width * 0.5, 39 / this.zoom);
-      const halfHeight = Math.max(dimensions.height * 0.5, 36 / this.zoom);
+      const halfWidth = Math.max(NODE_WIDTH * 0.5, 39 / this.zoom);
+      const halfHeight = Math.max(NODE_HEIGHT * 0.5, 36 / this.zoom);
       const dx = Math.abs(point.x - node.x);
       const dy = Math.abs(point.y - node.y);
       const distance = Math.hypot(dx, dy);

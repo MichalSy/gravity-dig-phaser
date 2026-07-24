@@ -21,7 +21,9 @@
         "assetGroups": ["gameplay"],
         "prefabs": [
           "prefabs/player.prefab.json",
-          "prefabs/ship.prefab.json"
+          "prefabs/ship.prefab.json",
+          "prefabs/skill-tree-node.prefab.json",
+          "prefabs/skill-tree-edge.prefab.json"
         ]
       }
     }

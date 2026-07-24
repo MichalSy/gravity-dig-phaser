@@ -1568,8 +1568,7 @@ var UPGRADE_DEFINITIONS = {
     description: "8 % mehr Sprung und 10 Leben. Einigt sich au\xDFergerichtlich mit Decken.",
     category: "boots",
     cost: { credits: 2200 },
-    prerequisites: ["micro_jetpack", "rocket_pants"],
-    prerequisiteMode: "any",
+    prerequisites: ["micro_jetpack"],
     effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.08 }, { stat: "maxHealth", op: "add", value: 10 }],
     tree: { x: -5, y: 5, branch: "movement" }
   },
@@ -1579,7 +1578,7 @@ var UPGRADE_DEFINITIONS = {
     description: "5 % Tempo und 20 Energie. Langsam war gestern, Schnecke bleibt.",
     category: "boots",
     cost: { credits: 3200 },
-    prerequisites: ["micro_jetpack", "moonwalk_insurance", "xray_potato"],
+    prerequisites: ["rocket_pants", "ceiling_negotiator", "xray_potato"],
     prerequisiteMode: "any",
     effects: [{ stat: "moveSpeed", op: "multiply", value: 1.05 }, { stat: "maxEnergy", op: "add", value: 20 }],
     tree: { x: -6, y: 6, branch: "movement" }
@@ -1590,7 +1589,7 @@ var UPGRADE_DEFINITIONS = {
     description: "8 % Tempo und 10 % schnellere Regeneration. Zeit ist nur schlecht gebunden.",
     category: "boots",
     cost: { credits: 4500 },
-    prerequisites: ["rocket_pants", "moonwalk_insurance"],
+    prerequisites: ["moonwalk_insurance", "turbo_snail"],
     prerequisiteMode: "any",
     effects: [{ stat: "moveSpeed", op: "multiply", value: 1.08 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
     tree: { x: -7, y: 7, branch: "movement" }
@@ -1601,7 +1600,7 @@ var UPGRADE_DEFINITIONS = {
     description: "10 % mehr Sprung und 15 Energie. Formular B-OIN-G genehmigt.",
     category: "boots",
     cost: { credits: 6200 },
-    prerequisites: ["ceiling_negotiator", "turbo_snail"],
+    prerequisites: ["ceiling_negotiator"],
     effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.1 }, { stat: "maxEnergy", op: "add", value: 15 }],
     tree: { x: -8, y: 8, branch: "movement" }
   },
@@ -1611,7 +1610,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Dritter Luftsprung und 18 % weniger Schwerkraft. Mit K\xE4se stabiler.",
     category: "boots",
     cost: { credits: 8500 },
-    prerequisites: ["ceiling_negotiator", "chrono_shoelaces", "unionized_nanobots"],
+    prerequisites: ["turbo_snail", "bounce_tax_refund", "unionized_nanobots"],
     prerequisiteMode: "any",
     effects: [{ stat: "airJumps", op: "set", value: 3 }, { stat: "gravityMultiplier", op: "multiply", value: 0.82 }],
     tree: { x: -9, y: 9, branch: "movement" }
@@ -1622,7 +1621,7 @@ var UPGRADE_DEFINITIONS = {
     description: "12 % Tempo und 25 Energie. Teleportiert nur deine Motivation.",
     category: "boots",
     cost: { credits: 11e3 },
-    prerequisites: ["turbo_snail", "chrono_shoelaces"],
+    prerequisites: ["chrono_shoelaces", "antigravity_sandwich"],
     effects: [{ stat: "moveSpeed", op: "multiply", value: 1.12 }, { stat: "maxEnergy", op: "add", value: 25 }],
     tree: { x: -10, y: 10, branch: "movement" }
   },
@@ -1632,8 +1631,7 @@ var UPGRADE_DEFINITIONS = {
     description: "12 % mehr Sprung und 10 % weniger Schwerkraft. Orthop\xE4den hassen sie.",
     category: "boots",
     cost: { credits: 14500 },
-    prerequisites: ["bounce_tax_refund", "antigravity_sandwich"],
-    prerequisiteMode: "any",
+    prerequisites: ["bounce_tax_refund"],
     effects: [{ stat: "jumpVelocity", op: "multiply", value: 1.12 }, { stat: "gravityMultiplier", op: "multiply", value: 0.9 }],
     tree: { x: -11, y: 11, branch: "movement" }
   },
@@ -1643,8 +1641,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Vier Luftspr\xFCnge und 8 % Tempo. Jeder zweite Sprung existiert nur wahrscheinlich.",
     category: "boots",
     cost: { credits: 19e3 },
-    prerequisites: ["antigravity_sandwich", "panic_teleporter", "prophetic_breadcrumbs"],
-    prerequisiteMode: "any",
+    prerequisites: ["antigravity_sandwich", "comet_kneecaps"],
     effects: [{ stat: "airJumps", op: "set", value: 4 }, { stat: "moveSpeed", op: "multiply", value: 1.08 }],
     tree: { x: -12, y: 12, branch: "movement" }
   },
@@ -1654,7 +1651,7 @@ var UPGRADE_DEFINITIONS = {
     description: "35 % weniger Schwerkraft, 12 % mehr Sprung und 50 Energie. Neustart nicht n\xF6tig.",
     category: "boots",
     cost: { credits: 26e3 },
-    prerequisites: ["comet_kneecaps", "quantum_hopscotch"],
+    prerequisites: ["panic_teleporter", "quantum_hopscotch"],
     prerequisiteMode: "any",
     effects: [{ stat: "gravityMultiplier", op: "multiply", value: 0.65 }, { stat: "jumpVelocity", op: "multiply", value: 1.12 }, { stat: "maxEnergy", op: "add", value: 50 }],
     tree: { x: -13, y: 13, branch: "movement" }
@@ -1675,8 +1672,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Scanner +2 Tiles und Magnet +20 Pixel. Kupfer erz\xE4hlt wirklich alles.",
     category: "visor",
     cost: { credits: 2200 },
-    prerequisites: ["ore_scanner", "xray_potato"],
-    prerequisiteMode: "any",
+    prerequisites: ["ore_scanner"],
     effects: [{ stat: "oreScannerRadius", op: "add", value: 2 }, { stat: "pickupRadius", op: "add", value: 20 }],
     tree: { x: 5, y: -5, branch: "vision" }
   },
@@ -1686,7 +1682,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Ein Tile mehr Sicht und 15 Energie. Nur heute: 30 % weniger Unwissen.",
     category: "visor",
     cost: { credits: 3200 },
-    prerequisites: ["ore_scanner", "spectrum_monocle", "storm_subscription"],
+    prerequisites: ["xray_potato", "copper_gossip", "storm_subscription"],
     prerequisiteMode: "any",
     effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "maxEnergy", op: "add", value: 15 }],
     tree: { x: 6, y: -6, branch: "vision" }
@@ -1697,7 +1693,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Scanner +2 und 10 % Regeneration. Erze leuchten, wenn du falsch singst.",
     category: "visor",
     cost: { credits: 4500 },
-    prerequisites: ["xray_potato", "spectrum_monocle"],
+    prerequisites: ["spectrum_monocle", "fog_coupon"],
     prerequisiteMode: "any",
     effects: [{ stat: "oreScannerRadius", op: "add", value: 2 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
     tree: { x: 7, y: -7, branch: "vision" }
@@ -1708,7 +1704,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Sicht +1 und Scanner +1. Das Erz ist da und nicht da.",
     category: "visor",
     cost: { credits: 6200 },
-    prerequisites: ["copper_gossip", "fog_coupon"],
+    prerequisites: ["copper_gossip"],
     effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "oreScannerRadius", op: "add", value: 1 }],
     tree: { x: 8, y: -8, branch: "vision" }
   },
@@ -1718,7 +1714,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Scanner +3 und 20 Leben. Genehmigt nur korrekt gestempelte Adern.",
     category: "visor",
     cost: { credits: 8500 },
-    prerequisites: ["copper_gossip", "geology_karaoke", "chrono_shoelaces"],
+    prerequisites: ["fog_coupon", "schrodinger_map", "chrono_shoelaces"],
     prerequisiteMode: "any",
     effects: [{ stat: "oreScannerRadius", op: "add", value: 3 }, { stat: "maxHealth", op: "add", value: 20 }],
     tree: { x: 9, y: -9, branch: "vision" }
@@ -1729,7 +1725,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Sicht +1 und Magnet +40 Pixel. Folgen auf eigene Gluten-Gefahr.",
     category: "visor",
     cost: { credits: 11e3 },
-    prerequisites: ["fog_coupon", "geology_karaoke"],
+    prerequisites: ["geology_karaoke", "bureaucratic_xray"],
     effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "pickupRadius", op: "add", value: 40 }],
     tree: { x: 10, y: -10, branch: "vision" }
   },
@@ -1739,8 +1735,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Scanner +3 und 8 % Laserschaden. Der Planet redet im Schlaf.",
     category: "visor",
     cost: { credits: 14500 },
-    prerequisites: ["schrodinger_map", "bureaucratic_xray"],
-    prerequisiteMode: "any",
+    prerequisites: ["schrodinger_map"],
     effects: [{ stat: "oreScannerRadius", op: "add", value: 3 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.08 }],
     tree: { x: 11, y: -11, branch: "vision" }
   },
@@ -1750,8 +1745,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Sicht +1, 40 Energie und 10 % Regeneration. Kennt dein Fr\xFChst\xFCck.",
     category: "visor",
     cost: { credits: 19e3 },
-    prerequisites: ["bureaucratic_xray", "prophetic_breadcrumbs", "recursive_pickaxe"],
-    prerequisiteMode: "any",
+    prerequisites: ["bureaucratic_xray", "seismic_gossip"],
     effects: [{ stat: "sightRadius", op: "add", value: 1 }, { stat: "maxEnergy", op: "add", value: 40 }, { stat: "energyRegenPerSec", op: "multiply", value: 1.1 }],
     tree: { x: 12, y: -12, branch: "vision" }
   },
@@ -1761,7 +1755,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Sicht +2, Scanner +4 und Magnet +80 Pixel. Datenschutz war optional.",
     category: "visor",
     cost: { credits: 26e3 },
-    prerequisites: ["seismic_gossip", "omniscient_toaster"],
+    prerequisites: ["prophetic_breadcrumbs", "omniscient_toaster"],
     prerequisiteMode: "any",
     effects: [{ stat: "sightRadius", op: "add", value: 2 }, { stat: "oreScannerRadius", op: "add", value: 4 }, { stat: "pickupRadius", op: "add", value: 80 }],
     tree: { x: 13, y: -13, branch: "vision" }
@@ -1782,8 +1776,7 @@ var UPGRADE_DEFINITIONS = {
     description: "12 % Schaden bei 7 % weniger Energieverbrauch. Smoothies separat erh\xE4ltlich.",
     category: "laser",
     cost: { credits: 2400 },
-    prerequisites: ["chain_lightning", "storm_subscription"],
-    prerequisiteMode: "any",
+    prerequisites: ["chain_lightning"],
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.12 }, { stat: "energyCostPerSec", op: "multiply", value: 0.93 }],
     tree: { x: 5, y: 5, branch: "mining" }
   },
@@ -1793,7 +1786,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Zwei Tiles mehr Reichweite. Al dente und hochenergetisch.",
     category: "laser",
     cost: { credits: 3500 },
-    prerequisites: ["chain_lightning", "arc_apprentice", "rubber_duck_protocol"],
+    prerequisites: ["storm_subscription", "ore_blender", "rubber_duck_protocol"],
     prerequisiteMode: "any",
     effects: [{ stat: "miningRange", op: "add", value: TILE_SIZE * 2 }],
     tree: { x: 6, y: 6, branch: "mining" }
@@ -1804,7 +1797,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Sechs Kettenziele und Magnet +30 Pixel. Bitte nicht f\xFCttern.",
     category: "laser",
     cost: { credits: 5e3 },
-    prerequisites: ["storm_subscription", "arc_apprentice"],
+    prerequisites: ["arc_apprentice", "laser_spaghetti"],
     prerequisiteMode: "any",
     effects: [{ stat: "chainMiningTargets", op: "set", value: 6 }, { stat: "pickupRadius", op: "add", value: 30 }],
     tree: { x: 7, y: 7, branch: "mining" }
@@ -1815,7 +1808,7 @@ var UPGRADE_DEFINITIONS = {
     description: "15 % Schaden und +2 Stackgr\xF6\xDFe. Finanzamt hasst diesen Trick.",
     category: "laser",
     cost: { credits: 7e3 },
-    prerequisites: ["ore_blender", "laser_spaghetti"],
+    prerequisites: ["ore_blender"],
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "cargoStackLimit", op: "add", value: 2 }],
     tree: { x: 8, y: 8, branch: "mining" }
   },
@@ -1825,7 +1818,7 @@ var UPGRADE_DEFINITIONS = {
     description: "15 % Schaden und ein Tile Reichweite. Erz bitte nicht doppelt dippen.",
     category: "laser",
     cost: { credits: 9500 },
-    prerequisites: ["ore_blender", "thunder_ferret", "unionized_nanobots"],
+    prerequisites: ["laser_spaghetti", "tax_evasion_drill", "unionized_nanobots"],
     prerequisiteMode: "any",
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "miningRange", op: "add", value: TILE_SIZE }],
     tree: { x: 9, y: 9, branch: "mining" }
@@ -1836,7 +1829,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Acht Kettenziele und 10 % Schaden. Baut sich gelegentlich selbst ab.",
     category: "laser",
     cost: { credits: 12500 },
-    prerequisites: ["laser_spaghetti", "thunder_ferret"],
+    prerequisites: ["thunder_ferret", "plasma_fondue"],
     effects: [{ stat: "chainMiningTargets", op: "set", value: 8 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.1 }],
     tree: { x: 10, y: 10, branch: "mining" }
   },
@@ -1846,8 +1839,7 @@ var UPGRADE_DEFINITIONS = {
     description: "20 % Schaden, 10 % weniger Verbrauch und 5 % Tempo. Zittert pr\xE4zise.",
     category: "laser",
     cost: { credits: 16500 },
-    prerequisites: ["tax_evasion_drill", "plasma_fondue"],
-    prerequisiteMode: "any",
+    prerequisites: ["tax_evasion_drill"],
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.2 }, { stat: "energyCostPerSec", op: "multiply", value: 0.9 }, { stat: "moveSpeed", op: "multiply", value: 1.05 }],
     tree: { x: 11, y: 11, branch: "mining" }
   },
@@ -1857,8 +1849,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Zehn Kettenziele, zwei Tiles Reichweite und 30 Energie. Nur lokal schlimm.",
     category: "laser",
     cost: { credits: 21500 },
-    prerequisites: ["plasma_fondue", "recursive_pickaxe", "portable_shipyard"],
-    prerequisiteMode: "any",
+    prerequisites: ["plasma_fondue", "caffeinated_beam"],
     effects: [{ stat: "chainMiningTargets", op: "set", value: 10 }, { stat: "miningRange", op: "add", value: TILE_SIZE * 2 }, { stat: "maxEnergy", op: "add", value: 30 }],
     tree: { x: 12, y: 12, branch: "mining" }
   },
@@ -1868,7 +1859,7 @@ var UPGRADE_DEFINITIONS = {
     description: "35 % Schaden, zw\xF6lf Kettenziele und 20 % weniger Verbrauch. Newsletter beendet.",
     category: "laser",
     cost: { credits: 3e4 },
-    prerequisites: ["caffeinated_beam", "localized_apocalypse"],
+    prerequisites: ["recursive_pickaxe", "localized_apocalypse"],
     prerequisiteMode: "any",
     effects: [{ stat: "miningDamagePerSec", op: "multiply", value: 1.35 }, { stat: "chainMiningTargets", op: "set", value: 12 }, { stat: "energyCostPerSec", op: "multiply", value: 0.8 }],
     tree: { x: 13, y: 13, branch: "mining" }
@@ -1889,8 +1880,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Vier mehr pro Stack und ein Cargo-Slot. Faltet auch massive Basaltbrocken.",
     category: "cargo",
     cost: { credits: 2300 },
-    prerequisites: ["pocket_wormhole", "rubber_duck_protocol"],
-    prerequisiteMode: "any",
+    prerequisites: ["pocket_wormhole"],
     effects: [{ stat: "cargoStackLimit", op: "add", value: 4 }, { stat: "cargoSlots", op: "add", value: 1 }],
     tree: { x: -5, y: -5, branch: "utility" }
   },
@@ -1900,7 +1890,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Magnet +60 Pixel und +3 Stackgr\xF6\xDFe. Fussel nicht mitgerechnet.",
     category: "cargo",
     cost: { credits: 3400 },
-    prerequisites: ["pocket_wormhole", "emergency_banana", "rocket_pants"],
+    prerequisites: ["rubber_duck_protocol", "cargo_origami", "rocket_pants"],
     prerequisiteMode: "any",
     effects: [{ stat: "pickupRadius", op: "add", value: 60 }, { stat: "cargoStackLimit", op: "add", value: 3 }],
     tree: { x: -6, y: -6, branch: "utility" }
@@ -1911,7 +1901,7 @@ var UPGRADE_DEFINITIONS = {
     description: "25 % Regeneration und 20 Leben. Machen gesetzliche Ladepause.",
     category: "core",
     cost: { credits: 4800 },
-    prerequisites: ["rubber_duck_protocol", "emergency_banana"],
+    prerequisites: ["emergency_banana", "pocket_dimension"],
     prerequisiteMode: "any",
     effects: [{ stat: "energyRegenPerSec", op: "multiply", value: 1.25 }, { stat: "maxHealth", op: "add", value: 20 }],
     tree: { x: -7, y: -7, branch: "utility" }
@@ -1922,7 +1912,7 @@ var UPGRADE_DEFINITIONS = {
     description: "Magnet +80 Pixel und ein Tile Laserreichweite. Kommt meistens zur\xFCck.",
     category: "cargo",
     cost: { credits: 6700 },
-    prerequisites: ["cargo_origami", "pocket_dimension"],
+    prerequisites: ["cargo_origami"],
     effects: [{ stat: "pickupRadius", op: "add", value: 80 }, { stat: "miningRange", op: "add", value: TILE_SIZE }],
     tree: { x: -8, y: -8, branch: "utility" }
   },
@@ -1932,7 +1922,7 @@ var UPGRADE_DEFINITIONS = {
     description: "30 Leben und 30 Energie. Schaden bitte leserlich einreichen.",
     category: "core",
     cost: { credits: 9e3 },
-    prerequisites: ["cargo_origami", "unionized_nanobots", "thunder_ferret"],
+    prerequisites: ["pocket_dimension", "loot_boomerang", "thunder_ferret"],
     prerequisiteMode: "any",
     effects: [{ stat: "maxHealth", op: "add", value: 30 }, { stat: "maxEnergy", op: "add", value: 30 }],
     tree: { x: -9, y: -9, branch: "utility" }
@@ -1943,7 +1933,7 @@ var UPGRADE_DEFINITIONS = {
     description: "+5 Energieregeneration und ein Cargo-Slot. Passt knapp in die Tasche.",
     category: "ship",
     cost: { credits: 12e3 },
-    prerequisites: ["pocket_dimension", "unionized_nanobots"],
+    prerequisites: ["unionized_nanobots", "insurance_fraud"],
     effects: [{ stat: "energyRegenPerSec", op: "add", value: 5 }, { stat: "cargoSlots", op: "add", value: 1 }],
     tree: { x: -10, y: -10, branch: "utility" }
   },
@@ -1953,8 +1943,7 @@ var UPGRADE_DEFINITIONS = {
     description: "400 Pixel Magnet und +5 Stackgr\xF6\xDFe. Verschluckt Kleingeld.",
     category: "cargo",
     cost: { credits: 16e3 },
-    prerequisites: ["loot_boomerang", "insurance_fraud"],
-    prerequisiteMode: "any",
+    prerequisites: ["loot_boomerang"],
     effects: [{ stat: "pickupRadius", op: "set", value: 400 }, { stat: "cargoStackLimit", op: "add", value: 5 }],
     tree: { x: -11, y: -11, branch: "utility" }
   },
@@ -1964,8 +1953,7 @@ var UPGRADE_DEFINITIONS = {
     description: "50 Leben, 50 Energie und 8 % weniger Schwerkraft. Tod nicht genehmigt.",
     category: "core",
     cost: { credits: 21e3 },
-    prerequisites: ["insurance_fraud", "portable_shipyard", "panic_teleporter"],
-    prerequisiteMode: "any",
+    prerequisites: ["insurance_fraud", "cosmic_vacuum"],
     effects: [{ stat: "maxHealth", op: "add", value: 50 }, { stat: "maxEnergy", op: "add", value: 50 }, { stat: "gravityMultiplier", op: "multiply", value: 0.92 }],
     tree: { x: -12, y: -12, branch: "utility" }
   },
@@ -1975,7 +1963,7 @@ var UPGRADE_DEFINITIONS = {
     description: "75 Leben/Energie, 15 % Schaden, 10 % Tempo, +1 Sicht und +100 Magnet.",
     category: "core",
     cost: { credits: 3e4 },
-    prerequisites: ["cosmic_vacuum", "administrative_immortality", "uninstall_gravity", "privacy_abolished", "planetary_unsubscribe"],
+    prerequisites: ["portable_shipyard", "administrative_immortality"],
     prerequisiteMode: "any",
     effects: [{ stat: "maxHealth", op: "add", value: 75 }, { stat: "maxEnergy", op: "add", value: 75 }, { stat: "miningDamagePerSec", op: "multiply", value: 1.15 }, { stat: "moveSpeed", op: "multiply", value: 1.1 }, { stat: "sightRadius", op: "add", value: 1 }, { stat: "pickupRadius", op: "add", value: 100 }],
     tree: { x: -13, y: -13, branch: "utility" }
@@ -2958,9 +2946,8 @@ function branchGrid(side, rows) {
   const direction = side === "left" ? -1 : 1;
   const column = (depth) => CONSTELLATION_ROOT.x + direction * GRID_STEP * depth;
   const middle = rows[1];
-  const entryY = middle < CONSTELLATION_ROOT.y ? rows[2] : rows[0];
   return [
-    { x: column(1), y: entryY },
+    { x: column(1), y: middle },
     { x: column(2), y: rows[0] },
     { x: column(2), y: rows[1] },
     { x: column(2), y: rows[2] },
@@ -2971,8 +2958,8 @@ function branchGrid(side, rows) {
     { x: column(4), y: rows[1] },
     { x: column(4), y: rows[2] },
     { x: column(5), y: rows[0] },
-    { x: column(5), y: rows[2] },
-    { x: column(6), y: middle }
+    { x: column(5), y: rows[1] },
+    { x: column(5), y: rows[2] }
   ];
 }
 var POSITIONS = {
@@ -3025,9 +3012,13 @@ var BRANCH_META = {
   mining: { color: "#ff8bc8" },
   utility: { color: "#9ee879" }
 };
-var MAP_INPUT_INSETS = { top: 84, right: 0, bottom: 0, left: 0 };
-var POPOVER_WIDTH = 350;
-var POPOVER_HEIGHT = 214;
+var MAP_INPUT_INSETS = { top: 110, right: 0, bottom: 0, left: 0 };
+var POPOVER_WIDTH = 420;
+var POPOVER_HEIGHT = 210;
+var SKILL_NODE_PREFAB_ID = "d8fd35fe-9714-50ac-a561-9a31ffb44621";
+var SKILL_EDGE_PREFAB_ID = "26d43ec9-f0a9-5f80-ad9d-7c29c73a2ceb";
+var NODE_SIZE = 88;
+var SKILL_ICON_SOURCE_SIZE = 128;
 var ResearchScreenScript = class extends ScriptNode {
   id = "dynamic.upgrade-dialog";
   name = "Research Screen";
@@ -3035,6 +3026,13 @@ var ResearchScreenScript = class extends ScriptNode {
   gameplayInputNodeId = prop.nodeRef(null, { label: "Gameplay Input" });
   screenRootNodeId = prop.nodeRef(null, { label: "Screen Root" });
   mapNodeId = prop.nodeRef(null, { label: "Skill Map" });
+  mapWorldRootNodeId = prop.nodeRef(null, { label: "Map World Root" });
+  mapEdgesRootNodeId = prop.nodeRef(null, { label: "Map Edges Root" });
+  mapCardsRootNodeId = prop.nodeRef(null, { label: "Map Cards Root" });
+  skillNodePrefabId = prop.string(SKILL_NODE_PREFAB_ID, { label: "Skill Node Prefab ID" });
+  skillNodePrefabPath = prop.string("prefabs/skill-tree-node.prefab.json", { label: "Skill Node Prefab Path" });
+  skillEdgePrefabId = prop.string(SKILL_EDGE_PREFAB_ID, { label: "Skill Edge Prefab ID" });
+  skillEdgePrefabPath = prop.string("prefabs/skill-tree-edge.prefab.json", { label: "Skill Edge Prefab Path" });
   creditsTextNodeId = prop.nodeRef(null, { label: "Credits Text" });
   progressTextNodeId = prop.nodeRef(null, { label: "Progress Text" });
   popoverRootNodeId = prop.nodeRef(null, { label: "Skill Popover" });
@@ -3043,15 +3041,14 @@ var ResearchScreenScript = class extends ScriptNode {
   costTextNodeId = prop.nodeRef(null, { label: "Skill Cost" });
   purchaseButtonNodeId = prop.nodeRef(null, { label: "Learn Button" });
   purchaseLabelNodeId = prop.nodeRef(null, { label: "Learn Label" });
-  zoomInButtonNodeId = prop.nodeRef(null, { label: "Zoom In" });
-  zoomOutButtonNodeId = prop.nodeRef(null, { label: "Zoom Out" });
-  resetViewButtonNodeId = prop.nodeRef(null, { label: "Reset View" });
-  popoverCloseButtonNodeId = prop.nodeRef(null, { label: "Popover Close" });
   closeButtonNodeId = prop.nodeRef(null, { label: "Close Screen" });
   playerState;
   gameplayInput;
   screenRoot;
   map;
+  mapWorldRoot;
+  mapEdgesRoot;
+  mapCardsRoot;
   creditsText;
   progressText;
   popoverRoot;
@@ -3063,11 +3060,16 @@ var ResearchScreenScript = class extends ScriptNode {
   selectedUpgradeId;
   keyHandler;
   opened = false;
+  skillCards = /* @__PURE__ */ new Map();
+  edgeNodes = [];
   resolve() {
     this.playerState = this.resolveNode(this.playerStateNodeId, "PlayerState");
     this.gameplayInput = this.resolveNode(this.gameplayInputNodeId, "GameplayInput");
     this.screenRoot = this.requireNodeRef(this.screenRootNodeId, "Research screen");
     this.map = this.requireNodeRef(this.mapNodeId, "Skill map");
+    this.mapWorldRoot = this.requireNodeRef(this.mapWorldRootNodeId, "Map world root");
+    this.mapEdgesRoot = this.requireNodeRef(this.mapEdgesRootNodeId, "Map edges root");
+    this.mapCardsRoot = this.requireNodeRef(this.mapCardsRootNodeId, "Map cards root");
     this.creditsText = this.requireNodeRef(this.creditsTextNodeId, "Credits text");
     this.progressText = this.requireNodeRef(this.progressTextNodeId, "Progress text");
     this.popoverRoot = this.requireNodeRef(this.popoverRootNodeId, "Skill popover");
@@ -3076,21 +3078,10 @@ var ResearchScreenScript = class extends ScriptNode {
     this.costText = this.requireNodeRef(this.costTextNodeId, "Skill cost");
     this.purchaseButton = this.requireNodeRef(this.purchaseButtonNodeId, "Learn button");
     this.purchaseLabel = this.requireNodeRef(this.purchaseLabelNodeId, "Learn label");
-    this.map.setSelectCallback((nodeId, position) => this.selectUpgrade(nodeId, position));
+    this.map.setWorldRoot(this.mapWorldRoot);
+    this.map.setSelectCallback((nodeId) => this.selectUpgrade(nodeId));
+    this.map.setViewChangeCallback(() => this.updatePopoverPosition());
     this.purchaseButton.setClickAction?.(() => this.purchaseSelected());
-    this.requireNodeRef(this.zoomInButtonNodeId, "Zoom in").setClickAction?.(() => {
-      this.clearSelection();
-      this.map.zoomBy(1.2);
-    });
-    this.requireNodeRef(this.zoomOutButtonNodeId, "Zoom out").setClickAction?.(() => {
-      this.clearSelection();
-      this.map.zoomBy(0.82);
-    });
-    this.requireNodeRef(this.resetViewButtonNodeId, "Reset view").setClickAction?.(() => {
-      this.clearSelection();
-      this.map.resetView();
-    });
-    this.requireNodeRef(this.popoverCloseButtonNodeId, "Popover close").setClickAction?.(() => this.clearSelection());
     this.requireNodeRef(this.closeButtonNodeId, "Close screen").setClickAction?.(() => this.close());
     this.keyHandler = (event) => {
       if (!this.isOpen()) return;
@@ -3099,18 +3090,15 @@ var ResearchScreenScript = class extends ScriptNode {
         else this.close();
       }
       if (event.key === "Enter") this.purchaseSelected();
-      if (event.key === "+" || event.key === "=") this.map.zoomBy(1.2);
-      if (event.key === "-" || event.key === "_") this.map.zoomBy(0.82);
-      if (event.key === "0") {
-        this.clearSelection();
-        this.map.resetView();
-      }
     };
     window.addEventListener("keydown", this.keyHandler);
     this.close();
   }
   destroy() {
+    this.clearGraphPresentation();
+    this.map?.setWorldRoot();
     this.map?.setSelectCallback();
+    this.map?.setViewChangeCallback();
     this.purchaseButton?.setClickAction?.();
     if (this.keyHandler) window.removeEventListener("keydown", this.keyHandler);
     this.keyHandler = void 0;
@@ -3123,7 +3111,6 @@ var ResearchScreenScript = class extends ScriptNode {
     this.hidePopover();
     this.gameplayInput?.setMenuOpen(true);
     this.selectedUpgradeId = void 0;
-    this.map.setSelectedNode();
     this.map.setInputInsets(MAP_INPUT_INSETS);
     this.map.setInputExclusion();
     this.updateGraph();
@@ -3140,37 +3127,53 @@ var ResearchScreenScript = class extends ScriptNode {
   isOpen() {
     return this.opened;
   }
-  selectUpgrade(upgradeId, nodePosition) {
-    if (!upgradeId || !UPGRADE_DEFINITIONS[upgradeId]) return;
+  selectUpgrade(upgradeId) {
+    if (!upgradeId) {
+      this.clearSelection();
+      return;
+    }
+    if (!UPGRADE_DEFINITIONS[upgradeId]) return;
+    if (this.selectedUpgradeId === upgradeId) {
+      this.clearSelection();
+      return;
+    }
     this.selectedUpgradeId = upgradeId;
-    this.map.setSelectedNode(upgradeId);
+    this.updateGraph();
+    this.popoverRoot.applySceneProps({ active: true });
+    this.setSubtreeVisible(this.popoverRoot, true);
+    this.updatePopoverPosition();
+    this.updateSelection();
+  }
+  updatePopoverPosition() {
+    const upgradeId = this.selectedUpgradeId;
+    if (!upgradeId) return;
+    const nodePosition = this.map.getNodeViewportPosition(upgradeId);
+    if (!nodePosition) return;
     const popoverCenter = this.getPopoverCenter(nodePosition);
     const popoverPosition = {
       x: popoverCenter.x - POPOVER_WIDTH * 0.5,
       y: popoverCenter.y - POPOVER_HEIGHT * 0.5
     };
-    this.popoverRoot.applySceneProps({ active: true, position: popoverPosition });
-    this.setSubtreeVisible(this.popoverRoot, true);
+    this.popoverRoot.applySceneProps({ position: popoverPosition });
     this.map.setInputExclusion({
       x: popoverCenter.x,
       y: popoverCenter.y,
       width: POPOVER_WIDTH + 16,
       height: POPOVER_HEIGHT + 16
     });
-    this.updateSelection();
   }
   getPopoverCenter(nodePosition) {
     const placeRight = nodePosition.x < 120;
-    const x = nodePosition.x + (placeRight ? 205 : -205);
+    const x = nodePosition.x + (placeRight ? 245 : -245);
     return {
-      x: Math.max(-455, Math.min(455, x)),
-      y: Math.max(-155, Math.min(238, nodePosition.y))
+      x: Math.max(-418, Math.min(418, x)),
+      y: Math.max(-135, Math.min(245, nodePosition.y))
     };
   }
   clearSelection() {
     this.selectedUpgradeId = void 0;
-    this.map.setSelectedNode();
     this.map.setInputExclusion();
+    this.updateGraph();
     this.hidePopover();
   }
   hidePopover() {
@@ -3240,7 +3243,133 @@ var ResearchScreenScript = class extends ScriptNode {
       nodes,
       edges
     });
-    this.map.setSelectedNode(this.selectedUpgradeId);
+    this.syncGraphPresentation(nodes, edges);
+  }
+  syncGraphPresentation(nodes, edges) {
+    const visibleEdges = edges;
+    if (this.skillCards.size !== nodes.length || nodes.some((node) => !this.skillCards.has(node.id)) || this.edgeNodes.length !== visibleEdges.length) {
+      this.rebuildGraphPresentation(nodes, edges);
+      return;
+    }
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    for (const node of nodes) {
+      const refs = this.skillCards.get(node.id);
+      if (refs) this.applyCardPresentation(node, refs);
+    }
+    visibleEdges.forEach((edge, index) => {
+      const refs = this.edgeNodes[index];
+      const from = byId.get(edge.from);
+      const to = byId.get(edge.to);
+      if (refs && from && to) this.applyEdgePresentation(edge, refs, from, to);
+    });
+  }
+  rebuildGraphPresentation(nodes, edges) {
+    this.clearGraphPresentation();
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    for (const [index, edge] of edges.entries()) {
+      const from = byId.get(edge.from);
+      const to = byId.get(edge.to);
+      if (!from || !to) continue;
+      const edgeRoot = this.instantiatePrefab(this.skillEdgePrefabId, {
+        name: `SkillEdge.${index}.${edge.from}.${edge.to}`
+      });
+      this.mapEdgesRoot.addChild(edgeRoot);
+      const backing = this.requireChildByName(edgeRoot, "Backing");
+      const foreground = this.requireChildByName(edgeRoot, "Foreground");
+      const refs = { root: edgeRoot, backing, foreground };
+      this.applyEdgePresentation(edge, refs, from, to);
+      this.edgeNodes.push(refs);
+    }
+    for (const node of nodes) {
+      const root = this.instantiatePrefab(this.skillNodePrefabId, {
+        name: `SkillCard.${node.id}`,
+        props: { position: { x: node.x, y: node.y } }
+      });
+      this.mapCardsRoot.addChild(root);
+      const refs = {
+        root,
+        selection: this.requireChildByName(root, "Selection"),
+        emphasis: this.requireChildByName(root, "Emphasis"),
+        face: this.requireChildByName(root, "Card"),
+        inner: this.requireChildByName(root, "InnerBorder"),
+        icon: this.requireChildByName(root, "Icon"),
+        purchased: this.requireChildByName(root, "PurchasedIndicator"),
+        pips: [1, 2, 3].map((rank) => this.requireChildByName(root, `RankPip${rank}`)),
+        label: this.requireChildByName(root, "Label")
+      };
+      this.skillCards.set(node.id, refs);
+      this.applyCardPresentation(node, refs);
+    }
+  }
+  clearGraphPresentation() {
+    for (const card of this.skillCards.values()) this.mapCardsRoot?.removeChild(card.root);
+    for (const edge of this.edgeNodes) this.mapEdgesRoot?.removeChild(edge.root);
+    this.skillCards.clear();
+    this.edgeNodes.length = 0;
+  }
+  applyEdgePresentation(edge, refs, from, to) {
+    const start = this.edgeAnchor(from, to);
+    const end = this.edgeAnchor(to, from);
+    const visible = !edge.secondary || edge.from === this.selectedUpgradeId || edge.to === this.selectedUpgradeId;
+    refs.backing.applySceneProps({
+      start,
+      end,
+      color: "#050b16",
+      lineWidth: edge.secondary ? 8 : 12,
+      alpha: edge.secondary ? 0.82 : 0.72,
+      visible
+    });
+    refs.foreground.applySceneProps({
+      start,
+      end,
+      color: edge.active ? edge.color : "#d7ded8",
+      lineWidth: edge.secondary ? 3 : 6,
+      alpha: edge.secondary ? 0.9 : edge.active ? 0.9 : 0.48,
+      visible
+    });
+  }
+  applyCardPresentation(node, refs) {
+    const stateColor = node.state === "purchased" ? "#8cf5c8" : node.state === "available" ? "#ffdf6b" : node.state === "unaffordable" ? "#ff8e9f" : node.color;
+    const selected = node.id === this.selectedUpgradeId;
+    const iconSize = node.tier === 0 ? 76 : node.milestone ? 66 : 62;
+    refs.root.applySceneProps({ position: { x: node.x, y: node.y }, size: { width: NODE_SIZE, height: NODE_SIZE } });
+    refs.selection.applySceneProps({ visible: selected });
+    refs.emphasis.applySceneProps({ visible: !selected && node.state === "available" });
+    refs.face.applySceneProps({
+      fillColor: node.milestone ? "#28486c" : node.tier === 0 ? "#345171" : "#183555",
+      fillAlpha: node.state === "locked" ? 0.84 : 0.96,
+      strokeColor: stateColor,
+      strokeAlpha: 0.96,
+      strokeWidth: node.milestone ? 7 : 4
+    });
+    refs.inner.applySceneProps({
+      strokeColor: node.color,
+      strokeAlpha: node.state === "locked" ? 0.34 : 0.88,
+      strokeWidth: 2
+    });
+    refs.icon.setAssetId(node.iconKey);
+    const iconScale = iconSize / SKILL_ICON_SOURCE_SIZE;
+    refs.icon.applySceneProps({
+      size: { width: iconSize, height: iconSize },
+      scale: { x: iconScale, y: iconScale },
+      alpha: node.state === "locked" ? 0.76 : node.state === "purchased" ? 1 : 0.92,
+      tint: node.state === "locked" ? "#b5cad8" : "#ffffff",
+      visible: true
+    });
+    refs.purchased.applySceneProps({ visible: node.state === "purchased" });
+    refs.pips.forEach((pip, index) => pip.applySceneProps({ visible: index < Math.min(3, node.rank ?? 0) }));
+    refs.label.setText(node.label);
+    refs.label.applySceneProps({ visible: false, color: stateColor });
+  }
+  edgeAnchor(from, toward) {
+    const dx = toward.x - from.x;
+    const dy = toward.y - from.y;
+    const divisor = Math.max(
+      Math.abs(dx) / (NODE_SIZE * 0.5),
+      Math.abs(dy) / (NODE_SIZE * 0.5),
+      1
+    );
+    return { x: from.x + dx / divisor, y: from.y + dy / divisor };
   }
   getMapLabel(upgradeId, fallback) {
     const labels = {
@@ -3258,7 +3387,7 @@ var ResearchScreenScript = class extends ScriptNode {
     const definition = UPGRADE_DEFINITIONS[upgradeId];
     const state = this.getSkillState(upgradeId);
     this.detailTitle.setText(this.wrapText(definition.label.toUpperCase(), 25).split("\n").slice(0, 2).join("\n"));
-    this.detailDescription.setText(this.wrapText(definition.description ?? definition.label, 38));
+    this.detailDescription.setText(this.wrapText(definition.description ?? definition.label, 30));
     this.costText.setText(`${(definition.cost.credits ?? 0).toLocaleString("de-DE")} C`);
     this.purchaseLabel.setText(this.getPurchaseLabel(definition, state));
     this.purchaseButton.enabled = state === "available";
@@ -3309,6 +3438,11 @@ var ResearchScreenScript = class extends ScriptNode {
     if (!node) throw new Error(`${label} node was not resolved`);
     return node;
   }
+  requireChildByName(root, name) {
+    const child = root.children.find((node) => node.debugName() === name);
+    if (!child) throw new Error(`${root.debugName()} is missing child '${name}'`);
+    return child;
+  }
 };
 
 // node_modules/.script-build/dynamic-nodes.entry.ts
@@ -3343,4 +3477,4 @@ export {
   dynamic_nodes_entry_default as default,
   modules
 };
-//# sourceMappingURL=dynamic-nodes.0509b8a01b93.js.map
+//# sourceMappingURL=dynamic-nodes.49451d984535.js.map

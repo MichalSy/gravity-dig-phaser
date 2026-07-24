@@ -10,6 +10,8 @@ export const CORE_NODE_TYPE_IDS = {
   ButtonNode: 'addc5b95-e208-503a-9474-4408cee67995',
   LineNode: 'b1bc7a02-4eab-54c0-9180-0c9e336f28a7',
   RectangleNode: 'e214ccf6-b974-56b9-8599-954e313c6e83',
+  RoundedRectangleNode: '7e6751bd-678f-4eb0-ba25-cb5a07df7ba9',
+  CircleNode: '57e0af09-fe20-40bc-b154-2ba2708e5783',
   AudioNode: '88b20e68-99d0-5699-9306-b51283834211',
 } as const;
 

@@ -371,6 +371,22 @@
         {
           "key": "research-skill-xray_potato",
           "path": "/assets/ui/research/anime/skill-xray_potato.webp"
+        },
+        {
+          "key": "research-header-art",
+          "path": "/assets/ui/research/research-header.webp"
+        },
+        {
+          "key": "research-popover-art",
+          "path": "/assets/ui/research/research-popover.webp"
+        },
+        {
+          "key": "research-hit-back",
+          "path": "/assets/ui/research/research-hit-back.webp"
+        },
+        {
+          "key": "research-hit-purchase",
+          "path": "/assets/ui/research/research-hit-purchase.webp"
         }
       ],
       "audio": [

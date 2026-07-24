@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "prefabId": "d8fd35fe-9714-50ac-a561-9a31ffb44621",
+  "root": {
+    "name": "SkillCard",
+    "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+    "nodeId": "skill-card-root",
+    "props": {
+      "size": {
+        "width": 88,
+        "height": 88
+      },
+      "sizeMode": "explicit",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "scrollFactor": 0
+    },
+    "children": [
+      {
+        "name": "Selection",
+        "nodeTypeId": "7e6751bd-678f-4eb0-ba25-cb5a07df7ba9",
+        "nodeId": "skill-card-selection",
+        "props": {
+          "visible": false,
+          "size": {
+            "width": 108,
+            "height": 108
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffffff",
+          "fillAlpha": 0.15,
+          "strokeColor": "#ffffff",
+          "strokeAlpha": 0.96,
+          "strokeWidth": 6,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0,
+          "radius": 20
+        }
+      },
+      {
+        "name": "Emphasis",
+        "nodeTypeId": "7e6751bd-678f-4eb0-ba25-cb5a07df7ba9",
+        "nodeId": "skill-card-emphasis",
+        "props": {
+          "visible": false,
+          "size": {
+            "width": 100,
+            "height": 100
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffffff",
+          "fillAlpha": 0,
+          "strokeColor": "#ffef9c",
+          "strokeAlpha": 0.8,
+          "strokeWidth": 5,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0,
+          "radius": 17
+        }
+      },
+      {
+        "name": "Backing",
+        "nodeTypeId": "7e6751bd-678f-4eb0-ba25-cb5a07df7ba9",
+        "nodeId": "skill-card-backing",
+        "props": {
+          "size": {
+            "width": 96,
+            "height": 96
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#07172c",
+          "fillAlpha": 0.92,
+          "strokeColor": "#07172c",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0,
+          "radius": 16
+        }
+      },
+      {
+        "name": "Card",
+        "nodeTypeId": "7e6751bd-678f-4eb0-ba25-cb5a07df7ba9",
+        "nodeId": "skill-card-face",
+        "props": {
+          "size": {
+            "width": 88,
+            "height": 88
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#183555",
+          "fillAlpha": 0.96,
+          "strokeColor": "#ffd76a",
+          "strokeAlpha": 0.96,
+          "strokeWidth": 4,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0,
+          "radius": 12
+        }
+      },
+      {
+        "name": "InnerBorder",
+        "nodeTypeId": "7e6751bd-678f-4eb0-ba25-cb5a07df7ba9",
+        "nodeId": "skill-card-inner",
+        "props": {
+          "size": {
+            "width": 76,
+            "height": 76
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffffff",
+          "fillAlpha": 0,
+          "strokeColor": "#ffd76a",
+          "strokeAlpha": 0.88,
+          "strokeWidth": 2,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0,
+          "radius": 7
+        }
+      },
+      {
+        "name": "Icon",
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "nodeId": "skill-card-icon",
+        "props": {
+          "assetId": "research-skill-prospector_core",
+          "size": {
+            "width": 62,
+            "height": 62
+          },
+          "sizeMode": "explicit",
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "PurchasedIndicator",
+        "nodeTypeId": "57e0af09-fe20-40bc-b154-2ba2708e5783",
+        "nodeId": "skill-card-purchased",
+        "props": {
+          "visible": false,
+          "position": {
+            "x": -31,
+            "y": -31
+          },
+          "size": {
+            "width": 10,
+            "height": 10
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffffff",
+          "fillAlpha": 0.96,
+          "strokeColor": "#ffffff",
+          "strokeAlpha": 0,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "RankPip1",
+        "nodeTypeId": "57e0af09-fe20-40bc-b154-2ba2708e5783",
+        "nodeId": "skill-card-rank-1",
+        "props": {
+          "visible": false,
+          "position": {
+            "x": 31,
+            "y": -32
+          },
+          "size": {
+            "width": 8,
+            "height": 8
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffe47c",
+          "fillAlpha": 0.98,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "RankPip2",
+        "nodeTypeId": "57e0af09-fe20-40bc-b154-2ba2708e5783",
+        "nodeId": "skill-card-rank-2",
+        "props": {
+          "visible": false,
+          "position": {
+            "x": 19,
+            "y": -32
+          },
+          "size": {
+            "width": 8,
+            "height": 8
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffe47c",
+          "fillAlpha": 0.98,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "RankPip3",
+        "nodeTypeId": "57e0af09-fe20-40bc-b154-2ba2708e5783",
+        "nodeId": "skill-card-rank-3",
+        "props": {
+          "visible": false,
+          "position": {
+            "x": 7,
+            "y": -32
+          },
+          "size": {
+            "width": 8,
+            "height": 8
+          },
+          "sizeMode": "explicit",
+          "fillColor": "#ffe47c",
+          "fillAlpha": 0.98,
+          "strokeWidth": 0,
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "scrollFactor": 0
+        }
+      },
+      {
+        "name": "Label",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "skill-card-label",
+        "props": {
+          "visible": false,
+          "text": "",
+          "fontId": "silkscreen-latin-700",
+          "fontSize": 9,
+          "align": "center",
+          "color": "#ffffff",
+          "position": {
+            "x": 0,
+            "y": 55
+          },
+          "parentAnchor": "center",
+          "origin": {
+            "x": 0.5,
+            "y": 0
+          },
+          "scrollFactor": 0
+        }
+      }
+    ]
+  }
+}

@@ -11,6 +11,8 @@ export * from './CollisionRectNode';
 export * from './ButtonNode';
 export * from './LineNode';
 export * from './RectangleNode';
+export * from './RoundedRectangleNode';
+export * from './CircleNode';
 export * from './AudioNode';
 export * from './SceneNode';
 export * from './DisplayNodeFactory';

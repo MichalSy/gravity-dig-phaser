@@ -3,7 +3,7 @@ import { isFrameAsset, type RenderableImageAsset } from '../assets/imageAssets';
 import type { DebugNodePatch, DebugOverlayLayerDescriptor } from '@gravity-dig/debug-protocol';
 import { type DebugOverlayLayerRenderContext, type NodeContext, type NodeDebugBounds, type NodeDebugProps } from './GameNode';
 import { CORE_NODE_TYPE_IDS } from './NodeTypeIds';
-import { exposedPropGroup, propAssetId, propBoolean, type ExposedPropGroup } from './SceneProps';
+import { exposedPropGroup, propAssetId, propBoolean, propColor, propNumber, type ExposedPropGroup } from './SceneProps';
 import { TransformNode, type TransformNodeOptions } from './TransformNode';
 
 export type ImageNodeSyncMode = 'node-to-object' | 'object-to-node';
@@ -33,6 +33,8 @@ function visibleImageDisplaySize(image: Phaser.GameObjects.Image): { width: numb
 export interface ImageNodeOptions extends TransformNodeOptions {
   assetId: string;
   flipX?: boolean;
+  alpha?: number;
+  tint?: string;
   syncMode?: ImageNodeSyncMode;
 }
 
@@ -47,11 +49,15 @@ export class ImageNode extends TransformNode {
     exposedPropGroup('Image', {
       assetId: propAssetId({ label: 'Asset' }),
       flipX: propBoolean({ label: 'Flip X' }),
+      alpha: propNumber({ label: 'Alpha', min: 0, max: 1, step: 0.05 }),
+      tint: propColor({ label: 'Tint' }),
     }),
   ];
 
   assetId: string;
   flipX: boolean;
+  alpha: number;
+  tint: string;
   protected asset!: RenderableImageAsset;
   protected phaserImage?: Phaser.GameObjects.Image;
   private readonly syncMode: ImageNodeSyncMode;
@@ -60,6 +66,8 @@ export class ImageNode extends TransformNode {
     super({ ...options, className: options.className ?? 'ImageNode' });
     this.assetId = options.assetId;
     this.flipX = options.flipX ?? false;
+    this.alpha = options.alpha ?? 1;
+    this.tint = options.tint ?? '#ffffff';
     this.syncMode = options.syncMode ?? 'node-to-object';
   }
 
@@ -74,6 +82,7 @@ export class ImageNode extends TransformNode {
     this.phaserImage = ctx.phaserScene.add.image(0, 0, this.asset.textureKey, frame).setFlipX(this.flipX);
     if (this.sizeMode === 'content') this.size = imageFrameLocalSize(this.phaserImage);
     this.applyTransformTo(this.phaserImage);
+    this.applyPresentation();
   }
 
   override measureSelf(): void {
@@ -94,10 +103,13 @@ export class ImageNode extends TransformNode {
       this.scaleY = parentScale.y === 0 ? this.phaserImage.scaleY : this.phaserImage.scaleY / parentScale.y;
       this.rotation = this.phaserImage.rotation - (this.parent?.getWorldRotation() ?? 0);
       this.flipX = this.phaserImage.flipX;
+      this.alpha = this.phaserImage.alpha;
+      this.tint = this.phaserImage.isTinted ? colorToHex(this.phaserImage.tintTopLeft) : '#ffffff';
       return;
     }
 
     this.applyTransformTo(this.phaserImage).setFlipX(this.flipX);
+    this.applyPresentation();
   }
 
   destroy(): void {
@@ -121,6 +133,7 @@ export class ImageNode extends TransformNode {
     if (this.phaserImage) {
       if (this.sizeMode === 'content') this.size = imageFrameLocalSize(this.phaserImage);
       this.applyTransformTo(this.phaserImage);
+      this.applyPresentation();
     } else if (this.sizeMode === 'content') {
       this.size = { width: asset.width, height: asset.height };
     }
@@ -180,6 +193,8 @@ export class ImageNode extends TransformNode {
       cropWidth: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.width ?? null : null,
       cropHeight: this.phaserImage && (this.phaserImage as CroppableImage).isCropped ? (this.phaserImage as CroppableImage)._crop?.height ?? null : null,
       flipX: this.flipX,
+      alpha: this.alpha,
+      tint: this.tint,
       scrollFactor: this.scrollFactor,
       effectiveScrollFactor: this.getEffectiveScrollFactor(),
     };
@@ -196,9 +211,29 @@ export class ImageNode extends TransformNode {
         this.flipX = value;
         this.phaserImage?.setFlipX(value);
         return true;
+      case 'alpha':
+        if (typeof value !== 'number') return false;
+        this.alpha = Phaser.Math.Clamp(value, 0, 1);
+        this.applyPresentation();
+        return true;
+      case 'tint':
+        if (typeof value !== 'string') return false;
+        this.tint = value;
+        this.applyPresentation();
+        return true;
       default:
         return super.applySceneProp(key, value);
     }
   }
 
+  private applyPresentation(): void {
+    if (!this.phaserImage) return;
+    this.phaserImage.setAlpha(this.alpha);
+    if (this.tint.toLowerCase() === '#ffffff') this.phaserImage.clearTint();
+    else this.phaserImage.setTint(Phaser.Display.Color.HexStringToColor(this.tint).color);
+  }
+}
+
+function colorToHex(value: number): string {
+  return `#${(value & 0xffffff).toString(16).padStart(6, '0')}`;
 }

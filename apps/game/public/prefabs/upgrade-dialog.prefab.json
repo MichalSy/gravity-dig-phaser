@@ -40,85 +40,91 @@
             "y": 0.5
           },
           "scrollFactor": 0
-        }
+        },
+        "children": [
+          {
+            "name": "ResearchMapBackground",
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+            "nodeId": "research-map-background",
+            "props": {
+              "assetId": "research-anime-background",
+              "size": { "width": 1280, "height": 720 },
+              "sizeMode": "explicit",
+              "parentAnchor": "center",
+              "origin": { "x": 0.5, "y": 0.5 },
+              "position": { "x": 0, "y": 0 },
+              "scrollFactor": 0
+            }
+          },
+          {
+            "name": "ResearchMapWorld",
+            "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+            "nodeId": "research-map-world",
+            "props": {
+              "position": { "x": 0, "y": 0 },
+              "scale": { "x": 1, "y": 1 },
+              "sizeMode": "content",
+              "parentAnchor": "center",
+              "scrollFactor": 0
+            },
+            "children": [
+              {
+                "name": "ResearchMapEdges",
+                "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+                "nodeId": "research-map-edges",
+                "props": { "sizeMode": "content", "scrollFactor": 0 }
+              },
+              {
+                "name": "ResearchMapCards",
+                "nodeTypeId": "b78a74e0-452a-5e20-85f4-579f7c0b1364",
+                "nodeId": "research-map-cards",
+                "props": { "sizeMode": "content", "scrollFactor": 0 }
+              }
+            ]
+          }
+        ]
       },
       {
-        "name": "HudGlass",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-hud-glass",
+        "name": "ResearchHeaderArt",
+        "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+        "nodeId": "research-header-art",
         "props": {
+          "assetId": "research-header-art",
           "size": {
             "width": 1280,
-            "height": 78
+            "height": 110
           },
           "sizeMode": "explicit",
-          "fillColor": "#183d61",
-          "fillAlpha": 0,
-          "strokeColor": "#ffe69a",
-          "strokeAlpha": 0,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 0,
-            "y": -321
-          },
           "origin": {
             "x": 0.5,
             "y": 0.5
+          },
+          "parentAnchor": "center",
+          "position": {
+            "x": 0,
+            "y": -305
           },
           "scrollFactor": 0
         }
       },
       {
-        "name": "HudGlow",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-hud-glow",
+        "name": "ScreenTitle",
+        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
+        "nodeId": "research-title",
         "props": {
-          "size": {
-            "width": 1280,
-            "height": 4
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#76e6ff",
-          "fillAlpha": 0,
-          "strokeColor": "#ffffff",
-          "strokeAlpha": 0,
-          "strokeWidth": 0,
-          "parentAnchor": "center",
-          "position": {
-            "x": 0,
-            "y": -280
-          },
+          "text": "TALENTBAUM",
+          "fontId": "silkscreen-latin-700",
+          "fontSize": 28,
+          "align": "center",
+          "color": "#ffe0a0",
           "origin": {
             "x": 0.5,
             "y": 0.5
           },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "BackSurface",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-back-surface",
-        "props": {
-          "size": {
-            "width": 58,
-            "height": 54
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#162b44",
-          "fillAlpha": 0.95,
-          "strokeColor": "#ffe08a",
-          "strokeAlpha": 0.86,
-          "strokeWidth": 3,
           "parentAnchor": "center",
           "position": {
-            "x": -598,
-            "y": -322
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
+            "x": -288,
+            "y": -305
           },
           "scrollFactor": 0
         }
@@ -130,16 +136,18 @@
         "props": {
           "enabled": true,
           "size": {
-            "width": 62,
-            "height": 58
+            "width": 66,
+            "height": 66
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
           "position": {
-            "x": -598,
-            "y": -322
+            "x": -583,
+            "y": -305
           },
-          "scrollFactor": 0
+          "scrollFactor": 0,
+          "normalAssetId": "research-hit-back",
+          "activeAssetId": "research-hit-back"
         },
         "children": [
           {
@@ -149,7 +157,7 @@
             "props": {
               "text": "<",
               "fontId": "silkscreen-latin-700",
-              "fontSize": 25,
+              "fontSize": 24,
               "align": "center",
               "color": "#fff3c0",
               "origin": {
@@ -167,135 +175,13 @@
         ]
       },
       {
-        "name": "ScreenTitle",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "research-title",
-        "props": {
-          "text": "TALENTBAUM",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 34,
-          "align": "left",
-          "color": "#fff4cf",
-          "origin": {
-            "x": 0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": -548,
-            "y": -322
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "ScreenSubtitle",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "research-subtitle",
-        "props": {
-          "text": "",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 9,
-          "align": "left",
-          "color": "#9be8ff",
-          "origin": {
-            "x": 0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": -548,
-            "y": -302
-          },
-          "scrollFactor": 0,
-          "visible": false
-        }
-      },
-      {
-        "name": "CreditsCapsule",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-credits-capsule",
-        "props": {
-          "size": {
-            "width": 220,
-            "height": 54
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#102844",
-          "fillAlpha": 0.9,
-          "strokeColor": "#ffd36f",
-          "strokeAlpha": 0.78,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 20,
-            "y": -322
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "ProgressCapsule",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-progress-capsule",
-        "props": {
-          "size": {
-            "width": 160,
-            "height": 54
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#102844",
-          "fillAlpha": 0.9,
-          "strokeColor": "#9be8ff",
-          "strokeAlpha": 0.78,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 235,
-            "y": -322
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "ProgressLabel",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "research-progress-caption",
-        "props": {
-          "text": "",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 8,
-          "align": "left",
-          "color": "#9be8ff",
-          "origin": {
-            "x": 0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": 110,
-            "y": -333
-          },
-          "scrollFactor": 0,
-          "visible": false
-        }
-      },
-      {
         "name": "Progress",
         "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
         "nodeId": "research-progress",
         "props": {
           "text": "0 / 53",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 21,
+          "fontSize": 20,
           "align": "center",
           "color": "#fff4cf",
           "origin": {
@@ -304,33 +190,10 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": 235,
-            "y": -322
+            "x": 502,
+            "y": -305
           },
           "scrollFactor": 0
-        }
-      },
-      {
-        "name": "CreditsLabel",
-        "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-        "nodeId": "research-credits-caption",
-        "props": {
-          "text": "",
-          "fontId": "silkscreen-latin-700",
-          "fontSize": 8,
-          "align": "left",
-          "color": "#9be8ff",
-          "origin": {
-            "x": 0,
-            "y": 0.5
-          },
-          "parentAnchor": "center",
-          "position": {
-            "x": 270,
-            "y": -333
-          },
-          "scrollFactor": 0,
-          "visible": false
         }
       },
       {
@@ -340,7 +203,7 @@
         "props": {
           "text": "0 C",
           "fontId": "silkscreen-latin-700",
-          "fontSize": 21,
+          "fontSize": 22,
           "align": "center",
           "color": "#ffe49a",
           "origin": {
@@ -349,221 +212,11 @@
           },
           "parentAnchor": "center",
           "position": {
-            "x": 20,
-            "y": -322
+            "x": 203,
+            "y": -305
           },
           "scrollFactor": 0
         }
-      },
-      {
-        "name": "ZoomOutSurface",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-zoom-out-surface",
-        "props": {
-          "size": {
-            "width": 54,
-            "height": 54
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#162b44",
-          "fillAlpha": 0.95,
-          "strokeColor": "#ffe08a",
-          "strokeAlpha": 0.86,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 475,
-            "y": -322
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "ZoomOut",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "research-zoom-out",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 58,
-            "height": 58
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 475,
-            "y": -322
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "research-zoom-out-label",
-            "props": {
-              "text": "−",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 20,
-              "align": "center",
-              "color": "#fff7d6",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "parentAnchor": "center",
-              "position": {
-                "x": 0,
-                "y": 0
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "ResetSurface",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-reset-surface",
-        "props": {
-          "size": {
-            "width": 54,
-            "height": 54
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#162b44",
-          "fillAlpha": 0.95,
-          "strokeColor": "#ffe08a",
-          "strokeAlpha": 0.86,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 542,
-            "y": -322
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "ResetView",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "research-reset-view",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 58,
-            "height": 58
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 542,
-            "y": -322
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "research-reset-view-label",
-            "props": {
-              "text": "◎",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 18,
-              "align": "center",
-              "color": "#fff7d6",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "parentAnchor": "center",
-              "position": {
-                "x": 0,
-                "y": 0
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
-      },
-      {
-        "name": "ZoomInSurface",
-        "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-        "nodeId": "research-zoom-in-surface",
-        "props": {
-          "size": {
-            "width": 54,
-            "height": 54
-          },
-          "sizeMode": "explicit",
-          "fillColor": "#162b44",
-          "fillAlpha": 0.95,
-          "strokeColor": "#ffe08a",
-          "strokeAlpha": 0.86,
-          "strokeWidth": 3,
-          "parentAnchor": "center",
-          "position": {
-            "x": 609,
-            "y": -322
-          },
-          "origin": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "scrollFactor": 0
-        }
-      },
-      {
-        "name": "ZoomIn",
-        "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-        "nodeId": "research-zoom-in",
-        "props": {
-          "enabled": true,
-          "size": {
-            "width": 58,
-            "height": 58
-          },
-          "sizeMode": "explicit",
-          "parentAnchor": "center",
-          "position": {
-            "x": 609,
-            "y": -322
-          },
-          "scrollFactor": 0
-        },
-        "children": [
-          {
-            "name": "Label",
-            "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-            "nodeId": "research-zoom-in-label",
-            "props": {
-              "text": "+",
-              "fontId": "silkscreen-latin-700",
-              "fontSize": 20,
-              "align": "center",
-              "color": "#fff7d6",
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "parentAnchor": "center",
-              "position": {
-                "x": 0,
-                "y": 0
-              },
-              "scrollFactor": 0
-            }
-          }
-        ]
       },
       {
         "name": "SkillPopover",
@@ -576,8 +229,8 @@
             "y": 0
           },
           "size": {
-            "width": 350,
-            "height": 214
+            "width": 420,
+            "height": 210
           },
           "sizeMode": "explicit",
           "parentAnchor": "center",
@@ -585,109 +238,28 @@
         },
         "children": [
           {
-            "name": "PopoverShadow",
-            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-            "nodeId": "research-popover-shadow",
+            "name": "ResearchPopoverArt",
+            "nodeTypeId": "73e926f5-c280-5131-b820-a89f898e2d48",
+            "nodeId": "research-popover-art",
             "props": {
+              "assetId": "research-popover-art",
               "size": {
-                "width": 350,
-                "height": 214
+                "width": 560,
+                "height": 280
               },
               "sizeMode": "explicit",
-              "fillColor": "#07172c",
-              "fillAlpha": 0.58,
-              "strokeColor": "#ffffff",
-              "strokeAlpha": 0,
-              "strokeWidth": 0,
-              "parentAnchor": "center",
-              "position": {
-                "x": 5,
-                "y": 7
-              },
               "origin": {
                 "x": 0.5,
                 "y": 0.5
               },
-              "scrollFactor": 0
-            }
-          },
-          {
-            "name": "PopoverSurface",
-            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-            "nodeId": "research-popover-bg",
-            "props": {
-              "size": {
-                "width": 350,
-                "height": 214
-              },
-              "sizeMode": "explicit",
-              "fillColor": "#244b6f",
-              "fillAlpha": 0.97,
-              "strokeColor": "#ffe29a",
-              "strokeAlpha": 0.98,
-              "strokeWidth": 4,
               "parentAnchor": "center",
               "position": {
                 "x": 0,
                 "y": 0
               },
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          },
-          {
-            "name": "PopoverInner",
-            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-            "nodeId": "research-popover-inner",
-            "props": {
-              "size": {
-                "width": 334,
-                "height": 198
-              },
-              "sizeMode": "explicit",
-              "fillColor": "#17334f",
-              "fillAlpha": 0.96,
-              "strokeColor": "#75dfff",
-              "strokeAlpha": 0.55,
-              "strokeWidth": 2,
-              "parentAnchor": "center",
-              "position": {
-                "x": 0,
-                "y": 2
-              },
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
-              },
-              "scrollFactor": 0
-            }
-          },
-          {
-            "name": "PopoverRibbon",
-            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-            "nodeId": "research-popover-ribbon",
-            "props": {
-              "size": {
-                "width": 350,
-                "height": 12
-              },
-              "sizeMode": "explicit",
-              "fillColor": "#ffb65f",
-              "fillAlpha": 0.98,
-              "strokeColor": "#ffffff",
-              "strokeAlpha": 0,
-              "strokeWidth": 0,
-              "parentAnchor": "center",
-              "position": {
-                "x": 0,
-                "y": -101
-              },
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
+              "scale": {
+                "x": 0.75,
+                "y": 0.75
               },
               "scrollFactor": 0
             }
@@ -699,7 +271,7 @@
             "props": {
               "text": "SKILL",
               "fontId": "silkscreen-latin-700",
-              "fontSize": 17,
+              "fontSize": 20,
               "align": "left",
               "color": "#fff1bd",
               "origin": {
@@ -708,54 +280,11 @@
               },
               "parentAnchor": "center",
               "position": {
-                "x": -145,
-                "y": -75
+                "x": -175,
+                "y": -62
               },
               "scrollFactor": 0
             }
-          },
-          {
-            "name": "PopoverClose",
-            "nodeTypeId": "addc5b95-e208-503a-9474-4408cee67995",
-            "nodeId": "research-popover-close",
-            "props": {
-              "enabled": true,
-              "size": {
-                "width": 42,
-                "height": 42
-              },
-              "sizeMode": "explicit",
-              "parentAnchor": "center",
-              "position": {
-                "x": 145,
-                "y": -76
-              },
-              "scrollFactor": 0
-            },
-            "children": [
-              {
-                "name": "Label",
-                "nodeTypeId": "2db287f7-b55c-5c58-be87-c057e8c5d302",
-                "nodeId": "research-popover-close-label",
-                "props": {
-                  "text": "×",
-                  "fontId": "silkscreen-latin-700",
-                  "fontSize": 18,
-                  "align": "center",
-                  "color": "#d5f5ff",
-                  "origin": {
-                    "x": 0.5,
-                    "y": 0.5
-                  },
-                  "parentAnchor": "center",
-                  "position": {
-                    "x": 0,
-                    "y": 0
-                  },
-                  "scrollFactor": 0
-                }
-              }
-            ]
           },
           {
             "name": "SkillDescription",
@@ -764,7 +293,7 @@
             "props": {
               "text": "BESCHREIBUNG",
               "fontId": "silkscreen-latin-700",
-              "fontSize": 12,
+              "fontSize": 16,
               "align": "left",
               "color": "#e9f7ff",
               "origin": {
@@ -773,8 +302,8 @@
               },
               "parentAnchor": "center",
               "position": {
-                "x": -145,
-                "y": -42
+                "x": -175,
+                "y": -26
               },
               "scrollFactor": 0
             }
@@ -786,7 +315,7 @@
             "props": {
               "text": "KOSTEN",
               "fontId": "silkscreen-latin-700",
-              "fontSize": 8,
+              "fontSize": 13,
               "align": "left",
               "color": "#85ddf8",
               "origin": {
@@ -795,8 +324,8 @@
               },
               "parentAnchor": "center",
               "position": {
-                "x": -145,
-                "y": 40
+                "x": -175,
+                "y": 49
               },
               "scrollFactor": 0
             }
@@ -808,7 +337,7 @@
             "props": {
               "text": "0 C",
               "fontId": "silkscreen-latin-700",
-              "fontSize": 15,
+              "fontSize": 18,
               "align": "left",
               "color": "#ffe06e",
               "origin": {
@@ -817,35 +346,8 @@
               },
               "parentAnchor": "center",
               "position": {
-                "x": -145,
-                "y": 63
-              },
-              "scrollFactor": 0
-            }
-          },
-          {
-            "name": "LearnSurface",
-            "nodeTypeId": "e214ccf6-b974-56b9-8599-954e313c6e83",
-            "nodeId": "research-learn-surface",
-            "props": {
-              "size": {
-                "width": 150,
-                "height": 50
-              },
-              "sizeMode": "explicit",
-              "fillColor": "#ff9d55",
-              "fillAlpha": 0.98,
-              "strokeColor": "#fff0bb",
-              "strokeAlpha": 1,
-              "strokeWidth": 3,
-              "parentAnchor": "center",
-              "position": {
-                "x": 76,
-                "y": 65
-              },
-              "origin": {
-                "x": 0.5,
-                "y": 0.5
+                "x": -175,
+                "y": 68
               },
               "scrollFactor": 0
             }
@@ -857,16 +359,18 @@
             "props": {
               "enabled": true,
               "size": {
-                "width": 154,
-                "height": 54
+                "width": 150,
+                "height": 42
               },
               "sizeMode": "explicit",
               "parentAnchor": "center",
               "position": {
-                "x": 76,
-                "y": 65
+                "x": 120,
+                "y": 75
               },
-              "scrollFactor": 0
+              "scrollFactor": 0,
+              "normalAssetId": "research-hit-purchase",
+              "activeAssetId": "research-hit-purchase"
             },
             "children": [
               {
@@ -876,7 +380,7 @@
                 "props": {
                   "text": "LERNEN",
                   "fontId": "silkscreen-latin-700",
-                  "fontSize": 12,
+                  "fontSize": 15,
                   "align": "center",
                   "color": "#fff7d6",
                   "origin": {
@@ -904,6 +408,13 @@
           "gameplayInputNodeId": null,
           "screenRootNodeId": "research-root",
           "mapNodeId": "research-map",
+          "mapWorldRootNodeId": "research-map-world",
+          "mapEdgesRootNodeId": "research-map-edges",
+          "mapCardsRootNodeId": "research-map-cards",
+          "skillNodePrefabId": "d8fd35fe-9714-50ac-a561-9a31ffb44621",
+          "skillNodePrefabPath": "prefabs/skill-tree-node.prefab.json",
+          "skillEdgePrefabId": "26d43ec9-f0a9-5f80-ad9d-7c29c73a2ceb",
+          "skillEdgePrefabPath": "prefabs/skill-tree-edge.prefab.json",
           "creditsTextNodeId": "research-credits",
           "progressTextNodeId": "research-progress",
           "popoverRootNodeId": "research-popover",
@@ -912,10 +423,6 @@
           "costTextNodeId": "research-cost",
           "purchaseButtonNodeId": "research-purchase",
           "purchaseLabelNodeId": "research-purchase-label",
-          "zoomInButtonNodeId": "research-zoom-in",
-          "zoomOutButtonNodeId": "research-zoom-out",
-          "resetViewButtonNodeId": "research-reset-view",
-          "popoverCloseButtonNodeId": "research-popover-close",
           "closeButtonNodeId": "research-back"
         }
       }

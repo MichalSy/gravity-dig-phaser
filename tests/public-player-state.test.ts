@@ -149,12 +149,18 @@ describe('public player state domain', () => {
     expect(jetpackRoute.purchaseUpgrade('micro_jetpack').ok).toBe(true);
     expect(jetpackRoute.purchaseUpgrade('ceiling_negotiator').ok).toBe(true);
     expect(jetpackRoute.purchaseUpgrade('turbo_snail').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('moonwalk_insurance').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('chrono_shoelaces').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('panic_teleporter').ok).toBe(false);
     expect(jetpackRoute.purchaseUpgrade('bounce_tax_refund').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('antigravity_sandwich').ok).toBe(true);
+    expect(jetpackRoute.purchaseUpgrade('panic_teleporter').ok).toBe(true);
 
     const rocketRoute = createManager('rocket-route');
     expect(rocketRoute.purchaseUpgrade('rocket_pants').ok).toBe(true);
     expect(rocketRoute.isUpgradePurchased('micro_jetpack')).toBe(false);
-    expect(rocketRoute.purchaseUpgrade('ceiling_negotiator').ok).toBe(true);
+    expect(rocketRoute.isUpgradePurchased('ceiling_negotiator')).toBe(false);
+    expect(rocketRoute.purchaseUpgrade('turbo_snail').ok).toBe(true);
     vi.unstubAllGlobals();
   });
 

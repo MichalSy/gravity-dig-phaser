@@ -2,6 +2,7 @@ import {
   AnimatedImageNode,
   AudioNode,
   ButtonNode,
+  CircleNode,
   CollisionRectNode,
   createDynamicScriptNode,
   DynamicScriptNode,
@@ -10,6 +11,7 @@ import {
   LineNode,
   PrefabManager,
   RectangleNode,
+  RoundedRectangleNode,
   SceneNode,
   SceneNodeFactoryRegistry,
   TextNode,
@@ -59,6 +61,8 @@ export function createGravityDigNodeFactory(bindings: GravityDigNodeFactoryBindi
     .register(NODE_TYPE_IDS.CollisionRectNode, (definition) => new CollisionRectNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.LineNode, (definition) => new LineNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.RectangleNode, (definition) => new RectangleNode(optionsFrom(definition)))
+    .register(NODE_TYPE_IDS.RoundedRectangleNode, (definition) => new RoundedRectangleNode(optionsFrom(definition)))
+    .register(NODE_TYPE_IDS.CircleNode, (definition) => new CircleNode(optionsFrom(definition)))
     .register(NODE_TYPE_IDS.AudioNode, (definition) => new AudioNode(optionsFrom(definition)));
 
   for (const module of bindings.dynamicModules ?? []) registerGravityDigDynamicModule(factory, module, bindings);
